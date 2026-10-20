@@ -3,6 +3,8 @@ package b.ai.core
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import android.net.Uri
 import android.util.Base64
 import java.io.File
@@ -52,4 +54,27 @@ object Images {
     fun delete(path: String) {
         runCatching { File(path).takeIf { it.isFile }?.delete() }
     }
+    //缩略图缓存：列表滚动时不重复解码原图，最多留 64 张
+    private val thumbs = object : LinkedHashMap<String, ImageBitmap>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>?): Boolean = size > 64
+    } //LRU 容量 64
+
+    /**本地图片缩略图：按目标边长算 inSampleSize，避免把 1280px 原图整张解进内存 */
+    fun thumb(path: String, side: Int = 156): ImageBitmap? {
+        val p = path.trim()
+        if (p.isEmpty()) return null
+        val key = p + "@" + side
+        thumbs[key]?.let { return it }
+        val out = runCatching {
+            val bound = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(p, bound)
+            if (bound.outWidth <= 0 || bound.outHeight <= 0) return null
+            var s = 1
+            while (minOf(bound.outWidth, bound.outHeight) / (s * 2) >= side) s *= 2
+            BitmapFactory.decodeFile(p, BitmapFactory.Options().apply { inSampleSize = s })?.asImageBitmap()
+        }.getOrNull()
+        if (out != null) thumbs[key] = out
+        return out
+    } //读迷你缩略图
+
 } //图片附件管理

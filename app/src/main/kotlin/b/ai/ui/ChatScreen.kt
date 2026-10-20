@@ -770,19 +770,8 @@ private fun InputBar(
         }
         if (images.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                images.forEachIndexed { i, p ->
-                    Text(
-                        "图${i + 1} ×",
-                        fontSize = 10.sp,
-                        color = AccentBlue,
-                        modifier = Modifier
-                            .background(AccentBlueSoft, RoundedCornerShape(7.dp))
-                            .tap { onRemoveImage(p) }
-                            .padding(horizontal = 7.dp, vertical = 4.dp)
-                    )
-                }
-            }
+            //选中就是缩略图，右上角 × 直接删
+            ImgThumbs(images = images, size = 56.dp, onRemove = onRemoveImage)
         }
         if (Voice.error.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
@@ -950,21 +939,9 @@ private fun FullInputDialog(
             }
             if (images.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    images.forEachIndexed { i, p ->
-                        Text(
-                            "图${i + 1} ×",
-                            fontSize = 10.sp,
-                            color = AccentBlue,
-                            modifier = Modifier
-                                .background(AccentBlueSoft, RoundedCornerShape(7.dp))
-                                .tap { onRemoveImage(p) }
-                                .padding(horizontal = 7.dp, vertical = 4.dp)
-                        )
-                    }
+                //全屏输入同样铺缩略图，多了横向滑
+                Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+                    ImgThumbs(images = images, size = 64.dp, onRemove = onRemoveImage)
                 }
             }
             Box(
@@ -1038,8 +1015,9 @@ private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress
                     ) {
                 Column {
                     if (m.images.isNotEmpty()) {
-                        Text("附带 ${m.images.size} 张图片", fontSize = 10.sp, color = TextSecondary)
-                        Spacer(Modifier.height(3.dp))
+                        //发出去的图也留缩略图，超过一行横向滑
+                        ImgThumbs(images = m.images, size = 56.dp, corner = 8.dp, maxWidth = 216.dp)
+                        Spacer(Modifier.height(6.dp))
                     }
                     Text(m.content, fontSize = 13.sp, color = TextPrimary)
                 }
