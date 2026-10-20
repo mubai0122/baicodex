@@ -116,7 +116,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         Text(
             listOf(
                 info.subtitle,
-                "版本 ${info.latestVersion}（code ${info.latestCode}）",
+                "版本 ${info.latestVersion}",
                 info.updateDate
             ).filter { it.isNotBlank() }.joinToString(" · "),
             fontSize = 11.sp,
@@ -284,7 +284,7 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
                         color = TextPrimary
                     )
                     Text(
-                        listOf(h.subtitle, "版本 ${h.version}（code ${h.code}）", h.date)
+                        listOf(h.subtitle, "版本 ${h.version}", h.date)
                             .filter { it.isNotBlank() }.joinToString(" · "),
                         fontSize = 10.sp,
                         color = TextSecondary

@@ -77,4 +77,26 @@ object Images {
         return out
     } //读迷你缩略图
 
+    //原始宽高缓存：气泡里按真实比例排图，只量尺寸不解码像素
+    private val sizes = object : LinkedHashMap<String, Pair<Int, Int>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Int, Int>>?): Boolean = size > 64
+    } //LRU 容量 64
+
+    /**读图片原始宽高，读不到返回 null（文件被清掉时用它兜底）*/
+    fun sizeOf(path: String): Pair<Int, Int>? {
+        val p = path.trim()
+        if (p.isEmpty()) return null
+        sizes[p]?.let { return it }
+        val bound = runCatching {
+            BitmapFactory.Options().apply { inJustDecodeBounds = true }.also { BitmapFactory.decodeFile(p, it) }
+        }.getOrNull() ?: return null
+        if (bound.outWidth <= 0 || bound.outHeight <= 0) return null
+        val r = bound.outWidth to bound.outHeight
+        sizes[p] = r
+        return r
+    } //量尺寸不占内存
+
+    /**按目标显示边长解码：给气泡大图用，比 thumb 大一档 */
+    fun big(path: String, side: Int): ImageBitmap? = thumb(path, side)
+
 } //图片附件管理

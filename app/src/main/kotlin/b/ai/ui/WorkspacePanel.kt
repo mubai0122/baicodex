@@ -63,12 +63,12 @@ internal fun WorkspaceSection() {
 
     LaunchedEffect(Unit) { reload() }
 
-    SectionTitle("工作区", "相对路径都落在工作区里，命令也默认在这里执行；索引写在根目录 ${Workspace.INDEX}")
+    SectionTitle("工作区", "相对路径都落在工作区里，命令也默认在这里执行")
     CardBox {
         //新会话自动换工作区：开 = 每建一个会话配一个新哈希目录；关 = 空工作区
         CapSwitch(
             "新会话自动绑定工作区",
-            "开启后每新建一个会话都自动配一个新的哈希工作区；关闭就不绑定，变成空工作区，模型只能用绝对路径",
+            "开启后每个新会话都配一个独立目录；关闭则不绑定，变成空工作区",
             Cfg.autoBindWorkspace
         ) { on ->
             Cfg.autoBindWorkspace = on
@@ -93,8 +93,7 @@ internal fun WorkspaceSection() {
             when {
                 Workspace.path().isEmpty() ->
                     "现在不绑任何目录：相对路径不生效，模型只能用绝对路径；想绑定就填下面的路径再点「绑定」"
-                Workspace.custom() -> "$files 个文件 / $dirs 个目录 / ${Workspace.human(bytes)}"
-                else -> "本会话自动生成的哈希目录；想固定目录就改下面路径再点绑定"
+                else -> "$files 个文件 / $dirs 个目录 / ${Workspace.human(bytes)}"
             },
             fontSize = 11.sp,
             color = TextSecondary,

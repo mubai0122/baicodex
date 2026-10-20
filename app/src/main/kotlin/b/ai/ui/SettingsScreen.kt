@@ -1148,7 +1148,7 @@ private fun AboutTab() {
     //进页面静默查一次，只为了把「最新版本」那行填上，不弹卡片
     LaunchedEffect(Unit) {
         val info = withContext(Dispatchers.IO) { runCatching { Update.check() }.getOrNull() }
-        latest = info?.let { "${it.latestVersion}（code ${it.latestCode}）" } ?: ""
+        latest = info?.latestVersion ?: ""
     }
 
     SectionTitle("关于")
@@ -1175,7 +1175,7 @@ private fun AboutTab() {
             Text("版本号", fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                "${Update.clientVersion()}（code ${Update.clientCode()}）",
+                "${Update.clientVersion()}",
                 fontSize = 12.sp,
                 color = TextPrimary
             )
@@ -1200,12 +1200,12 @@ private fun AboutTab() {
                     val r = withContext(Dispatchers.IO) { runCatching { Update.check() } }
                     busy = false
                     r.onSuccess { info ->
-                        latest = "${info.latestVersion}（code ${info.latestCode}）"
+                        latest = "${info.latestVersion}"
                         when {
                             //服务端关了更新开关：提示可以忽略，不弹卡片
                             !info.updateEnabled -> tip = "服务端已关闭更新提示（最新 ${info.latestVersion}）"
                             info.hasUpdate -> {
-                                tip = "发现新版本 ${info.latestVersion}（code ${info.latestCode}）"
+                                tip = "发现新版本 ${info.latestVersion}"
                                 UpdateUi.prompt = info
                             }
                             else -> tip = "已是最新版本 ${info.latestVersion}"
@@ -1240,12 +1240,6 @@ private fun AboutTab() {
             openUrl(ctx, GITHUB_URL)
         }
     }
-    Spacer(Modifier.height(10.dp))
-    Text(
-        "更新判定只比 code（纯数字），version 仅用于展示；服务端关掉更新开关时一律不提示。",
-        fontSize = 10.sp,
-        color = TextSecondary
-    )
 } //关于分类
 
 /** 一行链接：右侧显示地址，不可点时整行变灰 */

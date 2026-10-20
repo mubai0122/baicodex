@@ -1015,8 +1015,8 @@ private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress
                     ) {
                 Column {
                     if (m.images.isNotEmpty()) {
-                        //发出去的图也留缩略图，超过一行横向滑
-                        ImgThumbs(images = m.images, size = 56.dp, corner = 8.dp, maxWidth = 216.dp)
+                        //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑
+                        ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp)
                         Spacer(Modifier.height(6.dp))
                     }
                     Text(m.content, fontSize = 13.sp, color = TextPrimary)
