@@ -7,18 +7,18 @@ start = s.index('$UPDATE = [')
 end = s.index('];', start) + 2
 
 new = """$UPDATE = [
-    'code'            => 3,                       // 最新版本 code（纯数字，用于比较）
-    'version'         => '1.0.2',                 // 最新版本号（纯数字）
-    'updateDate'      => '2026-10-20',            // 更新的日期
+    'code'            => 4,                       // 最新版本 code（纯数字，用于比较）
+    'version'         => '1.0.3',                 // 最新版本号（纯数字）
+    'updateDate'      => '2026-10-21',            // 更新的日期
     'updateEnabled'   => true,                    // 是否开启更新
     'forceUpdate'     => false,                   // 此版本是否开启强制更新
     'minForceCode'    => 1,                       // 最小强制更新 code（forceUpdate 为 false 时生效）
     'minForceVersion' => '1',                     // 最小强制更新版本号（纯数字）
-    'title'           => 'v1.0.2',                 // 更新的标题（只写版本号）
-    'subtitle'        => '优化图片发送，优化图片预览以及展示界面样式', // 更新的副标题
-    'content'         => "1. 优化图片发送：发出去按原图比例完整展示，不再裁成小方块\\n2. 优化图片预览：气泡内大图不裁切不变形，多图等比横排\\n3. 优化展示界面样式", // 更新内容，\\n 换行
-    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.0.2', // 下载跳转链接（release 页）
-    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.0.2/BaiAgent-1.0.2.apk', // 直链下载链接
+    'title'           => 'v1.0.3',                 // 更新的标题（只写版本号）
+    'subtitle'        => '新增多语言支持，补全界面多语文案', // 更新的副标题
+    'content'         => "1. 新增多语言支持：简体中文 / 繁體中文 / English / 日本語 / Français，可跟随系统或手动切换\\n2. 优化更多多语言内容支持：首页卡片、角色卡与开场白、工作方式与权限路径、新会话标题、设置页、语音报错、工具链检测、预置技能都按当前语言显示", // 更新内容，\\n 换行
+    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.0.3', // 下载跳转链接（release 页）
+    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.0.3/BaiAgent-1.0.3.apk', // 直链下载链接
 ];"""
 
 s = s[:start] + new + s[end:]
@@ -27,6 +27,14 @@ print('已生成 /tmp/get.php.new，长度', len(s))
 
 #更新历史：History.php 读 Update.json，第一条为最新
 hist = """[
+  {
+    "code": 4,
+    "version": "1.0.3",
+    "date": "2026-10-21",
+    "title": "v1.0.3",
+    "subtitle": "新增多语言支持，补全界面多语文案",
+    "content": "1. 新增多语言支持：简体中文 / 繁體中文 / English / 日本語 / Français，可跟随系统或手动切换\\n2. 优化更多多语言内容支持：首页卡片、角色卡与开场白、工作方式与权限路径、新会话标题、设置页、语音报错、工具链检测、预置技能都按当前语言显示"
+  },
   {
     "code": 3,
     "version": "1.0.2",
