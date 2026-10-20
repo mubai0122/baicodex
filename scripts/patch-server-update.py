@@ -14,7 +14,7 @@ new = """$UPDATE = [
     'forceUpdate'     => false,                   // 此版本是否开启强制更新
     'minForceCode'    => 1,                       // 最小强制更新 code（forceUpdate 为 false 时生效）
     'minForceVersion' => '1',                     // 最小强制更新版本号（纯数字）
-    'title'           => 'v1.0.2 图片体验优化',    // 更新的标题
+    'title'           => 'v1.0.2',                 // 更新的标题（只写版本号）
     'subtitle'        => '优化图片发送，优化图片预览以及展示界面样式', // 更新的副标题
     'content'         => "1. 优化图片发送：发出去按原图比例完整展示，不再裁成小方块\\n2. 优化图片预览：气泡内大图不裁切不变形，多图等比横排\\n3. 优化展示界面样式", // 更新内容，\\n 换行
     'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.0.2', // 下载跳转链接（release 页）
@@ -31,7 +31,7 @@ hist = """[
     "code": 3,
     "version": "1.0.2",
     "date": "2026-10-20",
-    "title": "优化图片发送与预览",
+    "title": "v1.0.2",
     "subtitle": "优化图片发送，优化图片预览以及展示界面样式",
     "content": "1. 优化图片发送：发出去按原图比例完整展示，不再裁成小方块\\n2. 优化图片预览：气泡内大图不裁切不变形，多图等比横排\\n3. 优化展示界面样式"
   },
@@ -39,7 +39,7 @@ hist = """[
     "code": 2,
     "version": "1.0.1",
     "date": "2026-10-20",
-    "title": "使用统计",
+    "title": "v1.0.1",
     "subtitle": "新增使用统计，优化使用界面",
     "content": "1. 新增使用统计\\n2. 优化使用界面"
   },
@@ -47,7 +47,7 @@ hist = """[
     "code": 1,
     "version": "1.0.0",
     "date": "2026-10-20",
-    "title": "首个版本发布",
+    "title": "v1.0.0",
     "subtitle": "Agent AI 正式上线",
     "content": "1. 首个正式版本发布"
   }
