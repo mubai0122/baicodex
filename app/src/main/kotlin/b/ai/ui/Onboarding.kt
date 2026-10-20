@@ -29,11 +29,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import b.ai.R
 import b.ai.core.Cfg
 import b.ai.core.WorkMode
 import b.ai.core.Workflows
@@ -81,7 +83,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             } //Shizuku：binder + 授权状态
             WorkMode.NORMAL -> {
                 modeOk = Cfg.zeroWidth && zwSupport == true
-                modeMsg = "使用 App 自身沙箱权限；/sdcard 需存储权限"
+                modeMsg = ctx.getString(R.string.ob_normal_msg)
             }
         }
         if (Cfg.workMode == WorkMode.NORMAL && zwSupport == true && !Cfg.zeroWidth) {
@@ -94,7 +96,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
         val dialog: (@Composable () -> Unit)? = if (showZwPrompt) {
             {
                 ZeroWidthDialog(
-                    probeName = Router.probeName(),
+                    probeName = Router.probeName(ctx),
                     onClose = { showZwPrompt = false },
                     onEnable = {
                         Cfg.zeroWidth = true
@@ -119,16 +121,18 @@ fun OnboardingScreen(onDone: () -> Unit) {
     ) {
         Spacer(Modifier.height(28.dp))
         Text("BaiAgent", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-        Text("设备上的本地 AI Agent", fontSize = 12.sp, color = TextSecondary)
+        Text(stringResource(R.string.ob_sub), fontSize = 12.sp, color = TextSecondary)
         Spacer(Modifier.height(20.dp))
         Text(
-            when (step) {
-                0 -> "1/5 选择工作方式"
-                1 -> "2/5 检查权限"
-                2 -> "3/5 选择工作流"
-                3 -> "4/5 装运行环境"
-                else -> "5/5 配置模型"
-            },
+            stringResource(
+                when (step) {
+                    0 -> R.string.ob_step1
+                    1 -> R.string.ob_step2
+                    2 -> R.string.ob_step3
+                    3 -> R.string.ob_step4
+                    else -> R.string.ob_step5
+                }
+            ),
             fontSize = 13.sp,
             color = TextSecondary
         )
@@ -147,7 +151,9 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 onRequestShizuku = {
                     Shiz.requestPermission { granted ->
                         modeOk = granted
-                        modeMsg = if (granted) "已授权（Shizuku）" else "授权被拒绝，可再点一次申请"
+                        modeMsg = ctx.getString(
+                            if (granted) R.string.ob_shizuku_ok else R.string.ob_shizuku_deny
+                        )
                     }
                 }
             )
@@ -159,18 +165,18 @@ fun OnboardingScreen(onDone: () -> Unit) {
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             if (step > 0) {
-                GhostButton("上一步") { step-- }
+                GhostButton(stringResource(R.string.ob_prev)) { step-- }
                 Spacer(Modifier.width(10.dp))
             }
             if (step == 4) {
-                GhostButton("跳过") {
+                GhostButton(stringResource(R.string.ob_skip)) {
                     Cfg.onboarded = true
                     onDone()
                 }
                 Spacer(Modifier.width(10.dp))
             }
             PrimaryButton(
-                text = if (step < 4) "下一步" else "开始使用",
+                text = stringResource(if (step < 4) R.string.ob_next else R.string.ob_start),
                 enabled = step < 4 || Cfg.ready
             ) {
                 if (step < 4) step++ else {
@@ -186,20 +192,18 @@ fun OnboardingScreen(onDone: () -> Unit) {
 @Composable
 private fun ZeroWidthDialog(probeName: String, onClose: () -> Unit, onEnable: () -> Unit) {
     ScrimCard {
-        Text("设备支持零宽路径", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.ob_zw_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            "实测发现用零宽变换后的路径可以读到 Android/data 与 Android/obb。是否开启该拓展？\n\n" +
-                "命中方式：$probeName\n开启后普通用户模式也能读写其他 App 的数据目录；" +
-                "这属于系统漏洞利用，ROM 更新后可能失效。",
+            stringResource(R.string.ob_zw_body, probeName),
             fontSize = 12.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            GhostButton("暂不开启") { onClose() }
+            GhostButton(stringResource(R.string.ob_zw_later)) { onClose() }
             Spacer(Modifier.width(10.dp))
-            PrimaryButton("开启零宽") { onEnable() }
+            PrimaryButton(stringResource(R.string.ob_zw_enable)) { onEnable() }
         }
     }
 } //零宽拓展弹窗
@@ -208,7 +212,7 @@ private fun ZeroWidthDialog(probeName: String, onClose: () -> Unit, onEnable: ()
 private fun StepMode() {
     CardBox {
         WorkMode.entries.forEach { m ->
-            ChoiceRow(m.label, m.desc, Cfg.workMode == m) { Cfg.workMode = m }
+            ChoiceRow(stringResource(m.labelRes), stringResource(m.descRes), Cfg.workMode == m) { Cfg.workMode = m }
         }
     }
 }
@@ -223,33 +227,33 @@ private fun StepPermission(
 ) {
     val ctx = LocalContext.current
     CardBox {
-        Text("当前工作方式：${Cfg.workMode.label}", fontSize = 14.sp, color = TextPrimary)
+        Text(stringResource(R.string.ob2_mode_fmt, stringResource(Cfg.workMode.labelRes)), fontSize = 14.sp, color = TextPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            modeMsg ?: "检测中…",
+            modeMsg ?: stringResource(R.string.ob2_detecting),
             fontSize = 12.sp,
             color = if (modeMsg == null) TextSecondary else if (modeOk) OkGreen else DangerRed
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            "零宽路径检测：" + when (zwSupport) {
-                null -> "检测中…"
-                true -> "支持（${Router.probeName()}）"
-                false -> "不支持"
+            stringResource(R.string.ob2_zero_pre) + when (zwSupport) {
+                null -> stringResource(R.string.ob2_detecting)
+                true -> stringResource(R.string.ob2_zero_yes, Router.probeName(ctx))
+                false -> stringResource(R.string.ob2_zero_no)
             },
             fontSize = 12.sp,
             color = TextPrimary
         )
         Spacer(Modifier.height(12.dp))
         Row {
-            GhostButton("重新检测") { onRecheck() }
+            GhostButton(stringResource(R.string.ob2_recheck)) { onRecheck() }
             if (Cfg.workMode == WorkMode.SHIZUKU) {
                 Spacer(Modifier.width(10.dp))
-                GhostButton("申请 Shizuku 授权") { onRequestShizuku() }
+                GhostButton(stringResource(R.string.ob2_shiz)) { onRequestShizuku() }
             }
             if (Cfg.workMode == WorkMode.NORMAL && Build.VERSION.SDK_INT <= 32) {
                 Spacer(Modifier.width(10.dp))
-                GhostButton("申请存储权限") {
+                GhostButton(stringResource(R.string.ob2_storage)) {
                     val act = ctx as? Activity ?: return@GhostButton
                     val perms = if (Build.VERSION.SDK_INT <= 29) {
                         arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -267,7 +271,7 @@ private fun StepPermission(
 private fun StepWorkflow() {
     CardBox {
         Workflows.all.forEach { (id, label) ->
-            ChoiceRow(label, "只影响 system prompt 的侧重，不改工具集", Cfg.workflow == id) {
+            ChoiceRow(label, stringResource(R.string.ob2_mode_d), Cfg.workflow == id) {
                 Cfg.workflow = id
             }
         }
@@ -283,32 +287,31 @@ private fun StepEnv() {
     val scope = rememberCoroutineScope()
     val canRun = Linux.canRun()
     CardBox {
-        Text("要装运行环境吗？", fontSize = 14.sp, color = TextPrimary)
+        Text(stringResource(R.string.ob2_linux_q), fontSize = 14.sp, color = TextPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            "内置 Ubuntu 24.04：apt 装依赖、编译、跑脚本都在里面，不依赖 Termux。" +
-                "约 105MB，解包 1-3 分钟。不需要就点「下一步」跳过，之后随时能在 设置 → 扩展 → Linux 环境 里装。",
+            stringResource(R.string.ob2_linux_d),
             fontSize = 12.sp,
             color = TextSecondary
         )
         if (!canRun) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "当前是 ${Cfg.workMode.label} 模式，内置 Ubuntu 只有 Root 模式能跑；要装先回上一步切成 Root。",
+                stringResource(R.string.ob2_linux_warn, stringResource(Cfg.workMode.labelRes)),
                 fontSize = 12.sp,
                 color = DangerRed
             )
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            if (ready) "环境状态：已就绪" else "环境状态：未安装",
+            if (ready) stringResource(R.string.ob2_env_ok) else stringResource(R.string.ob2_env_no),
             fontSize = 12.sp,
             color = if (ready) OkGreen else TextSecondary
         )
         Spacer(Modifier.height(10.dp))
         Row {
             PrimaryButton(
-                text = if (busy) "安装中…" else if (ready) "重新安装" else "安装内置 Ubuntu",
+                text = if (busy) stringResource(R.string.ob2_installing) else if (ready) stringResource(R.string.ob2_reinstall) else stringResource(R.string.ob2_install),
                 enabled = !busy && canRun
             ) {
                 if (busy) return@PrimaryButton
@@ -329,7 +332,7 @@ private fun StepEnv() {
             }
             if (ready && !busy) {
                 Spacer(Modifier.width(10.dp))
-                GhostButton("自检") {
+                GhostButton(stringResource(R.string.ob2_selftest)) {
                     scope.launch { self = withContext(Dispatchers.IO) { Linux.selfTest().out } }
                 }
             }

@@ -17,7 +17,7 @@ object Repo {
     private fun w() = helper!!.writableDatabase
     private fun r() = helper!!.readableDatabase
 
-    fun newSession(title: String = "新会话", category: String = "默认"): SessionRow {
+    fun newSession(title: String = "", category: String = "默认"): SessionRow {
         val id = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         w().insert("session", null, ContentValues().apply {

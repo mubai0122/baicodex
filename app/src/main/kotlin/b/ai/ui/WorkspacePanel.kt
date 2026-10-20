@@ -35,6 +35,9 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 工作区绑定卡：设置页内联与聊天页弹窗共用一张 */
 @Composable
@@ -47,6 +50,7 @@ internal fun WorkspaceSection() {
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val ctx = LocalContext.current
 
     //扫盘可能上千个文件，一律走 IO 线程，扫完再回主线程更新
     fun reload() {
@@ -63,12 +67,12 @@ internal fun WorkspaceSection() {
 
     LaunchedEffect(Unit) { reload() }
 
-    SectionTitle("工作区", "相对路径都落在工作区里，命令也默认在这里执行")
+    SectionTitle(stringResource(R.string.wp_title), stringResource(R.string.wp_title_d))
     CardBox {
         //新会话自动换工作区：开 = 每建一个会话配一个新哈希目录；关 = 空工作区
         CapSwitch(
-            "新会话自动绑定工作区",
-            "开启后每个新会话都配一个独立目录；关闭则不绑定，变成空工作区",
+            stringResource(R.string.wp_auto),
+            stringResource(R.string.wp_auto_d),
             Cfg.autoBindWorkspace
         ) { on ->
             Cfg.autoBindWorkspace = on
@@ -80,10 +84,10 @@ internal fun WorkspaceSection() {
         Spacer(Modifier.height(10.dp))
         Text(
             when {
-                Workspace.custom() -> "已绑定：${Workspace.path()}"
-                Workspace.path().isEmpty() -> "未绑定（空工作区）"
-                Cfg.sessionWorkspace.isNotBlank() -> "本会话工作区：${Workspace.path()}"
-                else -> "默认工作区：${Workspace.path()}"
+                Workspace.custom() -> stringResource(R.string.wp_bound, Workspace.path())
+                Workspace.path().isEmpty() -> stringResource(R.string.wp_unbound)
+                Cfg.sessionWorkspace.isNotBlank() -> stringResource(R.string.wp_cur, Workspace.path())
+                else -> stringResource(R.string.wp_default, Workspace.path())
             },
             fontSize = 13.sp,
             color = TextPrimary,
@@ -92,15 +96,15 @@ internal fun WorkspaceSection() {
         Text(
             when {
                 Workspace.path().isEmpty() ->
-                    "现在不绑任何目录：相对路径不生效，模型只能用绝对路径；想绑定就填下面的路径再点「绑定」"
-                else -> "$files 个文件 / $dirs 个目录 / ${Workspace.human(bytes)}"
+                    stringResource(R.string.wp_none)
+                else -> stringResource(R.string.wp_stat, files, dirs, Workspace.human(bytes))
             },
             fontSize = 11.sp,
             color = TextSecondary,
             maxLines = 3
         )
         Field(
-            "工作区路径",
+            stringResource(R.string.wp_path),
             draft,
             { draft = it },
             placeholder = "${Paths.base().absolutePath}/xxxx-xxxx-xxxx-xxxx-xxxx-xxxx"
@@ -115,34 +119,34 @@ internal fun WorkspaceSection() {
             Spacer(Modifier.height(6.dp))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PrimaryButton("绑定", enabled = !busy, modifier = Modifier.weight(1f)) {
+            PrimaryButton(stringResource(R.string.wp_bind), enabled = !busy, modifier = Modifier.weight(1f)) {
                 scope.launch {
                     busy = true
                     val ok = withContext(Dispatchers.IO) { Workspace.bind(draft) }
                     if (ok) {
                         draft = Workspace.path()
-                        note = "已绑定，索引已生成"
+                        note = ctx.getString(R.string.wp_bound_ok)
                     } else {
-                        note = "绑定失败：路径为空、建不出目录，或选的是数据根 / 外部存储根"
+                        note = ctx.getString(R.string.wp_bind_fail)
                     }
                     busy = false
                     reload()
                 }
             }
-            GhostButton("恢复默认", modifier = Modifier.weight(1f)) {
+            GhostButton(stringResource(R.string.wp_reset), modifier = Modifier.weight(1f)) {
                 Workspace.unbind()
                 draft = Workspace.path()
-                note = if (Cfg.autoBindWorkspace) "已回到默认工作区" else "已解绑，当前是空工作区"
+                note = if (Cfg.autoBindWorkspace) ctx.getString(R.string.wp_reset_ok) else ctx.getString(R.string.wp_reset_unbound)
                 reload()
             }
         }
         Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth()) {
-            GhostButton("重建索引", modifier = Modifier.weight(1f)) {
+            GhostButton(stringResource(R.string.wp_reindex), modifier = Modifier.weight(1f)) {
                 scope.launch {
                     busy = true
                     val n = withContext(Dispatchers.IO) { Workspace.index() }
-                    note = if (n > 0) "索引已重写为 ${Workspace.INDEX}（$n 条）" else "没有可索引的内容"
+                    note = if (n > 0) ctx.getString(R.string.wp_reindex_ok, Workspace.INDEX, n) else ctx.getString(R.string.wp_reindex_none)
                     busy = false
                     reload()
                 }
@@ -153,12 +157,12 @@ internal fun WorkspaceSection() {
             Text(note, fontSize = 11.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(10.dp))
-        Text("目录树预览（每层前 40 项，进系统提示的就是这份）", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.wp_tree), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Text(
             when {
-                busy -> "扫描中…"
-                tree.isBlank() -> "目录是空的；把文件丢进来或让模型直接写相对路径"
+                busy -> stringResource(R.string.wp_scanning)
+                tree.isBlank() -> stringResource(R.string.wp_tree_empty)
                 else -> tree.take(1200)
             },
             fontSize = 10.sp,
@@ -173,10 +177,10 @@ internal fun WorkspaceSection() {
 internal fun WorkspaceDialog(onClose: () -> Unit) {
     ScrimCard(onDismiss = onClose) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("工作区", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.wp_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             Text(
-                "关闭",
+                stringResource(R.string.wp_close),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier

@@ -39,6 +39,9 @@ import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 输入区上方的内联面板外壳：白卡 + 阴影，高度封顶可滚动，不再是全屏弹窗 */
 @Composable
@@ -82,13 +85,14 @@ internal fun AttachPanel(
     onPickFile: (kind: String, mime: String) -> Unit,
     onSkill: () -> Unit
 ) {
+    val ctx = LocalContext.current
     SheetShell {
-        SheetHead("添加内容", onClose)
-        AttachRow("图片", "进多模态，模型直接看图") { onPickImage() }
-        AttachRow("文件", "任意文档，路径插进输入框") { onPickFile("文件", "*/*") }
-        AttachRow("音频", "录音 / 语音文件") { onPickFile("音频", "audio/*") }
-        AttachRow("视频", "视频文件，路径插进输入框") { onPickFile("视频", "video/*") }
-        AttachRow("音乐", "歌曲与音频素材") { onPickFile("音乐", "audio/*") }
+        SheetHead(stringResource(R.string.ip_title), onClose)
+        AttachRow(stringResource(R.string.ip_img), stringResource(R.string.ip_img_d)) { onPickImage() }
+        AttachRow(stringResource(R.string.ip_file), stringResource(R.string.ip_file_d)) { onPickFile(ctx.getString(R.string.ip_file), "*/*") }
+        AttachRow(stringResource(R.string.ip_audio), stringResource(R.string.ip_audio_d)) { onPickFile(ctx.getString(R.string.ip_audio), "audio/*") }
+        AttachRow(stringResource(R.string.ip_video), stringResource(R.string.ip_video_d)) { onPickFile(ctx.getString(R.string.ip_video), "video/*") }
+        AttachRow(stringResource(R.string.ip_music), stringResource(R.string.ip_music_d)) { onPickFile(ctx.getString(R.string.ip_music), "audio/*") }
         Row(
             Modifier
                 .fillMaxWidth()
@@ -97,9 +101,9 @@ internal fun AttachPanel(
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("技能包", fontSize = 12.sp, color = AccentBlue)
+            Text(stringResource(R.string.ip_skill), fontSize = 12.sp, color = AccentBlue)
             Spacer(Modifier.width(6.dp))
-            Text("把内置技能带进这一轮", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.ip_skill_d), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text("›", fontSize = 14.sp, color = AccentBlue)
         }
@@ -127,25 +131,32 @@ private fun AttachRow(label: String, desc: String, onTap: () -> Unit) {
 @Composable
 internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
     SheetShell {
-        SheetHead("技能包", onClose)
+        SheetHead(stringResource(R.string.ip_skill), onClose)
+        val ctx = LocalContext.current
+        val pfx = ctx.getString(R.string.ip_skill_pre)
         Skills.list.forEach { s ->
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
                     .background(SurfaceMuted, RoundedCornerShape(10.dp))
-                    .tap { onInsert("按这条技能做：" + s.name + "\n" + s.body.take(1200) + "\n\n任务：") }
+                    .tap { onInsert(pfx + s.name + "\n" + s.body.take(1200) + "\n\n任务：") }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        s.name + if (s.on) "" else "（未启用）",
+                        Skills.displayName(ctx, s) + if (s.on) "" else stringResource(R.string.ip_off),
                         fontSize = 12.sp,
                         color = TextPrimary,
                         maxLines = 1
                     )
-                    Text(s.desc.ifBlank { s.body.take(40) }, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+                    Text(
+                        Skills.displayDesc(ctx, s).ifBlank { s.body.take(40) },
+                        fontSize = 10.sp,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
                 }
                 Text("＋", fontSize = 13.sp, color = AccentBlue)
             }
@@ -157,8 +168,8 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
 @Composable
 internal fun CfgPanel(onClose: () -> Unit) {
     SheetShell {
-        SheetHead("本轮配置", onClose)
-        Text("模型", fontSize = 10.sp, color = TextSecondary)
+        SheetHead(stringResource(R.string.ip_cfg), onClose)
+        Text(stringResource(R.string.ip_model), fontSize = 10.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Profiles.list.forEach { p ->
             val sel = p.id == Cfg.profileId
@@ -188,9 +199,9 @@ internal fun CfgPanel(onClose: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("深度思考", fontSize = 12.sp, color = TextPrimary)
+                Text(stringResource(R.string.ip_think), fontSize = 12.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.think) "reasoning_effort=${Cfg.thinkEffort}" else "直接回答",
+                    if (Cfg.think) "reasoning_effort=${Cfg.thinkEffort}" else stringResource(R.string.ip_think_off),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
@@ -205,7 +216,7 @@ internal fun CfgPanel(onClose: () -> Unit) {
         val levels = listOf("low", "medium", "high")
         val li = levels.indexOf(Cfg.thinkEffort).coerceAtLeast(0)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("强度 · ${levels[li]}", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.ip_strength, levels[li]), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.width(8.dp))
             Slider(
                 value = li.toFloat(),
@@ -224,9 +235,9 @@ internal fun CfgPanel(onClose: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("最大模式", fontSize = 12.sp, color = TextPrimary)
+                Text(stringResource(R.string.ip_max), fontSize = 12.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.maxMode) "不下发 max_tokens，思考顶到 high" else "按配置的 max_tokens 走",
+                    if (Cfg.maxMode) stringResource(R.string.ip_max_d) else stringResource(R.string.ip_max_off),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
@@ -244,9 +255,9 @@ internal fun CfgPanel(onClose: () -> Unit) {
 @Composable
 internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
     SheetShell {
-        SheetHead("模型", onClose)
+        SheetHead(stringResource(R.string.ip_model), onClose)
         if (Profiles.list.isEmpty()) {
-            Text("还没有模型配置，先加一个再用", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.ip_no_profile), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
         }
         Profiles.list.forEach { p ->
@@ -273,7 +284,7 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                         maxLines = 1
                     )
                     Text(
-                        p.model.ifBlank { "未填模型名" },
+                        p.model.ifBlank { stringResource(R.string.ip_no_model) },
                         fontSize = 10.sp,
                         color = TextSecondary,
                         maxLines = 1
@@ -290,9 +301,9 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("模型配置", fontSize = 12.sp, color = AccentBlue)
+            Text(stringResource(R.string.ip_profile), fontSize = 12.sp, color = AccentBlue)
             Spacer(Modifier.width(6.dp))
-            Text("厂商 / Key / 模型名", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.ip_profile_sub), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text("›", fontSize = 14.sp, color = AccentBlue)
         }

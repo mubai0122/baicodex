@@ -3,6 +3,7 @@ package b.ai.core
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateOf
+import b.ai.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -193,7 +194,7 @@ object Skills {
         if (name.isBlank() && body.isBlank()) return
         cache.value = cache.value + Skill(
             id = UUID.randomUUID().toString(),
-            name = name.ifBlank { "未命名技能" },
+            name = name.trim(),
             desc = desc.trim(),
             body = body.trim(),
             on = true
@@ -204,7 +205,7 @@ object Skills {
     fun update(id: String, name: String, desc: String, body: String) {
         cache.value = cache.value.map { s ->
             if (s.id != id) s else s.copy(
-                name = name.ifBlank { "未命名技能" },
+                name = name.trim(),
                 desc = desc.trim(),
                 body = body.trim()
             )
@@ -222,6 +223,37 @@ object Skills {
         save()
     } //开关
 
+    /** 预置技能的中文原文与资源 id：库里存中文，只有界面按当前语言显示 */
+    private data class SkText(val name: String, val desc: String, val nameRes: Int, val descRes: Int)
+    private val TEXTS = mapOf(
+        "preset-build" to SkText("构建并安装本机应用", "用户说编译 / 打包 / 出 APK 时按这条走",
+            R.string.sk_build, R.string.sk_build_d),
+        "preset-reverse" to SkText("APK 逆向速查", "分析别人 APK 的包名、权限、组件与硬编码",
+            R.string.sk_reverse, R.string.sk_reverse_d),
+        "preset-ui" to SkText("操作助手（点屏幕）", "按用户描述在界面上点、滑、输入",
+            R.string.sk_ui, R.string.sk_ui_d),
+        "preset-rail" to SkText("12306 查票", "余票 / 中转 / 经停，一律用 rail_query",
+            R.string.sk_rail, R.string.sk_rail_d),
+        "preset-media" to SkText("音视频处理（ffmpeg）", "抽音轨 / 截取片段 / 转码 / 压缩，先探工具再动手",
+            R.string.sk_media, R.string.sk_media_d),
+        "preset-doc" to SkText("资料整理成文档", "把散落的笔记 / 日志 / 网页内容收拢成一份 markdown",
+            R.string.sk_doc, R.string.sk_doc_d),
+        "preset-log" to SkText("日志排错", "应用崩溃 / 脚本报错，按证据定位而不是靠猜",
+            R.string.sk_log, R.string.sk_log_d)
+    )
+
+    /** 界面显示名：预置原样才翻译，用户自己改过就原样返回 */
+    fun displayName(c: Context, s: Skill): String {
+        val t = TEXTS[s.id] ?: return s.name
+        return if (s.name == t.name) c.getString(t.nameRes) else s.name
+    } //显示名
+
+    /** 界面显示说明：同上 */
+    fun displayDesc(c: Context, s: Skill): String {
+        val t = TEXTS[s.id] ?: return s.desc
+        return if (s.desc == t.desc) c.getString(t.descRes) else s.desc
+    } //显示说明
+
     /** 启用技能拼成提示片段；没有启用的技能返回空串 */
     fun prompt(): String {
         val on = enabled.filter { it.body.isNotBlank() }
@@ -229,7 +261,7 @@ object Skills {
         return buildString {
             append("可用技能（触发条件相符时按里面的步骤执行，参数不要凭空编）：\n")
             on.forEachIndexed { i, s ->
-                append("${i + 1}) ${s.name}")
+                append("${i + 1}) ${s.name.ifBlank { "未命名技能" }}")
                 if (s.desc.isNotBlank()) append("：${s.desc}")
                 append("\n")
                 append(s.body.take(2000))

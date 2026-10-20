@@ -65,8 +65,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
 import b.ai.agent.Tools
+import android.app.Activity
 import b.ai.core.Avatar
 import b.ai.core.Cfg
+import b.ai.core.Lang
 import b.ai.core.Env
 import b.ai.core.Speak
 import b.ai.core.Perms
@@ -98,58 +100,61 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 private val SettingsTabs = listOf(
-    FloatTab("模型") { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab("对话") { c -> Icon(Icons.Filled.Email, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab("外观") { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab("统计") { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab("扩展") { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab("关于") { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
+    FloatTab(R.string.se_001) { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_002) { c -> Icon(Icons.Filled.Email, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_003) { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_005) { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
 ) //设置分类：模型 / 对话 / 外观 / 统计 / 扩展 / 关于（权限已并入对话；索引按标签匹配，改顺序不用动索引）
 
 /** 设置项索引：搜索只查这张表，命中后直接跳到对应 tab；tab 写标签而不是数字，避免换顺序时错位 */
-private data class SettingEntry(val label: String, val tab: String, val hint: String = "")
+private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes: Int = 0, val hintRaw: String = "")
 
 private val SettingIndex = listOf(
-    SettingEntry("模型配置", "模型", "一条一套提供商 + Key + 模型"),
-    SettingEntry("当前配置", "模型", "整组切换"),
-    SettingEntry("模型能力", "模型", "模型真支持的能力"),
-    SettingEntry("深度思考", "模型", "先推理再回答"),
-    SettingEntry("上下文压缩", "对话", "早期对话压成摘要"),
-    SettingEntry("注入", "对话", "本机实时信息拼进系统提示"),
-    SettingEntry("回复信息", "对话", "回复下方那行小字"),
-    SettingEntry("会话", "对话", "切换与删除"),
-    SettingEntry("工作区信息", "对话", "所有工作区与未被绑定的目录"),
-    SettingEntry("权限工作方式", "对话", "自动选路"),
-    SettingEntry("系统权限", "对话", "重新申请"),
-    SettingEntry("实验性功能", "对话", ""),
-    SettingEntry("主题", "外观", "深色模式"),
-    SettingEntry("字体大小", "外观", ""),
-    SettingEntry("输入框", "外观", "悬浮模式"),
-    SettingEntry("输入提示", "外观", "占位文字"),
-    SettingEntry("导航手势", "外观", ""),
-    SettingEntry("用量统计", "统计", "总 token / 柱状图 / 方格图 / 模型分类 / 月活跃"),
-    SettingEntry("模型分类", "统计", "各模型累计 token"),
-    SettingEntry("本月方格图", "统计", "按天热力图"),
-    SettingEntry("定时任务", "扩展", "到点通知与自动执行"),
-    SettingEntry("搜索平台", "扩展", "web_search"),
-    SettingEntry("智能体角色", "扩展", ""),
-    SettingEntry("自定义系统提示", "扩展", ""),
-    SettingEntry("技能专区", "扩展", ""),
-    SettingEntry("工具权限", "扩展", ""),
-    SettingEntry("编译工具链", "扩展", "JDK / gradle / Android SDK"),
-    SettingEntry("Linux 环境", "扩展", "内置 Ubuntu"),
-    SettingEntry("检查更新", "关于", "版本号与更新历史")
+    SettingEntry(R.string.se_007, R.string.se_001, R.string.se_008),
+    SettingEntry(R.string.se_009, R.string.se_001, R.string.se_010),
+    SettingEntry(R.string.se_011, R.string.se_001, R.string.se_012),
+    SettingEntry(R.string.se_013, R.string.se_001, R.string.se_014),
+    SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016),
+    SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018),
+    SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020),
+    SettingEntry(R.string.se_021, R.string.se_002, R.string.se_022),
+    SettingEntry(R.string.se_023, R.string.se_002, R.string.se_024),
+    SettingEntry(R.string.se_025, R.string.se_002, R.string.se_026),
+    SettingEntry(R.string.se_027, R.string.se_002, R.string.se_028),
+    SettingEntry(R.string.se_029, R.string.se_002, hintRaw = ""),
+    SettingEntry(R.string.se_030, R.string.se_003, R.string.se_031),
+    SettingEntry(R.string.se_032, R.string.se_003, hintRaw = ""),
+    SettingEntry(R.string.se_033, R.string.se_003, R.string.se_034),
+    SettingEntry(R.string.se_035, R.string.se_003, R.string.se_036),
+    SettingEntry(R.string.se_037, R.string.se_003, hintRaw = ""),
+    SettingEntry(R.string.se_038, R.string.se_004, R.string.se_039),
+    SettingEntry(R.string.se_040, R.string.se_004, R.string.se_041),
+    SettingEntry(R.string.se_042, R.string.se_004, R.string.se_043),
+    SettingEntry(R.string.se_044, R.string.se_005, R.string.se_045),
+    SettingEntry(R.string.se_046, R.string.se_005, hintRaw = "web_search"),
+    SettingEntry(R.string.se_047, R.string.se_005, hintRaw = ""),
+    SettingEntry(R.string.se_048, R.string.se_005, hintRaw = ""),
+    SettingEntry(R.string.se_049, R.string.se_005, hintRaw = ""),
+    SettingEntry(R.string.se_050, R.string.se_005, hintRaw = ""),
+    SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK"),
+    SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053),
+    SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055)
 ) //搜索索引
 
 /** 按标签找 tab 下标，找不到就落回 0 */
-private fun tabIndex(label: String): Int =
-    SettingsTabs.indexOfFirst { it.label == label }.coerceAtLeast(0)
+private fun tabIndex(res: Int): Int =
+    SettingsTabs.indexOfFirst { it.labelRes == res }.coerceAtLeast(0)
 
 /** 设置：底部悬浮 tab 分类，各分类独立滚动；backProgress 是返回手势进度，用来做跟手跟退 */
 @Composable
 fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> Unit) {
+    val ctx = LocalContext.current
     //统计要读 SQLite，放 IO 线程，避免进设置页时卡主线程
     var stats by remember { mutableStateOf(0 to 0) }
     var tab by remember { mutableStateOf(initialTab) }
@@ -182,9 +187,9 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                     .padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("设置", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(stringResource(R.string.se_056), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.width(8.dp))
-                Text(if (find) "搜索" else SettingsTabs[tab].label, fontSize = 12.sp, color = TextSecondary)
+                Text(if (find) stringResource(R.string.se_057) else stringResource(SettingsTabs[tab].labelRes), fontSize = 12.sp, color = TextSecondary)
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
@@ -194,7 +199,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                 ) {
                     Icon(
                         Icons.Filled.Search,
-                        contentDescription = "搜索设置",
+                        contentDescription = stringResource(R.string.se_058),
                         tint = if (find) AccentBlue else TextSecondary,
                         modifier = Modifier.size(15.dp)
                     )
@@ -209,12 +214,12 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                 ) {
                     Icon(
                         Icons.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = stringResource(R.string.se_059),
                         tint = AccentBlue,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("返回", fontSize = 11.sp, color = AccentBlue)
+                    Text(stringResource(R.string.se_059), fontSize = 11.sp, color = AccentBlue)
                 }
             }
 
@@ -236,7 +241,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                     Spacer(Modifier.width(7.dp))
                     Box(Modifier.weight(1f)) {
                         if (fq.isEmpty()) {
-                            Text("搜设置项，如 主题 / Linux / 工具链", fontSize = 12.sp, color = TextSecondary)
+                            Text(stringResource(R.string.se_060), fontSize = 12.sp, color = TextSecondary)
                         }
                         BasicTextField(
                             value = fq,
@@ -261,7 +266,8 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                         //搜索结果只认索引表：点一条就跳到它所属的 tab
                         val key = fq.trim()
                         val hits = SettingIndex.filter {
-                            it.label.contains(key, true) || it.hint.contains(key, true)
+                            ctx.getString(it.labelRes).contains(key, true) ||
+                                (if (it.hintRes != 0) ctx.getString(it.hintRes) else it.hintRaw).contains(key, true)
                         }
                         if (hits.isEmpty()) {
                             Text(
@@ -277,18 +283,21 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
                                         .background(SurfaceWhite, RoundedCornerShape(12.dp))
-                                        .tap { tab = tabIndex(e.tab); find = false; fq = "" }
+                                        .tap { tab = tabIndex(e.tabRes); find = false; fq = "" }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(Modifier.weight(1f)) {
-                                        Text(e.label, fontSize = 13.sp, color = TextPrimary)
-                                        if (e.hint.isNotBlank()) {
-                                            Text(e.hint, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+                                        Text(stringResource(e.labelRes), fontSize = 13.sp, color = TextPrimary)
+                                        if (e.hintRes != 0 || e.hintRaw.isNotBlank()) {
+                                            Text(
+                                                if (e.hintRes != 0) stringResource(e.hintRes) else e.hintRaw,
+                                                fontSize = 10.sp, color = TextSecondary, maxLines = 1
+                                            )
                                         }
                                     }
                                     Text(
-                                        "设置 → ${e.tab}",
+                                        stringResource(R.string.se_tab_jump, stringResource(e.tabRes)),
                                         fontSize = 10.sp,
                                         color = TextSecondary
                                     )
@@ -297,7 +306,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                         }
                     }
                     find -> Text(
-                        "输入关键词搜索设置项，例如「主题」「Linux」「工具链」",
+                        stringResource(R.string.se_063),
                         fontSize = 11.sp,
                         color = TextSecondary,
                         modifier = Modifier.padding(vertical = 10.dp)
@@ -361,44 +370,44 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
 
 @Composable
 private fun ModelTab() {
-    SectionTitle("模型配置", "一条一套提供商 + Key + 模型，点一下整组切换")
+    SectionTitle(stringResource(R.string.se_007), stringResource(R.string.se_064))
     ProfileList()
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("当前配置")
+    SectionTitle(stringResource(R.string.se_009))
     CardBox { ModelSetupPanel() }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("模型能力", "勾上模型真支持的能力；没勾的能力请求体里会自动去掉，不会把请求打成 400")
+    SectionTitle(stringResource(R.string.se_011), stringResource(R.string.se_065))
     CardBox {
         CapSwitch(
-            "图片输入（视觉）",
-            if (Cfg.modelVision) "发图时按多模态数组上传" else "发图时降级为一行文字说明，模型看不到图",
+            stringResource(R.string.se_066),
+            if (Cfg.modelVision) stringResource(R.string.se_067) else stringResource(R.string.se_068),
             Cfg.modelVision
         ) { Cfg.modelVision = it; Profiles.capture() }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
-            "工具调用（function calling）",
-            if (Cfg.modelToolCall) "请求体带 tools，模型能读写文件 / 执行命令"
-            else "请求体不带 tools，模型只能纯文本回答",
+            stringResource(R.string.se_069),
+            if (Cfg.modelToolCall) stringResource(R.string.se_070)
+            else stringResource(R.string.se_071),
             Cfg.modelToolCall
         ) { Cfg.modelToolCall = it; Profiles.capture() }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
-            "推理 / 思考参数",
-            if (Cfg.modelReasoning) "开思考时下发 reasoning_effort" else "不下发 reasoning_effort，避免不认该字段的接口报错",
+            stringResource(R.string.se_072),
+            if (Cfg.modelReasoning) stringResource(R.string.se_073) else stringResource(R.string.se_074),
             Cfg.modelReasoning
         ) { Cfg.modelReasoning = it; Profiles.capture() }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("深度思考", "开启后模型先推理再回答，思考过程会折叠显示在回复上方")
+    SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("思考模式", fontSize = 14.sp, color = TextPrimary)
+                Text(stringResource(R.string.se_076), fontSize = 14.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.think) "请求会下发 reasoning_effort" else "直接回答，不下发思考参数",
+                    if (Cfg.think) stringResource(R.string.se_077) else stringResource(R.string.se_078),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
@@ -410,7 +419,7 @@ private fun ModelTab() {
             )
         }
         Spacer(Modifier.height(8.dp))
-        Text("思考强度", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_079), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("low", "medium", "high").forEach { v ->
@@ -419,32 +428,32 @@ private fun ModelTab() {
         }
         Spacer(Modifier.height(10.dp))
         CapSwitch(
-            "最大模式",
-            if (Cfg.maxMode) "不下发 max_tokens，思考强度顶到 high，回答尽量写满" else "按配置的 max_tokens 与思考强度走",
+            stringResource(R.string.se_080),
+            if (Cfg.maxMode) stringResource(R.string.se_081) else stringResource(R.string.se_082),
             Cfg.maxMode
         ) { Cfg.maxMode = it }
         Spacer(Modifier.height(8.dp))
-        Text("采样温度", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_083), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(-1f, 0f, 0.3f, 0.7f, 1f, 1.3f).forEach { v ->
                 PolicyChip(
-                    if (v < 0f) "默认" else v.toString(),
+                    if (v < 0f) stringResource(R.string.se_084) else v.toString(),
                     kotlin.math.abs(Cfg.temperature - v) < 0.01f
                 ) { Cfg.temperature = v }
             }
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "温度越低越稳定、越高越发散；选「默认」表示不下发 temperature，跟随服务端。",
+            stringResource(R.string.se_085),
             fontSize = 10.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(10.dp))
-        Text("附加请求参数（JSON）", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_086), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Field(
-            label = "参数内容",
+            label = stringResource(R.string.se_087),
             value = Cfg.extraParams,
             onValueChange = { Cfg.extraParams = it },
             placeholder = """{"enable_thinking":true}""",
@@ -454,8 +463,8 @@ private fun ModelTab() {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "有的中转站/厂商用私有字段开思考，这里直接拼到请求体顶层，" +
-                "例如 {\"enable_thinking\":true} 或 {\"thinking\":{\"type\":\"enabled\"}}。留空不加。",
+            stringResource(R.string.se_088) +
+                stringResource(R.string.se_089),
             fontSize = 10.sp,
             color = TextSecondary
         )
@@ -464,12 +473,12 @@ private fun ModelTab() {
 
 @Composable
 private fun ChatTab(stats: Pair<Int, Int>) {
-    SectionTitle("上下文与压缩", "超出预算时把早期对话压成摘要，避免整段历史反复上送")
+    SectionTitle(stringResource(R.string.se_090), stringResource(R.string.se_091))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("自动压缩", fontSize = 14.sp, color = TextPrimary)
-                Text("当前会话 ${stats.first} 条 / ${stats.second} 字", fontSize = 11.sp, color = TextSecondary)
+                Text(stringResource(R.string.se_092), fontSize = 14.sp, color = TextPrimary)
+                Text(stringResource(R.string.se2_cur_msgs, stats.first, stats.second), fontSize = 11.sp, color = TextSecondary)
             }
             Switch(
                 checked = Cfg.ctxAuto,
@@ -478,7 +487,7 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             )
         }
         Spacer(Modifier.height(8.dp))
-        Text("模型窗口（总上下文 token）", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_094), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(32_000, 64_000, 128_000, 256_000, 1_000_000).forEach { v ->
@@ -489,9 +498,9 @@ private fun ChatTab(stats: Pair<Int, Int>) {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("压缩阈值 ${Cfg.ctxPct}%", fontSize = 11.sp, color = TextPrimary)
+            Text(stringResource(R.string.se2_pct, Cfg.ctxPct), fontSize = 11.sp, color = TextPrimary)
             Spacer(Modifier.weight(1f))
-            Text("约 ${Cfg.ctxCharBudget / 1000}k 字", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.se2_kchar, Cfg.ctxCharBudget / 1000), fontSize = 11.sp, color = TextSecondary)
         }
         //滑杆 10-99：到窗口的这个比例就开始压缩，默认 70%
         androidx.compose.material3.Slider(
@@ -501,32 +510,32 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             modifier = Modifier.fillMaxWidth()
         )
         Text(
-            "按总上下文窗口的百分比折算字符数触发压缩；调低压得更勤、更省 token，调高更保记忆。",
+            stringResource(R.string.se_097),
             fontSize = 10.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
-        Text("压缩后保留最近条数", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_098), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(4, 8, 16).forEach { v ->
-                PolicyChip("$v 条", Cfg.ctxKeep == v) { Cfg.ctxKeep = v }
+                PolicyChip(stringResource(R.string.se2_n_items, v), Cfg.ctxKeep == v) { Cfg.ctxKeep = v }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("未压缩条数到多少触发（与字符预算先到先压）", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_100), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(8, 16, 32).forEach { v ->
-                PolicyChip("$v 条", Cfg.ctxMsgCount == v) { Cfg.ctxMsgCount = v }
+                PolicyChip(stringResource(R.string.se2_n_items, v), Cfg.ctxMsgCount == v) { Cfg.ctxMsgCount = v }
             }
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("立即总结", modifier = Modifier.height(38.dp)) { Agent.compactNow() }
+            GhostButton(stringResource(R.string.se_101), modifier = Modifier.height(38.dp)) { Agent.compactNow() }
             Spacer(Modifier.width(10.dp))
             Text(
-                if (Agent.busy) "任务进行中，结束后再试" else "手动把早期消息压成一条摘要",
+                if (Agent.busy) stringResource(R.string.se_102) else stringResource(R.string.se_103),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -534,7 +543,7 @@ private fun ChatTab(stats: Pair<Int, Int>) {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("注入", "把本机实时信息拼进系统提示，模型不用反问你")
+    SectionTitle(stringResource(R.string.se_017), stringResource(R.string.se_104))
     CardBox {
         val ctx = LocalContext.current
         //位置权限不在自动申请清单里：只有你真的打开这个开关才弹，免得缺权限卡住工具调用
@@ -542,23 +551,23 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             Cfg.injectPlace = it
         }
         CapSwitch(
-            "注入当前时间",
-            if (Cfg.injectTime) "带上年月日、时分、星期" else "不注入时间",
+            stringResource(R.string.se_105),
+            if (Cfg.injectTime) stringResource(R.string.se_106) else stringResource(R.string.se_107),
             Cfg.injectTime
         ) { Cfg.injectTime = it }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
-            "注入电量",
-            if (Cfg.injectBattery) "带上电量百分比与是否充电" else "不注入电量",
+            stringResource(R.string.se_108),
+            if (Cfg.injectBattery) stringResource(R.string.se_109) else stringResource(R.string.se_110),
             Cfg.injectBattery
         ) { Cfg.injectBattery = it }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
-            "注入位置",
+            stringResource(R.string.se_111),
             when {
-                !Cfg.injectPlace -> "不注入位置"
-                Env.hasPlacePerm(ctx) -> "带上最后已知经纬度与精度"
-                else -> "缺定位权限，打开开关会弹系统授权"
+                !Cfg.injectPlace -> stringResource(R.string.se_112)
+                Env.hasPlacePerm(ctx) -> stringResource(R.string.se_113)
+                else -> stringResource(R.string.se_114)
             },
             Cfg.injectPlace
         ) { on ->
@@ -571,59 +580,60 @@ private fun ChatTab(stats: Pair<Int, Int>) {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("回复信息", "每条回答下面那行小字显示什么")
+    SectionTitle(stringResource(R.string.se_019), stringResource(R.string.se_115))
     CardBox {
         CapSwitch(
-            "用量",
-            if (Cfg.showUsage) "总 token 与 tok/s" else "不显示用量",
+            stringResource(R.string.se_116),
+            if (Cfg.showUsage) stringResource(R.string.se_117) else stringResource(R.string.se_118),
             Cfg.showUsage
         ) { Cfg.showUsage = it }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
-            "请求信息",
-            if (Cfg.showMeta) "时间 / 供应商 / 模型 / 首响 / 总耗时" else "只显示正文",
+            stringResource(R.string.se_119),
+            if (Cfg.showMeta) stringResource(R.string.se_120) else stringResource(R.string.se_121),
             Cfg.showMeta
         ) { Cfg.showMeta = it }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("语音", "说和听都用系统能力，不联网、不传云端")
+    val ctx2 = LocalContext.current
+    SectionTitle(stringResource(R.string.se_122), stringResource(R.string.se_123))
     CardBox {
         CapSwitch(
-            "朗读回复",
-            if (Cfg.speakReplies) "每轮最终回答用系统 TTS 念出来，点停止同时断声" else "只显示文字，不念",
+            stringResource(R.string.se_124),
+            if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
             Cfg.speakReplies
         ) { on ->
             Cfg.speakReplies = on
             //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
-            if (on) Speak.say("语音朗读已开启", force = true) else Speak.stop()
+            if (on) Speak.say(ctx2.getString(R.string.se_127), force = true) else Speak.stop()
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            "语音输入在输入框左侧的麦克风按钮：点一下开始，说完自动填进输入框。首次使用会申请麦克风权限。",
+            stringResource(R.string.se_128),
             fontSize = 11.sp,
             color = TextSecondary
         )
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("会话", "切换与删除都在左侧抽屉；关掉 App 重进落在最新会话")
+    SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(Agent.sessionTitle, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+                Text(Agent.sessionTitle.ifBlank { stringResource(R.string.ag_new_session) }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
                 Text(
-                    "${stats.first} 条记录 · ${stats.second} 字 · 共 ${Agent.sessions.size} 个会话",
+                    stringResource(R.string.se2_rec, stats.first, stats.second, Agent.sessions.size),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
             }
-            GhostButton("新建会话", modifier = Modifier.height(38.dp)) { Agent.newSession() }
+            GhostButton(stringResource(R.string.se_131), modifier = Modifier.height(38.dp)) { Agent.newSession() }
         }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("工作区信息", "每个会话一个独立目录；没被任何会话绑定的可以一键删掉")
+    SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
     WsSection()
 
     Spacer(Modifier.height(14.dp))
@@ -638,6 +648,7 @@ private fun WsSection() {
     var tip by remember { mutableStateOf("") }
     //点一次「删除」先变成「确认删除 / 取消」，避免手滑删掉目录
     var confirm by remember { mutableStateOf<String?>(null) }
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     suspend fun reload() {
         loading = true
@@ -650,9 +661,9 @@ private fun WsSection() {
 
     CardBox {
         when {
-            loading -> Text("读取中…", fontSize = 11.sp, color = TextSecondary)
+            loading -> Text(stringResource(R.string.se_133), fontSize = 11.sp, color = TextSecondary)
             list.isEmpty() -> Text(
-                "还没有工作区：发过消息、或绑定过目录之后才会出现",
+                stringResource(R.string.se_134),
                 fontSize = 11.sp,
                 color = TextSecondary
             )
@@ -666,16 +677,16 @@ private fun WsSection() {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        w.name + if (w.current) "（当前）" else "",
+                        w.name + if (w.current) stringResource(R.string.se_135) else "",
                         fontSize = 13.sp,
                         color = if (w.current) AccentBlue else TextPrimary,
                         maxLines = 1
                     )
                     Text(
-                        "${w.files} 个文件 · ${Workspace.human(w.bytes)} · " +
-                            if (w.unbound) "未被会话绑定" else "绑定 " +
+                        stringResource(R.string.se2_ws_files, w.files, Workspace.human(w.bytes)) +
+                            if (w.unbound) stringResource(R.string.se_137) else stringResource(R.string.se2_ws_bound) +
                             w.sessions.take(2).joinToString("、") +
-                            if (w.sessions.size > 2) " 等 ${w.sessions.size} 个会话" else "",
+                            if (w.sessions.size > 2) stringResource(R.string.se2_ws_more, w.sessions.size) else "",
                         fontSize = 10.sp,
                         color = TextSecondary,
                         maxLines = 1
@@ -684,15 +695,15 @@ private fun WsSection() {
                 }
                 if (confirm == w.path) {
                     Text(
-                        "确认删除",
+                        stringResource(R.string.se_140),
                         fontSize = 11.sp,
                         color = DangerRed,
                         modifier = Modifier
                             .background(DangerRedSoft, RoundedCornerShape(8.dp))
                             .tap {
                                 scope.launch {
-                                    val err = withContext(Dispatchers.IO) { Workspace.delete(w.path) }
-                                    tip = err ?: "已删除 ${w.name}"
+                                    val err = withContext(Dispatchers.IO) { Workspace.delete(ctx, w.path) }
+                                    tip = err ?: ctx.getString(R.string.se2_ws_deleted, w.name)
                                     confirm = null
                                     reload()
                                 }
@@ -701,7 +712,7 @@ private fun WsSection() {
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "取消",
+                        stringResource(R.string.se_142),
                         fontSize = 11.sp,
                         color = TextSecondary,
                         modifier = Modifier
@@ -711,7 +722,7 @@ private fun WsSection() {
                     )
                 } else if (w.unbound && !w.current && w.exists) {
                     Text(
-                        "删除",
+                        stringResource(R.string.se_143),
                         fontSize = 11.sp,
                         color = DangerRed,
                         modifier = Modifier
@@ -728,10 +739,10 @@ private fun WsSection() {
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("刷新", modifier = Modifier.height(38.dp)) { scope.launch { reload() } }
+            GhostButton(stringResource(R.string.se_144), modifier = Modifier.height(38.dp)) { scope.launch { reload() } }
             Spacer(Modifier.width(8.dp))
             Text(
-                "当前使用中的、还有会话绑定的目录不显示删除按钮，删不了",
+                stringResource(R.string.se_145),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -741,63 +752,66 @@ private fun WsSection() {
 
 @Composable
 private fun PermTab() {
-    SectionTitle("权限工作方式", "切换后工具会自动按新路径选路")
+    SectionTitle(stringResource(R.string.se_025), stringResource(R.string.se_146))
     CardBox {
         WorkMode.entries.forEach { m ->
-            ChoiceRow(m.label, m.desc, Cfg.workMode == m) { Cfg.workMode = m }
+            ChoiceRow(stringResource(m.labelRes), stringResource(m.descRes), Cfg.workMode == m) { Cfg.workMode = m }
         }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("系统权限", "缺权限时工具调用会被直接拒绝，可在这里重新申请或跳设置")
+    SectionTitle(stringResource(R.string.se_027), stringResource(R.string.se_147))
     CardBox {
         val ctx = LocalContext.current
         var missing by remember { mutableStateOf(Perms.missing(ctx)) }
         val launcher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { missing = Perms.missing(ctx) }
-        Text("运行期权限", fontSize = 14.sp, color = TextPrimary)
+        Text(stringResource(R.string.se_148), fontSize = 14.sp, color = TextPrimary)
         Text(
-            if (missing.isEmpty()) "已全部授予"
-            else "缺：" + missing.joinToString("、") { Perms.label(it) },
+            if (missing.isEmpty()) stringResource(R.string.se_149)
+            else stringResource(R.string.se_150) + missing.joinToString("、") { Perms.label(ctx, it) },
             fontSize = 11.sp,
             color = if (missing.isEmpty()) OkGreen else DangerRed
         )
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(if (missing.isEmpty()) "重新申请" else "申请权限", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (missing.isEmpty()) stringResource(R.string.se_028) else stringResource(R.string.se_151), modifier = Modifier.height(38.dp)) {
                 launcher.launch(Perms.runtime().toTypedArray())
             }
-            GhostButton("系统设置页", modifier = Modifier.height(38.dp)) { Perms.openAppSettings(ctx) }
+            GhostButton(stringResource(R.string.se_152), modifier = Modifier.height(38.dp)) { Perms.openAppSettings(ctx) }
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            "所有文件访问（Android 11+ 特殊权限）：" + if (Perms.allFiles()) "已开启" else "未开启",
+            stringResource(R.string.se_153) + if (Perms.allFiles()) stringResource(R.string.se_154) else stringResource(R.string.se_155),
             fontSize = 11.sp,
             color = if (Perms.allFiles()) OkGreen else TextSecondary
         )
         Spacer(Modifier.height(6.dp))
-        GhostButton("去开启全盘读写", modifier = Modifier.height(38.dp)) { Perms.openAllFiles(ctx) }
+        GhostButton(stringResource(R.string.se_156), modifier = Modifier.height(38.dp)) { Perms.openAllFiles(ctx) }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("实验性功能")
+    SectionTitle(stringResource(R.string.se_029))
     CardBox {
+        val ctx = LocalContext.current
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("零宽路径", fontSize = 14.sp, color = TextPrimary)
+                Text(stringResource(R.string.se_157), fontSize = 14.sp, color = TextPrimary)
                 //探测在后台线程跑：每秒把结果刷一次，否则 UI 会一直停在「检测中…」
-                var zone by remember { mutableStateOf(Router.dataZone()) }
+                var zone by remember { mutableStateOf(Router.dataZone(ctx)) }
+                var zoneOk by remember { mutableStateOf(Router.zoneOk()) }
                 LaunchedEffect(Unit) {
                     while (true) {
-                        zone = Router.dataZone()
+                        zone = Router.dataZone(ctx)
+                        zoneOk = Router.zoneOk()
                         delay(1000)
                     }
                 }
                 Text(
-                    "当前检测：$zone",
+                    stringResource(R.string.se_zone_cur, zone),
                     fontSize = 11.sp,
-                    color = if (zone.startsWith("可直接读写") || zone.startsWith("零宽路径")) OkGreen else TextSecondary
+                    color = if (zoneOk) OkGreen else TextSecondary
                 )
             }
             Switch(
@@ -808,51 +822,72 @@ private fun PermTab() {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "开启后普通用户模式下会尝试用零宽变换路径读写 Android/data 与 Android/obb；" +
-                "属于系统漏洞利用，ROM 更新后可能失效，失败会直接报权限错误。",
+            stringResource(R.string.se_160) +
+                stringResource(R.string.se_161),
             fontSize = 11.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
-        GhostButton("重新探测", modifier = Modifier.height(38.dp)) { Router.reprobe() }
+        GhostButton(stringResource(R.string.se_162), modifier = Modifier.height(38.dp)) { Router.reprobe() }
     }
 } //权限分类（已并入对话分类，入口不再单独占一个 tab）
 
 //字号档位：存的是倍率，1f = 跟随系统
-private val FontPresets = listOf("小" to 0.9f, "标准" to 1f, "大" to 1.15f, "特大" to 1.3f)
+private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f, R.string.se_165 to 1.15f, R.string.se_166 to 1.3f)
 
 @Composable
 private fun UiTab() {
-    SectionTitle("个性化", "聊天里显示头像；AI 头像可以跟角色卡，也可以单独指定一张")
+    //切语言：存完配置要重建 Activity，界面才会真的换语言
+    val act = LocalContext.current as? Activity
+    val pickLang: (String) -> Unit = { code ->
+        if (Cfg.lang != code) {
+            Cfg.lang = code
+            act?.recreate()
+        }
+    }
+
+    SectionTitle(stringResource(R.string.se_167), stringResource(R.string.se_168))
     CardBox {
-        ChoiceRow("在聊天里显示头像", "关掉就回到纯文字气泡，位置留给正文", Cfg.avatarOn) {
+        Lang.options.chunked(3).forEachIndexed { i, row ->
+            if (i > 0) Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (code, label) ->
+                    PolicyChip(label, Cfg.lang == code) { pickLang(code) }
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
+    CardBox {
+        ChoiceRow(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
             Cfg.avatarOn = !Cfg.avatarOn
         }
-        ChoiceRow("消息强制高圆角", "所有消息气泡用 16dp 大圆角，带一点方形，文字不顶弧线", Cfg.bubbleCapsule) {
+        ChoiceRow(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
             Cfg.bubbleCapsule = !Cfg.bubbleCapsule
         }
-        ChoiceRow("Waifu模式", "启用后，AI 的回复将按标点分割逐句发送，营造更自然的对话体验", Cfg.waifuMode) {
+        ChoiceRow(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
             Cfg.waifuMode = !Cfg.waifuMode
         }
     }
     Spacer(Modifier.height(10.dp))
-    AvatarPick("我的头像", "用户消息右侧显示；没设置就是默认人形", Cfg.avatarUser) { p ->
+    AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
         Avatar.forget(Cfg.avatarUser)
         Cfg.avatarUser = p
     }
-    AvatarPick("AI 头像", "选「跟角色卡」就用角色自己的图，选「自定义」用下面这张", Avatar.aiPath()) { p ->
+    AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
         Avatar.forget(Cfg.avatarAi)
         Cfg.avatarAi = p
         //清空就等于放弃自定义，回落到跟角色卡
         Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
     }
     CardBox {
-        ChoiceRow("跟当前智能体角色", "角色卡有图就用角色的，没有就用默认人形", Cfg.avatarAiMode != "custom") {
+        ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
             Cfg.avatarAiMode = "persona"
         }
         ChoiceRow(
-            "用上面这张自定义图",
-            if (Cfg.avatarAi.isEmpty()) "还没选图，选了就切过来" else "所有角色共用这一张",
+            stringResource(R.string.se_183),
+            if (Cfg.avatarAi.isEmpty()) stringResource(R.string.se_184) else stringResource(R.string.se_186),
             Cfg.avatarAiMode == "custom"
         ) {
             if (Cfg.avatarAi.isNotBlank()) Cfg.avatarAiMode = "custom"
@@ -860,19 +895,19 @@ private fun UiTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("主题", "深色模式跟随系统或手动固定，切换立刻生效")
+    SectionTitle(stringResource(R.string.se_030), stringResource(R.string.se_185))
     CardBox {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("跟随系统" to 0, "浅色" to 1, "深色" to 2).forEach { (label, v) ->
+            listOf(stringResource(R.string.se_187) to 0, stringResource(R.string.se_188) to 1, stringResource(R.string.se_189) to 2).forEach { (label, v) ->
                 PolicyChip(label, Cfg.darkTheme == v) { Cfg.darkTheme = v }
             }
         }
         Spacer(Modifier.height(6.dp))
         Text(
             when (Cfg.darkTheme) {
-                1 -> "固定浅色，系统切深色也不跟"
-                2 -> "固定深色，夜间不刺眼"
-                else -> "跟系统设置走，系统深色时自动变深"
+                1 -> stringResource(R.string.se_190)
+                2 -> stringResource(R.string.se_191)
+                else -> stringResource(R.string.se_192)
             },
             fontSize = 11.sp,
             color = TextSecondary
@@ -880,53 +915,53 @@ private fun UiTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("字体大小", "整体缩放文字，dp 尺寸不变；点一下立刻生效，不用重启")
+    SectionTitle(stringResource(R.string.se_032), stringResource(R.string.se_193))
     CardBox {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FontPresets.forEach { (label, v) ->
-                PolicyChip(label, kotlin.math.abs(Cfg.fontScale - v) < 0.01f) { Cfg.fontScale = v }
+            FontPresets.forEach { (res, v) ->
+                PolicyChip(stringResource(res), kotlin.math.abs(Cfg.fontScale - v) < 0.01f) { Cfg.fontScale = v }
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text("当前 ${(Cfg.fontScale * 100).toInt()}%", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_font_cur, (Cfg.fontScale * 100).toInt()), fontSize = 11.sp, color = TextSecondary)
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("输入框", "悬浮模式只让输入框本体浮起来，四周留白，不铺整块背景")
+    SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
     CardBox {
         CapSwitch(
-            "悬浮输入框",
-            "输入框和发送键单独浮起来、带投影，周围保持页面底色；关掉回到贴底样式",
+            stringResource(R.string.se_196),
+            stringResource(R.string.se_197),
             Cfg.floatInput
         ) { Cfg.floatInput = it }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("输入提示", "输入框空着时显示的文字；一行一条，多条就每次随机取一条")
+    SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
     CardBox {
         Field(
-            label = "占位文字（每行一条）",
+            label = stringResource(R.string.se_199),
             value = Cfg.hintText,
             onValueChange = { Cfg.hintText = it },
-            placeholder = "请输入问题",
+            placeholder = stringResource(R.string.se_200),
             singleLine = false,
             minLines = 3
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            if (Cfg.hintText.isBlank()) "当前：请输入问题"
-            else "当前：${Cfg.hintText.lines().count { it.isNotBlank() }} 条里随机一条",
+            if (Cfg.hintText.isBlank()) stringResource(R.string.se2_hint_none)
+            else stringResource(R.string.se2_hint_n, Cfg.hintText.lines().count { it.isNotBlank() }),
             fontSize = 11.sp,
             color = TextSecondary
         )
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("导航手势", "系统级 back-to-home、跨任务动画在 targetSdk 36+ 默认开启，应用侧关不掉；这里管的是应用内跟手动画")
+    SectionTitle(stringResource(R.string.se_037), stringResource(R.string.se2_back_sub))
     CardBox {
         CapSwitch(
-            "预测性手势支持",
-            "开启后设置页跟着返回手势缩放淡出，滑过阈值才退回聊天、中途松手归位；关闭则直接切回",
+            stringResource(R.string.se2_back_title),
+            stringResource(R.string.se2_back_desc),
             Cfg.predictiveBack
         ) { Cfg.predictiveBack = it }
     }
@@ -938,10 +973,11 @@ private fun ExtTab(
     onEditPersona: (Persona) -> Unit,
     onNewTask: () -> Unit
 ) {
+    val ctx = LocalContext.current
     WorkspaceSection()
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("定时任务", "到点发通知；勾了「到点自动执行」且模型空闲时会自己跑一轮")
+    SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
     CardBox {
         val tasks = Schedules.list
         val on = tasks.count { it.on }
@@ -956,21 +992,21 @@ private fun ExtTab(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (tasks.isEmpty()) "还没有任务" else "已排 ${tasks.size} 条（启用 $on 条）",
+                    if (tasks.isEmpty()) stringResource(R.string.se2_task_none) else stringResource(R.string.se2_task_n, tasks.size, on),
                     fontSize = 13.sp,
                     color = TextPrimary
                 )
                 Text(
-                    if (tasks.isEmpty()) "定时让模型干一件事，比如每天 08:30 汇总余票"
+                    if (tasks.isEmpty()) stringResource(R.string.se2_task_hint)
                     else tasks.filter { it.on }.take(2)
                         .joinToString("；") { "${if (it.daily) "每天 " else ""}${Alarms.fmt(it.at)} ${it.prompt.replace("\n", " ").take(16)}" }
-                        .ifBlank { "任务都停用了，点管理里打开" },
+                        .ifBlank { ctx.getString(R.string.se2_task_off) },
                     fontSize = 11.sp,
                     color = TextSecondary,
                     maxLines = 2
                 )
             }
-            GhostButton("管理") { onNewTask() }
+            GhostButton(stringResource(R.string.se2_manage)) { onNewTask() }
         }
     }
 
@@ -981,22 +1017,21 @@ private fun ExtTab(
     ToolchainSection()
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("搜索平台", "搜索是可选的技能：选了平台并填好 Key，才会把 web_search 下发给模型")
+    SectionTitle(stringResource(R.string.se_046), stringResource(R.string.se2_search_sub))
     CardBox {
         val providers = Search.providers
         val sel = Cfg.searchProvider
         if (providers.isEmpty()) {
-            Text("平台清单待补充", fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.se2_search_empty), fontSize = 13.sp, color = TextPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "往 core/Search.kt 的 providers 里加一行、在 Tools.search 里加一个分支，" +
-                    "这里就会出现平台选择和 Key 输入框。当前未选平台，模型拿不到 web_search。",
+                stringResource(R.string.se2_search_empty2),
                 fontSize = 11.sp,
                 color = TextSecondary
             )
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PolicyChip("不使用", sel.isBlank()) { Cfg.searchProvider = "" }
+                PolicyChip(stringResource(R.string.se2_search_off), sel.isBlank()) { Cfg.searchProvider = "" }
                 providers.forEach { p ->
                     PolicyChip(p.label, sel == p.id) { Cfg.searchProvider = p.id }
                 }
@@ -1005,7 +1040,7 @@ private fun ExtTab(
             if (cur != null) {
                 Spacer(Modifier.height(8.dp))
                 if (cur.fields.isEmpty()) {
-                    Text("${cur.label} 不需要配置，选中即可用", fontSize = 12.sp, color = OkGreen)
+                    Text(stringResource(R.string.se2_search_needless, cur.label), fontSize = 12.sp, color = OkGreen)
                 } else {
                     cur.fields.forEach { f ->
                         Field(
@@ -1022,8 +1057,8 @@ private fun ExtTab(
                 Spacer(Modifier.height(4.dp))
                 val miss = Search.missing()
                 Text(
-                    if (miss == null) "已配置，模型可以自己调 web_search"
-                    else "还缺 ${miss.label}：调用会直接返回未配置提示",
+                    if (miss == null) stringResource(R.string.se2_search_ok)
+                    else stringResource(R.string.se2_search_miss, miss.label),
                     fontSize = 10.sp,
                     color = if (miss == null) OkGreen else DangerRed
                 )
@@ -1032,9 +1067,9 @@ private fun ExtTab(
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("智能体角色", "每个会话各自记角色；这里选中的是当前会话用的，切换会话会跟着换")
+    SectionTitle(stringResource(R.string.se_047), stringResource(R.string.se2_persona_sub))
     CardBox {
-        ChoiceRow("默认助手", "不加载任何角色提示", Cfg.personaId.isBlank()) { Agent.setPersona("") }
+        ChoiceRow(stringResource(R.string.se2_persona_none), stringResource(R.string.se2_persona_none_sub), Cfg.personaId.isBlank()) { Agent.setPersona("") }
         Personas.list.forEach { p ->
             PersonaRow(
                 p = p,
@@ -1044,42 +1079,42 @@ private fun ExtTab(
             )
         }
         Spacer(Modifier.height(10.dp))
-        GhostButton("新增角色", modifier = Modifier.height(38.dp)) {
+        GhostButton(stringResource(R.string.se2_persona_add), modifier = Modifier.height(38.dp)) {
             onEditPersona(Persona(id = "", name = ""))
         }
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("自定义系统提示", "拼在角色之后、工作流之前；留空不加，默认留空")
+    SectionTitle(stringResource(R.string.se_048), stringResource(R.string.se2_prompt_sub))
     CardBox {
         Field(
-            label = "系统提示",
+            label = stringResource(R.string.se2_prompt_label),
             value = Cfg.systemPrompt,
             onValueChange = { Cfg.systemPrompt = it },
-            placeholder = "例如：回答一律用中文，先给结论再给步骤",
+            placeholder = stringResource(R.string.se_226),
             secret = false,
             singleLine = false,
             minLines = 3
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            if (Cfg.systemPrompt.isBlank()) "未填写：只用内置规则"
-            else "已填写 ${Cfg.systemPrompt.length} 字，每次请求都会带上",
+            if (Cfg.systemPrompt.isBlank()) stringResource(R.string.se_227)
+            else stringResource(R.string.se2_prompt_len, Cfg.systemPrompt.length),
             fontSize = 10.sp,
             color = if (Cfg.systemPrompt.isBlank()) TextSecondary else OkGreen
         )
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("技能专区", "把操作流程写成技能，启用后会拼进系统提示，模型照着执行")
+    SectionTitle(stringResource(R.string.se_049), stringResource(R.string.se_229))
     CardBox {
         val list = Skills.list
         if (list.isEmpty()) {
-            Text("还没有技能", fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.se_230), fontSize = 13.sp, color = TextPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "技能就是一份提示词：写清楚触发场景、要走的命令、判断条件。" +
-                    "启用后每次请求都会带给模型，不用每次重新解释。",
+                stringResource(R.string.se_231) +
+                    stringResource(R.string.se_232),
                 fontSize = 11.sp,
                 color = TextSecondary
             )
@@ -1090,12 +1125,12 @@ private fun ExtTab(
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("新增技能", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.se_233), modifier = Modifier.height(38.dp)) {
                 onEdit(Skill("", "", "", "", true))
             }
             Spacer(Modifier.width(10.dp))
             Text(
-                "已启用 ${Skills.enabled.size} / ${list.size}",
+                stringResource(R.string.se2_skill_enabled, Skills.enabled.size, list.size),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -1103,7 +1138,7 @@ private fun ExtTab(
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("工具权限", "永久同意/拒绝与工具弹窗同步")
+    SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
     CardBox {
         Tools.all.forEach { tool ->
             Row(
@@ -1115,16 +1150,17 @@ private fun ExtTab(
                 Column(Modifier.weight(1f)) {
                     Text(Tools.label(tool), fontSize = 13.sp, color = TextPrimary)
                     Text(
-                        if (Tools.isHighRisk(tool)) "高危 · $tool" else "普通 · $tool",
+                        if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
+                        else stringResource(R.string.se2_risk_normal, tool),
                         fontSize = 10.sp,
                         color = if (Tools.isHighRisk(tool)) DangerRed else TextSecondary
                     )
                 }
-                PolicyChip("每次确认", Cfg.policy(tool) == "ask") { Cfg.setPolicy(tool, "ask") }
+                PolicyChip(stringResource(R.string.se_238), Cfg.policy(tool) == "ask") { Cfg.setPolicy(tool, "ask") }
                 Spacer(Modifier.width(6.dp))
-                PolicyChip("永久同意", Cfg.policy(tool) == "allow") { Cfg.setPolicy(tool, "allow") }
+                PolicyChip(stringResource(R.string.se_239), Cfg.policy(tool) == "allow") { Cfg.setPolicy(tool, "allow") }
                 Spacer(Modifier.width(6.dp))
-                PolicyChip("永久拒绝", Cfg.policy(tool) == "deny") { Cfg.setPolicy(tool, "deny") }
+                PolicyChip(stringResource(R.string.se_240), Cfg.policy(tool) == "deny") { Cfg.setPolicy(tool, "deny") }
             }
         }
     }
@@ -1151,7 +1187,7 @@ private fun AboutTab() {
         latest = info?.latestVersion ?: ""
     }
 
-    SectionTitle("关于")
+    SectionTitle(stringResource(R.string.se_006))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -1164,7 +1200,7 @@ private fun AboutTab() {
             Column(Modifier.weight(1f)) {
                 Text("BaiAgent", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Text(
-                    "跑在本机的 AI Agent：模型直连，读写文件、执行命令都在设备上完成。",
+                    stringResource(R.string.se_241),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
@@ -1172,7 +1208,7 @@ private fun AboutTab() {
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("版本号", fontSize = 12.sp, color = TextSecondary)
+            Text(stringResource(R.string.se_242), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
                 "${Update.clientVersion()}",
@@ -1182,17 +1218,17 @@ private fun AboutTab() {
         }
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("最新版本", fontSize = 12.sp, color = TextSecondary)
+            Text(stringResource(R.string.se_243), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                latest.ifBlank { "点「检查更新」获取" },
+                latest.ifBlank { stringResource(R.string.se_244) },
                 fontSize = 12.sp,
                 color = if (latest.isBlank()) TextSecondary else OkGreen
             )
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(if (busy) "检查中…" else "检查更新", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (busy) stringResource(R.string.se_245) else stringResource(R.string.se_054), modifier = Modifier.height(38.dp)) {
                 if (busy) return@GhostButton
                 busy = true
                 tip = ""
@@ -1203,24 +1239,24 @@ private fun AboutTab() {
                         latest = "${info.latestVersion}"
                         when {
                             //服务端关了更新开关：提示可以忽略，不弹卡片
-                            !info.updateEnabled -> tip = "服务端已关闭更新提示（最新 ${info.latestVersion}）"
+                            !info.updateEnabled -> tip = ctx.getString(R.string.se2_upd_off, info.latestVersion)
                             info.hasUpdate -> {
-                                tip = "发现新版本 ${info.latestVersion}"
+                                tip = ctx.getString(R.string.se2_upd_new, info.latestVersion)
                                 UpdateUi.prompt = info
                             }
-                            else -> tip = "已是最新版本 ${info.latestVersion}"
+                            else -> tip = ctx.getString(R.string.se2_upd_latest, info.latestVersion)
                         }
-                    }.onFailure { tip = "检查失败：${it.message?.take(80)}" }
+                    }.onFailure { tip = ctx.getString(R.string.se2_upd_fail, it.message?.take(80).orEmpty()) }
                 }
             }
-            GhostButton(if (busyHis) "读取中…" else "更新历史", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (busyHis) stringResource(R.string.se_133) else stringResource(R.string.se_250), modifier = Modifier.height(38.dp)) {
                 if (busyHis) return@GhostButton
                 busyHis = true
                 scope.launch {
                     val r = withContext(Dispatchers.IO) { runCatching { Update.history() } }
                     busyHis = false
                     r.onSuccess { UpdateUi.history = it }
-                        .onFailure { tip = "读取更新历史失败：${it.message?.take(80)}" }
+                        .onFailure { tip = ctx.getString(R.string.se2_upd_hist_fail, it.message?.take(80).orEmpty()) }
                 }
             }
         }
@@ -1231,12 +1267,12 @@ private fun AboutTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("相关链接")
+    SectionTitle(stringResource(R.string.se_252))
     CardBox {
-        LinkRow("官网", SITE_URL) { openUrl(ctx, SITE_URL) }
+        LinkRow(stringResource(R.string.se_253), SITE_URL) { openUrl(ctx, SITE_URL) }
         Spacer(Modifier.height(6.dp))
         //仓库还没建，留空就显示成灰的、点不动
-        LinkRow("GitHub", GITHUB_URL.ifBlank { "还没建库" }, enabled = GITHUB_URL.isNotBlank()) {
+        LinkRow("GitHub", GITHUB_URL.ifBlank { stringResource(R.string.se_254) }, enabled = GITHUB_URL.isNotBlank()) {
             openUrl(ctx, GITHUB_URL)
         }
     }
@@ -1274,6 +1310,7 @@ private fun openUrl(ctx: Context, url: String) {
 
 @Composable
 private fun SkillRow(s: Skill, onEdit: () -> Unit) {
+    val ctx = LocalContext.current
     Row(
         Modifier
             .fillMaxWidth()
@@ -1281,9 +1318,11 @@ private fun SkillRow(s: Skill, onEdit: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(s.name, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+            val nm = Skills.displayName(ctx, s).ifBlank { ctx.getString(R.string.sk_unnamed) }
+            Text(nm, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
             Text(
-                if (s.desc.isBlank()) "${s.body.length} 字" else s.desc,
+                if (s.desc.isBlank()) stringResource(R.string.se2_skill_len, s.body.length)
+                else Skills.displayDesc(ctx, s),
                 fontSize = 10.sp,
                 color = TextSecondary,
                 maxLines = 1
@@ -1296,7 +1335,7 @@ private fun SkillRow(s: Skill, onEdit: () -> Unit) {
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            "编辑",
+            stringResource(R.string.se_256),
             fontSize = 11.sp,
             color = AccentBlue,
             modifier = Modifier
@@ -1319,20 +1358,20 @@ private fun SkillDialog(
     var body by remember(skill.id) { mutableStateOf(skill.body) }
     ScrimCard {
         Text(
-            if (skill.id.isBlank()) "新增技能" else "编辑技能",
+            if (skill.id.isBlank()) stringResource(R.string.se_233) else stringResource(R.string.se_257),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
         )
         Spacer(Modifier.height(4.dp))
         Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
-            Field("名称", name, { name = it }, placeholder = "例如：装 APK 并抓日志")
-            Field("一句话说明", desc, { desc = it }, placeholder = "什么时候该用它")
+            Field(stringResource(R.string.se_258), name, { name = it }, placeholder = stringResource(R.string.se_259))
+            Field(stringResource(R.string.se_260), desc, { desc = it }, placeholder = stringResource(R.string.se_261))
             Field(
-                "技能正文",
+                stringResource(R.string.se_262),
                 body,
                 { body = it },
-                placeholder = "按步骤写清楚命令、路径与判断条件",
+                placeholder = stringResource(R.string.se_263),
                 singleLine = false,
                 minLines = 6
             )
@@ -1341,7 +1380,7 @@ private fun SkillDialog(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (skill.id.isNotBlank()) {
                 Text(
-                    "删除",
+                    stringResource(R.string.se_143),
                     fontSize = 12.sp,
                     color = DangerRed,
                     textAlign = TextAlign.Center,
@@ -1353,7 +1392,7 @@ private fun SkillDialog(
                 )
             }
             Text(
-                "取消",
+                stringResource(R.string.se_142),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
@@ -1364,7 +1403,7 @@ private fun SkillDialog(
                     .padding(vertical = 11.dp)
             )
             Text(
-                "保存",
+                stringResource(R.string.se_264),
                 fontSize = 12.sp,
                 color = androidx.compose.ui.graphics.Color.White,
                 textAlign = TextAlign.Center,
@@ -1392,10 +1431,13 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
         //角色头像：有图就画圆图，没有就默认人形
         Box(Modifier.padding(end = 8.dp)) { AvatarView(p.avatar, 28.dp) }
         Column(Modifier.weight(1f)) {
-            Text(p.name.ifBlank { "未命名角色" }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+            Text(Personas.displayName(p).ifBlank { stringResource(R.string.se_265) }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
             Text(
-                p.brief + if (p.profileId.isNotBlank()) {
-                    " · 绑 " + (Profiles.list.firstOrNull { it.id == p.profileId }?.label ?: "已删配置")
+                Personas.brief(p) + if (p.profileId.isNotBlank()) {
+                    stringResource(
+                        R.string.se2_bind_fmt,
+                        Profiles.list.firstOrNull { it.id == p.profileId }?.label ?: stringResource(R.string.se_267)
+                    )
                 } else "",
                 fontSize = 10.sp,
                 color = TextSecondary,
@@ -1403,11 +1445,11 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
             )
         }
         if (selected) {
-            Text("已选", fontSize = 10.sp, color = AccentBlue)
+            Text(stringResource(R.string.se_268), fontSize = 10.sp, color = AccentBlue)
             Spacer(Modifier.width(6.dp))
         }
         Text(
-            "编辑",
+            stringResource(R.string.se_256),
             fontSize = 11.sp,
             color = TextSecondary,
             modifier = Modifier
@@ -1436,14 +1478,14 @@ private fun PersonaDialog(
     var profileId by remember(persona.id) { mutableStateOf(persona.profileId) }
     ScrimCard {
         Text(
-            if (persona.id.isBlank()) "新增角色" else "编辑角色",
+            if (persona.id.isBlank()) stringResource(R.string.se2_persona_add) else stringResource(R.string.se_269),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "角色卡决定模型的身份、口吻、开场白与示例风格；人设与后置指令会拼进系统提示最前面。",
+            stringResource(R.string.se_270),
             fontSize = 10.sp,
             color = TextSecondary
         )
@@ -1451,49 +1493,49 @@ private fun PersonaDialog(
         Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
             //头像走图片：选一张落私有目录，聊天里 AI 头像选「跟角色卡」时就用它
             AvatarPick(
-                "角色头像",
-                if (avatar.isBlank()) "没设置就用默认人形" else "聊天里显示这张",
+                stringResource(R.string.se_271),
+                if (avatar.isBlank()) stringResource(R.string.se_272) else stringResource(R.string.se_273),
                 avatar
             ) { avatar = it }
-            Field("角色名", name, { name = it }, placeholder = "例如：命令行老手")
-            Field("一句话简介", desc, { desc = it }, placeholder = "列表里显示，一行说完")
+            Field(stringResource(R.string.se_274), name, { name = it }, placeholder = stringResource(R.string.se_275))
+            Field(stringResource(R.string.se_276), desc, { desc = it }, placeholder = stringResource(R.string.se_277))
             Field(
-                "人设正文",
+                stringResource(R.string.se_278),
                 prompt,
                 { prompt = it },
-                placeholder = "写清楚身份、说话方式、优先做什么、禁止做什么",
+                placeholder = stringResource(R.string.se_279),
                 singleLine = false,
                 minLines = 6
             )
             Field(
-                "适用场景",
+                stringResource(R.string.se_280),
                 scenario,
                 { scenario = it },
-                placeholder = "什么情况下用这张卡，例如：线上排障、审方案",
+                placeholder = stringResource(R.string.se_281),
                 singleLine = false,
                 minLines = 2
             )
             Field(
-                "开场白",
+                stringResource(R.string.se_282),
                 firstMsg,
                 { firstMsg = it },
-                placeholder = "新建会话时自动发出的第一句 AI 消息，留空就没有",
+                placeholder = stringResource(R.string.se_283),
                 singleLine = false,
                 minLines = 2
             )
             Field(
-                "示例对话",
+                stringResource(R.string.se_284),
                 examples,
                 { examples = it },
-                placeholder = "一行一轮，例如：\n用户：xxx\n助手：yyy",
+                placeholder = stringResource(R.string.se_285),
                 singleLine = false,
                 minLines = 4
             )
             Field(
-                "后置指令",
+                stringResource(R.string.se_286),
                 postHistory,
                 { postHistory = it },
-                placeholder = "放在系统提示最后，比人设更强势，例如：回答不超过 30 行",
+                placeholder = stringResource(R.string.se_287),
                 singleLine = false,
                 minLines = 3
             )
@@ -1501,14 +1543,14 @@ private fun PersonaDialog(
             val boundName = Profiles.list.firstOrNull { it.id == profileId }?.label.orEmpty()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "绑定模型：" + if (profileId.isBlank()) "跟随当前" else boundName,
+                    stringResource(R.string.se_288) + if (profileId.isBlank()) stringResource(R.string.se_289) else boundName,
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
                 Spacer(Modifier.width(8.dp))
                 if (profileId.isNotBlank()) {
                     Text(
-                        "解绑",
+                        stringResource(R.string.se_290),
                         fontSize = 11.sp,
                         color = AccentBlue,
                         modifier = Modifier
@@ -1530,7 +1572,7 @@ private fun PersonaDialog(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (persona.id.isNotBlank()) {
                 Text(
-                    "删除",
+                    stringResource(R.string.se_143),
                     fontSize = 12.sp,
                     color = DangerRed,
                     textAlign = TextAlign.Center,
@@ -1542,7 +1584,7 @@ private fun PersonaDialog(
                 )
             }
             Text(
-                "取消",
+                stringResource(R.string.se_142),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
@@ -1553,7 +1595,7 @@ private fun PersonaDialog(
                     .padding(vertical = 11.dp)
             )
             Text(
-                "保存",
+                stringResource(R.string.se_264),
                 fontSize = 12.sp,
                 color = androidx.compose.ui.graphics.Color.White,
                 textAlign = TextAlign.Center,
@@ -1620,7 +1662,7 @@ private fun ToolchainSection() {
     var rep by remember { mutableStateOf<Toolchain.Report?>(null) }
     LaunchedEffect(tick) {
         loading = true
-        rep = withContext(Dispatchers.IO) { Toolchain.probe() }
+        rep = withContext(Dispatchers.IO) { Toolchain.probe(ctx) }
         loading = false
     }
     fun copy(text: String) {
@@ -1629,15 +1671,15 @@ private fun ToolchainSection() {
     }
 
     SectionTitle(
-        "编译工具链",
-        "编译 APK 要 Termux 里的 JDK + gradle + Android SDK：这里只检测状态并给命令，不自动装"
+        stringResource(R.string.se_051),
+        stringResource(R.string.se_291)
     )
     CardBox {
         val r = rep
         if (loading) {
-            Text("正在检测…", fontSize = 13.sp, color = TextSecondary)
+            Text(stringResource(R.string.se_292), fontSize = 13.sp, color = TextSecondary)
         } else if (r == null || !r.reachable) {
-            Text(r?.note ?: "检测失败", fontSize = 12.sp, color = DangerRed)
+            Text(r?.note ?: stringResource(R.string.se_293), fontSize = 12.sp, color = DangerRed)
         } else {
             Text(r.note, fontSize = 12.sp, color = if (r.ok) OkGreen else DangerRed)
             Spacer(Modifier.height(6.dp))
@@ -1655,13 +1697,13 @@ private fun ToolchainSection() {
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton("重新检测", modifier = Modifier.height(38.dp)) { tick++ }
-            GhostButton("复制装依赖命令", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.se_294), modifier = Modifier.height(38.dp)) { tick++ }
+            GhostButton(stringResource(R.string.se_295), modifier = Modifier.height(38.dp)) {
                 copy(Toolchain.INSTALL_CMD)
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("在 Termux 里按顺序执行（点右侧复制）：", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_296), fontSize = 11.sp, color = TextSecondary)
         CmdLine(Toolchain.INSTALL_CMD) { copy(it) }
         CmdLine(Toolchain.SDK_CMD) { copy(it) }
         CmdLine(Toolchain.ENV_CMD) { copy(it) }
@@ -1675,7 +1717,7 @@ private fun CmdLine(cmd: String, onCopy: (String) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(cmd, fontSize = 10.sp, color = TextPrimary, modifier = Modifier.weight(1f))
-        PolicyChip("复制", false) { onCopy(cmd) }
+        PolicyChip(stringResource(R.string.se_297), false) { onCopy(cmd) }
     }
 } //一行可复制命令
 
@@ -1699,7 +1741,7 @@ private fun LinuxSection() {
             return@LaunchedEffect
         }
         depsBusy = true
-        depsLog = "开始装依赖…"
+        depsLog = ctx.getString(R.string.se_298)
         val main = Handler(Looper.getMainLooper())
         val sb = StringBuilder()
         withContext(Dispatchers.IO) {
@@ -1718,7 +1760,7 @@ private fun LinuxSection() {
             return@LaunchedEffect
         }
         busy = true
-        log = "开始安装…"
+        log = ctx.getString(R.string.se_299)
         val main = Handler(Looper.getMainLooper())
         val sb = StringBuilder()
         withContext(Dispatchers.IO) {
@@ -1737,16 +1779,16 @@ private fun LinuxSection() {
     }
 
     SectionTitle(
-        "Linux 环境（内置 Ubuntu 24.04）",
-        "自带 proot + Ubuntu 根文件系统，解包到应用私有目录：apt 装依赖、编译、跑脚本都在里面，不依赖 Termux"
+        stringResource(R.string.se_300),
+        stringResource(R.string.se_301)
     )
     CardBox {
         val mode = Cfg.workMode
         Text(
             when {
-                installed -> "已安装：Ubuntu 可以用了"
-                Linux.prootReady() -> "proot 已就位，Ubuntu 还没解包"
-                else -> "未安装"
+                installed -> stringResource(R.string.se_302)
+                Linux.prootReady() -> stringResource(R.string.se_303)
+                else -> stringResource(R.string.se_304)
             },
             fontSize = 13.sp,
             color = if (installed) OkGreen else TextSecondary
@@ -1754,33 +1796,33 @@ private fun LinuxSection() {
         if (mode != WorkMode.ROOT) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "proot 已作为 native 库打进 APK，普通 / Shizuku / Root 三种模式都能跑，不再要求 Root。" +
-                    "当前：${mode.label}",
+                stringResource(R.string.se_305) +
+                    stringResource(R.string.wm_cur_fmt, stringResource(mode.labelRes)),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(if (busy) "安装中…" else if (installed) "重新解包" else "安装 Ubuntu", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (busy) stringResource(R.string.se_307) else if (installed) stringResource(R.string.se_308) else stringResource(R.string.se_309), modifier = Modifier.height(38.dp)) {
                 if (!busy) tick++
             }
             GhostButton(
-                if (depsBusy) "装依赖中…" else if (depsOk) "重装依赖" else "一键装依赖",
+                if (depsBusy) stringResource(R.string.se_310) else if (depsOk) stringResource(R.string.se_311) else stringResource(R.string.se_312),
                 modifier = Modifier.height(38.dp)
             ) {
                 when {
                     depsBusy || busy -> Unit
-                    !installed -> depsLog = "先装 Ubuntu 环境，再装依赖"
+                    !installed -> depsLog = ctx.getString(R.string.se_313)
                     else -> depsTick++
                 }
             }
-            GhostButton("自检", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.se_314), modifier = Modifier.height(38.dp)) {
                 scope.launch {
-                    test = "自检中…"
+                    test = ctx.getString(R.string.se_315)
                     test = withContext(Dispatchers.IO) {
                         val r = Linux.selfTest()
-                        if (r.ok) r.out else "失败(${r.code})：${r.out.take(300)}"
+                        if (r.ok) r.out else ctx.getString(R.string.se_316, r.code, r.out.take(300))
                     }
                 }
             }
@@ -1807,13 +1849,13 @@ private fun LinuxSection() {
             Text(test, fontSize = 10.sp, color = TextPrimary)
         }
         Spacer(Modifier.height(8.dp))
-        Text("装好之后，让模型用 linux_shell 工具在里面跑命令，例如：", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.se_317), fontSize = 11.sp, color = TextSecondary)
         CmdLine("apt-get update && apt-get install -y openjdk-17-jdk-headless") { copy(it) }
         CmdLine("apt-get install -y git curl unzip python3 python3-pip") { copy(it) }
         Spacer(Modifier.height(6.dp))
         Text(
-            "宿主 Android 侧（pm / am / uiautomator）仍用 exec_shell；" +
-                "/sdcard 在 Ubuntu 里是同一个路径，写出的文件两边都看得见。",
+            stringResource(R.string.se_318) +
+                stringResource(R.string.se_319),
             fontSize = 10.sp,
             color = TextSecondary
         )

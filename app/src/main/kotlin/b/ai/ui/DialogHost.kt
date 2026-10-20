@@ -1,4 +1,5 @@
 package b.ai.ui
+import android.content.Context
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -32,6 +33,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -57,6 +59,8 @@ import b.ai.ui.theme.TextSecondary
 import b.ai.ui.theme.WarnAmber
 import b.ai.ui.theme.WarnAmberSoft
 import org.json.JSONObject
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 弹窗状态：active 驱动背景模糊，content 交给根弹窗层渲染（Onboarding 这类内嵌弹窗也走这里） */
 object Overlay {
@@ -127,12 +131,12 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
     }
 } //统一弹窗外壳：玻璃卡片，入场 scale+fade，位置回传给背景模糊层
 
-private fun argPreview(name: String, args: JSONObject): String = when (name) {
+private fun argPreview(ctx: Context, name: String, args: JSONObject): String = when (name) {
     Tools.SHELL -> args.optString("command")
     Tools.WEB_SEARCH -> "query: ${args.optString("query")}"
     Tools.WRITE -> {
         val body = args.optString("content")
-        val cut = if (body.length > 1200) body.take(1200) + "\n…（共 ${body.length} 字符）" else body
+        val cut = if (body.length > 1200) body.take(1200) + ctx.getString(R.string.dh_trunc, body.length) else body
         "path: ${args.optString("path")}\n\n$cut"
     }
     else -> "path: ${args.optString("path")}"
@@ -140,15 +144,16 @@ private fun argPreview(name: String, args: JSONObject): String = when (name) {
 
 @Composable
 fun ToolConfirmDialog(p: PendingTool) {
+    val ctx = LocalContext.current
     val name = p.call.name
     ScrimCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(Tools.label(name), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(8.dp))
-            Tag(p.route.label)
+            Tag(stringResource(p.route.labelRes))
             if (p.highRisk) {
                 Spacer(Modifier.width(6.dp))
-                Tag("高危", WarnAmber, WarnAmberSoft)
+                Tag(stringResource(R.string.dh_high), WarnAmber, WarnAmberSoft)
             }
         }
         Spacer(Modifier.height(4.dp))
@@ -163,7 +168,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                argPreview(name, p.args),
+                argPreview(ctx, name, p.args),
                 fontSize = 12.sp,
                 color = TextPrimary,
                 fontFamily = FontFamily.Monospace
@@ -172,7 +177,7 @@ fun ToolConfirmDialog(p: PendingTool) {
         if (p.highRisk) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "高危操作：请确认命令/路径没有手滑（删库、覆盖系统文件不可恢复）。",
+                stringResource(R.string.dh_high_msg),
                 fontSize = 11.sp,
                 color = DangerRed
             )
@@ -180,7 +185,7 @@ fun ToolConfirmDialog(p: PendingTool) {
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "永久拒绝",
+                stringResource(R.string.dh_deny_forever),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
@@ -191,7 +196,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Text(
-                "拒绝",
+                stringResource(R.string.dh_deny),
                 fontSize = 12.sp,
                 color = DangerRed,
                 modifier = Modifier
@@ -202,7 +207,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Text(
-                "永久同意",
+                stringResource(R.string.dh_allow_forever),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
@@ -213,7 +218,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
             Text(
-                "同意",
+                stringResource(R.string.dh_allow),
                 fontSize = 12.sp,
                 color = Color.White,
                 modifier = Modifier
@@ -225,7 +230,7 @@ fun ToolConfirmDialog(p: PendingTool) {
             )
         }
         Spacer(Modifier.height(4.dp))
-        Text("永久策略可在设置→工具权限里改回", fontSize = 10.sp, color = TextSecondary)
+        Text(stringResource(R.string.dh_policy_tip), fontSize = 10.sp, color = TextSecondary)
     } //工具确认弹窗
 }
 
@@ -236,8 +241,9 @@ fun PermNoticeDialog(
     onSettings: () -> Unit,
     onClose: () -> Unit
 ) {
+    val ctx = LocalContext.current
     ScrimCard {
-        Text("还缺这些权限", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.dh_perm_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(8.dp))
         Box(
             Modifier
@@ -249,21 +255,21 @@ fun PermNoticeDialog(
         ) {
             Column {
                 missing.forEach { p ->
-                    Text("· ${Perms.label(p)}", fontSize = 12.sp, color = TextPrimary)
+                    Text("· " + Perms.label(ctx, p), fontSize = 12.sp, color = TextPrimary)
                     Spacer(Modifier.height(3.dp))
                 }
             }
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            "这些权限没给，工具调用会被直接拒绝，读写文件、选图、语音输入都用不了。可以再去系统设置里重新开启。",
+            stringResource(R.string.dh_perm_body),
             fontSize = 11.sp,
             color = DangerRed
         )
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "先这样",
+                stringResource(R.string.dh_perm_later),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -274,7 +280,7 @@ fun PermNoticeDialog(
                     .padding(vertical = 11.dp)
             )
             Text(
-                "重新申请",
+                stringResource(R.string.dh_perm_again),
                 fontSize = 12.sp,
                 color = AccentBlue,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -285,7 +291,7 @@ fun PermNoticeDialog(
                     .padding(vertical = 11.dp)
             )
             Text(
-                "去设置",
+                stringResource(R.string.dh_perm_settings),
                 fontSize = 12.sp,
                 color = Color.White,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -315,7 +321,7 @@ fun SimpleDialog(title: String, body: String, onClose: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Text(
-                "关闭",
+                stringResource(R.string.dh_close),
                 fontSize = 13.sp,
                 color = TextPrimary,
                 modifier = Modifier

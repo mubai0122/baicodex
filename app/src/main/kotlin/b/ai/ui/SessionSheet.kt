@@ -42,6 +42,8 @@ import b.ai.ui.theme.TextSecondary
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 private fun ts(t: Long): String =
     if (t <= 0L) "" else SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(t))
@@ -60,12 +62,12 @@ fun SessionSheet(onClose: () -> Unit) {
 
     ScrimCard(onDismiss = onClose) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("会话历史", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.ss_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(6.dp))
             Text("${list.size}", fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                "关闭",
+                stringResource(R.string.ss_close),
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier
@@ -78,7 +80,7 @@ fun SessionSheet(onClose: () -> Unit) {
 
         val target = editing
         if (target != null) {
-            Text("重命名：${target.title}", fontSize = 12.sp, color = TextSecondary)
+            Text(stringResource(R.string.ss_rename, target.title), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value = draft,
@@ -90,9 +92,9 @@ fun SessionSheet(onClose: () -> Unit) {
             )
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GhostButton("取消") { editing = null }
+                GhostButton(stringResource(R.string.ss_cancel)) { editing = null }
                 Spacer(Modifier.width(10.dp))
-                PrimaryButton("保存") {
+                PrimaryButton(stringResource(R.string.ss_save)) {
                     Agent.renameSession(target.id, draft)
                     editing = null
                     reload()
@@ -106,7 +108,7 @@ fun SessionSheet(onClose: () -> Unit) {
                     .verticalScroll(rememberScrollState())
             ) {
                 if (list.isEmpty()) {
-                    Text("还没有会话", fontSize = 12.sp, color = TextSecondary)
+                    Text(stringResource(R.string.ss_empty), fontSize = 12.sp, color = TextSecondary)
                 }
                 list.forEach { s ->
                     val current = s.id == Agent.sessionId
@@ -131,17 +133,17 @@ fun SessionSheet(onClose: () -> Unit) {
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                s.title,
+                                s.title.ifBlank { stringResource(R.string.ag_new_session) },
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = TextPrimary
                             )
                             if (current) {
                                 Spacer(Modifier.width(6.dp))
-                                Tag("当前")
+                                Tag(stringResource(R.string.ss_current))
                             }
                             Spacer(Modifier.weight(1f))
-                            Text("${s.count} 条", fontSize = 10.sp, color = TextSecondary)
+                            Text(stringResource(R.string.ss_count, s.count), fontSize = 10.sp, color = TextSecondary)
                         }
                         if (s.preview.isNotBlank()) {
                             Text(
@@ -156,7 +158,7 @@ fun SessionSheet(onClose: () -> Unit) {
                             Text(ts(s.updatedAt), fontSize = 10.sp, color = TextSecondary)
                             Spacer(Modifier.weight(1f))
                             Text(
-                                "改名",
+                                stringResource(R.string.ss_rename_btn),
                                 fontSize = 10.sp,
                                 color = TextSecondary,
                                 modifier = Modifier
@@ -170,7 +172,7 @@ fun SessionSheet(onClose: () -> Unit) {
                             Spacer(Modifier.width(6.dp))
                             val armed = arming == s.id
                             Text(
-                                if (armed) "确认删除" else "删除",
+                                if (armed) stringResource(R.string.ss_del_confirm) else stringResource(R.string.ss_del),
                                 fontSize = 10.sp,
                                 color = DangerRed,
                                 modifier = Modifier
@@ -192,7 +194,7 @@ fun SessionSheet(onClose: () -> Unit) {
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GhostButton("新会话") {
+                GhostButton(stringResource(R.string.ss_new)) {
                     Agent.newSession()
                     reload()
                     onClose()

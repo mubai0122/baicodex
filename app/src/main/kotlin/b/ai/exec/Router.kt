@@ -1,5 +1,8 @@
 package b.ai.exec
 
+import android.content.Context
+import b.ai.R
+
 import b.ai.core.Cfg
 import b.ai.core.Paths
 import b.ai.core.Perms
@@ -18,16 +21,19 @@ object Router {
     private const val DATA_ROOT = "/storage/emulated/0/Android/data"
     private const val OBB_ROOT = "/storage/emulated/0/Android/obb"
 
-    private val variants: List<Pair<String, (String) -> String>> = listOf(
-        "原路径" to { p: String -> p },
-        "尾随点" to { p: String -> "$p/." },
-        "双斜杠" to { p: String -> p.replace("/Android/", "//Android/") },
-        "段内零宽" to { p: String -> p.replace("/Android/", "/Android\u200b/") },
-        "尾随零宽" to { p: String -> "$p\u200b" },
-        "段后零宽" to { p: String -> p.replace("/data", "/data\u200b").replace("/obb", "/obb\u200b") }
+    /**一种零宽候选：名称资源 + 路径变换 */
+    private data class Variant(val nameRes: Int, val map: (String) -> String)
+
+    private val variants: List<Variant> = listOf(
+        Variant(R.string.rz_orig) { p -> p },
+        Variant(R.string.rz_dot) { p -> "$p/." },
+        Variant(R.string.rz_slash) { p -> p.replace("/Android/", "//Android/") },
+        Variant(R.string.rz_in) { p -> p.replace("/Android/", "/Android\u200b/") },
+        Variant(R.string.rz_tail) { p -> "$p\u200b" },
+        Variant(R.string.rz_post) { p -> p.replace("/data", "/data\u200b").replace("/obb", "/obb\u200b") }
     )
 
-    @Volatile private var picked: Pair<String, (String) -> String>? = null
+    @Volatile private var picked: Variant? = null
     @Volatile private var probed = false
     @Volatile private var probing = false
 
@@ -40,7 +46,8 @@ object Router {
     /** 是否可用零宽路径访问 Android/data 与 Android/obb（只读缓存，不触发探测） */
     val zeroWidthUsable: Boolean get() = picked != null
 
-    fun probeName(): String = if (picked != null) (picked?.first ?: "未知") else "不可用"
+    /**零宽命中的那条路径叫什么 */
+    fun probeName(c: Context): String = picked?.let { c.getString(it.nameRes) } ?: c.getString(R.string.rz_unavail)
 
     /** 后台探测一次，避免在主线程做 File.list() 卡 UI */
     fun probeAsync() {
@@ -60,7 +67,7 @@ object Router {
         //原路径能列出来就不用零宽。判据只认 list()：canRead 与 isExternalStorageManager 在 FUSE 上都会骗人
         if (nativeOk) return false
         for (v in variants) {
-            if (canList(v.second(DATA_ROOT))) {
+            if (canList(v.map(DATA_ROOT))) {
                 picked = v
                 return true
             }
@@ -78,7 +85,7 @@ object Router {
         nativeOk = false
     }
 
-    fun map(path: String): String = picked?.second?.invoke(path) ?: path
+    fun map(path: String): String = picked?.map?.invoke(path) ?: path
 
     private val restricted = listOf(
         DATA_ROOT, OBB_ROOT, "/data/", "/system/", "/vendor/", "/product/", "/root/", "/proc/"
@@ -109,14 +116,28 @@ object Router {
     /** 原路径能不能真的列 Android/data（探测结果，不触发探测） */
     val canReadData: Boolean get() = nativeOk
 
+    /**受限目录当前实际走哪条通道 */
+    enum class Zone { CHECKING, ALL_FILES, NATIVE, ZERO_WIDTH, UNSUPPORTED, LOCKED }
+
+    /**不带文案的状态：给 UI 上色用 */
+    fun zone(): Zone {
+        if (known == null) return Zone.CHECKING
+        if (nativeOk) return if (Perms.allFiles()) Zone.ALL_FILES else Zone.NATIVE
+        if (zeroWidthUsable) return Zone.ZERO_WIDTH
+        return if (Cfg.zeroWidth) Zone.UNSUPPORTED else Zone.LOCKED
+    } //通道状态
+
+    /**通道能用（读写受限目录没问题） */
+    fun zoneOk(): Boolean = zone() == Zone.ALL_FILES || zone() == Zone.NATIVE || zone() == Zone.ZERO_WIDTH
+
     /** Android/data 与 Android/obb 现在实际靠什么访问，给 UI 与系统提示用 */
-    fun dataZone(): String {
-        if (known == null) return "检测中…"
-        if (nativeOk) {
-            return if (Perms.allFiles()) "可直接读写（所有文件访问）" else "可直接读写（原路径）"
-        }
-        if (zeroWidthUsable) return "零宽路径（${probeName()}）"
-        return if (Cfg.zeroWidth) "零宽已开启但本机不支持" else "不可访问（需要 Shizuku / root 或零宽）"
+    fun dataZone(c: Context): String = when (zone()) {
+        Zone.CHECKING -> c.getString(R.string.dz_checking)
+        Zone.ALL_FILES -> c.getString(R.string.dz_all)
+        Zone.NATIVE -> c.getString(R.string.dz_native)
+        Zone.ZERO_WIDTH -> c.getString(R.string.dz_zero, probeName(c))
+        Zone.UNSUPPORTED -> c.getString(R.string.dz_unsupported)
+        Zone.LOCKED -> c.getString(R.string.dz_locked)
     } //受限目录的实际通道
 
     /** 手动重探：刚在系统里授予权限、或擦过数据之后用 */

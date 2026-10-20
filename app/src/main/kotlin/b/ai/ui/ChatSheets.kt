@@ -29,6 +29,9 @@ import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 加号面板：分类附件 + 技能包；插入的是纯文本，不写 @，不会和 @ 提及面板抢输入 */
 @Composable
@@ -39,15 +42,15 @@ internal fun AttachSheet(
     onSkill: () -> Unit
 ) {
     ScrimCard(onDismiss = onClose) {
-        Text("添加内容", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.ch_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
-        Text("选一类塞进输入区，模型按路径自己读", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_sub), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
-        AttachRow("图片", "进多模态，模型直接看图", "image/*", onPickImage, onPickFile)
-        AttachRow("文件", "任意文档，路径插进输入框", "*/*", null, onPickFile)
-        AttachRow("音频", "录音 / 语音文件", "audio/*", null, onPickFile)
-        AttachRow("视频", "视频文件，路径插进输入框", "video/*", null, onPickFile)
-        AttachRow("音乐", "歌曲与音频素材", "audio/*", null, onPickFile)
+        AttachRow(stringResource(R.string.ch_img), stringResource(R.string.ch_img_d), "image/*", onPickImage, onPickFile)
+        AttachRow(stringResource(R.string.ch_file), stringResource(R.string.ch_file_d), "*/*", null, onPickFile)
+        AttachRow(stringResource(R.string.ch_audio), stringResource(R.string.ch_audio_d), "audio/*", null, onPickFile)
+        AttachRow(stringResource(R.string.ch_video), stringResource(R.string.ch_video_d), "video/*", null, onPickFile)
+        AttachRow(stringResource(R.string.ch_music), stringResource(R.string.ch_music_d), "audio/*", null, onPickFile)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -57,8 +60,8 @@ internal fun AttachSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text("技能包", fontSize = 13.sp, color = AccentBlue)
-                Text("内置技能带进本轮，让模型照步骤做", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.ch_skill), fontSize = 13.sp, color = AccentBlue)
+                Text(stringResource(R.string.ch_skill_d), fontSize = 10.sp, color = TextSecondary)
             }
             Text("›", fontSize = 15.sp, color = AccentBlue)
         }
@@ -94,11 +97,13 @@ private fun AttachRow(
 @Composable
 internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
     ScrimCard(onDismiss = onClose) {
-        Text("技能包", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.ch_skill), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
-        Text("点一条带进输入框，随本轮消息发给模型", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_skill_sub), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
         Column(Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(rememberScrollState())) {
+            val ctx = LocalContext.current
+            val pfx = ctx.getString(R.string.ip_skill_pre)
             Skills.list.forEach { s ->
                 Row(
                     Modifier
@@ -106,20 +111,20 @@ internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
                         .padding(bottom = 6.dp)
                         .background(SurfaceMuted, RoundedCornerShape(12.dp))
                         .tap {
-                            onInsert("按这条技能做：" + s.name + "\n" + s.body.take(1200) + "\n\n任务：")
+                            onInsert(pfx + s.name + "\n" + s.body.take(1200) + "\n\n任务：")
                         }
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            s.name + if (s.on) "（已启用）" else "",
+                            Skills.displayName(ctx, s) + if (s.on) stringResource(R.string.ch_on) else "",
                             fontSize = 13.sp,
                             color = TextPrimary,
                             maxLines = 1
                         )
                         Text(
-                            s.desc.ifBlank { s.body.take(40) },
+                            Skills.displayDesc(ctx, s).ifBlank { s.body.take(40) },
                             fontSize = 10.sp,
                             color = TextSecondary,
                             maxLines = 1
@@ -130,7 +135,7 @@ internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
             }
         }
         Spacer(Modifier.height(6.dp))
-        Text("技能内容在 设置 → 对话 → 技能专区 里增删改", fontSize = 10.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_skill_tip), fontSize = 10.sp, color = TextSecondary)
     }
 } //技能包面板
 
@@ -138,11 +143,11 @@ internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
 @Composable
 internal fun ChatCfgSheet(onClose: () -> Unit) {
     ScrimCard(onDismiss = onClose) {
-        Text("本轮配置", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.ch_cfg), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
-        Text("改完对下一轮请求立刻生效", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_cfg_sub), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
-        Text("模型", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_model), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Column(Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
             Profiles.list.forEach { p ->
@@ -168,7 +173,7 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
                             maxLines = 1
                         )
                         Text(
-                            p.model.ifBlank { "未选模型" },
+                            p.model.ifBlank { stringResource(R.string.ch_no_model) },
                             fontSize = 10.sp,
                             color = TextSecondary,
                             maxLines = 1
@@ -181,9 +186,9 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("深度思考", fontSize = 13.sp, color = TextPrimary)
+                Text(stringResource(R.string.ch_think), fontSize = 13.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.think) "下发 reasoning_effort=${Cfg.thinkEffort}" else "不思考，直接回答",
+                    if (Cfg.think) stringResource(R.string.ch_effort) else stringResource(R.string.ch_think_off),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
@@ -202,9 +207,9 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("最大模式", fontSize = 13.sp, color = TextPrimary)
+                Text(stringResource(R.string.ch_max), fontSize = 13.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.maxMode) "不下发 max_tokens，思考顶到 high" else "按配置的 max_tokens 走",
+                    if (Cfg.maxMode) stringResource(R.string.ch_max_d) else stringResource(R.string.ch_max_off),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
@@ -216,6 +221,6 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
             )
         }
         Spacer(Modifier.height(10.dp))
-        Text("增删模型配置去 设置 → 模型；压缩阈值在 设置 → 对话", fontSize = 10.sp, color = TextSecondary)
+        Text(stringResource(R.string.ch_tip), fontSize = 10.sp, color = TextSecondary)
     }
 } //本轮配置面板

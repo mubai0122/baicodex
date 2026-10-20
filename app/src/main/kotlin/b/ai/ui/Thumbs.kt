@@ -31,6 +31,8 @@ import b.ai.core.Images
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.TextSecondary
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /**图片缩略图排：输入框、全屏输入共用一条。onRemove非空带删除角标，onOpen非空能点开；宽了横向滑 */
 @Composable
@@ -70,7 +72,7 @@ fun ImgThumbs(
                         )
                     } else {
                         //文件被清掉时留个记号，别显示成一块空白
-                        Text("图", fontSize = 10.sp, color = TextSecondary)
+                        Text(stringResource(R.string.th_image), fontSize = 10.sp, color = TextSecondary)
                     }
                 }
                 if (onRemove != null) {
@@ -157,7 +159,7 @@ fun ImgFull(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Text("图", fontSize = 12.sp, color = TextSecondary)
+                    Text(stringResource(R.string.th_image), fontSize = 12.sp, color = TextSecondary)
                 }
             }
         }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import b.ai.core.Cfg
 import b.ai.App
+import b.ai.R
 import java.io.File
 import b.ai.core.ChatMsg
 import b.ai.core.Env
@@ -81,8 +82,11 @@ object Agent {
         private set
     var sessions by mutableStateOf<List<SessionRow>>(emptyList())
         private set
-    var sessionTitle by mutableStateOf("新会话")
+    var sessionTitle by mutableStateOf("")
         private set
+
+    /**取资源文案用；不叫 ctx 是因为 runLoop 里有同名局部变量 */
+    private val host: Context get() = App.self
 
     private var job: Job? = null
     private var runSid: String? = null
@@ -184,7 +188,7 @@ object Agent {
 
     fun renameSession(id: String, title: String) {
         scope.launch {
-            withContext(Dispatchers.IO) { Repo.renameSession(id, title.trim().ifBlank { "未命名会话" }) }
+            withContext(Dispatchers.IO) { Repo.renameSession(id, title.trim().ifBlank { host.getString(R.string.ag_unnamed) }) }
             reloadSessions()
         }
     }
@@ -247,7 +251,7 @@ object Agent {
         val all = withContext(Dispatchers.IO) { Repo.sessions() }
         sessions = all
         val sid = sessionId
-        sessionTitle = all.firstOrNull { it.id == sid }?.title ?: "新会话"
+        sessionTitle = all.firstOrNull { it.id == sid }?.title.orEmpty()
     } //会话列表只在需要时刷新，避免每条消息都全表查一次
 
     fun stats(): Pair<Int, Int> {
@@ -260,7 +264,7 @@ object Agent {
         Speak.stop()
         pending?.let { if (!it.deferred.isCompleted) it.deferred.complete(false) }
         pending = null
-        status = "已停止"
+        status = host.getString(R.string.ag_stopped)
         sContent.setLength(0)
         sReason.setLength(0)
         chunks.value = "" to ""
@@ -279,7 +283,7 @@ object Agent {
     fun send(text: String, images: List<String> = emptyList()) {
         if (busy) return
         if (!Cfg.ready) {
-            appendLocalAsync(ChatMsg(role = "assistant", content = "还没配置模型：请到设置里填 base_url / API key / 模型。", isError = true))
+            appendLocalAsync(ChatMsg(role = "assistant", content = host.getString(R.string.ag_no_model), isError = true))
             return
         }
         busy = true
@@ -311,9 +315,9 @@ object Agent {
                 append(ChatMsg(role = "user", content = text, images = images))
                 runLoop()
             } catch (e: CancellationException) {
-                status = "已停止"
+                status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = "出错了：${e.message}", isError = true))
+                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
                 busy = false
@@ -335,9 +339,9 @@ object Agent {
                 append(ChatMsg(role = "user", content = t))
                 runLoop()
             } catch (e: CancellationException) {
-                status = "已停止"
+                status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = "出错了：${e.message}", isError = true))
+                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
                 busy = false
@@ -350,7 +354,7 @@ object Agent {
     fun regenerate(msgId: Long, note: String? = null) {
         if (busy) return
         if (messages.none { it.id == msgId }) {
-            status = "当前会话里没有这条回复，无法重新生成"
+            status = host.getString(R.string.ag_no_regen)
             return
         }
         busy = true
@@ -362,14 +366,14 @@ object Agent {
                 val tip = note?.trim()
                 if (!tip.isNullOrEmpty()) append(ChatMsg(role = "user", content = tip))
                 if (messages.none { it.role == "user" }) {
-                    status = "没有可用的用户消息，无法重新生成"
+                    status = host.getString(R.string.ag_no_user_msg)
                 } else {
                     runLoop()
                 }
             } catch (e: CancellationException) {
-                status = "已停止"
+                status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = "出错了：${e.message}", isError = true))
+                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
                 busy = false
@@ -412,7 +416,7 @@ object Agent {
     private suspend fun runLoop() {
         val ctx = currentCoroutineContext()
         val temp = Cfg.temperature.takeIf { it >= 0f }?.toDouble()
-        status = "正在请求模型…"
+        status = host.getString(R.string.ag_ask_model)
         busySince = System.currentTimeMillis()
         var round = 0
         compact(false)
@@ -424,7 +428,7 @@ object Agent {
             sContent.setLength(0)
             sReason.setLength(0)
             chunks.value = "" to ""
-            status = "正在请求模型…"
+            status = host.getString(R.string.ag_ask_model)
             busySince = System.currentTimeMillis()
             val emit: (String, String) -> Unit = { t, r ->
                 if (t.isNotEmpty() || r.isNotEmpty()) {
@@ -452,7 +456,7 @@ object Agent {
                             }
                         }
                         streamed ?: run {
-                            status = "流式不可用，改走整包请求…"
+                            status = host.getString(R.string.ag_stream_fallback)
                             withContext(Dispatchers.IO) {
                                 client.chat(Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams)
                             }
@@ -465,7 +469,7 @@ object Agent {
                     if (e is LlmException && empty && retryable(e) && total > 1 && attempt < total - 1) {
                         attempt++
                         keyIdx = (keyIdx + 1) % total
-                        status = "换个 Key 重试…"
+                        status = host.getString(R.string.ag_key_retry)
                         sContent.setLength(0)
                         sReason.setLength(0)
                         chunks.value = "" to ""
@@ -479,7 +483,7 @@ object Agent {
             chunks.value = "" to ""
             sContent.setLength(0)
             sReason.setLength(0)
-            status = "整理回复…"
+            status = host.getString(R.string.ag_tidy)
             val content = resp.text("content")
             val reason = resp.text("reasoning_content")
                 .ifBlank { resp.text("reasoning") }
@@ -518,20 +522,20 @@ object Agent {
                     )
                     return@forEachIndexed
                 }
-                status = "等待确认 ${Tools.label(c.name)}（${i + 1}/${calls.size}）"
+                status = host.getString(R.string.ag_wait_fmt, Tools.label(c.name), i + 1, calls.size)
                 busySince = System.currentTimeMillis()
                 val allowed = decide(c)
                 if (!allowed) {
                     appendToolMsg(c, "用户拒绝执行该工具调用，未做任何改动。", Route.SANDBOX, true)
                     return@forEachIndexed
                 }
-                status = "执行 ${Tools.label(c.name)}（${i + 1}/${calls.size}）…"
+                status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
                 busySince = System.currentTimeMillis()
                 val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
                 val out = withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
                 appendToolMsg(c, out.text, out.route, !out.ok)
             }
-            status = "继续推理…"
+            status = host.getString(R.string.ag_think_again)
             busySince = System.currentTimeMillis()
         }
     } //模型 → 工具 → 回传 的主循环
@@ -630,7 +634,7 @@ object Agent {
             append(flow).append("\n\n")
             append("设备：").append(dev)
             append("；当前工作方式：").append(mode)
-            append("；Android/data 与 obb：").append(Router.dataZone())
+            append("；Android/data 与 obb：").append(Router.dataZone(App.self))
             if (Cfg.workMode == WorkMode.NORMAL) {
                 append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / make_dir / delete_file）")
             }
@@ -751,9 +755,9 @@ object Agent {
         if (busy) return
         scope.launch {
             busy = true
-            status = "正在压缩上下文…"
+            status = host.getString(R.string.ag_compress_run)
             val ok = runCatching { compact(true) }.getOrDefault(false)
-            status = if (ok) "已生成上下文摘要" else "内容太少或模型未返回，未压缩"
+            status = host.getString(if (ok) R.string.ag_compress_done else R.string.ag_compress_skip)
             busy = false
                 runSid = null
                 runHistory = emptyList()
@@ -799,7 +803,7 @@ object Agent {
         if (render.length > 12_000) render = head + renderOld(120)
         if (render.length > 12_000) render = render.take(12_000)
         if (render.isBlank()) return false
-        status = "正在压缩上下文…"
+        status = host.getString(R.string.ag_compress_run)
         val pay = JSONArray().apply {
             put(JSONObject().put("role", "system").put("content", SUMMARY_PROMPT))
             put(JSONObject().put("role", "user").put("content", render))
@@ -813,17 +817,17 @@ object Agent {
         if (text.isBlank()) return false
         appendLocal(ChatMsg(role = "summary", content = "[[upto:${old.last().id}]]" + text))
         budgetScale = (budgetScale + 0.5f).coerceAtMost(3f)
-        status = "继续推理…"
+        status = host.getString(R.string.ag_think_again)
         return true
     } //超预算或条数到线时压成摘要
 
     fun compressNow(): String {
-        if (busy) return "正在跑，稍后再压"
+        if (busy) return host.getString(R.string.ag_compress_busy)
         scope.launch {
             val ok = runCatching { compact(true) }.getOrDefault(false)
-            if (!ok) status = "没有可压缩的内容"
+            if (!ok) status = host.getString(R.string.ag_compress_none)
         }
-        return "正在压缩…"
+        return host.getString(R.string.ag_compressing)
     } //手动压缩
 
     fun clearCurrent() {
@@ -831,7 +835,7 @@ object Agent {
         scope.launch {
             withContext(Dispatchers.IO) {
                 Repo.clearMessages(sid)
-                Repo.renameSession(sid, "新会话")
+                Repo.renameSession(sid, host.getString(R.string.ag_new_session))
             }
             messages = emptyList()
             status = ""
@@ -844,16 +848,16 @@ object Agent {
         val list = Repo.messages(sid)
         if (list.isEmpty()) return null
         val sb = StringBuilder()
-        sb.append("# ").append(sessionTitle).append("\n\n")
+        sb.append("# ").append(sessionTitle.ifBlank { host.getString(R.string.ag_new_session) }).append("\n\n")
         list.forEach { m ->
             when (m.role) {
-                "user" -> sb.append("**用户**\n\n").append(m.content).append("\n\n")
+                "user" -> sb.append(host.getString(R.string.ag_ex_user)).append("\n\n").append(m.content).append("\n\n")
                 "assistant" -> {
                     if (m.reasoning.isNotBlank()) {
-                        sb.append("<details><summary>思考过程</summary>\n\n")
+                        sb.append("<details><summary>").append(host.getString(R.string.ag_ex_think)).append("</summary>\n\n")
                             .append(m.reasoning).append("\n\n</details>\n\n")
                     }
-                    if (m.content.isNotBlank()) sb.append("**助手**\n\n").append(m.content).append("\n\n")
+                    if (m.content.isNotBlank()) sb.append(host.getString(R.string.ag_ex_assistant)).append("\n\n").append(m.content).append("\n\n")
                     m.toolCalls.forEach {
                         sb.append("> 调用 `").append(it.name).append("` ")
                             .append(it.arguments.replace("\n", " ")).append("\n\n")
@@ -861,7 +865,7 @@ object Agent {
                 }
                 "tool" -> sb.append("> 结果 `").append(m.toolName ?: "").append("`\n\n```\n")
                     .append(m.content.take(6000)).append("\n```\n\n")
-                "summary" -> sb.append("> 上下文摘要：").append(stripMarker(m.content)).append("\n\n")
+                "summary" -> sb.append(host.getString(R.string.ag_ex_summary)).append(stripMarker(m.content)).append("\n\n")
             }
         }
         return runCatching {

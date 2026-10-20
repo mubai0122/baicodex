@@ -1,4 +1,5 @@
 package b.ai.ui
+import android.content.Context
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +38,8 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 一次 @ 提及：start 是 @ 的下标，token 是 @ 后面的内容 */
 data class Mention(val start: Int, val token: String)
@@ -54,6 +58,7 @@ fun mentionOf(text: String): Mention? {
 
 @Composable
 fun MentionPanel(token: String, onPick: (String) -> Unit) {
+    val ctx = LocalContext.current
     val fileMode = token == "files" || token.startsWith("files ")
     val raw = if (fileMode) token.removePrefix("files").trim() else token.trim()
     var rows by remember(raw, fileMode) { mutableStateOf<List<File>>(emptyList()) }
@@ -102,9 +107,9 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
         ) {
             Text(
                 when {
-                    fileMode -> "文件"
-                    raw.isBlank() -> "@ 技能 / 工具 / 文件"
-                    else -> "匹配「$raw」"
+                    fileMode -> stringResource(R.string.mn_files)
+                    raw.isBlank() -> stringResource(R.string.mn_all)
+                    else -> stringResource(R.string.mn_match, raw)
                 },
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
@@ -112,7 +117,7 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
             )
             Spacer(Modifier.weight(1f))
             Text(
-                if (fileMode) "点目录继续进，点文件填路径" else "@files 接路径",
+                if (fileMode) stringResource(R.string.mn_files_tip) else stringResource(R.string.mn_files_cmd),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -120,14 +125,14 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
         LazyColumn(Modifier.heightIn(max = 120.dp)) {
             if (fileMode) {
                 when {
-                    !loaded -> item { Hint("读取中…") }
-                    rows.isEmpty() -> item { Hint("这个路径下没有可列的内容") }
+                    !loaded -> item { Hint(stringResource(R.string.mn_loading)) }
+                    rows.isEmpty() -> item { Hint(stringResource(R.string.mn_empty_dir)) }
                     else -> items(rows.size) { i ->
                         val f = rows[i]
                         val p = f.absolutePath
                         MentionRow(
                             title = if (f.isDirectory) "${f.name}/" else f.name,
-                            sub = if (f.isDirectory) "目录" else sizeText(f.length()),
+                            sub = if (f.isDirectory) stringResource(R.string.mn_dir) else sizeText(f.length()),
                             onTap = { onPick(if (f.isDirectory) "files $p/" else "files $p") }
                         )
                     }
@@ -145,30 +150,31 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
                 }
                 val wsHit = wsFiles.filter { raw.isBlank() || it.contains(raw, true) }.take(40)
                 if (raw.isNotBlank() && ks.isEmpty() && ts.isEmpty() && wsHit.isEmpty()) {
-                    item { Hint("没有匹配「$raw」的技能、工具或工作区文件，试试 @files 浏览目录") }
+                    item { Hint(stringResource(R.string.mn_no_match, raw)) }
                 }
-                item { GroupTitle("技能", ks.size) }
+                item { GroupTitle(stringResource(R.string.mn_skills), ks.size) }
                 if (ks.isEmpty()) {
-                    item { Hint("还没有技能：设置 → 扩展 → 技能专区 里添加") }
+                    item { Hint(stringResource(R.string.mn_no_skill)) }
                 } else {
                     items(ks.size) { i ->
                         val s = ks[i]
                         MentionRow(
-                            title = s.name + if (s.on) "" else "（未启用）",
-                            sub = if (s.desc.isBlank()) "${s.body.length} 字" else s.desc,
-                            onTap = { onPick(skillText(s.name, s.body)) }
+                            title = Skills.displayName(ctx, s) + if (s.on) "" else stringResource(R.string.mn_off),
+                            sub = if (s.desc.isBlank()) stringResource(R.string.mn_chars, s.body.length)
+                            else Skills.displayDesc(ctx, s),
+                            onTap = { onPick(skillText(ctx, s.name, s.body)) }
                         )
                     }
                 }
-                item { GroupTitle("工具", ts.size) }
+                item { GroupTitle(stringResource(R.string.mn_tools), ts.size) }
                 items(ts.size) { i ->
                     val t = ts[i]
                     MentionRow(Tools.label(t), t) { onPick("@$t ") }
                 }
                 if (wsFiles.isNotEmpty()) {
-                    item { GroupTitle("工作区文件", wsHit.size) }
+                    item { GroupTitle(stringResource(R.string.mn_ws_files), wsHit.size) }
                     if (wsHit.isEmpty()) {
-                        item { Hint("工作区里没有匹配「$raw」的文件") }
+                        item { Hint(stringResource(R.string.mn_ws_empty, raw)) }
                     } else {
                         items(wsHit.size) { i ->
                             val rel = wsHit[i]
@@ -177,9 +183,9 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
                     }
                 }
                 if (raw.isBlank()) {
-                    item { GroupTitle("文件", 0) }
+                    item { GroupTitle(stringResource(R.string.mn_files), 0) }
                     item {
-                        MentionRow("files", "接路径浏览，起点是" + Workspace.path().ifBlank { "/sdcard" }) {
+                        MentionRow("files", stringResource(R.string.mn_files_desc) + Workspace.path().ifBlank { "/sdcard" }) {
                             onPick("files " + (Workspace.path().ifBlank { "/sdcard" }) + "/")
                         }
                     }
@@ -224,8 +230,8 @@ private fun Hint(text: String) {
     Text(text, fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(12.dp))
 } //空提示
 
-private fun skillText(name: String, body: String): String =
-    "用技能《$name》：\n" + body.take(4000) + "\n" //技能点击后填进输入框的文本
+private fun skillText(ctx: Context, name: String, body: String): String =
+    ctx.getString(R.string.mn_use_skill, name) + body.take(4000) + "\n" //技能点击后填进输入框的文本
 
 private fun sizeText(n: Long): String = when {
     n >= 1L shl 20 -> "${n / (1L shl 20)} MB"

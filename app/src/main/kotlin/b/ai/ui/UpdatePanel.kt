@@ -44,6 +44,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 更新弹窗的全局状态：启动时静默检查与设置里手动检查都写这里，由根弹窗层统一渲染 */
 object UpdateUi {
@@ -80,7 +82,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     fun startDownload() {
         if (pct in 0..100) return
         pct = 0
-        msg = "开始下载…"
+        msg = ctx.getString(R.string.up_startdl)
         scope.launch {
             val dest = File(File(ctx.filesDir, "update"), "bai-${info.latestCode}.apk")
             val r = withContext(Dispatchers.IO) {
@@ -89,7 +91,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 }
             }
             r.onSuccess { f ->
-                msg = "下载完成（${f.length() / 1024 / 1024}MB），正在打开安装器…"
+                msg = ctx.getString(R.string.up_done, f.length() / 1024 / 1024)
                 val err = ApkInstall.install(ctx, f)
                 if (err != null) {
                     msg = err
@@ -98,7 +100,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     pct = 101
                 }
             }.onFailure {
-                msg = "下载失败：${it.message?.take(80)}"
+                msg = ctx.getString(R.string.up_fail, it.message?.take(80) ?: "")
                 pct = -1
             }
         }
@@ -107,7 +109,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     //强制更新不传 onDismiss：点卡片外部关不掉
     ScrimCard(onDismiss = if (force) null else onClose) {
         Text(
-            info.title.ifBlank { "发现新版本" },
+            info.title.ifBlank { stringResource(R.string.up_new) },
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
@@ -116,7 +118,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         Text(
             listOf(
                 info.subtitle,
-                "版本 ${info.latestVersion}",
+                ctx.getString(R.string.up_ver, info.latestVersion),
                 info.updateDate
             ).filter { it.isNotBlank() }.joinToString(" · "),
             fontSize = 11.sp,
@@ -133,7 +135,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         ) {
             Column {
                 val ls = lines(info.content)
-                if (ls.isEmpty()) Text("本次更新没有写说明", fontSize = 12.sp, color = TextSecondary)
+                if (ls.isEmpty()) Text(stringResource(R.string.up_no_content), fontSize = 12.sp, color = TextSecondary)
                 ls.forEach {
                     Text(it, fontSize = 12.sp, color = TextPrimary)
                     Spacer(Modifier.height(3.dp))
@@ -164,8 +166,8 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         }
         if (direct.isBlank() && jump.isBlank()) {
             Text(
-                if (force) "上游未返回下载地址，这个版本需要更新后才能使用；请从发布渠道获取安装包。"
-                else "上游未返回下载地址，有新版本时可以到发布渠道获取安装包。",
+                if (force) stringResource(R.string.up_no_url_force)
+                else stringResource(R.string.up_no_url),
                 fontSize = 11.sp,
                 color = if (force) DangerRed else TextSecondary
             )
@@ -178,9 +180,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 direct.isNotBlank() -> {
                     Text(
                         when {
-                            pct in 0..100 -> if (pct <= 0) "准备下载…" else "下载中 ${pct}%"
-                            pct == 101 -> "安装器已打开"
-                            else -> "下载并安装"
+                            pct in 0..100 -> if (pct <= 0) ctx.getString(R.string.up_prep) else ctx.getString(R.string.up_downloading, pct)
+                            pct == 101 -> ctx.getString(R.string.up_installer)
+                            else -> ctx.getString(R.string.up_dl_install)
                         },
                         fontSize = 12.sp,
                         color = Color.White,
@@ -194,7 +196,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 }
                 //没有直链就走下载页：应用内浏览器打不开就用系统浏览器
                 jump.isNotBlank() -> Text(
-                    "打开下载页",
+                    ctx.getString(R.string.up_open_page),
                     fontSize = 12.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -205,7 +207,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                         .padding(vertical = 11.dp)
                 )
                 force -> Text(
-                    "退出应用",
+                    ctx.getString(R.string.up_exit),
                     fontSize = 12.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
@@ -218,7 +220,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             }
             if (direct.isNotBlank() && jump.isNotBlank()) {
                 Text(
-                    "下载页",
+                    ctx.getString(R.string.up_page),
                     fontSize = 12.sp,
                     color = AccentBlue,
                     textAlign = TextAlign.Center,
@@ -232,7 +234,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             //强制更新不给关：没有稍后按钮
             if (!force) {
                 Text(
-                    "稍后再说",
+                    ctx.getString(R.string.up_later),
                     fontSize = 12.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
@@ -258,10 +260,11 @@ private fun openBrowser(ctx: Context, url: String) {
 
 @Composable
 fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
+    val ctx = LocalContext.current
     ScrimCard(onDismiss = onClose) {
-        Text("更新历史", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.up_hist), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(4.dp))
-        Text("共 ${list.size} 条，最新在上", fontSize = 11.sp, color = TextSecondary)
+        Text(ctx.getString(R.string.up_hist_sub, list.size), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
         Box(
             Modifier
@@ -273,18 +276,18 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
         ) {
             Column {
                 if (list.isEmpty()) {
-                    Text("服务端还没有更新记录", fontSize = 12.sp, color = TextSecondary)
+                    Text(stringResource(R.string.up_hist_empty), fontSize = 12.sp, color = TextSecondary)
                 }
                 list.forEachIndexed { i, h ->
                     if (i > 0) Spacer(Modifier.height(12.dp))
                     Text(
-                        h.title.ifBlank { "版本 ${h.version}" },
+                        h.title.ifBlank { ctx.getString(R.string.up_ver2, h.version) },
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
                     Text(
-                        listOf(h.subtitle, "版本 ${h.version}", h.date)
+                        listOf(h.subtitle, ctx.getString(R.string.up_ver2, h.version), h.date)
                             .filter { it.isNotBlank() }.joinToString(" · "),
                         fontSize = 10.sp,
                         color = TextSecondary
@@ -300,7 +303,7 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Text(
-                "关闭",
+                stringResource(R.string.up_close),
                 fontSize = 13.sp,
                 color = TextPrimary,
                 modifier = Modifier

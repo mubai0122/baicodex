@@ -1,5 +1,8 @@
 package b.ai.exec
 
+import android.content.Context
+
+import b.ai.R
 import b.ai.core.Cfg
 import b.ai.core.Repo
 import b.ai.core.Paths
@@ -300,16 +303,16 @@ object Workspace {
     } //列出所有工作区
 
     /** 删除一个工作区目录：当前使用的、被会话绑定的、数据根本身一律拒删 */
-    fun delete(path: String): String? {
+    fun delete(c: Context, path: String): String? {
         val abs = Router.normalize(path.trim()).trimEnd('/')
-        if (abs.isBlank() || abs == Paths.base().absolutePath) return "这是数据根，不能删"
+        if (abs.isBlank() || abs == Paths.base().absolutePath) return c.getString(R.string.ws_del_root)
         val f = File(abs)
-        if (!f.isDirectory) return "目录已经不存在"
-        if (abs == this.path()) return "这是当前使用中的工作区，先换一个再删"
+        if (!f.isDirectory) return c.getString(R.string.ws_del_gone)
+        if (abs == this.path()) return c.getString(R.string.ws_del_inuse)
         val bind = runCatching { Repo.workspaceBindings() }.getOrDefault(emptyMap())
-        if (bind.containsKey(abs)) return "还有会话绑定着它，先解绑再删"
+        if (bind.containsKey(abs)) return c.getString(R.string.ws_del_bound)
         val ok = runCatching { f.deleteRecursively() }.getOrDefault(false)
-        if (!ok) return "删除失败，可能没有写权限"
+        if (!ok) return c.getString(R.string.ws_del_fail)
         cachedTree = null
         return null
     } //安全删除工作区

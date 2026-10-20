@@ -1,13 +1,21 @@
 package b.ai.core
 
+import b.ai.R
+
 import org.json.JSONArray
 import org.json.JSONObject
 
 /** 工作方式：三档权限档位 */
-enum class WorkMode(val id: String, val label: String, val desc: String) {
-    NORMAL("normal", "普通用户", "App 沙箱权限，可选零宽路径拓展"),
-    SHIZUKU("shizuku", "Shizuku", "Binder 桥接，得到 shell(UID 2000) 能力"),
-    ROOT("root", "Root", "su -c 直接执行，无限制");
+enum class WorkMode(
+    val id: String,
+    val label: String,
+    val desc: String,
+    val labelRes: Int,
+    val descRes: Int
+) {
+    NORMAL("normal", "普通用户", "App 沙箱权限，可选零宽路径拓展", R.string.wm_normal, R.string.wm_normal_d),
+    SHIZUKU("shizuku", "Shizuku", "Binder 桥接，得到 shell(UID 2000) 能力", R.string.wm_shizuku, R.string.wm_shizuku_d),
+    ROOT("root", "Root", "su -c 直接执行，无限制", R.string.wm_root, R.string.wm_root_d);
 
     companion object {
         fun of(id: String?): WorkMode = entries.firstOrNull { it.id == id } ?: NORMAL
@@ -35,12 +43,12 @@ data class Provider(
 )
 
 /** 权限路径 */
-enum class Route(val label: String) {
-    SANDBOX("沙箱"),
-    ALL_FILES("全文件"),
-    ZERO_WIDTH("零宽"),
-    SHIZUKU("Shizuku"),
-    ROOT("root")
+enum class Route(val label: String, val labelRes: Int) {
+    SANDBOX("沙箱", R.string.rt_sandbox),
+    ALL_FILES("全文件", R.string.rt_all),
+    ZERO_WIDTH("零宽", R.string.rt_zero),
+    SHIZUKU("Shizuku", R.string.rt_shizuku),
+    ROOT("root", R.string.rt_root)
 }
 
 /** 会话 */

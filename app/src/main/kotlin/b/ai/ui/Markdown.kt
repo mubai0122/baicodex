@@ -39,6 +39,8 @@ import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 //代码块底色：深色模式下不能还是浅灰，否则整块糊成一片
 private val CodeBg get() = if (DarkColors) Color(0xFF23272F) else Color(0xFFF3F4F6)
@@ -205,7 +207,7 @@ private fun CodeBlock(b: MdBlock.Code) {
                     }
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
-                Text(if (done) "已复制" else "复制", fontSize = 10.sp, color = if (done) OkGreen else TextPrimary)
+                Text(if (done) stringResource(R.string.md_copied) else stringResource(R.string.md_copy), fontSize = 10.sp, color = if (done) OkGreen else TextPrimary)
             }
         }
         Text(

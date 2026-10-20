@@ -1,5 +1,6 @@
 package b.ai
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import b.ai.agent.Agent
 import b.ai.core.Cfg
+import b.ai.core.Lang
 import b.ai.core.Perms
 import b.ai.exec.Alarms
 import b.ai.net.Update
@@ -54,6 +56,10 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 class MainActivity : ComponentActivity() {
+    //换语言后要生效就得重建 Activity，所以 Context 在 attach 阶段就包成选定语言
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Lang.wrap(newBase))
+    } //包语言后的 Context
     //进程退出前把 TTS 引擎关掉，否则念到一半退出会漏声音
     override fun onDestroy() {
         Speak.release()

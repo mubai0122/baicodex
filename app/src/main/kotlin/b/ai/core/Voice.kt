@@ -9,6 +9,7 @@ import android.speech.SpeechRecognizer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import b.ai.R
 
 /** 系统语音识别：点一下开始、说完把文本交回去；不依赖任何云服务配置 */
 object Voice {
@@ -26,12 +27,12 @@ object Voice {
         }
         error = ""
         if (!SpeechRecognizer.isRecognitionAvailable(ctx)) {
-            error = "系统没有可用的语音识别服务"
+            error = ctx.getString(R.string.vo_no_service)
             return
         }
         val r = runCatching { SpeechRecognizer.createSpeechRecognizer(ctx) }.getOrNull()
         if (r == null) {
-            error = "语音识别初始化失败"
+            error = ctx.getString(R.string.vo_init_fail)
             return
         }
         sr = r
@@ -44,7 +45,7 @@ object Voice {
 
             override fun onError(e: Int) {
                 listening = false
-                error = errText(e)
+                error = errText(ctx, e)
             }
 
             override fun onResults(results: Bundle?) {
@@ -64,7 +65,7 @@ object Voice {
         }
         val ok = runCatching { r.startListening(i) }.isSuccess
         if (!ok) {
-            error = "启动语音识别失败"
+            error = ctx.getString(R.string.vo_start_fail)
             release()
             return
         }
@@ -82,16 +83,16 @@ object Voice {
         listening = false
     } //释放识别器
 
-    private fun errText(e: Int): String = when (e) {
-        SpeechRecognizer.ERROR_AUDIO -> "录音出错"
-        SpeechRecognizer.ERROR_CLIENT -> "识别客户端错误"
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "没有麦克风权限"
-        SpeechRecognizer.ERROR_NETWORK -> "网络错误"
-        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "网络超时"
-        SpeechRecognizer.ERROR_NO_MATCH -> "没听清，再说一次"
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "识别器忙"
-        SpeechRecognizer.ERROR_SERVER -> "语音服务报错"
-        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "没检测到说话"
-        else -> "识别失败($e)"
+    private fun errText(c: Context, e: Int): String = when (e) {
+        SpeechRecognizer.ERROR_AUDIO -> c.getString(R.string.vo_audio)
+        SpeechRecognizer.ERROR_CLIENT -> c.getString(R.string.vo_client)
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> c.getString(R.string.vo_perm)
+        SpeechRecognizer.ERROR_NETWORK -> c.getString(R.string.vo_net)
+        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> c.getString(R.string.vo_net_timeout)
+        SpeechRecognizer.ERROR_NO_MATCH -> c.getString(R.string.vo_no_match)
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> c.getString(R.string.vo_busy)
+        SpeechRecognizer.ERROR_SERVER -> c.getString(R.string.vo_server)
+        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> c.getString(R.string.vo_speech_timeout)
+        else -> c.getString(R.string.vo_fail_fmt, e)
     }
 } //系统语音输入

@@ -58,6 +58,8 @@ import androidx.compose.ui.unit.Dp
 import b.ai.core.Avatar
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 无原生涟漪的点击：卡片、胶囊、抽屉行一律用它 */
 fun Modifier.tap(enabled: Boolean = true, onClick: () -> Unit): Modifier = composed {
@@ -307,7 +309,7 @@ fun AvatarPick(title: String, desc: String, path: String, onPicked: (String) -> 
                 Text(desc, fontSize = 10.sp, color = TextSecondary)
             }
             Text(
-                "选图",
+                stringResource(R.string.cm_pick_image),
                 fontSize = 11.sp,
                 color = AccentBlue,
                 modifier = Modifier
@@ -319,7 +321,7 @@ fun AvatarPick(title: String, desc: String, path: String, onPicked: (String) -> 
         if (path.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(
-                "清除头像",
+                stringResource(R.string.cm_clear_avatar),
                 fontSize = 11.sp,
                 color = DangerRed,
                 modifier = Modifier

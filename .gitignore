@@ -22,3 +22,7 @@ workspace.json
 workspace.json.bak
 #内部文档（模型锚点与变更账本），不对外
 .docs/
+
+#python
+__pycache__/
+*.pyc

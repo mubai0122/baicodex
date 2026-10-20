@@ -1,5 +1,7 @@
 package b.ai.core
 
+import b.ai.R
+
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -73,5 +75,24 @@ object Perms {
         Manifest.permission.READ_EXTERNAL_STORAGE -> "读取存储"
         Manifest.permission.WRITE_EXTERNAL_STORAGE -> "写入存储"
         else -> p.substringAfterLast('.')
-    }
+    } //中文名（拼进系统提示用）
+
+    /**权限名的资源 id：未知权限返回 0 */
+    fun labelRes(p: String): Int = when (p) {
+        Manifest.permission.RECORD_AUDIO -> R.string.pr_mic
+        Manifest.permission.POST_NOTIFICATIONS -> R.string.pr_notify
+        Manifest.permission.READ_MEDIA_IMAGES -> R.string.pr_images
+        Manifest.permission.READ_MEDIA_VIDEO -> R.string.pr_videos
+        Manifest.permission.READ_MEDIA_AUDIO -> R.string.pr_audio
+        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED -> R.string.pr_audio_sel
+        Manifest.permission.READ_EXTERNAL_STORAGE -> R.string.pr_read_store
+        Manifest.permission.WRITE_EXTERNAL_STORAGE -> R.string.pr_write_store
+        else -> 0
+    } //界面用资源
+
+    /**界面用：按当前语言取权限名，未知权限退回类名 */
+    fun label(c: Context, p: String): String {
+        val r = labelRes(p)
+        return if (r == 0) p.substringAfterLast('.') else c.getString(r)
+    } //本地化权限名
 } //权限申请与跳转

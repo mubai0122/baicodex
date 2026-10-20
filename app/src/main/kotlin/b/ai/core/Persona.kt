@@ -1,5 +1,7 @@
 package b.ai.core
 
+import b.ai.R
+
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateOf
@@ -23,13 +25,6 @@ data class Persona(
     val postHistory: String = "",
     val profileId: String = ""
 ) {
-    /** 列表副标题：优先一句话简介，没有就报人设字数 */
-    val brief: String
-        get() = when {
-            desc.isNotBlank() -> desc
-            prompt.isNotBlank() -> "${prompt.length} 字人设"
-            else -> "空角色卡"
-        }
 } //角色卡
 
 /** 角色卡库：整表 JSON 落在数据根 personas.json，当前选中的 id 记在 Cfg.personaId；默认空 */
@@ -93,8 +88,20 @@ object Personas {
         )
     )
 
+    /**内置角色卡的界面文案：中文锚点 → 名称 / 简介 / 开场白，库里仍存中文原文 */
+    private data class PresetText(val name: Int, val desc: Int, val opener: Int)
+
+    private val TEXTS = mapOf(
+        "代码搭子" to PresetText(R.string.per_n1, R.string.per_d1, R.string.per_o1),
+        "严谨审阅" to PresetText(R.string.per_n2, R.string.per_d2, R.string.per_o2),
+        "运维值班" to PresetText(R.string.per_n3, R.string.per_d3, R.string.per_o3),
+        "文字打磨" to PresetText(R.string.per_n4, R.string.per_d4, 0),
+        "口语翻译" to PresetText(R.string.per_n5, R.string.per_d5, 0)
+    )
+
     private val cache = mutableStateOf<List<Persona>>(emptyList())
     private var sp: SharedPreferences? = null
+    private var app: Context? = null
 
     val list: List<Persona> get() = cache.value
 
@@ -102,6 +109,7 @@ object Personas {
         if (sp != null) return
         val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
         sp = p
+        app = c.applicationContext
         //文件优先；没有文件就迁移旧配置并写出去
         val fromFile = Store.read(FILE)
         if (fromFile != null) {
@@ -194,7 +202,7 @@ object Personas {
         if (p.name.isBlank() && p.prompt.isBlank()) return p
         val card = p.copy(
             id = p.id.ifBlank { UUID.randomUUID().toString() },
-            name = p.name.ifBlank { "未命名角色" }
+            name = p.name.ifBlank { res(R.string.per_unnamed) }
         )
         cache.value = cache.value + card
         save()
@@ -205,7 +213,7 @@ object Personas {
     fun update(p: Persona) {
         cache.value = cache.value.map {
             if (it.id != p.id) it else p.copy(
-                name = p.name.ifBlank { "未命名角色" },
+                name = p.name.ifBlank { res(R.string.per_unnamed) },
                 avatar = p.avatar.trim(),
                 desc = p.desc.trim(),
                 prompt = p.prompt.trim(),
@@ -246,6 +254,43 @@ object Personas {
         }.trim()
     } //拼系统提示
 
+    /**取一条资源文案：没有 Context（初始化前）时退回空串 */
+    private fun res(id: Int): String = if (id == 0) "" else app?.getString(id).orEmpty()
+
+    /**内置角色的中文原文；命中说明这张卡是预置的 */
+    private fun presetOf(p: Persona): Persona? = PRESETS.firstOrNull { it.name == p.name.trim() }
+
+    /**卡片标题：内置角色按当前语言取，用户自建或改过名字的原样返回 */
+    fun displayName(p: Persona): String {
+        val t = TEXTS[p.name.trim()] ?: return p.name
+        return res(t.name).ifBlank { p.name }
+    } //本地化角色名
+
+    /**卡片简介：内置角色的简介没被改过才用译文 */
+    fun displayDesc(p: Persona): String {
+        val pre = presetOf(p) ?: return p.desc
+        if (p.desc.trim() != pre.desc) return p.desc
+        return res(TEXTS[p.name.trim()]?.desc ?: 0).ifBlank { p.desc }
+    } //本地化角色简介
+
+    /**开场白：内置角色的开场白没被改过才用译文，新会话落库的就是这个 */
+    fun displayOpener(p: Persona): String {
+        val pre = presetOf(p) ?: return p.firstMsg.trim()
+        val raw = p.firstMsg.trim()
+        if (raw.isNotEmpty() && raw != pre.firstMsg.trim()) return raw
+        return res(TEXTS[p.name.trim()]?.opener ?: 0).ifBlank { raw }
+    } //本地化开场白
+
+    /** 列表副标题：优先一句话简介，没有就报人设字数 */
+    fun brief(p: Persona): String {
+        val d = displayDesc(p)
+        return when {
+            d.isNotBlank() -> d
+            p.prompt.isNotBlank() -> app?.getString(R.string.per_brief_fmt, p.prompt.length).orEmpty()
+            else -> res(R.string.per_empty)
+        }
+    } //列表副标题
+
     /** 当前角色的开场白：新会话建好后自动落一条 AI 消息，没有就返回空串 */
-    fun opener(): String = current()?.firstMsg?.trim().orEmpty()
+    fun opener(): String = current()?.let { displayOpener(it) }.orEmpty()
 } //角色卡库

@@ -56,6 +56,8 @@ object Cfg {
         mem("hint_text", "").value = p.getString("hint_text", "")!!
         mem("profile_id", "default").value = p.getString("profile_id", "default")!!
         mem("max_tokens", 0).value = p.getInt("max_tokens", 0)
+        //界面语言：空串 = 跟随系统
+        mem("lang", "").value = p.getString("lang", "")!!
         mem("max_mode", false).value = p.getBoolean("max_mode", false)
         mem("ctx_total", 128000).value = p.getInt("ctx_total", 128000)
         mem("ctx_pct", 70).value = p.getInt("ctx_pct", 70)
@@ -99,6 +101,10 @@ object Cfg {
     var onboarded: Boolean
         get() = mem("onboarded", false).value
         set(v) { mem("onboarded", false).value = v; put("onboarded", v) }
+    /** 界面语言：空串 = 跟随系统，其它是 BCP-47（zh-CN / zh-TW / en / ja / fr） */
+    var lang: String
+        get() = mem("lang", "").value
+        set(v) { mem("lang", "").value = v; put("lang", v) }
 
     var workMode: WorkMode
         get() = WorkMode.of(mem("work_mode", WorkMode.NORMAL.id).value)

@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import android.os.Parcel
 import b.ai.App
+import b.ai.R
 import rikka.shizuku.Shizuku
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -67,23 +68,23 @@ object Shiz {
     fun probe(ctx: Context): Probe {
         if (!Shizuku.pingBinder()) {
             return if (installed(ctx)) {
-                Probe(State.NOT_RUNNING, "已安装 Shizuku，但服务未运行：先打开 Shizuku App 启动服务")
+                Probe(State.NOT_RUNNING, ctx.getString(R.string.shiz_not_run))
             } else {
-                Probe(State.NOT_INSTALLED, "未安装 Shizuku：需先安装 Shizuku，再用 adb 或 root 启动服务")
+                Probe(State.NOT_INSTALLED, ctx.getString(R.string.shiz_not_installed))
             }
         }
         val uid = runCatching { Shizuku.getUid() }.getOrDefault(-1)
         val ver = runCatching { Shizuku.getVersion() }.getOrDefault(-1)
         if (runCatching { Shizuku.isPreV11() }.getOrDefault(true)) {
-            return Probe(State.NO_PERMISSION, "Shizuku 服务版本过旧（v$ver < 11），请升级 Shizuku", uid)
+            return Probe(State.NO_PERMISSION, ctx.getString(R.string.shiz_old, ver), uid)
         }
         val granted = runCatching { Shizuku.checkSelfPermission() }
             .getOrDefault(PackageManager.PERMISSION_DENIED)
         if (granted == PackageManager.PERMISSION_GRANTED) {
-            val backend = if (uid == 0) "root 后端" else "adb 后端"
-            return Probe(State.READY, "已授权（服务 v$ver，UID $uid · $backend）", uid)
+            val backend = ctx.getString(if (uid == 0) R.string.shiz_back_root else R.string.shiz_back_adb)
+            return Probe(State.READY, ctx.getString(R.string.shiz_ready, ver, uid, backend), uid)
         }
-        return Probe(State.NO_PERMISSION, "Shizuku 已运行但本应用未授权：点「申请 Shizuku 授权」", uid)
+        return Probe(State.NO_PERMISSION, ctx.getString(R.string.shiz_no_perm), uid)
     } //真检测：binder 存活 + 服务版本 + 授权状态
 
     fun requestPermission(cb: (Boolean) -> Unit) {

@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.ui.theme.AccentBlue
@@ -42,7 +43,7 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 /** 底栏的一格：自绘图标 + 文案 */
-data class FloatTab(val label: String, val icon: @Composable (Color) -> Unit)
+data class FloatTab(val labelRes: Int, val icon: @Composable (Color) -> Unit)
 
 /** 悬浮胶囊底栏：白底实心 + 选中胶囊滑动，横向可拖拽切换（无液态玻璃） */
 @Composable
@@ -135,7 +136,7 @@ fun FloatTabBar(
                     ) {
                         tab.icon(c)
                         Spacer(Modifier.height(2.dp))
-                        Text(tab.label, fontSize = 10.sp, color = c, maxLines = 1)
+                        Text(stringResource(tab.labelRes), fontSize = 10.sp, color = c, maxLines = 1)
                     }
                 }
             }

@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,10 +48,13 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 厂商 + 连通配置面板：引导页与设置页共用 */
 @Composable
 fun ModelSetupPanel() {
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var models by remember { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
@@ -89,7 +93,7 @@ fun ModelSetupPanel() {
         //配置名：留空就跟随「厂商 · 模型」，右侧方按钮一键回到自动名
         val autoNow = Profiles.autoLabel(Cfg.providerId, Cfg.model)
         FieldBox(
-            "配置名",
+            stringResource(R.string.ms_name),
             if (Cfg.profileCustom) Cfg.profileName else "",
             {
                 Cfg.profileName = it
@@ -98,7 +102,7 @@ fun ModelSetupPanel() {
             },
             placeholder = autoNow,
             trailing = {
-                SquareIconBox(Icons.Filled.Refresh, desc = "用自动名") {
+                SquareIconBox(Icons.Filled.Refresh, desc = stringResource(R.string.ms_auto)) {
                     Cfg.profileName = ""
                     Cfg.profileCustom = false
                     Profiles.capture()
@@ -107,13 +111,13 @@ fun ModelSetupPanel() {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "当前显示：「$autoNow」",
+            stringResource(R.string.ms_showing, autoNow),
             fontSize = 10.sp,
             color = TextSecondary,
             maxLines = 1
         )
         Spacer(Modifier.height(8.dp))
-        SectionTitle("厂商", "点开列表选，选完自动填 base_url，仍可手改")
+        SectionTitle(stringResource(R.string.ms_provider), stringResource(R.string.ms_provider_sub))
         Row(
             Modifier
                 .fillMaxWidth()
@@ -125,13 +129,13 @@ fun ModelSetupPanel() {
             Column(Modifier.weight(1f)) {
                 Text(Providers.byId(Cfg.providerId).name, fontSize = 14.sp, color = TextPrimary)
                 Text(
-                    Providers.byId(Cfg.providerId).baseUrl.ifBlank { "需手填 base_url" },
+                    Providers.byId(Cfg.providerId).baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
                     fontSize = 10.sp,
                     color = TextSecondary,
                     maxLines = 1
                 )
             }
-            Text("选择 ›", fontSize = 11.sp, color = AccentBlue)
+            Text(stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
         }
         Field("base_url", Cfg.baseUrl, { Cfg.baseUrl = it; Profiles.capture() }, placeholder = "https://api.deepseek.com/v1")
         //可填多个 Key：一行一个，请求失败自动换下一个
@@ -142,7 +146,7 @@ fun ModelSetupPanel() {
             secret = true,
             singleLine = false,
             minLines = 2,
-            placeholder = "sk-…（多 Key 一行一个）"
+            placeholder = stringResource(R.string.ms_keys_hint)
         )
         Spacer(Modifier.height(10.dp))
         Row(
@@ -155,22 +159,22 @@ fun ModelSetupPanel() {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    Cfg.model.ifBlank { "未选模型" },
+                    Cfg.model.ifBlank { stringResource(R.string.ms_no_model) },
                     fontSize = 14.sp,
                     color = TextPrimary,
                     maxLines = 1
                 )
                 Text(
-                    if (models.isEmpty()) "先拉取模型，或直接在下面手填" else "已拉取 ${models.size} 个，点开选",
+                    if (models.isEmpty()) stringResource(R.string.ms_pull_first) else stringResource(R.string.ms_pulled, models.size),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
             }
-            Text(if (loading) "获取中…" else "选择 ›", fontSize = 11.sp, color = AccentBlue)
+            Text(if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(if (loading) "获取中…" else "获取模型") {
+            GhostButton(if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_fetch)) {
                 if (loading) return@GhostButton
                 loading = true
                 err = null
@@ -183,13 +187,13 @@ fun ModelSetupPanel() {
                     loading = false
                     res.onSuccess {
                         models = it
-                        if (it.isEmpty()) err = "接口没有返回模型，手动填写模型名即可" else dialog = "model"
+                        if (it.isEmpty()) err = ctx.getString(R.string.ms_no_models) else dialog = "model"
                     }.onFailure { err = it.message }
                 }
             }
             Spacer(Modifier.width(8.dp))
             Text(
-                "走 GET {base_url}/models；拿到后弹窗里选，也可手动填",
+                stringResource(R.string.ms_get_models_tip),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -198,13 +202,13 @@ fun ModelSetupPanel() {
             Spacer(Modifier.height(6.dp))
             Text(err!!, fontSize = 11.sp, color = DangerRed)
         }
-        Field("模型名", Cfg.model, { Cfg.model = it; Profiles.capture() }, placeholder = "手动填写，如 deepseek-chat")
+        Field(stringResource(R.string.ms_model_name), Cfg.model, { Cfg.model = it; Profiles.capture() }, placeholder = stringResource(R.string.ms_model_hint))
         Spacer(Modifier.height(10.dp))
-        Text("单轮最大 token", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.ms_max_tok), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(0, 2048, 4096, 8192, 16384).forEach { v ->
-                PolicyChip(if (v == 0) "默认" else v.toString(), Cfg.maxTokens == v) {
+                PolicyChip(if (v == 0) stringResource(R.string.ms_default) else v.toString(), Cfg.maxTokens == v) {
                     Cfg.maxTokens = v
                     Profiles.capture()
                 }
@@ -212,16 +216,16 @@ fun ModelSetupPanel() {
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "0/默认表示不下发 max_tokens，跟随服务端；设太小会把长回答截断。",
+            stringResource(R.string.ms_max_tok_tip),
             fontSize = 10.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("保存到当前配置") { Profiles.capture() }
+            GhostButton(stringResource(R.string.ms_save)) { Profiles.capture() }
             Spacer(Modifier.width(8.dp))
             Text(
-                "写回「${Profiles.selected?.label ?: "新配置"}」",
+                stringResource(R.string.ms_saved_to, Profiles.selected?.label ?: stringResource(R.string.ms_new_cfg)),
                 fontSize = 10.sp,
                 color = TextSecondary,
                 maxLines = 1
@@ -240,13 +244,13 @@ fun ProfileList() {
         }
         Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("新增配置") { Profiles.capture().let { Profiles.duplicateCurrent() } }
+            GhostButton(stringResource(R.string.ms_add)) { Profiles.capture().let { Profiles.duplicateCurrent() } }
             Spacer(Modifier.width(8.dp))
-            Text("复制当前配置再改，适合同厂商加第二个模型", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.ms_add_sub), fontSize = 10.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            "改动实时写回当前配置；点下面按钮可以再手动存一次。",
+            stringResource(R.string.ms_edit_tip),
             fontSize = 10.sp,
             color = TextSecondary
         )
@@ -262,9 +266,9 @@ private fun ProfileRow(p: ModelProfile) {
         else Profiles.autoLabel(Cfg.providerId, Cfg.model)
     } else p.label
     val sub = if (sel) {
-        Cfg.model.ifBlank { "未选模型" } + " · " + Cfg.baseUrl.ifBlank { "无 base_url" }
+        Cfg.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " + Cfg.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
     } else {
-        p.model.ifBlank { "未选模型" } + " · " + p.baseUrl.ifBlank { "无 base_url" }
+        p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " + p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
     }
     Row(
         Modifier
@@ -317,7 +321,7 @@ private fun DialogHead(title: String, onClose: () -> Unit) {
 @Composable
 private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose: () -> Unit) {
     ScrimCard {
-        DialogHead("选择厂商", onClose)
+        DialogHead(stringResource(R.string.ms_pick_provider), onClose)
         Spacer(Modifier.height(8.dp))
         Column(
             Modifier
@@ -341,7 +345,7 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
                     Column(Modifier.weight(1f)) {
                         Text(p.name, fontSize = 13.sp, color = if (sel) AccentBlue else TextPrimary)
                         Text(
-                            p.baseUrl.ifBlank { "需手填 base_url" },
+                            p.baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
                             fontSize = 10.sp,
                             color = TextSecondary,
                             maxLines = 1
@@ -352,7 +356,7 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("选完会自动把 base_url 填进表单，可以再改", fontSize = 10.sp, color = TextSecondary)
+        Text(stringResource(R.string.ms_pick_provider_sub), fontSize = 10.sp, color = TextSecondary)
     }
 } //厂商弹窗
 
@@ -364,7 +368,7 @@ private fun ModelDialog(
     onClose: () -> Unit
 ) {
     ScrimCard {
-        DialogHead("选择模型", onClose)
+        DialogHead(stringResource(R.string.ms_pick_model), onClose)
         Spacer(Modifier.height(8.dp))
         Column(
             Modifier
@@ -391,6 +395,6 @@ private fun ModelDialog(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("共 ${models.size} 个，来自 {base_url}/models", fontSize = 10.sp, color = TextSecondary)
+        Text(stringResource(R.string.ms_model_count, models.size), fontSize = 10.sp, color = TextSecondary)
     }
 } //模型弹窗

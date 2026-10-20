@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -70,10 +71,13 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 侧边栏：搜索 + 会话列表 + 底部图标栏（新对话 / 导出 / 设置） */
 @Composable
 fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -> Unit) {
+    val ctx = LocalContext.current
     var q by remember { mutableStateOf("") }
     var hit by remember { mutableStateOf<Set<String>?>(null) }
     var menu by remember { mutableStateOf<SessionRow?>(null) }
@@ -147,7 +151,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                     IcSearch(TextSecondary, side = 14.dp)
                     Spacer(Modifier.width(7.dp))
                     Box(Modifier.weight(1f)) {
-                        if (q.isEmpty()) Text("搜会话内容", fontSize = 12.sp, color = TextSecondary)
+                        if (q.isEmpty()) Text(stringResource(R.string.dw_search), fontSize = 12.sp, color = TextSecondary)
                         BasicTextField(
                             value = q,
                             onValueChange = { q = it },
@@ -173,10 +177,10 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("已选 ${sel.size} 条", fontSize = 12.sp, color = AccentBlue)
+                    Text(stringResource(R.string.dw_selected, sel.size), fontSize = 12.sp, color = AccentBlue)
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "全选",
+                        stringResource(R.string.dw_all),
                         fontSize = 12.sp,
                         color = TextSecondary,
                         modifier = Modifier
@@ -184,7 +188,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                     Text(
-                        "取消",
+                        stringResource(R.string.dw_cancel),
                         fontSize = 12.sp,
                         color = TextSecondary,
                         modifier = Modifier
@@ -227,7 +231,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                 if (shown.isEmpty()) {
                     item {
                         Text(
-                            if (h == null) "还没有会话，点底部「新对话」开始" else "没有匹配的会话",
+                            if (h == null) stringResource(R.string.dw_empty) else stringResource(R.string.dw_no_match),
                             fontSize = 11.sp,
                             color = TextSecondary,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
@@ -252,17 +256,17 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                     Modifier.fillMaxWidth().padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DrawerAction("新对话", Modifier.weight(1f)) {
+                    DrawerAction(stringResource(R.string.dw_new), Modifier.weight(1f)) {
                         toast = ""
                         onNewChat()
                     }
-                    DrawerAction("导出", Modifier.weight(1f)) {
+                    DrawerAction(stringResource(R.string.dw_export), Modifier.weight(1f)) {
                         scope.launch {
                             val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
-                            toast = if (p == null) "当前会话为空，没导出" else "已导出：$p"
+                            toast = if (p == null) ctx.getString(R.string.dw_none) else ctx.getString(R.string.dw_exported, p)
                         }
                     }
-                    DrawerAction("设置", Modifier.weight(1f)) {
+                    DrawerAction(stringResource(R.string.dw_settings), Modifier.weight(1f)) {
                         toast = ""
                         onOpenSettings()
                     }
@@ -273,7 +277,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                     Modifier.fillMaxWidth().padding(bottom = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    DrawerAction("改名", Modifier.weight(1f), enabled = sel.size == 1) {
+                    DrawerAction(stringResource(R.string.dw_rename), Modifier.weight(1f), enabled = sel.size == 1) {
                         //改名不另开弹窗：直接拉起菜单并落在就地编辑态
                         shown.firstOrNull { sel.contains(it.id) }?.let { s ->
                             menu = s
@@ -283,7 +287,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                         }
                     }
                     DrawerAction(
-                        if (bulkConfirm) "确认删除" else "删除",
+                        if (bulkConfirm) stringResource(R.string.dw_del_confirm) else stringResource(R.string.dw_del),
                         Modifier.weight(1f),
                         danger = true
                     ) {
@@ -293,7 +297,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                             val ids = sel
                             sel = emptySet()
                             Agent.deleteSessions(ids)
-                            toast = "已删除 ${ids.size} 条会话"
+                            toast = ctx.getString(R.string.dw_deleted, ids.size)
                         }
                     }
                 }
@@ -425,7 +429,7 @@ private fun SessionItem(
             //置顶的会话在标题后面挂一颗小星，一眼能看出哪些被钉住了
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    s.title,
+                    s.title.ifBlank { stringResource(R.string.ag_new_session) },
                     fontSize = 13.sp,
                     color = if (active || checked) AccentBlue else TextPrimary,
                     fontWeight = if (active || checked) FontWeight.Medium else FontWeight.Normal,
@@ -437,7 +441,7 @@ private fun SessionItem(
                     Spacer(Modifier.width(4.dp))
                     Icon(
                         Icons.Filled.Star,
-                        contentDescription = "已置顶",
+                        contentDescription = stringResource(R.string.dw_pinned),
                         tint = AccentBlue,
                         modifier = Modifier.size(10.dp)
                     )
@@ -483,7 +487,7 @@ private fun SessionMenu(
     ) {
             if (editing) {
                 Text(
-                    s.title,
+                    s.title.ifBlank { stringResource(R.string.ag_new_session) },
                     fontSize = 9.sp,
                     color = TextSecondary,
                     maxLines = 1,
@@ -507,20 +511,20 @@ private fun SessionMenu(
                     Modifier.fillMaxWidth().padding(horizontal = 9.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    MenuBtn("取消", false, Modifier.weight(1f)) { onCancelEdit() }
-                    MenuBtn("保存", true, Modifier.weight(1f)) { onRename(name) }
+                    MenuBtn(stringResource(R.string.dw_cancel), false, Modifier.weight(1f)) { onCancelEdit() }
+                    MenuBtn(stringResource(R.string.dw_save), true, Modifier.weight(1f)) { onRename(name) }
                 }
                 Spacer(Modifier.height(3.dp))
             } else {
-                MenuRow(Icons.Filled.Star, if (s.pinned) "取消置顶" else "置顶") { onPin() }
+                MenuRow(Icons.Filled.Star, if (s.pinned) stringResource(R.string.dw_unpin) else stringResource(R.string.dw_pin)) { onPin() }
                 MenuDivider()
-                MenuRow(Icons.Filled.Edit, "重命名") { onEdit() }
+                MenuRow(Icons.Filled.Edit, stringResource(R.string.dw_rename_menu)) { onEdit() }
                 MenuDivider()
-                MenuRow(Icons.Filled.Check, "多选") { onMulti() }
+                MenuRow(Icons.Filled.Check, stringResource(R.string.dw_multi)) { onMulti() }
                 MenuDivider()
                 MenuRow(
                     Icons.Filled.Delete,
-                    if (confirmDel) "确认删除" else "删除",
+                    if (confirmDel) stringResource(R.string.dw_del_confirm) else stringResource(R.string.dw_del),
                     danger = true
                 ) { if (confirmDel) onDelete() else onAskDelete() }
             }

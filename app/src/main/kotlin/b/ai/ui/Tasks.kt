@@ -46,6 +46,8 @@ import b.ai.ui.theme.TextSecondary
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 通知点开时要自动填进输入框的内容：由 MainActivity 写入，ChatScreen 取走 */
 object IntentInbox {
@@ -72,10 +74,10 @@ fun TaskDialog(onClose: () -> Unit) {
 
     ScrimCard(onDismiss = onClose) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("定时任务", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tk_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             Text(
-                "关闭",
+                stringResource(R.string.tk_close),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
@@ -92,33 +94,33 @@ fun TaskDialog(onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
         ) {
             //到点能不能准时，全看这三项：缺哪个系统都会把唤醒往后推
-            PermRow("精确闹钟", exact, "去授权") { Alarms.openExactAlarmSettings(ctx) }
-            PermRow("免电池优化", battery, "去设置") { Alarms.openBatterySettings(ctx) }
-            PermRow("通知", notice, "去设置") { Perms.openAppSettings(ctx) }
+            PermRow(stringResource(R.string.tk_exact), exact, stringResource(R.string.tk_grant)) { Alarms.openExactAlarmSettings(ctx) }
+            PermRow(stringResource(R.string.tk_battery), battery, stringResource(R.string.tk_to_settings)) { Alarms.openBatterySettings(ctx) }
+            PermRow(stringResource(R.string.tk_notice), notice, stringResource(R.string.tk_to_settings)) { Perms.openAppSettings(ctx) }
 
             Field(
-                label = "到点做什么",
+                label = stringResource(R.string.tk_what),
                 value = prompt,
                 onValueChange = { prompt = it },
-                placeholder = "例：查一下今天杭州到上海的余票，汇总给我",
+                placeholder = stringResource(R.string.tk_what_hint),
                 singleLine = false,
                 minLines = 3
             )
             Row(Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f)) {
-                    Field("时间 HH:mm", time, { time = it }, "08:30")
+                    Field(stringResource(R.string.tk_time), time, { time = it }, "08:30")
                 }
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) {
                     //重复任务只看时分，日期框只在「仅一次」时有意义
-                    Field("日期（仅一次）", date, { date = it }, "2026-01-01")
+                    Field(stringResource(R.string.tk_date), date, { date = it }, "2026-01-01")
                 }
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PolicyChip("每天重复", daily) { daily = true }
-                PolicyChip("仅一次", !daily) { daily = false }
-                PolicyChip("到点自动执行", auto) { auto = !auto }
+                PolicyChip(stringResource(R.string.tk_daily), daily) { daily = true }
+                PolicyChip(stringResource(R.string.tk_once), !daily) { daily = false }
+                PolicyChip(stringResource(R.string.tk_auto), auto) { auto = !auto }
             }
             if (err.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
@@ -126,7 +128,7 @@ fun TaskDialog(onClose: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                "保存",
+                stringResource(R.string.tk_save),
                 fontSize = 13.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -136,9 +138,9 @@ fun TaskDialog(onClose: () -> Unit) {
                     .tap {
                         val at = parseAt(date, time, daily)
                         if (prompt.isBlank()) {
-                            err = "先写到点要做什么"
+                            err = ctx.getString(R.string.tk_err_no_prompt)
                         } else if (at == null) {
-                            err = "时间格式不对，要 HH:mm（如 08:30）"
+                            err = ctx.getString(R.string.tk_err_time)
                         } else {
                             err = ""
                             val t = Schedules.add(prompt, at, daily, auto)
@@ -149,17 +151,15 @@ fun TaskDialog(onClose: () -> Unit) {
                     .padding(vertical = 10.dp)
             )
             Spacer(Modifier.height(12.dp))
-            Text("已排的任务", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Text(stringResource(R.string.tk_list), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             if (tasks.isEmpty()) {
-                Text("还没有任务", fontSize = 11.sp, color = TextSecondary, modifier = Modifier.padding(vertical = 6.dp))
+                Text(stringResource(R.string.tk_empty), fontSize = 11.sp, color = TextSecondary, modifier = Modifier.padding(vertical = 6.dp))
             } else {
                 tasks.forEach { t -> TaskRow(t, exact) }
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "说明：到点会发通知；勾了「自动执行」且应用进程活着、模型空闲时，会直接开一轮，" +
-                    "需要确认的高危工具会留在应用里等你点同意。想在息屏也准点，务必给本应用开自启动白名单" +
-                    "（各 ROM 在 设置 → 应用 → 自启动 里）。",
+                stringResource(R.string.tk_note),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -172,7 +172,7 @@ private fun PermRow(label: String, ok: Boolean, action: String, onClick: () -> U
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, fontSize = 11.sp, color = TextPrimary)
         Spacer(Modifier.width(6.dp))
-        Text(if (ok) "已就绪" else "未开启", fontSize = 10.sp, color = if (ok) OkGreen else DangerRed)
+        Text(if (ok) stringResource(R.string.tk_ready) else stringResource(R.string.tk_off), fontSize = 10.sp, color = if (ok) OkGreen else DangerRed)
         Spacer(Modifier.weight(1f))
         if (!ok) {
             Text(
@@ -201,7 +201,7 @@ private fun TaskRow(t: Task, exact: Boolean) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                "${if (t.daily) "每天 " else ""}${Alarms.fmt(t.at)}" + if (t.on) "" else "（已停）",
+                (if (t.daily) stringResource(R.string.tk_every) + " " else "") + Alarms.fmt(t.at) + if (t.on) "" else stringResource(R.string.tk_paused),
                 fontSize = 12.sp,
                 color = if (!t.on) TextSecondary else if (exact) TextPrimary else DangerRed
             )
@@ -218,7 +218,7 @@ private fun TaskRow(t: Task, exact: Boolean) {
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            "删",
+            stringResource(R.string.tk_del),
             fontSize = 11.sp,
             color = DangerRed,
             modifier = Modifier

@@ -44,6 +44,9 @@ import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 //柱状图与方格图共用的两色渐变：淡蓝 → 淡粉
 private val ToneBlue = Color(0xFF9FC3FF)
@@ -82,28 +85,28 @@ fun StatTab() {
         }
     }
 
-    SectionTitle("总计", "全部历史累计，口径是服务商回报的 prompt / completion")
+    SectionTitle(stringResource(R.string.st_total), stringResource(R.string.st_total_d))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(tk(snap.total), fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Text("总 token", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.st_total_tok), fontSize = 10.sp, color = TextSecondary)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("${snap.msgCount} 轮", fontSize = 12.sp, color = TextPrimary)
-                Text("${snap.activeDays} 天有记录", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.st_rounds, snap.msgCount), fontSize = 12.sp, color = TextPrimary)
+                Text(stringResource(R.string.st_active, snap.activeDays), fontSize = 10.sp, color = TextSecondary)
             }
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MiniStat("输入 prompt", snap.totalPrompt, Modifier.weight(1f))
-            MiniStat("输入（缓存）", snap.totalCached, Modifier.weight(1f))
-            MiniStat("输出 completion", snap.totalCompletion, Modifier.weight(1f))
+            MiniStat(stringResource(R.string.st_in), snap.totalPrompt, Modifier.weight(1f))
+            MiniStat(stringResource(R.string.st_in_cache), snap.totalCached, Modifier.weight(1f))
+            MiniStat(stringResource(R.string.st_out), snap.totalCompletion, Modifier.weight(1f))
         }
         if (snap.totalPrompt > 0) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "缓存命中率 %.1f%%（缓存部分已含在输入里，不另计）".format(snap.totalCached * 100.0 / snap.totalPrompt),
+                stringResource(R.string.st_cache_rate).format(snap.totalCached * 100.0 / snap.totalPrompt),
                 fontSize = 9.sp,
                 color = TextSecondary
             )
@@ -111,10 +114,10 @@ fun StatTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("按范围统计", "1 / 7 / 30 / 90 天，或自己填起止日期（yyyy-MM-dd）")
+    SectionTitle(stringResource(R.string.st_range), stringResource(R.string.st_range_d))
     CardBox {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("1 天", "7 天", "30 天", "90 天", "自定义").forEachIndexed { i, label ->
+            listOf(stringResource(R.string.st_d1), stringResource(R.string.st_d7), stringResource(R.string.st_d30), stringResource(R.string.st_d90), stringResource(R.string.st_custom)).forEachIndexed { i, label ->
                 PolicyChip(label, range == i) { range = i }
             }
         }
@@ -124,9 +127,9 @@ fun StatTab() {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DayField(fromKey, "开始 2025-10-01", Modifier.weight(1f)) { fromKey = it }
+                DayField(fromKey, stringResource(R.string.st_from), Modifier.weight(1f)) { fromKey = it }
                 Text("→", fontSize = 11.sp, color = TextSecondary)
-                DayField(toKey, "结束 2025-10-31", Modifier.weight(1f)) { toKey = it }
+                DayField(toKey, stringResource(R.string.st_to), Modifier.weight(1f)) { toKey = it }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -134,7 +137,7 @@ fun StatTab() {
             Text(tk(shown.sumOf { it.total }), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(6.dp))
             Text(
-                "token · ${shown.size} 天",
+                stringResource(R.string.st_tok_days, shown.size),
                 fontSize = 10.sp,
                 color = TextSecondary,
                 modifier = Modifier.padding(bottom = 2.dp)
@@ -142,8 +145,12 @@ fun StatTab() {
         }
         Spacer(Modifier.height(2.dp))
         Text(
-            "输入 ${tk(shown.sumOf { it.prompt })}（缓存 ${tk(shown.sumOf { it.cached })}） · " +
-                "输出 ${tk(shown.sumOf { it.completion })}",
+            stringResource(
+                R.string.st_split,
+                tk(shown.sumOf { it.prompt }),
+                tk(shown.sumOf { it.cached }),
+                tk(shown.sumOf { it.completion })
+            ),
             fontSize = 9.sp,
             color = TextSecondary
         )
@@ -154,7 +161,7 @@ fun StatTab() {
         pick?.let { d ->
             Spacer(Modifier.height(6.dp))
             Text(
-                "${d.day}：${tk(d.total)} token（输入 ${tk(d.prompt)} 含缓存 ${tk(d.cached)} / 输出 ${tk(d.completion)}）",
+                stringResource(R.string.st_day_tip, d.day, tk(d.total), tk(d.prompt), tk(d.cached), tk(d.completion)),
                 fontSize = 10.sp,
                 color = AccentBlue
             )
@@ -162,12 +169,12 @@ fun StatTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("本月方格图", "本月共 ${snap.monthLen} 天；方格越浓表示当天用得越多，没用的天是浅灰")
+    SectionTitle(stringResource(R.string.st_grid), stringResource(R.string.st_grid_d, snap.monthLen))
     CardBox {
         MonthGrid(snap.monthDay, pick) { pick = it }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("少", fontSize = 9.sp, color = TextSecondary)
+            Text(stringResource(R.string.st_less), fontSize = 9.sp, color = TextSecondary)
             Spacer(Modifier.width(5.dp))
             listOf(0.15f, 0.4f, 0.65f, 1f).forEach { a ->
                 Box(
@@ -181,10 +188,10 @@ fun StatTab() {
                 )
                 Spacer(Modifier.width(3.dp))
             }
-            Text("多", fontSize = 9.sp, color = TextSecondary)
+            Text(stringResource(R.string.st_more), fontSize = 9.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                "${snap.monthDay.count { it.total > 0 }} / ${snap.monthLen} 天有记录",
+                stringResource(R.string.st_grid_note, snap.monthDay.count { it.total > 0 }, snap.monthLen),
                 fontSize = 9.sp,
                 color = TextSecondary
             )
@@ -192,10 +199,10 @@ fun StatTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("模型分类", "按模型累计 token，百分比是该模型占总量")
+    SectionTitle(stringResource(R.string.st_models), stringResource(R.string.st_models_d))
     CardBox {
         if (snap.models.isEmpty()) {
-            Text("还没有用量记录，聊几句再来", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.st_empty), fontSize = 11.sp, color = TextSecondary)
         } else {
             //条形长度按第一名归一，不然小模型会缩成一条线看不见
             val maxModel = snap.models.first().second.coerceAtLeast(1L)
@@ -237,7 +244,7 @@ fun StatTab() {
     }
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle("月活跃", "近 6 个月每月有记录的天数")
+    SectionTitle(stringResource(R.string.st_month), stringResource(R.string.st_month_d))
     CardBox {
         val maxA = (snap.months.maxOfOrNull { it.activeDays } ?: 0).coerceAtLeast(1)
         Row(
@@ -270,7 +277,7 @@ fun StatTab() {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             snap.months.forEach { m ->
                 Text(
-                    m.month.takeLast(2) + "月",
+                    stringResource(R.string.st_month_fmt, m.month.takeLast(2)),
                     fontSize = 9.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
@@ -285,7 +292,7 @@ fun StatTab() {
 @Composable
 private fun BarChart(items: List<DayUse>, onPick: (DayUse) -> Unit) {
     if (items.isEmpty()) {
-        Text("这段时间没有数据", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.st_no_data), fontSize = 11.sp, color = TextSecondary)
         return
     }
     val max = items.maxOf { it.total }.coerceAtLeast(1L)

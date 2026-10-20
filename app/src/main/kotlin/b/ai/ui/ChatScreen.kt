@@ -104,19 +104,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 
 /** 输入框占位提示候选：设置→外观 里填多行就每行一条随机轮换；没填就是「请输入问题」 */
-private fun hintPool(): List<String> {
+private fun hintPool(ctx: Context): List<String> {
     val custom = Cfg.hintText.lines().map { it.trim() }.filter { it.isNotEmpty() }
-    return custom.ifEmpty { listOf("请输入问题") }
+    return custom.ifEmpty { listOf(ctx.getString(R.string.cs_hint)) }
 } //占位提示候选
 
 /** 对话主界面 */
 @Composable
 fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
+    val ctx = LocalContext.current
     var input by remember { mutableStateOf("") }
     //随机 placeholder：候选来自设置（默认「请输入问题」），发送后重抽一次
-    val hintWords = hintPool()
+    val hintWords = hintPool(LocalContext.current)
     var hint by remember(hintWords) { mutableStateOf(hintWords.random()) }
     var modelPanel by remember { mutableStateOf(false) }
     var fullInput by remember { mutableStateOf(false) }
@@ -129,10 +132,9 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var skillPanel by remember { mutableStateOf(false) }
     var personaPanel by remember { mutableStateOf(false) }
     //附件分类：同一个选择器按这里的 mime 与标签区分图片 / 音频 / 视频 / 音乐
-    var attachKind by remember { mutableStateOf("附件") }
+    var attachKind by remember { mutableStateOf(ctx.getString(R.string.cs_attach)) }
     var pendingImgs by remember { mutableStateOf<List<String>>(emptyList()) }
     val listState = rememberLazyListState()
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     //相册多选：压缩进私有目录，发送时按 base64 内联给模型
     val pickImgs = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
@@ -240,7 +242,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             }
             tick = 0L
         }
-        val showStatus = Agent.busy || Agent.status == "已停止"
+        val showStatus = Agent.busy || Agent.status == stringResource(R.string.cs_stopped)
         if (showStatus && Agent.status.isNotBlank()) {
             val el = if (Agent.busy && Agent.busySince > 0L && tick > 0L) {
                 ((tick - Agent.busySince) / 1000L).coerceAtLeast(0L)
@@ -254,7 +256,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 val live = buildString {
                 append(Agent.status)
                 if (el > 0) append(" · ${el}s")
-                if (Agent.streamText.isNotEmpty()) append(" · ${Agent.streamText.length} 字")
+                if (Agent.streamText.isNotEmpty()) append(" · " + stringResource(R.string.cs_chars_unit, Agent.streamText.length))
             }
             Text(
                     live,
@@ -264,7 +266,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 Spacer(Modifier.weight(1f))
                 if (Agent.busy) {
                     Text(
-                        "停止",
+                        stringResource(R.string.cs_stop),
                         fontSize = 11.sp,
                         color = DangerRed,
                         modifier = Modifier
@@ -347,7 +349,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
 
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
-            ?: Cfg.model.ifBlank { "选择模型" }
+            ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
         InputBar(
             input = input,
             hint = hint,
@@ -370,7 +372,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                     pendingImgs = emptyList()
                     hint = hintWords.random()
                     fullInput = false
-                    Agent.send(if (t.isEmpty()) "看这些图片" else t, imgs)
+                    Agent.send(if (t.isEmpty()) ctx.getString(R.string.cs_see_images) else t, imgs)
                 }
             }
         )
@@ -400,7 +402,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                         pendingImgs = emptyList()
                         hint = hintWords.random()
                         fullInput = false
-                        Agent.send(if (t.isEmpty()) "看这些图片" else t, imgs)
+                        Agent.send(if (t.isEmpty()) ctx.getString(R.string.cs_see_images) else t, imgs)
                     }
                 }
             )
@@ -427,10 +429,10 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 onClose = { menuFor = null }
             )
             pr != null -> PromptDialog(
-                title = if (pr.edit) "编辑后重发" else "带上提示重新生成",
-                hint = if (pr.edit) "改完直接发送，这条之后的内容会被删除" else "补充你想要的改动，再重新生成这条",
+                title = if (pr.edit) stringResource(R.string.cs_edit_resend) else stringResource(R.string.cs_regen_hint),
+                hint = if (pr.edit) stringResource(R.string.cs_edit_desc) else stringResource(R.string.cs_regen_hint_desc),
                 initial = if (pr.edit) pr.m.content else "",
-                confirm = if (pr.edit) "发送" else "重新生成",
+                confirm = if (pr.edit) stringResource(R.string.cs_send) else stringResource(R.string.cs_regen),
                 onClose = { promptReq = null },
                 onConfirm = { text ->
                     promptReq = null
@@ -460,7 +462,7 @@ private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPers
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    Agent.sessionTitle,
+                    Agent.sessionTitle.ifBlank { stringResource(R.string.ag_new_session) },
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
@@ -487,7 +489,8 @@ private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPers
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        role?.name?.takeIf { it.isNotBlank() } ?: "默认助手",
+                        role?.let { Personas.displayName(it) }?.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.cs_default_persona),
                         fontSize = 10.sp,
                         color = if (role == null) TextSecondary else AccentBlue,
                         maxLines = 1
@@ -495,8 +498,8 @@ private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPers
                 }
             }
             Text(
-                "${Cfg.model.ifBlank { "未选模型" }} · ${Cfg.workMode.label} · " +
-                    if (Cfg.think) "深度思考" else "直接回答",
+                "${Cfg.model.ifBlank { stringResource(R.string.ms_no_model) }} · ${stringResource(Cfg.workMode.labelRes)} · " +
+                    if (Cfg.think) stringResource(R.string.cs_think) else stringResource(R.string.cs_think_off),
                 fontSize = 10.sp,
                 color = TextSecondary,
                 maxLines = 1
@@ -526,44 +529,44 @@ private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPers
 @Composable
 private fun PersonaPanel(onClose: () -> Unit, onManage: () -> Unit) {
     CardBox {
-        SectionTitle("智能体角色", "切换后从下一句开始生效，历史消息不动")
-        ChoiceRow("默认助手", "不加载任何角色提示", Cfg.personaId.isBlank()) { Agent.setPersona("") }
+        SectionTitle(stringResource(R.string.cs_persona_title), stringResource(R.string.cs_persona_sub))
+        ChoiceRow(stringResource(R.string.cs_default_persona), stringResource(R.string.cs_persona_none), Cfg.personaId.isBlank()) { Agent.setPersona("") }
         Personas.list.forEach { p ->
             ChoiceRow(
-                p.name.ifBlank { "未命名角色" },
-                p.brief,
+                Personas.displayName(p).ifBlank { stringResource(R.string.cs_persona_unnamed) },
+                Personas.brief(p),
                 Cfg.personaId == p.id
             ) { Agent.setPersona(p.id) }
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("管理角色", modifier = Modifier.height(38.dp)) { onManage() }
+            GhostButton(stringResource(R.string.cs_persona_manage), modifier = Modifier.height(38.dp)) { onManage() }
             Spacer(Modifier.width(8.dp))
-            Text("新增 / 改内容 / 删除在 设置 → 扩展", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.cs_persona_manage_sub), fontSize = 10.sp, color = TextSecondary)
         }
     }
 } //角色面板
 
 /** 空会话标题的候选：按当前时段分池——23:00–04:30 深夜、06:00–06:59 清早，其余走通用问候 */
-private fun greetingPool(h: Int, m: Int): List<String> = when {
+private fun greetingPool(ctx: Context, h: Int, m: Int): List<String> = when {
     //跨零点算一段：23 点之后、4 点 30 之前都算深夜
     h >= 23 || h < 4 || (h == 4 && m < 30) -> listOf(
-        "夜深了，还有任务吗？",
-        "夜深了，有什么安排？",
-        "夜深了，还没睡觉吗？"
+        ctx.getString(R.string.cs_greet_n1),
+        ctx.getString(R.string.cs_greet_n2),
+        ctx.getString(R.string.cs_greet_n3)
     )
     h == 6 -> listOf(
-        "早，今天怎么样？",
-        "早，睡得好吗？"
+        ctx.getString(R.string.cs_greet_a1),
+        ctx.getString(R.string.cs_greet_a2)
     )
     else -> listOf(
-        "欢迎回来，今天有什么需要帮助的？",
-        "欢迎回来，今天需要做什么？",
-        "欢迎回来，今天有什么安排？",
-        "你好，今天有什么需要帮助的？",
-        "你好，今天需要做什么？",
-        "你好，今天有什么安排？",
-        "欢迎回来，今天怎么样？"
+        ctx.getString(R.string.cs_greet_g1),
+        ctx.getString(R.string.cs_greet_g2),
+        ctx.getString(R.string.cs_greet_g3),
+        ctx.getString(R.string.cs_greet_g4),
+        ctx.getString(R.string.cs_greet_g5),
+        ctx.getString(R.string.cs_greet_g6),
+        ctx.getString(R.string.cs_greet_g7)
     )
 } //按时段挑问候池
 
@@ -572,7 +575,7 @@ private fun EmptyState(
     modifier: Modifier = Modifier,
     onPick: (String) -> Unit
 ) {
-    val hint = "它会自己拆步骤、调工具、逐个问你确认。输入 @ 可插入技能 / 工具 / 文件。"
+    val hint = stringResource(R.string.cs_empty_tip)
     //打字机：逐字冒出来，每字 100ms；打完再让卡片依次飞入
     var typed by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -591,7 +594,7 @@ private fun EmptyState(
     ) {
         //标题按时段随机：进空会话抽一次，同一时段内不跳；跨时段（池子变了）自动重抽
         val cal = java.util.Calendar.getInstance()
-        val pool = greetingPool(cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
+        val pool = greetingPool(LocalContext.current, cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE))
         val greeting = remember(pool) { pool.random() }
         Text(
             greeting,
@@ -614,8 +617,8 @@ private fun EmptyState(
                 row.forEachIndexed { i, c ->
                     FeatureTile(
                         icon = c.icon,
-                        title = c.title,
-                        desc = c.desc,
+                        title = stringResource(c.titleRes),
+                        desc = stringResource(c.descRes),
                         index = rowIdx * 2 + i,
                         show = flying,
                         modifier = Modifier.weight(1f)
@@ -726,7 +729,7 @@ private fun InputBar(
                 IcSpark(if (Cfg.think) AccentBlue else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(5.dp))
                 Text(
-                    if (Cfg.think) "深度思考 · ${Cfg.thinkEffort}" else "深度思考",
+                    if (Cfg.think) stringResource(R.string.cs_think_effort, Cfg.thinkEffort) else stringResource(R.string.cs_think),
                     fontSize = 10.sp,
                     color = if (Cfg.think) AccentBlue else TextSecondary
                 )
@@ -741,7 +744,7 @@ private fun InputBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "最大",
+                    stringResource(R.string.cs_max),
                     fontSize = 10.sp,
                     color = if (Cfg.maxMode) AccentBlue else TextSecondary
                 )
@@ -758,14 +761,14 @@ private fun InputBar(
                 IcMic(if (Voice.listening) DangerRed else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    if (Voice.listening) "识别中" else "语音",
+                    if (Voice.listening) stringResource(R.string.cs_listening) else stringResource(R.string.cs_voice),
                     fontSize = 10.sp,
                     color = if (Voice.listening) DangerRed else TextSecondary
                 )
             }
             Spacer(Modifier.weight(1f))
             if (input.isNotEmpty()) {
-                Text("${input.length} 字", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.cs_chars_unit, input.length), fontSize = 10.sp, color = TextSecondary)
             }
         }
         if (images.isNotEmpty()) {
@@ -845,7 +848,7 @@ private fun InputBar(
                         ) {
                             Icon(
                                 Icons.Filled.Menu,
-                                contentDescription = "配置",
+                                contentDescription = stringResource(R.string.cs_config),
                                 tint = if (Cfg.maxMode || Cfg.think) AccentBlue else TextSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -856,7 +859,7 @@ private fun InputBar(
                         ) {
                             Icon(
                                 Icons.Filled.Add,
-                                contentDescription = "附件",
+                                contentDescription = stringResource(R.string.cs_attach),
                                 tint = TextSecondary,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -907,9 +910,9 @@ private fun FullInputDialog(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("全屏输入", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(stringResource(R.string.cs_fullscreen), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
-                Text("${value.length} 字", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.cs_chars_unit, value.length), fontSize = 10.sp, color = TextSecondary)
                 Spacer(Modifier.width(8.dp))
                 Box(
                     Modifier.size(28.dp).background(SurfaceMuted, CircleShape).tap { onClose() },
@@ -954,7 +957,7 @@ private fun FullInputDialog(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    if (Agent.busy) "…" else "发送",
+                    if (Agent.busy) "…" else stringResource(R.string.cs_send),
                     fontSize = 14.sp,
                     color = if (canSend) Color.White else TextSecondary
                 )
@@ -981,7 +984,7 @@ private fun StreamingMsg(text: String, reason: String) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IcSpark(TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(5.dp))
-                Text("思考中 · ${reason.length} 字", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.cs_think_chars, reason.length), fontSize = 10.sp, color = TextSecondary)
             }
             Spacer(Modifier.height(4.dp))
             Text(
@@ -1090,8 +1093,8 @@ private fun MetaLine(m: MsgMeta) {
         if (m.speed > 0) parts.add(String.format(Locale.US, "%.0f tok/s", m.speed))
     }
     if (Cfg.showMeta) {
-        if (m.ms > 0) parts.add("耗时 " + secText(m.ms) + "s")
-        if (m.firstMs > 0) parts.add("首字 " + secText(m.firstMs) + "s")
+        if (m.ms > 0) parts.add(stringResource(R.string.cs_elapsed) + secText(m.ms) + "s")
+        if (m.firstMs > 0) parts.add(stringResource(R.string.cs_first) + secText(m.firstMs) + "s")
         if (m.at > 0) parts.add(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(m.at)))
         if (m.provider.isNotBlank()) parts.add(m.provider)
         if (m.model.isNotBlank()) parts.add(m.model)
@@ -1125,10 +1128,10 @@ private fun ThinkBlock(m: ChatMsg) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IcSpark(TextSecondary, side = 12.dp)
             Spacer(Modifier.width(5.dp))
-            Text("思考过程", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+            Text(stringResource(R.string.cs_think_proc), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
             Spacer(Modifier.weight(1f))
             Text(
-                if (open) "收起" else "${m.reasoning.length} 字 · 展开",
+                if (open) stringResource(R.string.cs_collapse) else stringResource(R.string.cs_reason_chars, m.reasoning.length),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -1169,7 +1172,7 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    toolGlyph(m.toolName),
+                    toolGlyph(LocalContext.current, m.toolName),
                     fontSize = 11.sp,
                     color = if (m.isError) DangerRed else AccentBlue
                 )
@@ -1183,31 +1186,31 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                     color = TextPrimary
                 )
                 Text(
-                    if (first.isBlank()) "（无输出）" else first,
+                    if (first.isBlank()) stringResource(R.string.cs_no_output) else first,
                     fontSize = 10.sp,
                     color = TextSecondary,
                     maxLines = 1
                 )
             }
             Text(
-                if (m.isError) "失败" else "完成",
+                if (m.isError) stringResource(R.string.cs_fail) else stringResource(R.string.cs_done),
                 fontSize = 10.sp,
                 color = if (m.isError) DangerRed else OkGreen
             )
             Spacer(Modifier.width(6.dp))
-            Text("详情 ›", fontSize = 11.sp, color = AccentBlue)
+            Text(stringResource(R.string.cs_detail), fontSize = 11.sp, color = AccentBlue)
         }
     }
 } //工具结果：点开看详情弹窗
 
 /** 工具类型单字标记，省得再造一堆矢量图 */
-private fun toolGlyph(name: String?): String = when (name) {
-    Tools.READ -> "读"
-    Tools.WRITE -> "写"
-    Tools.MAKE_DIR -> "建"
-    Tools.DELETE -> "删"
-    Tools.WEB_SEARCH -> "搜"
-    else -> "令"
+private fun toolGlyph(ctx: Context, name: String?): String = when (name) {
+    Tools.READ -> ctx.getString(R.string.cs_op_read)
+    Tools.WRITE -> ctx.getString(R.string.cs_op_write)
+    Tools.MAKE_DIR -> ctx.getString(R.string.cs_op_create)
+    Tools.DELETE -> ctx.getString(R.string.cs_op_delete)
+    Tools.WEB_SEARCH -> ctx.getString(R.string.cs_op_search)
+    else -> ctx.getString(R.string.cs_op_shell)
 }
 
 /** 从历史里的 assistant.tool_calls 反查本次调用的参数 */
@@ -1232,11 +1235,11 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 color = TextPrimary
             )
             Spacer(Modifier.width(8.dp))
-            if (m.isError) Tag("失败", DangerRed, DangerRedSoft) else Tag("完成", OkGreen, SurfaceMuted)
+            if (m.isError) Tag(stringResource(R.string.cs_fail), DangerRed, DangerRedSoft) else Tag(stringResource(R.string.cs_done), OkGreen, SurfaceMuted)
         }
         Spacer(Modifier.height(10.dp))
         if (!args.isNullOrBlank()) {
-            Text("参数", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.cs_params), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
             Box(
                 Modifier
@@ -1255,7 +1258,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
         }
-        Text("输出 · ${m.content.length} 字", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.cs_out_chars, m.content.length), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Box(
             Modifier
@@ -1266,7 +1269,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                if (m.content.isBlank()) "（无输出）" else m.content,
+                if (m.content.isBlank()) stringResource(R.string.cs_no_output) else m.content,
                 fontSize = 11.sp,
                 color = if (m.isError) DangerRed else TextPrimary,
                 fontFamily = FontFamily.Monospace
@@ -1275,7 +1278,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                if (copied) "已复制" else "复制输出",
+                if (copied) stringResource(R.string.cs_copied) else stringResource(R.string.cs_copy_output),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1292,7 +1295,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                     .padding(vertical = 11.dp)
             )
             Text(
-                "关闭",
+                stringResource(R.string.cs_close),
                 fontSize = 12.sp,
                 color = Color.White,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1321,11 +1324,11 @@ private fun SummaryMsg(m: ChatMsg) {
             .padding(horizontal = bubblePadH(10.dp), vertical = bubblePadV(10.dp))
             ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("上下文摘要", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+            Text(stringResource(R.string.cs_summary), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
             Spacer(Modifier.width(6.dp))
-            Text("已压缩早期对话", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.cs_summary_done), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
-            Text(if (open) "收起" else "展开", fontSize = 10.sp, color = TextSecondary)
+            Text(if (open) stringResource(R.string.cs_collapse) else stringResource(R.string.cs_expand), fontSize = 10.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(4.dp))
         Text(
@@ -1357,7 +1360,7 @@ private fun MsgMenuDialog(
 ) {
     ScrimCard(onDismiss = onClose) {
         Text(
-            if (m.role == "user") "这条消息" else "这条回复",
+            if (m.role == "user") stringResource(R.string.cs_this_msg) else stringResource(R.string.cs_this_reply),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
@@ -1372,22 +1375,22 @@ private fun MsgMenuDialog(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                if (m.content.isBlank()) "（无内容）" else m.content,
+                if (m.content.isBlank()) stringResource(R.string.cs_no_content) else m.content,
                 fontSize = 11.sp,
                 color = TextSecondary
             )
         }
         Spacer(Modifier.height(12.dp))
         if (m.role == "user") {
-            MenuRow("编辑后重发", "删掉这条及之后的内容，用新文本重新提问", onEdit)
+            MenuRow(stringResource(R.string.cs_edit_resend), stringResource(R.string.cs_edit_resend_desc), onEdit)
         } else {
-            MenuRow("重新生成", "从这条开始重新请求，后面已有的内容会被删掉", onRegen)
-            MenuRow("带提示重新生成", "先补一句要求，再重新生成这条", onRegenWith)
+            MenuRow(stringResource(R.string.cs_regen), stringResource(R.string.cs_regen_desc), onRegen)
+            MenuRow(stringResource(R.string.cs_regen_hint2), stringResource(R.string.cs_regen_hint_desc2), onRegenWith)
         }
-        MenuRow("复制内容", "把这段文字放进剪贴板", onCopy)
+        MenuRow(stringResource(R.string.cs_copy_content), stringResource(R.string.cs_copy_content_desc), onCopy)
         Spacer(Modifier.height(10.dp))
         Text(
-            "取消",
+            stringResource(R.string.cs_cancel),
             fontSize = 12.sp,
             color = TextSecondary,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1448,7 +1451,7 @@ private fun PromptDialog(
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "取消",
+                stringResource(R.string.cs_cancel),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
