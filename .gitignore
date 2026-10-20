@@ -1,0 +1,22 @@
+#构建产物与依赖缓存
+build/
+.gradle/
+.kotlin/
+app/build/
+
+#参考源码（体积大，不进版本库）
+_operit/
+
+#本地日志与备份
+logs/
+.backup/
+
+#本机配置与临时构建文件
+local.properties
+.tmp/
+#产物与备份
+*.apk
+*.aab
+#AIDE 扫描索引，不是源码
+workspace.json
+workspace.json.bak
