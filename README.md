@@ -51,4 +51,6 @@ scripts/   构建与素材脚本
 
 ## 协议
 
-按 GPL-3.0 发布（`LICENSE` 文件待补）。
+GNU General Public License v3.0，全文见 [LICENSE](LICENSE)。
+
+Copyright (C) 2026 沐白 (mubai0122)
