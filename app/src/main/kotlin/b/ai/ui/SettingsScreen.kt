@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,6 +68,7 @@ import b.ai.agent.Agent
 import b.ai.agent.Tools
 import android.app.Activity
 import b.ai.core.Avatar
+import b.ai.core.Backup
 import b.ai.core.Cfg
 import b.ai.core.Lang
 import b.ai.core.Mcp
@@ -91,6 +93,7 @@ import b.ai.net.Update
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
+import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft
 import b.ai.ui.theme.OkGreen
@@ -181,7 +184,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                 scaleY = 1f - 0.05f * backProgress
                 alpha = (1f - 0.55f * backProgress).coerceIn(0f, 1f)
             }
-            .background(BgGray)
+            .pageBg()
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -956,6 +959,40 @@ private fun UiTab() {
     }
 
     Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
+    CardBox {
+        CapSwitch(
+            stringResource(R.string.se_glass_card),
+            stringResource(R.string.se_glass_card_d),
+            Cfg.glassCard
+        ) { Cfg.glassCard = it }
+        Spacer(Modifier.height(10.dp))
+        CapSwitch(
+            stringResource(R.string.se_tactile),
+            stringResource(R.string.se_tactile_d),
+            Cfg.tactileBtn
+        ) { Cfg.tactileBtn = it }
+        Spacer(Modifier.height(10.dp))
+        CapSwitch(
+            stringResource(R.string.se_glass_bar),
+            stringResource(R.string.se_glass_bar_d),
+            Cfg.glassBar
+        ) { Cfg.glassBar = it }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_bg), stringResource(R.string.se_bg_d))
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PolicyChip(stringResource(R.string.se_bg_plain), Cfg.bgStyle == 0) { Cfg.bgStyle = 0 }
+            Spacer(Modifier.width(6.dp))
+            PolicyChip(stringResource(R.string.se_bg_grad), Cfg.bgStyle == 1) { Cfg.bgStyle = 1 }
+            Spacer(Modifier.width(6.dp))
+            PolicyChip(stringResource(R.string.se_bg_dots), Cfg.bgStyle == 2) { Cfg.bgStyle = 2 }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
     CardBox {
         Field(
@@ -1297,6 +1334,58 @@ private fun AboutTab() {
         //仓库还没建，留空就显示成灰的、点不动
         LinkRow("GitHub", GITHUB_URL.ifBlank { stringResource(R.string.se_254) }, enabled = GITHUB_URL.isNotBlank()) {
             openUrl(ctx, GITHUB_URL)
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_bk), stringResource(R.string.se_bk_d))
+    CardBox {
+        var bkTip by remember { mutableStateOf("") }
+        var bkBusy by remember { mutableStateOf(false) }
+        //导出：系统选择器给个默认文件名，zip 里是 db + 配置 + baicode 小文件 + 头像
+        val bkSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            if (uri != null) {
+                bkBusy = true
+                bkTip = ctx.getString(R.string.se_bk_doing)
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) {
+                        runCatching {
+                            ctx.contentResolver.openOutputStream(uri)?.use { out -> Backup.export(ctx, out) } ?: false
+                        }.getOrDefault(false)
+                    }
+                    bkBusy = false
+                    bkTip = ctx.getString(if (ok) R.string.se_bk_ok else R.string.se_bk_fail)
+                }
+            }
+        }
+        //导入：先解到私有 restore 目录，重启后由 App.onCreate 换上去
+        val bkOpen = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                bkBusy = true
+                bkTip = ctx.getString(R.string.se_bk_doing)
+                scope.launch {
+                    val ok = withContext(Dispatchers.IO) {
+                        runCatching {
+                            ctx.contentResolver.openInputStream(uri)?.use { ins -> Backup.stageImport(ctx, ins) } ?: false
+                        }.getOrDefault(false)
+                    }
+                    bkBusy = false
+                    bkTip = ctx.getString(if (ok) R.string.se_bk_imported else R.string.se_bk_bad)
+                }
+            }
+        }
+        Text(stringResource(R.string.se_bk_note), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(stringResource(R.string.se_bk_export), modifier = Modifier.height(38.dp)) {
+                if (!bkBusy) bkSave.launch("BaiAgent-backup-${System.currentTimeMillis()}.zip")
+            }
+            GhostButton(stringResource(R.string.se_bk_import), modifier = Modifier.height(38.dp)) {
+                if (!bkBusy) bkOpen.launch(arrayOf("application/zip"))
+            }
+        }
+        if (bkTip.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(bkTip, fontSize = 11.sp, color = TextSecondary)
         }
     }
 } //关于分类
@@ -1987,6 +2076,10 @@ private fun LinuxSection() {
     var depsBusy by remember { mutableStateOf(false) }
     var depsLog by remember { mutableStateOf("") }
     var depsOk by remember { mutableStateOf(Linux.depsInstalled()) }
+    //终端式进度：总阶段数 + 当前阶段文案，配合逐行日志画进度条
+    var stepCur by remember { mutableStateOf(0) }
+    var stepTotal by remember { mutableStateOf(0) }
+    var stepText by remember { mutableStateOf("") }
     LaunchedEffect(depsTick) {
         if (depsTick == 0) {
             depsOk = Linux.depsInstalled()
@@ -2012,11 +2105,23 @@ private fun LinuxSection() {
             return@LaunchedEffect
         }
         busy = true
+        stepCur = 0
+        stepTotal = 0
+        stepText = ""
         log = ctx.getString(R.string.se_299)
         val main = Handler(Looper.getMainLooper())
         val sb = StringBuilder()
         withContext(Dispatchers.IO) {
-            Linux.install(force = installed) { line ->
+            Linux.install(
+                force = installed,
+                onStep = { cur, total, txt ->
+                    main.post {
+                        stepCur = cur
+                        stepTotal = total
+                        stepText = txt
+                    }
+                }
+            ) { line ->
                 sb.append(line).append('\n')
                 val text = sb.toString()
                 main.post { log = text }
@@ -2089,12 +2194,24 @@ private fun LinuxSection() {
             )
         }
         if (depsLog.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(depsLog, fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            TerminalBox(
+                title = stringResource(R.string.se_310),
+                cur = if (depsBusy) 1 else 0,
+                total = if (depsBusy) 1 else 0,
+                step = if (depsBusy) stringResource(R.string.se_310) else "",
+                text = depsLog
+            )
         }
         if (log.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(log, fontSize = 10.sp, color = TextSecondary)
+            TerminalBox(
+                title = stringResource(R.string.se_300),
+                cur = stepCur,
+                total = stepTotal,
+                step = if (busy) stepText else "",
+                text = log
+            )
         }
         if (test.isNotBlank()) {
             Spacer(Modifier.height(6.dp))
@@ -2113,3 +2230,63 @@ private fun LinuxSection() {
         )
     }
 } //Linux 环境安装卡
+
+/** 终端式进度框：白底等宽字，顶部总进度条 + 当前步骤，日志一长就自动贴底 */
+@Composable
+private fun TerminalBox(
+    title: String,
+    cur: Int,
+    total: Int,
+    step: String,
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    val scroll = rememberScrollState()
+    //跟终端一样，来新行就滚到最底
+    LaunchedEffect(text) { scroll.scrollTo(scroll.maxValue) }
+    val frac = if (total <= 0) 0f else (cur.toFloat() / total).coerceIn(0f, 1f)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(SurfaceWhite, RoundedCornerShape(12.dp))
+            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(title, fontSize = 11.sp, color = TextPrimary, maxLines = 1)
+            Spacer(Modifier.weight(1f))
+            if (total > 0) Text("$cur/$total", fontSize = 10.sp, color = TextSecondary)
+        }
+        //总进度条：阶段粒度，细到 3dp 不抢眼
+        if (total > 0) {
+            Box(Modifier.fillMaxWidth().height(3.dp).background(SurfaceMuted)) {
+                Box(Modifier.fillMaxWidth(frac).height(3.dp).background(AccentBlue))
+            }
+        }
+        if (step.isNotBlank()) {
+            Text(
+                step,
+                fontSize = 10.sp,
+                color = AccentBlue,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 96.dp, max = 230.dp)
+                .verticalScroll(scroll)
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            Text(
+                text,
+                fontSize = 10.sp,
+                lineHeight = 14.sp,
+                fontFamily = FontFamily.Monospace,
+                color = TextPrimary
+            )
+        }
+    }
+} //终端式进度框

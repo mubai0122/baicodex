@@ -43,6 +43,7 @@ import b.ai.ui.OnboardingScreen
 import b.ai.ui.Overlay
 import b.ai.ui.PermNoticeDialog
 import b.ai.ui.SettingsScreen
+import b.ai.ui.MemorySheet
 import b.ai.ui.StarSheet
 import b.ai.ui.ToolConfirmDialog
 import b.ai.ui.UpdateDialog
@@ -106,6 +107,8 @@ private fun Root() {
     var permNotice by remember { mutableStateOf(false) }
     //收藏夹面板：必须挂在根弹窗层，抽屉内部挂弹窗会被抽屉盖住且无法点外部关闭
     var starsOpen by remember { mutableStateOf(false) }
+    //永久记忆面板：同样走根弹窗层
+    var memOpen by remember { mutableStateOf(false) }
     //返回手势进度：0 = 没在滑，1 = 滑过阈值，用来驱动设置页跟手位移
     var backFx by remember { mutableFloatStateOf(0f) }
     //设置页从哪一页进：聊天页的模型面板点「模型配置」直接落到模型 tab
@@ -126,7 +129,8 @@ private fun Root() {
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
-    val active = Agent.pending != null || Overlay.active || permNotice || upd != null || updHis != null || starsOpen
+    val active = Agent.pending != null || Overlay.active || permNotice || upd != null || updHis != null ||
+        starsOpen || memOpen
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
 
@@ -152,6 +156,7 @@ private fun Root() {
     }
     //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
     BackHandler(enabled = starsOpen) { starsOpen = false }
+    BackHandler(enabled = memOpen) { memOpen = false }
     //关掉预测性手势时退回普通返回，不做跟手动画
     BackHandler(enabled = !Cfg.predictiveBack && screen == "settings") {
         screen = "chat"
@@ -187,6 +192,10 @@ private fun Root() {
                 onOpenStars = {
                     //先关抽屉再开面板：两层同时在场时弹窗一定被抽屉压在下面
                     starsOpen = true
+                    scope.launch { drawer.close() }
+                },
+                onOpenMemory = {
+                    memOpen = true
                     scope.launch { drawer.close() }
                 },
                 onClose = { scope.launch { drawer.close() } }
@@ -232,6 +241,7 @@ private fun Root() {
                         )
                         upd != null -> UpdateDialog(upd) { UpdateUi.close() }
                         updHis != null -> UpdateHistoryDialog(updHis) { UpdateUi.close() }
+                        memOpen -> MemorySheet { memOpen = false }
                         starsOpen -> StarSheet(
                             onClose = { starsOpen = false },
                             onOpen = { sid ->

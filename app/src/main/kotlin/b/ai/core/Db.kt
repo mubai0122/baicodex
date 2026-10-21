@@ -5,13 +5,13 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 /** 本地库：会话 + 记录 + 独立用量账 */
-class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 9) {
+class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 12) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS session(" +
                 "id TEXT PRIMARY KEY,title TEXT NOT NULL,category TEXT NOT NULL DEFAULT '',descr TEXT," +
                 "pinned INTEGER NOT NULL DEFAULT 0," +
-                "persona TEXT,workspace TEXT," +
+                "persona TEXT,workspace TEXT,head_id INTEGER," +
                 "created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
         )
         db.execSQL(
@@ -20,11 +20,17 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 9)
                 "role TEXT NOT NULL,content TEXT NOT NULL DEFAULT '',reasoning TEXT," +
                 "tool_calls TEXT," +
                 "tool_call_id TEXT,tool_name TEXT,error INTEGER NOT NULL DEFAULT 0," +
-                "images TEXT,meta TEXT," +
+                "images TEXT,meta TEXT,parent_id INTEGER," +
                 "starred INTEGER NOT NULL DEFAULT 0," +
                 "created_at INTEGER NOT NULL)"
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_session ON message(session_id,_id)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_parent ON message(session_id,parent_id)")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS memory(" +
+                "_id INTEGER PRIMARY KEY AUTOINCREMENT,text TEXT NOT NULL," +
+                "session_id TEXT,created_at INTEGER NOT NULL)"
+        )
         createUsage(db)
     } //建表
 
@@ -109,5 +115,46 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 9)
         if (oldVersion < 9) {
             runCatching { db.execSQL("ALTER TABLE message ADD COLUMN starred INTEGER NOT NULL DEFAULT 0") }
         }
+        //v9→v10：清洗账本里的假数据——会话 id 不是本 App 的 UUID 形态、时间戳跑到未来、缓存数大于输入数的一律清掉
+        if (oldVersion < 10) {
+            runCatching { sanitizeUsage(db) }
+        }
+        //v10→v11：消息改成树——每条指向父消息（0 = 会话根），会话记住当前走到哪一条
+        if (oldVersion < 11) {
+            runCatching { db.execSQL("ALTER TABLE message ADD COLUMN parent_id INTEGER") }
+            runCatching { db.execSQL("ALTER TABLE session ADD COLUMN head_id INTEGER") }
+            //老库是单线历史：按 _id 顺序串成一条链，head 指向最后一条
+            runCatching {
+                db.execSQL(
+                    "UPDATE message SET parent_id=IFNULL((" +
+                        "SELECT MAX(p._id) FROM message p " +
+                        "WHERE p.session_id=message.session_id AND p._id<message._id),0)"
+                )
+            }
+            runCatching {
+                db.execSQL("UPDATE session SET head_id=(SELECT MAX(_id) FROM message WHERE session_id=session.id)")
+            }
+            runCatching { db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_parent ON message(session_id,parent_id)") }
+        }
+        //v11→v12：永久记忆表——模型觉得重要的事写这里，用户不删就一直随提示下发
+        if (oldVersion < 12) {
+            runCatching {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS memory(" +
+                        "_id INTEGER PRIMARY KEY AUTOINCREMENT,text TEXT NOT NULL," +
+                        "session_id TEXT,created_at INTEGER NOT NULL)"
+                )
+            }
+        }
     } //版本迁移
+
+    /** 清洗账本：只留本 App 真实写入的行，顺手把越界数值夹回合理区间 */
+    private fun sanitizeUsage(db: SQLiteDatabase) {
+        val now = System.currentTimeMillis()
+        db.execSQL("DELETE FROM usage WHERE session_id NOT LIKE '%-%-%-%-%'")
+        db.execSQL("DELETE FROM usage WHERE at <= 0 OR at > ?", arrayOf<Any>(now + 86_400_000L))
+        db.execSQL("DELETE FROM usage WHERE prompt < 0 OR completion < 0 OR prompt + completion <= 0")
+        db.execSQL("DELETE FROM usage WHERE prompt > 5000000 OR completion > 5000000")
+        db.execSQL("UPDATE usage SET cached = MAX(0, MIN(cached, prompt))")
+    } //清洗账本
 }

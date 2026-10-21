@@ -2,8 +2,10 @@ package b.ai
 
 import android.app.Application
 import b.ai.core.Cfg
+import b.ai.core.Backup
 import b.ai.core.Paths
 import b.ai.core.Mcp
+import b.ai.core.Memory
 import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Schedules
@@ -21,6 +23,8 @@ class App : Application() {
         super.onCreate()
         self = this
         Paths.ensure()
+        //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
+        runCatching { Backup.applyPending(this) }
         Cfg.init(this)
         Profiles.init()
         Skills.init(this)
@@ -28,6 +32,7 @@ class App : Application() {
         Schedules.init(this)
         Mcp.init(this)
         Repo.init(this)
+        Memory.init()
         Root.init()
         Router.probeAsync()
         //每次进程起来重排一遍闹钟：升级/被系统清掉/改过时间都能自动恢复

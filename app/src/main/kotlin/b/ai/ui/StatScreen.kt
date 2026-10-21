@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import b.ai.core.Cfg
 import b.ai.core.DayUse
 import b.ai.core.Stat
 import b.ai.core.StatSnap
@@ -59,6 +60,10 @@ private fun tk(v: Long): String = when {
     else -> v.toString()
 }
 
+/** 金额：小额留 4 位小数，不然 0.00 看不出花没花钱 */
+private fun money(v: Double): String =
+    if (v >= 1.0) "¥%.2f".format(v) else "¥%.4f".format(v) //金额
+
 /** 统计页：总计、范围柱状图、本月方格图、模型分类、月活跃 */
 @Composable
 fun StatTab() {
@@ -67,9 +72,20 @@ fun StatTab() {
     var fromKey by remember { mutableStateOf("") }
     var toKey by remember { mutableStateOf("") }
     var pick by remember { mutableStateOf<DayUse?>(null) }
+    //价格编辑态：三项都存成字符串，边输边算，失焦或改完就落盘重算
+    var pIn by remember { mutableStateOf(if (Cfg.priceIn > 0f) Cfg.priceIn.toString() else "") }
+    var pOut by remember { mutableStateOf(if (Cfg.priceOut > 0f) Cfg.priceOut.toString() else "") }
+    var pCache by remember { mutableStateOf(if (Cfg.priceCache > 0f) Cfg.priceCache.toString() else "") }
 
     //只进页时扫一次库；切范围只是从已聚合好的天里截，不重复查库
-    LaunchedEffect(Unit) { snap = withContext(Dispatchers.IO) { Stat.load() } }
+    fun reload() {
+        Cfg.priceIn = pIn.toFloatOrNull() ?: 0f
+        Cfg.priceOut = pOut.toFloatOrNull() ?: 0f
+        Cfg.priceCache = pCache.toFloatOrNull() ?: 0f
+        snap = Stat.load()
+    }
+
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { reload() } }
 
     //0=1天 1=7天 2=30天 3=90天 4=自定义
     val shown = when (range) {
@@ -111,6 +127,34 @@ fun StatTab() {
                 color = TextSecondary
             )
         }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (snap.price.on) stringResource(R.string.st_cost_total, money(snap.totalCost))
+            else stringResource(R.string.st_cost_off),
+            fontSize = 10.sp,
+            color = TextPrimary
+        )
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.st_price), stringResource(R.string.st_price_d))
+    CardBox {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PriceField(pIn, stringResource(R.string.st_price_in), Modifier.weight(1f)) {
+                pIn = it
+                reload()
+            }
+            PriceField(pOut, stringResource(R.string.st_price_out), Modifier.weight(1f)) {
+                pOut = it
+                reload()
+            }
+            PriceField(pCache, stringResource(R.string.st_price_cache), Modifier.weight(1f)) {
+                pCache = it
+                reload()
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.st_price_note), fontSize = 9.sp, color = TextSecondary)
     }
 
     Spacer(Modifier.height(14.dp))
@@ -158,6 +202,14 @@ fun StatTab() {
         BarChart(shown) { pick = it }
         Spacer(Modifier.height(6.dp))
         Text(dayRangeLabel(shown), fontSize = 9.sp, color = TextSecondary)
+        if (snap.price.on) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.st_cost_range, money(snap.costOf(shown))),
+                fontSize = 10.sp,
+                color = TextPrimary
+            )
+        }
         pick?.let { d ->
             Spacer(Modifier.height(6.dp))
             Text(
@@ -401,3 +453,32 @@ private fun DayField(
 
 private fun dayRangeLabel(items: List<DayUse>): String =
     if (items.isEmpty()) "—" else "${items.first().day} → ${items.last().day}" //柱状图下方的日期跨度
+
+/** 价格输入格：只收数字与小数点，边输边重算费用 */
+@Composable
+private fun PriceField(value: String, label: String, modifier: Modifier = Modifier, onValue: (String) -> Unit) {
+    Column(modifier) {
+        Text(label, fontSize = 9.sp, color = TextSecondary)
+        Spacer(Modifier.height(3.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(SurfaceMuted, RoundedCornerShape(9.dp))
+                .padding(horizontal = 8.dp, vertical = 7.dp)
+        ) {
+            if (value.isEmpty()) Text("0", fontSize = 11.sp, color = TextSecondary)
+            BasicTextField(
+                value = value,
+                onValueChange = { t ->
+                    //只留数字与小数点，最多 6 位，防止输成一长串
+                    val clean = t.filter { it.isDigit() || it == '.' }.take(6)
+                    onValue("$clean".let { if (it.count { c -> c == '.' } > 1) it.dropLast(1) else it })
+                },
+                textStyle = TextStyle(fontSize = 11.sp, color = TextPrimary),
+                singleLine = true,
+                cursorBrush = SolidColor(AccentBlue),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+} //价格输入格

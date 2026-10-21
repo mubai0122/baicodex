@@ -69,6 +69,10 @@ object Cfg {
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
         mem("inject_place", false).value = p.getBoolean("inject_place", false)
         mem("show_usage", true).value = p.getBoolean("show_usage", true)
+        //模型价格：元 / 百万 token，0 = 不计价（统计页只数 token 不算钱）
+        mem("price_in", 0f).value = p.getFloat("price_in", 0f)
+        mem("price_out", 0f).value = p.getFloat("price_out", 0f)
+        mem("price_cache", 0f).value = p.getFloat("price_cache", 0f)
         mem("show_meta", true).value = p.getBoolean("show_meta", true)
         mem("speak_replies", false).value = p.getBoolean("speak_replies", false)
         mem("profile_name", "").value = p.getString("profile_name", "")!!
@@ -79,6 +83,11 @@ object Cfg {
         mem("avatar_ai_mode", "persona").value = p.getString("avatar_ai_mode", "persona")!!
         mem("avatar_ai", "").value = p.getString("avatar_ai", "")!!
         mem("bubble_capsule", false).value = p.getBoolean("bubble_capsule", false)
+        //1.2.0 外观四项：玻璃卡片 / 质感按钮 / 玻璃底栏 / 页面背景（0 纯色 1 渐变 2 点阵）
+        mem("glass_card", false).value = p.getBoolean("glass_card", false)
+        mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
+        mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
+        mem("bg_style", 0).value = p.getInt("bg_style", 0)
         mem("waifu_mode", false).value = p.getBoolean("waifu_mode", false)
         //旧版本把自定义提示只存在 SP 里，这里补写到数据根，之后改文件就生效
         if (!Store.exists(SYSTEM_PROMPT_FILE)) {
@@ -292,6 +301,26 @@ object Cfg {
         get() = mem("float_input", false).value
         set(v) { mem("float_input", false).value = v; put("float_input", v) }
 
+    /** 液态玻璃卡片：所有卡片换成半透玻璃 + 手指位置柔光 */
+    var glassCard: Boolean
+        get() = mem("glass_card", false).value
+        set(v) { mem("glass_card", false).value = v; put("glass_card", v) }
+
+    /** 质感按钮：深度思考 / 最大 / 语音 / 发送换成带厚度的 3D 按钮 */
+    var tactileBtn: Boolean
+        get() = mem("tactile_btn", false).value
+        set(v) { mem("tactile_btn", false).value = v; put("tactile_btn", v) }
+
+    /** 液态玻璃底栏：设置页底部那条悬浮胶囊换成玻璃 */
+    var glassBar: Boolean
+        get() = mem("glass_bar", false).value
+        set(v) { mem("glass_bar", false).value = v; put("glass_bar", v) }
+
+    /** 页面背景：0 纯色 / 1 柔光渐变 / 2 点阵 */
+    var bgStyle: Int
+        get() = mem("bg_style", 0).value
+        set(v) { mem("bg_style", 0).value = v; put("bg_style", v) }
+
     /** 输入框占位提示：空则显示「请输入问题」；填多行则每行一条随机轮换 */
     var hintText: String
         get() = mem("hint_text", "").value
@@ -301,6 +330,19 @@ object Cfg {
     var predictiveBack: Boolean
         get() = mem("predictive_back", true).value
         set(v) { mem("predictive_back", true).value = v; put("predictive_back", v) }
+
+    /** 模型价格：输入 / 输出 / 缓存命中，单位元每百万 token；0 = 不计价 */
+    var priceIn: Float
+        get() = mem("price_in", 0f).value
+        set(v) { mem("price_in", 0f).value = v; put("price_in", v) }
+
+    var priceOut: Float
+        get() = mem("price_out", 0f).value
+        set(v) { mem("price_out", 0f).value = v; put("price_out", v) }
+
+    var priceCache: Float
+        get() = mem("price_cache", 0f).value
+        set(v) { mem("price_cache", 0f).value = v; put("price_cache", v) }
 
     /** 新会话自动绑新工作区：开 = 每建一个会话配一个新哈希目录；关 = 不绑定，空工作区 */
     var autoBindWorkspace: Boolean

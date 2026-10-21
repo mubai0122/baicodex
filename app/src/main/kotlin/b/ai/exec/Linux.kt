@@ -54,11 +54,17 @@ object Linux {
     } else null //本地起不来时 exec() 自动退回 Root 通道
 
     /** 装环境：拷 proot → 取镜像 → 解开 → 写 resolv.conf，任何一步失败立刻返回；force=true 先删旧 rootfs */
-    fun install(force: Boolean = false, onLog: (String) -> Unit): Boolean {
+    fun install(
+        force: Boolean = false,
+        onStep: (Int, Int, String) -> Unit = { _, _, _ -> },
+        onLog: (String) -> Unit
+    ): Boolean {
         blocked()?.let {
             onLog(it.out)
             return false
         }
+        //总进度口径：8 个阶段，UI 侧按 cur/total 画总进度条
+        val total = 8
         val b = base()
         b.mkdirs()
         libs().mkdirs()
@@ -69,6 +75,7 @@ object Linux {
             remove()
         }
 
+        onStep(1, total, "准备 proot")
         onLog("准备 proot…")
         if (!proot.isFile) {
             if (!copyAsset(ASSET_PROOT, proot)) {
@@ -85,6 +92,7 @@ object Linux {
             return true
         }
 
+        onStep(2, total, "准备 Ubuntu 镜像")
         onLog("准备 Ubuntu 镜像…")
         val tar = tarball()
         if (!tar.isFile) {
@@ -109,9 +117,13 @@ object Linux {
         runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
         stage.deleteRecursively()
         stage.mkdirs()
+        onStep(3, total, "解包镜像（逐文件回显）")
         onLog("开始解包（1-3 分钟）…")
         relabeled = false
-        val r = exec("cd '${stage.absolutePath}' && tar -xzf '${tar.absolutePath}'", 600_000L)
+        //-v 让 tar 把每个解出来的文件名都打出来，逐行喂给 UI，哪怕刷得很快也能看到在动
+        val r = exec("cd '${stage.absolutePath}' && tar -xzvf '${tar.absolutePath}'", 600_000L) { line ->
+            if (line.isNotBlank()) onLog(line)
+        }
         //tar 的退出码不可靠（perl 之类的硬链接告警也非 0），成败一律看 apt-get 有没有落盘
         if (!r.ok) onLog("tar 返回 ${r.code}（部分告警不影响使用）")
         if (!File(stage, "usr/bin/apt-get").isFile) {
@@ -119,6 +131,7 @@ object Linux {
             runCatching { stage.deleteRecursively() }
             return false
         }
+        onStep(4, total, "替换 rootfs")
         //校验通过再换上去：旧目录先改名兜底，新目录换名成功后才清掉旧的
         val old = File(base(), "rootfs.old")
         runCatching { exec("rm -rf '${old.absolutePath}'", 120_000L) }
@@ -134,17 +147,20 @@ object Linux {
             return false
         }
         runCatching { old.deleteRecursively() }
+        onStep(5, total, "修正属主")
         onLog("解包完成，修正属主…")
         //root 解开的文件属主是 root，改回应用自己：App 才能写 resolv.conf，删 rootfs 也不用惊动 root
         val uid = Process.myUid()
         val own = exec("chown -R $uid:$uid '${rootfs.absolutePath}'", 120_000L)
         if (!own.ok) onLog("改属主失败(${own.code})：${own.out.take(300)}")
         //root 通道解包出来的文件 label 是裸 s0，缺本应用的 MLS 分类，execve 会被 SELinux 拒，这里补回来
+        onStep(6, total, "补 SELinux 标签")
         if (relabel()) {
             relabeled = true
             onLog("已补文件标签")
         }
 
+        onStep(7, total, "写 DNS 与主机名")
         //DNS 与主机名先写死，apt 能不能用全看这一步
         runCatching {
             File(rootfs, "etc/resolv.conf").writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
@@ -156,6 +172,7 @@ object Linux {
             onLog("解包后校验没过：rootfs 里缺 apt-get 或 os-release，镜像可能不完整（已保留镜像副本可重试）")
             return false
         }
+        onStep(8, total, "完成")
         onLog("完成：Ubuntu 已可用")
         return true
     } //安装/解包
@@ -309,17 +326,23 @@ object Linux {
     } //assets 拷到私有目录
 
     /** 先自己跑（不依赖 Root）；本地起不来（比如没有 exec 权限）再退回 Root 通道 */
-    private fun exec(cmd: String, timeoutMs: Long): ShellResult =
-        blocked() ?: localExec(arrayOf("/system/bin/sh", "-c", cmd), timeoutMs)
+    private fun exec(cmd: String, timeoutMs: Long, onLine: ((String) -> Unit)? = null): ShellResult =
+        blocked() ?: localExec(arrayOf("/system/bin/sh", "-c", cmd), timeoutMs, onLine)
             .takeIf { it.code != NO_LOCAL } ?: Root.run(cmd, timeoutMs)
 
     /** 用 ProcessBuilder 直接起进程：toybox tar / proot 都在系统或 native 目录，应用自己就能执行 */
-    private fun localExec(argv: Array<String>, timeoutMs: Long): ShellResult {
+    private fun localExec(argv: Array<String>, timeoutMs: Long, onLine: ((String) -> Unit)? = null): ShellResult {
         return runCatching {
             val p = ProcessBuilder(*argv).redirectErrorStream(true).start()
             val out = StringBuilder()
             val pump = Thread {
-                runCatching { p.inputStream.bufferedReader().forEachLine { out.appendLine(it) } }
+                runCatching {
+                    p.inputStream.bufferedReader().forEachLine { line ->
+                        out.appendLine(line)
+                        //有回调就边跑边吐，解包时能逐文件刷进度
+                        onLine?.invoke(line)
+                    }
+                }
             }.apply { isDaemon = true; start() }
             val done = p.waitFor(timeoutMs, TimeUnit.MILLISECONDS)
             if (!done) {

@@ -3,18 +3,45 @@ package b.ai.core
 import java.util.Calendar
 
 /** 一天的用量；cached 是输入里命中缓存的那部分（已含在 prompt 内） */
-data class DayUse(val day: String, val prompt: Long, val completion: Long, val cached: Long = 0) {
+data class DayUse(
+    val day: String,
+    val prompt: Long,
+    val completion: Long,
+    val cached: Long = 0,
+    val cost: Double = 0.0
+) {
     val total: Long get() = prompt + completion
 }
 
 /** 一个月的活跃与用量 */
 data class MonthUse(val month: String, val activeDays: Int, val tokens: Long)
 
+/** SQL 里折好的一天用量（Repo 直接吐这个，不经过对象分配） */
+data class RawDay(val day: String, val prompt: Long, val cached: Long, val completion: Long)
+
+/** 模型价格：元 / 百万 token；三项全 0 表示不计价，只统计 token */
+data class Price(val inP: Float = 0f, val outP: Float = 0f, val cacheP: Float = 0f) {
+    val on: Boolean get() = inP > 0f || outP > 0f || cacheP > 0f
+
+    /** 一段用量折算成钱（元）；缓存命中那部分按缓存价算，不重复计输入价 */
+    fun cost(prompt: Long, cached: Long, completion: Long): Double {
+        if (!on) return 0.0
+        val c = cached.coerceIn(0L, prompt)
+        return ((prompt - c) * inP + c * cacheP + completion * outP) / 1_000_000.0
+    } //折钱
+
+    companion object {
+        fun now() = Price(Cfg.priceIn, Cfg.priceOut, Cfg.priceCache)
+    }
+}
+
 /** 统计快照：一次查库聚合完，页面只负责画 */
 data class StatSnap(
     val totalPrompt: Long = 0,
     val totalCompletion: Long = 0,
     val totalCached: Long = 0,
+    val totalCost: Double = 0.0,
+    val price: Price = Price(),
     val models: List<Pair<String, Long>> = emptyList(),
     val days: List<DayUse> = emptyList(),
     val months: List<MonthUse> = emptyList(),
@@ -26,6 +53,9 @@ data class StatSnap(
 
     /** 近 180 天里有实际用量的天数 */
     val activeDays: Int get() = days.count { it.total > 0 }
+
+    /** 一段日期区间的费用 */
+    fun costOf(items: List<DayUse>): Double = items.sumOf { it.cost }
 }
 
 object Stat {
@@ -49,30 +79,11 @@ object Stat {
     /** 本月天数：问系统日历，28 / 29 / 30 / 31 都对，别自己写判断 */
     fun monthLen(): Int = Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH)
 
-    /** 全量扫 usage 账本聚合；库大也只是几千行，调用方放 IO 线程跑 */
+    /** 聚合统计：日期折叠与求和都在 SQL 里做完，账本再大也只回几百行；调用方放 IO 线程 */
     fun load(): StatSnap {
-        val byDay = HashMap<String, LongArray>()
-        val byModel = HashMap<String, Long>()
-        var prompt = 0L
-        var completion = 0L
-        var cachedSum = 0L
-        var msg = 0
-        Repo.eachUsageAt { at, _, model, p, ca, cp ->
-            if (p + cp > 0) {
-                val c = ca.coerceIn(0L, p)
-                prompt += p
-                completion += cp
-                cachedSum += c
-                msg++
-                val k = dayKey(if (at > 0) at else System.currentTimeMillis())
-                val slot = byDay.getOrPut(k) { LongArray(3) }
-                slot[0] += p
-                slot[1] += cp
-                slot[2] += c
-                val name = model.ifBlank { "未知模型" }
-                byModel[name] = (byModel[name] ?: 0L) + p + cp
-            }
-        }
+        val price = Price.now()
+        val t = Repo.usageTotals()
+        val daily = Repo.usageDaily().associateBy { it.day }
 
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
@@ -85,8 +96,8 @@ object Stat {
         for (i in 179 downTo 0) {
             val c = cal.clone() as Calendar
             c.add(Calendar.DAY_OF_MONTH, -i)
-            val v = byDay[dayKey(c.timeInMillis)]
-            days += DayUse(dayKey(c.timeInMillis), v?.get(0) ?: 0L, v?.get(1) ?: 0L, v?.get(2) ?: 0L)
+            val k = dayKey(c.timeInMillis)
+            days += toDayUse(k, daily[k], price)
         }
 
         //近 6 个月：活跃天数 + 用量
@@ -98,10 +109,10 @@ object Stat {
             val k = monKey(c.timeInMillis)
             var active = 0
             var tk = 0L
-            byDay.forEach { (dk, v) ->
+            daily.forEach { (dk, v) ->
                 if (dk.startsWith(k)) {
-                    if (v[0] + v[1] > 0) active++
-                    tk += v[0] + v[1]
+                    if (v.prompt + v.completion > 0) active++
+                    tk += v.prompt + v.completion
                 }
             }
             months += MonthUse(k, active, tk)
@@ -113,20 +124,26 @@ object Stat {
         val monthDay = ArrayList<DayUse>(len)
         for (d in 1..len) {
             val k = "$ck-${if (d < 10) "0$d" else d}"
-            val v = byDay[k]
-            monthDay += DayUse(k, v?.get(0) ?: 0L, v?.get(1) ?: 0L, v?.get(2) ?: 0L)
+            monthDay += toDayUse(k, daily[k], price)
         }
 
+        //cached 按行夹到 prompt 以内由 SQL 的 MIN(cached,prompt) 保证
         return StatSnap(
-            totalPrompt = prompt,
-            totalCompletion = completion,
-            totalCached = cachedSum,
-            models = byModel.entries.sortedByDescending { it.value }.map { it.key to it.value },
+            totalPrompt = t[1],
+            totalCompletion = t[3],
+            totalCached = t[2],
+            totalCost = price.cost(t[1], t[2], t[3]),
+            price = price,
+            models = Repo.usageModels().map { (m, v) -> m.ifBlank { "未知模型" } to v },
             days = days,
             months = months,
             monthDay = monthDay,
             monthLen = len,
-            msgCount = msg
+            msgCount = t[0].toInt()
         )
     } //统计聚合
+
+    private fun toDayUse(day: String, raw: RawDay?, price: Price): DayUse =
+        if (raw == null) DayUse(day, 0, 0)
+        else DayUse(day, raw.prompt, raw.completion, raw.cached, price.cost(raw.prompt, raw.cached, raw.completion)) //单日快照
 }

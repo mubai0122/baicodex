@@ -139,7 +139,12 @@ data class ChatMsg(
     /** 本轮统计，只有 assistant 消息带 */
     val meta: MsgMeta? = null,
     /** 已收藏：长按菜单里钉住，收藏夹里能翻回来 */
-    val starred: Boolean = false
+    val starred: Boolean = false,
+    /** 父消息 id：0 表示会话根；重发 / 重新生成靠它长出新分支 */
+    val parentId: Long = 0L,
+    /** 同父兄弟里的序号（从 1 起）与总数，只有总数 > 1 时界面才显示 ‹ n/m › */
+    val bIdx: Int = 0,
+    val bTotal: Int = 0
 ) {
     fun toApiJson(): JSONObject {
         val o = JSONObject().put("role", role)

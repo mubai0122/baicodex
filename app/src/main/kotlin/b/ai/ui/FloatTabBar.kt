@@ -27,7 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -35,9 +37,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import b.ai.core.Cfg
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray
+import b.ai.ui.theme.DarkColors
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
@@ -71,6 +75,8 @@ fun FloatTabBar(
         if (tabPx <= 0f) 0 else ((x - padPx) / tabPx).toInt().coerceIn(0, tabs.lastIndex)
 
     Box(modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        //液态玻璃底栏：半透白渐变 + 白色高光边，底下内容能透一点出来
+        val glass = Cfg.glassBar
         Box(
             Modifier
                 .fillMaxWidth()
@@ -81,8 +87,24 @@ fun FloatTabBar(
                     ambientColor = Color.Black.copy(alpha = 0.08f),
                     spotColor = Color.Black.copy(alpha = 0.14f)
                 )
-                .background(SurfaceWhite, CircleShape)
-                .border(1.dp, BorderGray, CircleShape)
+                .background(
+                    if (glass) {
+                        Brush.verticalGradient(
+                            listOf(
+                                SurfaceWhite.copy(alpha = 0.94f),
+                                SurfaceWhite.copy(alpha = 0.68f)
+                            )
+                        )
+                    } else {
+                        SolidColor(SurfaceWhite)
+                    },
+                    CircleShape
+                )
+                .border(
+                    1.dp,
+                    if (glass) Color.White.copy(alpha = if (DarkColors) 0.18f else 0.85f) else BorderGray,
+                    CircleShape
+                )
                 .pointerInput(tabs.size, tabPx) {
                     detectHorizontalDragGestures(
                         onDragStart = { p ->

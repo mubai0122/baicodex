@@ -74,12 +74,13 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
-/** 侧边栏：搜索 + 会话列表 + 底部按钮栏（新对话 / 收藏 / 导出 / 设置） */
+/** 侧边栏：搜索 + 会话列表 + 底部按钮栏（新对话 / 收藏 / 记忆 / 导出 / 设置） */
 @Composable
 fun DrawerPanel(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenStars: () -> Unit,
+    onOpenMemory: () -> Unit,
     onClose: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -269,6 +270,11 @@ fun DrawerPanel(
                     DrawerAction(stringResource(R.string.dw_stars), Modifier.weight(1f)) {
                         toast = ""
                         onOpenStars()
+                    }
+                    //记忆同样由根弹窗层渲染，理由同上
+                    DrawerAction(stringResource(R.string.dw_memory), Modifier.weight(1f)) {
+                        toast = ""
+                        onOpenMemory()
                     }
                     DrawerAction(stringResource(R.string.dw_export), Modifier.weight(1f)) {
                         scope.launch {

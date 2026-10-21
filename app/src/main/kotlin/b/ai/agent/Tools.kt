@@ -2,6 +2,7 @@ package b.ai.agent
 
 import b.ai.core.Cfg
 import b.ai.core.Mcp
+import b.ai.core.Memory
 import b.ai.core.Route
 import b.ai.core.Search
 import b.ai.core.WorkMode
@@ -31,6 +32,7 @@ object Tools {
     const val LINUX = "linux_shell"
     const val WEB_SEARCH = "web_search"
     const val RAIL = "rail_query"
+    const val MEMORY = "memory_save"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -38,7 +40,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL))
+            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.addAll(Mcp.tools.map { it.full })
@@ -54,6 +56,7 @@ object Tools {
         LINUX -> "Linux 命令"
         WEB_SEARCH -> "联网搜索"
         RAIL -> "火车票查询"
+        MEMORY -> "记住这件事"
         else -> mcpLabel(name)
     }
 
@@ -160,6 +163,20 @@ object Tools {
                 )
             )
         }
+        //永久记忆：模型自己判断哪些值得长期记住
+        arr.put(
+            fn(
+                MEMORY,
+                "把值得长期记住的事实、结论或用户偏好存进永久记忆。用户删掉之前，它每轮都会随系统提示生效；普通寒暄、临时信息不要存。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject().put(
+                        "text",
+                        str("要记住的一句话，写成能独立看懂的陈述句")
+                    )
+                ).put("required", JSONArray().put("text"))
+            )
+        )
         //MCP 能力：schema 是服务端给的 parameters 原文，原样透传给模型
         Mcp.tools.forEach { t ->
             val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
@@ -177,8 +194,18 @@ object Tools {
         LINUX -> execLinux(args.optString("command"))
         WEB_SEARCH -> search(args)
         RAIL -> rail(args)
+        MEMORY -> memorySave(args)
         else -> mcpCall(name, args)
     } //执行单个工具
+
+    /** 存一条永久记忆：重复的直接告诉模型别啰嗦 */
+    private fun memorySave(args: JSONObject): ToolOutcome {
+        val t = args.optString("text").trim()
+        if (t.isEmpty()) return ToolOutcome(false, "memory_save 需要 text 参数", Route.SANDBOX)
+        val ok = Memory.add(t, "")
+        return if (ok) ToolOutcome(true, "已记住：$t", Route.SANDBOX)
+        else ToolOutcome(true, "这条已经记过了：$t", Route.SANDBOX)
+    } //存记忆
 
     /** MCP 能力调用：能力不在缓存 / 服务被删或停用都如实报错，不能静默当没这工具 */
     private fun mcpCall(full: String, args: JSONObject): ToolOutcome {

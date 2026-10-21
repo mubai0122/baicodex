@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.WindowInsets
@@ -192,7 +193,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     }
 
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-    Column(Modifier.fillMaxSize().background(BgGray).windowInsetsPadding(WindowInsets.safeDrawing)) {
+    Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing)) {
         TopBar(onOpenDrawer, onOpenWorkspace = { wsPanel = true }, onPersona = { personaPanel = !personaPanel })
 
         //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
@@ -218,12 +219,13 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                     }
                 )
         ) {
-            if (Agent.messages.isEmpty()) {
+            //面板弹出时不渲染启动卡：直接消失，位置留给面板，也避免关闭时手指落在卡片上误触
+            if (Agent.messages.isEmpty() && !panelOpen) {
                 EmptyState(
                     modifier = Modifier.fillMaxSize(),
                     onPick = { input = it }
                 )
-            } else {
+            } else if (Agent.messages.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
@@ -231,11 +233,17 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(Agent.messages) { m ->
-                        MessageItem(
-                            m,
-                            onToolDetail = { detail = it },
-                            onLongPress = { menuFor = it }
-                        )
+                        Column(Modifier.fillMaxWidth()) {
+                            //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›
+                            if (m.bTotal > 1) {
+                                BranchBar(m.bIdx, m.bTotal) { d -> Agent.switchBranch(m.id, d) }
+                            }
+                            MessageItem(
+                                m,
+                                onToolDetail = { detail = it },
+                                onLongPress = { menuFor = it }
+                            )
+                        }
                     }
                     //流式增量：边收边渲染，落库前就看得见字在长
                     if (Agent.busy && Agent.runningHere() && (Agent.streamText.isNotEmpty() || Agent.streamReason.isNotEmpty())) {
@@ -290,12 +298,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             }
         }
 
-//输入区上方：+ / 三条横线的内联面板，跟 @ 面板同一位置；弹簧带一点回弹的进场
+//输入区上方：+ / 三条横线的内联面板，跟 @ 面板同一位置；进场短促，弹出/收起都跟手
         AnimatedVisibility(
             visible = panelOpen,
-            enter = fadeIn(tween(120)) +
-                slideInVertically(spring(dampingRatio = 0.7f, stiffness = 360f)) { it / 2 },
-            exit = fadeOut(tween(90)) + slideOutVertically(tween(140)) { it / 2 }
+            enter = fadeIn(tween(90)) + slideInVertically(tween(150)) { it / 2 },
+            exit = fadeOut(tween(80)) + slideOutVertically(tween(120)) { it / 2 }
         ) {
             when {
                 attachPanel -> AttachPanel(
@@ -368,9 +375,37 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             modelLabel = modelLabel,
             onChange = { input = it },
             images = pendingImgs,
-            onOpenConfig = { cfgPanel = true },
-            onOpenAttach = { attachPanel = true },
-            onOpenModel = { modelPanel = !modelPanel },
+            //三条杠 / 加号都能再点一次关掉，与其他面板互斥
+            onOpenConfig = {
+                val on = !cfgPanel
+                cfgPanel = on
+                if (on) {
+                    attachPanel = false
+                    skillPanel = false
+                    modelPanel = false
+                    personaPanel = false
+                }
+            },
+            onOpenAttach = {
+                val on = !attachPanel
+                attachPanel = on
+                if (on) {
+                    cfgPanel = false
+                    skillPanel = false
+                    modelPanel = false
+                    personaPanel = false
+                }
+            },
+            onOpenModel = {
+                val on = !modelPanel
+                modelPanel = on
+                if (on) {
+                    cfgPanel = false
+                    attachPanel = false
+                    skillPanel = false
+                    personaPanel = false
+                }
+            },
             onExpand = { fullInput = true },
             onRemoveImage = { p ->
                 pendingImgs = pendingImgs - p
@@ -677,19 +712,18 @@ private fun FeatureTile(
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "tileIn$index"
     )
-    Column(
-        modifier
+    GlassPanel(
+        modifier = modifier
             .graphicsLayer {
                 alpha = p
                 translationY = (1f - p) * 32.dp.toPx()
                 val s = 0.92f + 0.08f * p
                 scaleX = s
                 scaleY = s
-            }
-            .background(SurfaceWhite, RoundedCornerShape(14.dp))
-            .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
-            .tap { onClick() }
-            .padding(horizontal = 12.dp, vertical = 11.dp)
+            },
+        corner = 14.dp,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 11.dp),
+        onClick = onClick
     ) {
         Box(Modifier.height(22.dp), contentAlignment = Alignment.CenterStart) { CardGlyph(icon, AccentBlue) }
         Spacer(Modifier.height(4.dp))
@@ -711,6 +745,57 @@ private fun CardGlyph(icon: String, color: Color) {
         else -> IcGrid(color, side = 20.dp)
     }
 } //能力卡图标
+
+@Composable
+private fun BarChip(
+    active: Boolean,
+    flatActive: Color,
+    accent: Color = AccentBlue,
+    onTap: () -> Unit,
+    content: @Composable RowScope.() -> Unit
+) {
+    //开了质感按钮就换成带厚度的 3D 胶囊，否则维持原来那块扁平面板
+    if (Cfg.tactileBtn) {
+        TactileChip(active = active, accent = accent, onClick = onTap, content = content)
+    } else {
+        Row(
+            Modifier
+                .background(if (active) flatActive else SurfaceMuted, RoundedCornerShape(9.dp))
+                .tap { onTap() }
+                .padding(horizontal = 9.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    }
+} //输入区小胶囊
+
+/** 发送键：开了质感按钮走 3D 圆钮，否则还是原来那颗扁圆 */
+@Composable
+private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
+    if (Cfg.tactileBtn) {
+        TactileCircle(active = canSend, enabled = canSend, onClick = onSend) {
+            if (Agent.busy) {
+                Text("…", fontSize = 14.sp, color = TextSecondary)
+            } else {
+                IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+            }
+        }
+    } else {
+        Box(
+            Modifier
+                .size(34.dp)
+                .background(if (canSend) AccentBlue else SurfaceMuted, CircleShape)
+                .tap(enabled = canSend) { onSend() },
+            contentAlignment = Alignment.Center
+        ) {
+            if (Agent.busy) {
+                Text("…", fontSize = 14.sp, color = TextSecondary)
+            } else {
+                IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+            }
+        }
+    }
+} //发送键
 
 @Composable
 private fun InputBar(
@@ -740,15 +825,10 @@ private fun InputBar(
     Column(outer) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             //深度思考开关：直接改配置，下一轮请求生效
-            Row(
-                Modifier
-                    .background(
-                        if (Cfg.think) AccentBlueSoft else SurfaceMuted,
-                        RoundedCornerShape(9.dp)
-                    )
-                    .tap { Cfg.think = !Cfg.think }
-                    .padding(horizontal = 9.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
+            BarChip(
+                active = Cfg.think,
+                flatActive = AccentBlueSoft,
+                onTap = { Cfg.think = !Cfg.think }
             ) {
                 IcSpark(if (Cfg.think) AccentBlue else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(5.dp))
@@ -760,12 +840,10 @@ private fun InputBar(
             }
             Spacer(Modifier.width(6.dp))
             //最大模式：不下发 max_tokens、思考顶到 high，长任务不容易被截断
-            Row(
-                Modifier
-                    .background(if (Cfg.maxMode) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(9.dp))
-                    .tap { Cfg.maxMode = !Cfg.maxMode }
-                    .padding(horizontal = 9.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
+            BarChip(
+                active = Cfg.maxMode,
+                flatActive = AccentBlueSoft,
+                onTap = { Cfg.maxMode = !Cfg.maxMode }
             ) {
                 Text(
                     stringResource(R.string.cs_max),
@@ -775,12 +853,11 @@ private fun InputBar(
             }
             Spacer(Modifier.width(6.dp))
             //语音：走系统识别，说完的文本追加进输入框
-            Row(
-                Modifier
-                    .background(if (Voice.listening) DangerRedSoft else SurfaceMuted, RoundedCornerShape(9.dp))
-                    .tap { Voice.toggle(ctx) { t -> onChange((input + t).trim()) } }
-                    .padding(horizontal = 9.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically
+            BarChip(
+                active = Voice.listening,
+                accent = DangerRed,
+                flatActive = DangerRedSoft,
+                onTap = { Voice.toggle(ctx) { t -> onChange((input + t).trim()) } }
             ) {
                 IcMic(if (Voice.listening) DangerRed else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(4.dp))
@@ -896,19 +973,7 @@ private fun InputBar(
                 }
             Spacer(Modifier.width(6.dp))
             //纸飞机小圈：内嵌在输入框右侧，禁用时灰底灰图标
-            Box(
-                Modifier
-                    .size(34.dp)
-                    .background(if (canSend) AccentBlue else SurfaceMuted, CircleShape)
-                    .tap(enabled = canSend) { onSend() },
-                contentAlignment = Alignment.Center
-            ) {
-                if (Agent.busy) {
-                    Text("…", fontSize = 14.sp, color = TextSecondary)
-                } else {
-                    IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
-                }
-            }
+            SendButton(canSend = canSend, onSend = onSend)
         }
     }
 } //输入区：图片 / 文件 / 语音 / 发送
@@ -1024,6 +1089,37 @@ private fun StreamingMsg(text: String, reason: String) {
     }
     }
 } //流式输出中的临时气泡
+
+/** 分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head 就跟到哪条 */
+@Composable
+private fun BranchBar(idx: Int, total: Int, onSwitch: (Int) -> Unit) {
+    Row(
+        Modifier.padding(start = 42.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "‹",
+            fontSize = 15.sp,
+            color = AccentBlue,
+            modifier = Modifier
+                .background(AccentBlueSoft, RoundedCornerShape(7.dp))
+                .tap { onSwitch(-1) }
+                .padding(horizontal = 7.dp, vertical = 1.dp)
+        )
+        Spacer(Modifier.width(5.dp))
+        Text("$idx/$total", fontSize = 10.sp, color = TextSecondary)
+        Spacer(Modifier.width(5.dp))
+        Text(
+            "›",
+            fontSize = 15.sp,
+            color = AccentBlue,
+            modifier = Modifier
+                .background(AccentBlueSoft, RoundedCornerShape(7.dp))
+                .tap { onSwitch(1) }
+                .padding(horizontal = 7.dp, vertical = 1.dp)
+        )
+    }
+} //分支切换条
 
 @Composable
 private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress: (ChatMsg) -> Unit) {
@@ -1173,9 +1269,11 @@ private fun ThinkBlock(m: ChatMsg) {
 @Composable
 private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
     val first = m.content.lineSequence().firstOrNull()?.take(80) ?: ""
+    //工具卡片跟 AI 气泡同宽：左边让出头像占的 34dp，右边不再留缺口
     Column(
         Modifier
             .fillMaxWidth()
+            .padding(start = if (Cfg.avatarOn) 34.dp else 0.dp)
             .background(SurfaceWhite, bubbleShape(12.dp))
             .border(
                 1.dp,

@@ -1,8 +1,8 @@
 #!/bin/bash
-# 给 release 未签名包补 debug 签名，并输出成 BaiAgent-1.0.1.apk（名字要和 get.php 直链一致）
+# 给 release 未签名包补 debug 签名，并输出成 BaiAgent-1.2.0.apk（名字要和 get.php 直链一致）
 cd /sdcard/AndroidCSProjects/BaiAgent || exit 9
 APK=app/build/outputs/apk/release/app-release-unsigned.apk
-OUT=app/build/outputs/apk/release/BaiAgent-1.0.1.apk
+OUT=app/build/outputs/apk/release/BaiAgent-1.2.0.apk
 BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ 2>/dev/null | sort -V | tail -1)
 BT=${BT%/}
 ZL="$BT/zipalign"

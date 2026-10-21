@@ -9,13 +9,30 @@ import java.util.UUID
 /** 会话与记录读写 */
 object Repo {
     private var helper: Db? = null
+    private var statHelper: StatDb? = null
+    //本 App 的会话 id 一律是标准 UUID；账本里不认这个形态的行都算外来脏数据
+    private val UUID_RE = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
     fun init(c: Context) {
         if (helper == null) helper = Db(c)
+        if (statHelper == null) {
+            val h = StatDb(c)
+            statHelper = h
+            //账本搬一次家：老库里那张 usage 表整表搬进统计库，之后主库不再碰它
+            runCatching { h.adopt(w()) }
+        }
     }
 
     private fun w() = helper!!.writableDatabase
     private fun r() = helper!!.readableDatabase
+    private fun sw() = statHelper!!.writableDatabase
+    private fun sr() = statHelper!!.readableDatabase
+
+    /** 备份导出前压一次 WAL：两个库都压，拷走的就是完整状态 */
+    fun checkpoint() {
+        runCatching { w().rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() } }
+        runCatching { sw().rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() } }
+    } //压 WAL
 
     fun newSession(title: String = "", category: String = "默认"): SessionRow {
         val id = UUID.randomUUID().toString()
@@ -112,11 +129,15 @@ object Repo {
 
     fun sessions(): List<SessionRow> {
         val out = ArrayList<SessionRow>()
+        //条数与最后一条先按会话折一遍，再按主键回查内容：整表只扫一次，会话再多也不卡
         val sql = "SELECT s.id,s.title,s.category,s.descr,s.updated_at," +
-            "(SELECT content FROM message WHERE session_id=s.id ORDER BY _id DESC LIMIT 1)," +
-            "(SELECT COUNT(1) FROM message WHERE session_id=s.id)," +
+            "IFNULL(m.content,''),IFNULL(g.cnt,0)," +
             "s.pinned,s.persona,s.workspace " +
-            "FROM session s ORDER BY s.pinned DESC, s.updated_at DESC"
+            "FROM session s " +
+            "LEFT JOIN (SELECT session_id,COUNT(1) cnt,MAX(_id) maxid FROM message GROUP BY session_id) g " +
+            "ON g.session_id=s.id " +
+            "LEFT JOIN message m ON m._id=g.maxid " +
+            "ORDER BY s.pinned DESC, s.updated_at DESC"
         r().rawQuery(sql, null).use { c ->
             while (c.moveToNext()) {
                 out.add(
@@ -210,13 +231,22 @@ object Repo {
         return out
     } //会话搜索
 
+    /**
+     * 读当前分支：从会话的 head 沿 parent_id 回溯到根，再按 _id 正序返回。
+     * 顺手把每条消息在同父兄弟里的序号与总数算出来，界面据此显示 ‹ n/m ›。
+     */
     fun messages(sessionId: String): List<ChatMsg> {
         val out = ArrayList<ChatMsg>()
-        r().query(
-            "message",
-            arrayOf("_id", "role", "content", "tool_calls", "tool_call_id", "tool_name", "error", "reasoning", "images", "meta", "starred"),
-            "session_id=?", arrayOf(sessionId), null, null, "_id ASC"
-        ).use { c ->
+        val sql = "WITH RECURSIVE path(id) AS (" +
+            "SELECT IFNULL((SELECT head_id FROM session WHERE id=?)," +
+            "(SELECT IFNULL(MAX(_id),0) FROM message WHERE session_id=?)) " +
+            "UNION ALL " +
+            "SELECT IFNULL(m.parent_id,0) FROM message m JOIN path p ON m._id=p.id " +
+            "WHERE IFNULL(m.parent_id,0)>0) " +
+            "SELECT _id,role,content,tool_calls,tool_call_id,tool_name,error,reasoning,images,meta,starred," +
+            "IFNULL(parent_id,0) FROM message " +
+            "WHERE _id IN (SELECT id FROM path WHERE id>0) ORDER BY _id ASC"
+        r().rawQuery(sql, arrayOf(sessionId, sessionId)).use { c ->
             while (c.moveToNext()) {
                 out.add(
                     ChatMsg(
@@ -230,13 +260,20 @@ object Repo {
                         reasoning = c.getString(7) ?: "",
                         images = parseList(c.getString(8)),
                         meta = parseMeta(c.getString(9)),
-                        starred = c.getInt(10) == 1
+                        starred = c.getInt(10) == 1,
+                        parentId = c.getLong(11)
                     )
                 )
             }
         }
-        return out
-    } //读会话全部记录
+        if (out.isEmpty()) return out
+        val slots = branchSlots(sessionId)
+        if (slots.isEmpty()) return out
+        return out.map { m ->
+            val slot = slots[m.id]
+            if (slot == null) m else m.copy(bIdx = slot.first, bTotal = slot.second)
+        }
+    } //读当前分支
 
     /** 收藏开关：只改标记，不动内容与时间，删会话时跟着消息一起没 */
     fun setStarred(id: Long, on: Boolean) {
@@ -275,23 +312,144 @@ object Repo {
         return out
     } //收藏夹列表
 
-    /** 删掉 id >= fromId 的记录（编辑重发 / 重新生成回滚用） */
+    /** 回滚到 fromId 之前：只把 head 挪到它的父节点，旧内容全留在树里，之后写的自然长成新分支 */
+    fun rollback(sessionId: String, fromId: Long) {
+        val p = parentOf(fromId)
+        setHead(sessionId, p)
+        touch(sessionId)
+    } //回滚到某条之前
+
+    /** 删掉 fromId 及其整棵子树：留下孤儿子节点会让分支指向不存在的父节点 */
     fun deleteFrom(sessionId: String, fromId: Long): Int {
-        val n = w().delete("message", "session_id=? AND _id>=?", arrayOf(sessionId, fromId.toString()))
+        val ids = subtreeIds(sessionId, fromId)
+        var n = 0
+        ids.chunked(300).forEach { chunk ->
+            n += w().delete("message", "_id IN (" + chunk.joinToString(",") + ")", null)
+        }
+        fixHead(sessionId)
         touch(sessionId)
         return n
-    }
+    } //删子树
 
-    /** 删单条消息：只给长按菜单用，删完刷一下会话更新时间 */
+    /** 删单条消息：连同它带出来的分支一起删，head 落到最近的存活祖先上 */
     fun deleteMessage(sessionId: String, id: Long) {
-        w().delete("message", "_id=?", arrayOf(id.toString()))
-        touch(sessionId)
+        deleteFrom(sessionId, id)
     } //删单条消息
 
+    /** 切到 msgId 所在那一支：head 落到这一支最深的叶子，界面就会显示这条分支 */
+    fun switchTo(sessionId: String, msgId: Long) {
+        setHead(sessionId, deepestLeaf(sessionId, msgId))
+        touch(sessionId)
+    } //切分支
+
+    /** 同父兄弟：界面上的 ‹ › 靠这张表找相邻一条 */
+    fun siblings(sessionId: String, msgId: Long): List<Long> {
+        val out = ArrayList<Long>()
+        r().rawQuery(
+            "SELECT _id FROM message WHERE session_id=? AND IFNULL(parent_id,0)=? ORDER BY _id",
+            arrayOf(sessionId, parentOf(msgId).toString())
+        ).use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
+        return out
+    } //兄弟消息
+
+    /** 每个消息在同父兄弟里的 (序号, 总数)，没有兄弟的会话返回空表 */
+    private fun branchSlots(sessionId: String): Map<Long, Pair<Int, Int>> {
+        val groups = HashMap<Long, ArrayList<Long>>()
+        r().rawQuery(
+            "SELECT _id,IFNULL(parent_id,0) FROM message WHERE session_id=? ORDER BY _id",
+            arrayOf(sessionId)
+        ).use { c ->
+            while (c.moveToNext()) groups.getOrPut(c.getLong(1)) { ArrayList() }.add(c.getLong(0))
+        }
+        val out = HashMap<Long, Pair<Int, Int>>()
+        groups.values.forEach { ids ->
+            if (ids.size > 1) ids.forEachIndexed { i, id -> out[id] = (i + 1) to ids.size }
+        }
+        return out
+    } //分支序号
+
+    /** 当前走到的位置：会话头指针，没设过就退回最后一条 */
+    private fun headOf(sessionId: String): Long {
+        var h = 0L
+        runCatching {
+            r().rawQuery("SELECT IFNULL(head_id,0) FROM session WHERE id=?", arrayOf(sessionId)).use { c ->
+                if (c.moveToFirst()) h = c.getLong(0)
+            }
+        }
+        if (h > 0L) return h
+        return runCatching {
+            r().rawQuery("SELECT IFNULL(MAX(_id),0) FROM message WHERE session_id=?", arrayOf(sessionId)).use {
+                if (it.moveToFirst()) it.getLong(0) else 0L
+            }
+        }.getOrDefault(0L)
+    } //当前头
+
+    private fun setHead(sessionId: String, id: Long) {
+        runCatching {
+            w().update("session", ContentValues().apply { put("head_id", id) }, "id=?", arrayOf(sessionId))
+        }
+    } //挪头指针
+
+    private fun parentOf(id: Long): Long = runCatching {
+        r().rawQuery("SELECT IFNULL(parent_id,0) FROM message WHERE _id=?", arrayOf(id.toString())).use {
+            if (it.moveToFirst()) it.getLong(0) else 0L
+        }
+    }.getOrDefault(0L) //父节点
+
+    private fun subtreeIds(sessionId: String, root: Long): List<Long> {
+        val out = ArrayList<Long>()
+        out.add(root)
+        var i = 0
+        while (i < out.size) {
+            val cur = out[i]
+            i++
+            r().rawQuery(
+                "SELECT _id FROM message WHERE session_id=? AND IFNULL(parent_id,0)=?",
+                arrayOf(sessionId, cur.toString())
+            ).use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
+        }
+        return out
+    } //整棵子树
+
+    private fun deepestLeaf(sessionId: String, from: Long): Long {
+        var cur = from
+        while (true) {
+            val next = runCatching {
+                r().rawQuery(
+                    "SELECT IFNULL(MAX(_id),0) FROM message WHERE session_id=? AND IFNULL(parent_id,0)=?",
+                    arrayOf(sessionId, cur.toString())
+                ).use { if (it.moveToFirst()) it.getLong(0) else 0L }
+            }.getOrDefault(0L)
+            if (next <= 0L) return cur
+            cur = next
+        }
+    } //这一支的叶子
+
+    /** 头指针指向被删掉的消息时，往上找到最近还活着的祖先 */
+    private fun fixHead(sessionId: String) {
+        var h = 0L
+        runCatching {
+            r().rawQuery("SELECT IFNULL(head_id,0) FROM session WHERE id=?", arrayOf(sessionId)).use { c ->
+                if (c.moveToFirst()) h = c.getLong(0)
+            }
+        }
+        if (h <= 0L) return
+        while (h > 0L) {
+            val alive = runCatching {
+                r().rawQuery("SELECT 1 FROM message WHERE _id=?", arrayOf(h.toString())).use { it.moveToFirst() }
+            }.getOrDefault(false)
+            if (alive) break
+            h = parentOf(h)
+        }
+        setHead(sessionId, h)
+    } //修正头指针
+
+    /** 追加一条：默认接在当前 head 后面（于是成了新分支），写完 head 就跟到这条 */
     fun append(sessionId: String, m: ChatMsg): ChatMsg {
         val calls = if (m.toolCalls.isEmpty()) null else JSONArray().also { a ->
             m.toolCalls.forEach { a.put(it.toJson()) }
         }?.toString()
+        val parent = if (m.parentId > 0L) m.parentId else headOf(sessionId)
         val id = w().insert("message", null, ContentValues().apply {
             put("session_id", sessionId)
             put("role", m.role)
@@ -303,10 +461,12 @@ object Repo {
             put("error", if (m.isError) 1 else 0)
             put("images", if (m.images.isEmpty()) null else JSONArray(m.images).toString())
             put("meta", m.meta?.toJson()?.toString())
+            put("parent_id", parent)
             put("created_at", System.currentTimeMillis())
         })
+        setHead(sessionId, id)
         touch(sessionId)
-        return m.copy(id = id)
+        return m.copy(id = id, parentId = parent)
     } //追加一条记录
 
     /** 记一笔用量：每次请求一行，与会话解耦——删会话 / 清消息都不回滚它 */
@@ -320,12 +480,17 @@ object Repo {
         completion: Int
     ) {
         if (prompt + completion <= 0) return
+        //写库前先做体检：脏数据（时间戳跑未来、数字离谱、会话 id 不是本 App 的 UUID）一律拒收，统计页就不会被假数据撑爆
+        if (prompt < 0 || completion < 0 || prompt > 5_000_000 || completion > 5_000_000) return
+        val now = System.currentTimeMillis()
+        val stamp = if (at in (now - 7L * 86_400_000L)..(now + 60_000L)) at else now
+        val sid = if (UUID_RE.matches(sessionId)) sessionId else ""
         runCatching {
-            w().insert("usage", null, ContentValues().apply {
-                put("at", if (at > 0) at else System.currentTimeMillis())
+            sw().insert("usage", null, ContentValues().apply {
+                put("at", stamp)
                 put("provider", provider)
                 put("model", model)
-                put("session_id", sessionId)
+                put("session_id", sid)
                 put("prompt", prompt)
                 put("cached", cached.coerceIn(0, prompt))
                 put("completion", completion)
@@ -333,11 +498,47 @@ object Repo {
         }
     } //记一笔用量
 
+    /**统计用：一次 SQL 聚合出总量（行数 / prompt / cached / completion），不把行搬进内存 */
+    fun usageTotals(): LongArray {
+        val out = LongArray(4)
+        sr().rawQuery(
+            "SELECT COUNT(*),IFNULL(SUM(prompt),0),IFNULL(SUM(MIN(cached,prompt)),0),IFNULL(SUM(completion),0) " +
+                "FROM usage WHERE prompt+completion>0",
+            null
+        ).use { c -> if (c.moveToNext()) { for (i in 0..3) out[i] = c.getLong(i) } }
+        return out
+    } //账本总量
+
+    /**统计用：按本地日聚合，日期折叠交给 SQL，页面只拿几百行 */
+    fun usageDaily(): List<RawDay> {
+        val out = ArrayList<RawDay>()
+        sr().rawQuery(
+            "SELECT strftime('%Y-%m-%d',at/1000,'unixepoch','localtime') d," +
+                "IFNULL(SUM(prompt),0),IFNULL(SUM(MIN(cached,prompt)),0),IFNULL(SUM(completion),0) " +
+                "FROM usage WHERE prompt+completion>0 AND at>0 GROUP BY d ORDER BY d",
+            null
+        ).use { c ->
+            while (c.moveToNext()) out.add(RawDay(c.getString(0) ?: "", c.getLong(1), c.getLong(2), c.getLong(3)))
+        }
+        return out
+    } //按日聚合
+
+    /**统计用：按模型聚合，只取前 20 个，避免长尾模型把列表拉长 */
+    fun usageModels(): List<Pair<String, Long>> {
+        val out = ArrayList<Pair<String, Long>>()
+        sr().rawQuery(
+            "SELECT model,IFNULL(SUM(prompt+completion),0) t FROM usage WHERE prompt+completion>0 " +
+                "GROUP BY model ORDER BY t DESC LIMIT 20",
+            null
+        ).use { c -> while (c.moveToNext()) out.add((c.getString(0) ?: "") to c.getLong(1)) }
+        return out
+    } //按模型聚合
+
     /** 统计用：读独立账本（usage 表），调用方负责 IO 线程 */
     fun eachUsageAt(
         block: (at: Long, provider: String, model: String, prompt: Long, cached: Long, completion: Long) -> Unit
     ) {
-        r().query(
+        sr().query(
             "usage", arrayOf("at", "provider", "model", "prompt", "cached", "completion"),
             null, null, null, null, "at ASC"
         ).use { c ->
@@ -363,6 +564,31 @@ object Repo {
             while (c.moveToNext()) block(c.getLong(0), c.getString(1) ?: "")
         }
     } //遍历用量记录
+
+    /** 永久记忆：新的排前面，界面直接照这个顺序画 */
+    fun memoryList(): List<MemRow> {
+        val out = ArrayList<MemRow>()
+        r().query("memory", arrayOf("_id", "text", "created_at"), null, null, null, null, "_id DESC").use { c ->
+            while (c.moveToNext()) out.add(MemRow(c.getLong(0), c.getString(1) ?: "", c.getLong(2)))
+        }
+        return out
+    } //记忆列表
+
+    fun memoryAdd(text: String, sessionId: String): Boolean = runCatching {
+        w().insert("memory", null, ContentValues().apply {
+            put("text", text)
+            put("session_id", sessionId.ifBlank { null })
+            put("created_at", System.currentTimeMillis())
+        }) > 0L
+    }.getOrDefault(false) //写记忆
+
+    fun memoryDelete(id: Long) {
+        w().delete("memory", "_id=?", arrayOf(id.toString()))
+    } //删记忆
+
+    fun memoryClear() {
+        w().delete("memory", null, null)
+    } //清空记忆
 
     private fun parseList(raw: String?): List<String> {
         if (raw.isNullOrBlank()) return emptyList()

@@ -11,6 +11,7 @@ import b.ai.R
 import java.io.File
 import b.ai.core.ChatMsg
 import b.ai.core.Env
+import b.ai.core.Memory
 import b.ai.core.MsgMeta
 import b.ai.core.Perms
 import b.ai.core.Personas
@@ -404,7 +405,8 @@ object Agent {
     
     private suspend fun rollbackTo(msgId: Long) {
         val sid = runSid ?: sessionId ?: return
-        withContext(Dispatchers.IO) { Repo.deleteFrom(sid, msgId) }
+        //只把 head 挪回父节点：旧回答留在树里成了另一个分支，不再被删掉
+        withContext(Dispatchers.IO) { Repo.rollback(sid, msgId) }
         val list = withContext(Dispatchers.IO) { Repo.messages(sid) }
         if (sid == sessionId) {
             messages = list
@@ -413,6 +415,22 @@ object Agent {
         }
         budgetScale = 1f
     } //回滚到指定记录之前
+
+    /** 在同父兄弟之间换一支：dir=+1 下一支，-1 上一支 */
+    fun switchBranch(msgId: Long, dir: Int) {
+        val sid = sessionId ?: return
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                val list = Repo.siblings(sid, msgId)
+                val i = list.indexOf(msgId)
+                if (i < 0 || list.size < 2) return@withContext false
+                val j = ((i + dir) % list.size + list.size) % list.size
+                Repo.switchTo(sid, list[j])
+                true
+            }
+            if (ok) messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+        }
+    } //切分支
 
     private var keyIdx = 0
 
@@ -650,7 +668,7 @@ object Agent {
         val custom = Cfg.systemPrompt.trim()
         val searching = Search.selected != null
         val tools = buildString {
-            append("read_file / write_file / make_dir / delete_file / exec_shell / rail_query")
+            append("read_file / write_file / make_dir / delete_file / exec_shell / rail_query / memory_save")
             if (Linux.installed()) append(" / linux_shell")
             if (searching) append(" / web_search")
         }
@@ -659,6 +677,9 @@ object Agent {
             if (persona.isNotBlank()) append(persona).append("\n\n")
             if (custom.isNotBlank()) append(custom).append("\n\n")
             append(flow).append("\n\n")
+            //长期记忆整段下发：用户没删就一直带着
+            val memo = Memory.prompt()
+            if (memo.isNotBlank()) append(memo).append("\n")
             append("设备：").append(dev)
             append("；当前工作方式：").append(mode)
             append("；Android/data 与 obb：").append(Router.dataZone(App.self))
@@ -671,6 +692,7 @@ object Agent {
             if (env.isNotBlank()) append(env)
             append("工具：").append(tools).append("。解压、安装、逆向等一律用 exec_shell 拼命令完成；")
             append("车次、时刻、余票一律用 rail_query 查（action=tickets 余票 / transfer 中转 / route 经停），不要凭记忆编车次；")
+            append("值得长期记住的偏好或结论用 memory_save 存下来，不要只在回答里提醒自己；")
             if (searching) append("需要最新信息或核实事实时用 web_search。") else append("不要假设自己能联网。")
             append("\n")
             val ws = workspacePart()
