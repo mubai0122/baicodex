@@ -1,6 +1,7 @@
 package b.ai.agent
 
 import b.ai.core.Cfg
+import b.ai.core.Mcp
 import b.ai.core.Route
 import b.ai.core.Search
 import b.ai.core.WorkMode
@@ -30,14 +31,17 @@ object Tools {
     const val LINUX = "linux_shell"
     const val WEB_SEARCH = "web_search"
     const val RAIL = "rail_query"
+    /** MCP 能力的工具名前缀：mcp_服务_能力 */
+    const val MCP = "mcp_"
 
-    /**工具清单：搜索是可选的技能，只有设置里选了平台才下发；Linux工具只在装了环境后出现 */
+    /**工具清单：搜索是可选的技能，只有设置里选了平台才下发；Linux工具只在装了环境后出现；MCP能力按缓存表下发 */
     val all: List<String>
         get() {
             val l = ArrayList<String>()
             l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
+            l.addAll(Mcp.tools.map { it.full })
             return l
         }
 
@@ -50,11 +54,26 @@ object Tools {
         LINUX -> "Linux 命令"
         WEB_SEARCH -> "联网搜索"
         RAIL -> "火车票查询"
-        else -> name
+        else -> mcpLabel(name)
     }
 
-    /** 高危标记：删除与任意命令执行 */
-    fun isHighRisk(name: String): Boolean = name == DELETE || name == SHELL || name == LINUX
+    /** MCP 能力的显示名：MCP·服务名·能力名，找不到缓存就原样返回 */
+    private fun mcpLabel(name: String): String {
+        if (!name.startsWith(MCP)) return name
+        val t = Mcp.findTool(name) ?: return name
+        return "MCP·" + t.server + "·" + t.name
+    } //MCP 显示名
+
+    /** 高危标记：删除与任意命令执行；MCP 里凡是能跑命令的也按高危算 */
+    fun isHighRisk(name: String): Boolean {
+        if (name == DELETE || name == SHELL || name == LINUX) return true
+        if (!name.startsWith(MCP)) return false
+        val t = Mcp.findTool(name) ?: return true
+        val n = t.name.lowercase()
+        return HIGH_WORDS.any { n.contains(it) }
+    } //高危判定
+
+    private val HIGH_WORDS = listOf("run", "shell", "exec", "cmd", "command", "terminal", "install", "kill")
 
     private fun str(desc: String) = JSONObject().put("type", "string").put("description", desc)
 
@@ -141,6 +160,11 @@ object Tools {
                 )
             )
         }
+        //MCP 能力：schema 是服务端给的 parameters 原文，原样透传给模型
+        Mcp.tools.forEach { t ->
+            val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
+            arr.put(fn(t.full, "[MCP·" + t.server + "] " + t.desc, p))
+        }
         return arr
     } //OpenAI tools 定义
 
@@ -153,8 +177,26 @@ object Tools {
         LINUX -> execLinux(args.optString("command"))
         WEB_SEARCH -> search(args)
         RAIL -> rail(args)
-        else -> ToolOutcome(false, "未知工具: $name", Route.SANDBOX)
+        else -> mcpCall(name, args)
     } //执行单个工具
+
+    /** MCP 能力调用：能力不在缓存 / 服务被删或停用都如实报错，不能静默当没这工具 */
+    private fun mcpCall(full: String, args: JSONObject): ToolOutcome {
+        if (!full.startsWith(MCP)) return ToolOutcome(false, "未知工具: $full", Route.SANDBOX)
+        val t = Mcp.findTool(full)
+            ?: return ToolOutcome(
+                false,
+                "MCP 能力 $full 不在本地缓存里：请到 设置 → 扩展 → MCP 服务 里点一次「刷新能力」。",
+                Route.SANDBOX
+            )
+        val s = Mcp.serverOf(t) ?: return ToolOutcome(false, "MCP 服务已被删除：$full", Route.SANDBOX)
+        if (!s.on) return ToolOutcome(false, "MCP 服务「${s.name}」已停用，本次调用没有发出去。", Route.SANDBOX)
+        val text = Mcp.callTool(s, t.name, args)
+        val err = Mcp.lastError
+        if (err.isNotEmpty()) return ToolOutcome(false, "MCP 调用失败：$err", Route.SANDBOX)
+        if (text.isBlank()) return ToolOutcome(false, "MCP 服务「${s.name}」没有返回内容", Route.SANDBOX)
+        return ToolOutcome(true, text, Route.SANDBOX)
+    } //调用 MCP 能力
 
     /** 搜索技能：按用户选的平台分发；平台表以后往里加分支即可 */
     private fun search(args: JSONObject): ToolOutcome {

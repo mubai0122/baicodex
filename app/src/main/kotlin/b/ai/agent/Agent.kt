@@ -490,6 +490,13 @@ object Agent {
             val calls = parseCalls(resp)
             val t1 = System.currentTimeMillis()
             val meta = metaOf(resp, payload, content, reason, t0, t1, firstAt.get())
+            //用量独立记账：一次请求一行，删会话不回滚
+            withContext(Dispatchers.IO) {
+                Repo.recordUsage(
+                    meta.at, meta.provider, meta.model, runSid ?: sessionId ?: "",
+                    meta.promptTokens, meta.cachedTokens, meta.completionTokens
+                )
+            }
             val segs = if (calls.isEmpty() && Cfg.waifuMode) Waifu.split(content) else listOf(content)
             segs.forEachIndexed { n, seg ->
                 val head = n == 0
@@ -590,7 +597,8 @@ object Agent {
                 Router.route(Workspace.resolve(args.optString("path")))
             //车票查询、联网搜索与自带 Linux 都是应用内部通道，不受工作方式影响
             Tools.RAIL, Tools.WEB_SEARCH, Tools.LINUX -> Route.SANDBOX
-            else -> when (Cfg.workMode) {
+            //MCP 能力是 App 直接发 HTTP 给服务，跟本机工作方式无关
+            else -> if (name.startsWith(Tools.MCP)) Route.SANDBOX else when (Cfg.workMode) {
                 WorkMode.ROOT -> Route.ROOT
                 WorkMode.SHIZUKU -> Route.SHIZUKU
                 WorkMode.NORMAL -> Route.SANDBOX

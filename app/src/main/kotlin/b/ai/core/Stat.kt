@@ -1,6 +1,5 @@
 package b.ai.core
 
-import org.json.JSONObject
 import java.util.Calendar
 
 /** 一天的用量；cached 是输入里命中缓存的那部分（已含在 prompt 内） */
@@ -50,7 +49,7 @@ object Stat {
     /** 本月天数：问系统日历，28 / 29 / 30 / 31 都对，别自己写判断 */
     fun monthLen(): Int = Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH)
 
-    /** 全量扫 message.meta 聚合；库大也只是几千行，调用方放 IO 线程跑 */
+    /** 全量扫 usage 账本聚合；库大也只是几千行，调用方放 IO 线程跑 */
     fun load(): StatSnap {
         val byDay = HashMap<String, LongArray>()
         val byModel = HashMap<String, Long>()
@@ -58,25 +57,20 @@ object Stat {
         var completion = 0L
         var cachedSum = 0L
         var msg = 0
-        Repo.eachUsage { at, meta ->
-            val o = runCatching { JSONObject(meta) }.getOrNull()
-            if (o != null) {
-                val p = o.optInt("promptTokens", 0).toLong()
-                val cp = o.optInt("completionTokens", 0).toLong()
-                if (p + cp > 0) {
-                    val ca = o.optInt("cachedTokens", 0).toLong().coerceIn(0L, p)
-                    prompt += p
-                    completion += cp
-                    cachedSum += ca
-                    msg++
-                    val k = dayKey(if (at > 0) at else System.currentTimeMillis())
-                    val slot = byDay.getOrPut(k) { LongArray(3) }
-                    slot[0] += p
-                    slot[1] += cp
-                    slot[2] += ca
-                    val name = o.optString("model", "").ifBlank { "未知模型" }
-                    byModel[name] = (byModel[name] ?: 0L) + p + cp
-                }
+        Repo.eachUsageAt { at, _, model, p, ca, cp ->
+            if (p + cp > 0) {
+                val c = ca.coerceIn(0L, p)
+                prompt += p
+                completion += cp
+                cachedSum += c
+                msg++
+                val k = dayKey(if (at > 0) at else System.currentTimeMillis())
+                val slot = byDay.getOrPut(k) { LongArray(3) }
+                slot[0] += p
+                slot[1] += cp
+                slot[2] += c
+                val name = model.ifBlank { "未知模型" }
+                byModel[name] = (byModel[name] ?: 0L) + p + cp
             }
         }
 

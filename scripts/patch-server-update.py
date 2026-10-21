@@ -7,18 +7,18 @@ start = s.index('$UPDATE = [')
 end = s.index('];', start) + 2
 
 new = """$UPDATE = [
-    'code'            => 4,                       // 最新版本 code（纯数字，用于比较）
-    'version'         => '1.0.3',                 // 最新版本号（纯数字）
+    'code'            => 5,                       // 最新版本 code（纯数字，用于比较）
+    'version'         => '1.1.0',                 // 最新版本号（纯数字）
     'updateDate'      => '2026-10-21',            // 更新的日期
     'updateEnabled'   => true,                    // 是否开启更新
     'forceUpdate'     => false,                   // 此版本是否开启强制更新
     'minForceCode'    => 1,                       // 最小强制更新 code（forceUpdate 为 false 时生效）
     'minForceVersion' => '1',                     // 最小强制更新版本号（纯数字）
-    'title'           => 'v1.0.3',                 // 更新的标题（只写版本号）
-    'subtitle'        => '新增多语言支持，补全界面多语文案', // 更新的副标题
-    'content'         => "1. 新增多语言支持：简体中文 / 繁體中文 / English / 日本語 / Français，可跟随系统或手动切换\\n2. 优化更多多语言内容支持：首页卡片、角色卡与开场白、工作方式与权限路径、新会话标题、设置页、语音报错、工具链检测、预置技能都按当前语言显示", // 更新内容，\\n 换行
-    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.0.3', // 下载跳转链接（release 页）
-    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.0.3/BaiAgent-1.0.3.apk', // 直链下载链接
+    'title'           => 'v1.1.0',                 // 更新的标题（只写版本号）
+    'subtitle'        => '新增 MCP 客户端与技能面板，使用统计改独立累积账本', // 更新的副标题
+    'content'         => "1. 新增 MCP 客户端：JSON-RPC 2.0 over HTTP，支持会话初始化、SSE 流式响应与能力拉取\\n2. 新增 MCP 服务管理：设置 → 扩展 → MCP 服务，可增删改、测试连通、刷新能力、单服务开关\\n3. 新增 MCP 工具接入：MCP 能力自动并入工具表与 @ 面板，调用同走确认弹窗与权限路径\\n4. 新增 REST 桥支持：termux-mcp 的 /tools 取能力、/run 执行命令\\n5. 重构使用统计：改用独立累积账本，删除会话不再丢历史用量", // 更新内容，\\n 换行
+    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.1.0', // 下载跳转链接（release 页）
+    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.1.0/BaiAgent-1.1.0.apk', // 直链下载链接
 ];"""
 
 s = s[:start] + new + s[end:]
@@ -27,6 +27,14 @@ print('已生成 /tmp/get.php.new，长度', len(s))
 
 #更新历史：History.php 读 Update.json，第一条为最新
 hist = """[
+  {
+    "code": 5,
+    "version": "1.1.0",
+    "date": "2026-10-21",
+    "title": "v1.1.0",
+    "subtitle": "新增 MCP 客户端与技能面板，使用统计改独立累积账本",
+    "content": "1. 新增 MCP 客户端：JSON-RPC 2.0 over HTTP，支持会话初始化、SSE 流式响应与能力拉取\\n2. 新增 MCP 服务管理：设置 → 扩展 → MCP 服务，可增删改、测试连通、刷新能力、单服务开关\\n3. 新增 MCP 工具接入：MCP 能力自动并入工具表与 @ 面板，调用同走确认弹窗与权限路径\\n4. 新增 REST 桥支持：termux-mcp 的 /tools 取能力、/run 执行命令\\n5. 重构使用统计：改用独立累积账本，删除会话不再丢历史用量"
+  },
   {
     "code": 4,
     "version": "1.0.3",

@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Tools
+import b.ai.core.Mcp
+import b.ai.core.McpTool
 import b.ai.core.Skills
 import b.ai.exec.Workspace
 import b.ai.ui.theme.BorderGray
@@ -171,6 +173,20 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
                     val t = ts[i]
                     MentionRow(Tools.label(t), t) { onPick("@$t ") }
                 }
+                val ms = if (raw.isBlank()) {
+                    Mcp.tools
+                } else {
+                    Mcp.tools.filter {
+                        it.name.contains(raw, true) || it.desc.contains(raw, true) || it.server.contains(raw, true)
+                    }
+                }
+                if (ms.isNotEmpty()) {
+                    item { GroupTitle(stringResource(R.string.mcp_group), ms.size) }
+                    items(ms.size) { i ->
+                        val m = ms[i]
+                        MentionRow("MCP·" + m.server + "·" + m.name, m.desc.take(60)) { onPick(mcpText(ctx, m)) }
+                    }
+                }
                 if (wsFiles.isNotEmpty()) {
                     item { GroupTitle(stringResource(R.string.mn_ws_files), wsHit.size) }
                     if (wsHit.isEmpty()) {
@@ -232,6 +248,10 @@ private fun Hint(text: String) {
 
 private fun skillText(ctx: Context, name: String, body: String): String =
     ctx.getString(R.string.mn_use_skill, name) + body.take(4000) + "\n" //技能点击后填进输入框的文本
+
+/** MCP 能力点击后填进输入框的文本：只写能力和服务名，不写 @token（跟技能包一致） */
+private fun mcpText(ctx: Context, t: McpTool): String =
+    ctx.getString(R.string.mcp_use_pre, t.name, t.server) + "\n"
 
 private fun sizeText(n: Long): String = when {
     n >= 1L shl 20 -> "${n / (1L shl 20)} MB"

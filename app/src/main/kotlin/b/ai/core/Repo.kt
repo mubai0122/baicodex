@@ -265,6 +265,51 @@ object Repo {
         return m.copy(id = id)
     } //追加一条记录
 
+    /** 记一笔用量：每次请求一行，与会话解耦——删会话 / 清消息都不回滚它 */
+    fun recordUsage(
+        at: Long,
+        provider: String,
+        model: String,
+        sessionId: String,
+        prompt: Int,
+        cached: Int,
+        completion: Int
+    ) {
+        if (prompt + completion <= 0) return
+        runCatching {
+            w().insert("usage", null, ContentValues().apply {
+                put("at", if (at > 0) at else System.currentTimeMillis())
+                put("provider", provider)
+                put("model", model)
+                put("session_id", sessionId)
+                put("prompt", prompt)
+                put("cached", cached.coerceIn(0, prompt))
+                put("completion", completion)
+            })
+        }
+    } //记一笔用量
+
+    /** 统计用：读独立账本（usage 表），调用方负责 IO 线程 */
+    fun eachUsageAt(
+        block: (at: Long, provider: String, model: String, prompt: Long, cached: Long, completion: Long) -> Unit
+    ) {
+        r().query(
+            "usage", arrayOf("at", "provider", "model", "prompt", "cached", "completion"),
+            null, null, null, null, "at ASC"
+        ).use { c ->
+            while (c.moveToNext()) {
+                block(
+                    c.getLong(0),
+                    c.getString(1) ?: "",
+                    c.getString(2) ?: "",
+                    c.getLong(3),
+                    c.getLong(4),
+                    c.getLong(5)
+                )
+            }
+        }
+    } //读账本
+
     /** 统计用：把每条带用量元数据的记录交给外面聚合，调用方负责 IO 线程 */
     fun eachUsage(block: (at: Long, meta: String) -> Unit) {
         r().query(

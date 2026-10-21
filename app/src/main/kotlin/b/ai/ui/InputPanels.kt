@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
 import b.ai.core.Profiles
 import b.ai.core.Skills
+import b.ai.core.Mcp
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray
@@ -159,6 +160,35 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
                     )
                 }
                 Text("＋", fontSize = 13.sp, color = AccentBlue)
+            }
+        }
+        //MCP 能力当技能列：点了插「用某能力做某事」，具体参数由模型自己拼
+        val mcpTools = Mcp.tools
+        if (mcpTools.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.mcp_group), fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            mcpTools.forEach { t ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                        .tap { onInsert(ctx.getString(R.string.mcp_use_pre, t.name, t.server) + "\n") }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "MCP·" + t.server + "·" + t.name,
+                            fontSize = 12.sp,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+                        Text(t.desc, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+                    }
+                    Text("＋", fontSize = 13.sp, color = AccentBlue)
+                }
             }
         }
     }

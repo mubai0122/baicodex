@@ -3,6 +3,7 @@ package b.ai
 import android.app.Application
 import b.ai.core.Cfg
 import b.ai.core.Paths
+import b.ai.core.Mcp
 import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Schedules
@@ -25,6 +26,7 @@ class App : Application() {
         Skills.init(this)
         Personas.init(this)
         Schedules.init(this)
+        Mcp.init(this)
         Repo.init(this)
         Root.init()
         Router.probeAsync()

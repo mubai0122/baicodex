@@ -69,6 +69,8 @@ import android.app.Activity
 import b.ai.core.Avatar
 import b.ai.core.Cfg
 import b.ai.core.Lang
+import b.ai.core.Mcp
+import b.ai.core.McpServer
 import b.ai.core.Env
 import b.ai.core.Speak
 import b.ai.core.Perms
@@ -141,6 +143,7 @@ private val SettingIndex = listOf(
     SettingEntry(R.string.se_047, R.string.se_005, hintRaw = ""),
     SettingEntry(R.string.se_048, R.string.se_005, hintRaw = ""),
     SettingEntry(R.string.se_049, R.string.se_005, hintRaw = ""),
+    SettingEntry(R.string.mcp_title, R.string.se_005, R.string.mcp_sub),
     SettingEntry(R.string.se_050, R.string.se_005, hintRaw = ""),
     SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK"),
     SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053),
@@ -160,6 +163,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
     var tab by remember { mutableStateOf(initialTab) }
     var draft by remember { mutableStateOf<Skill?>(null) }
     var personaDraft by remember { mutableStateOf<Persona?>(null) }
+    var mcpDraft by remember { mutableStateOf<McpServer?>(null) }
     var taskDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
     var fq by remember { mutableStateOf("") }
@@ -319,6 +323,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                         4 -> ExtTab(
                             onEdit = { draft = it },
                             onEditPersona = { personaDraft = it },
+                            onEditMcp = { mcpDraft = it },
                             onNewTask = { taskDraft = true }
                         )
                         5 -> AboutTab()
@@ -335,7 +340,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || taskDraft) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft) {
         draft?.let { s ->
             SkillDialog(
                 skill = s,
@@ -362,6 +367,20 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                     personaDraft = null
                 },
                 onClose = { personaDraft = null }
+            )
+        }
+        mcpDraft?.let { s ->
+            McpDialog(
+                server = s,
+                onSave = { ns ->
+                    if (ns.id.isBlank()) Mcp.add(ns.name, ns.url, ns.token, ns.kind) else Mcp.upsert(ns)
+                    mcpDraft = null
+                },
+                onDelete = {
+                    if (s.id.isNotBlank()) Mcp.remove(s.id)
+                    mcpDraft = null
+                },
+                onClose = { mcpDraft = null }
             )
         }
         if (taskDraft) TaskDialog(onClose = { taskDraft = false })
@@ -971,6 +990,7 @@ private fun UiTab() {
 private fun ExtTab(
     onEdit: (Skill) -> Unit,
     onEditPersona: (Persona) -> Unit,
+    onEditMcp: (McpServer) -> Unit,
     onNewTask: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -1065,6 +1085,9 @@ private fun ExtTab(
             }
         }
     }
+
+    Spacer(Modifier.height(14.dp))
+    McpSection(onEdit = onEditMcp)
 
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_047), stringResource(R.string.se2_persona_sub))
@@ -1307,6 +1330,235 @@ private fun openUrl(ctx: Context, url: String) {
         )
     }
 } //打开链接
+
+@Composable
+private fun McpSection(onEdit: (McpServer) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf("") }
+    var tip by remember { mutableStateOf("") }
+    var tipOk by remember { mutableStateOf(false) }
+
+    SectionTitle(stringResource(R.string.mcp_title), stringResource(R.string.mcp_sub))
+    CardBox {
+        val list = Mcp.list
+        if (list.isEmpty()) {
+            Text(stringResource(R.string.mcp_none), fontSize = 13.sp, color = TextPrimary)
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.mcp_none_sub), fontSize = 11.sp, color = TextSecondary)
+        } else {
+            list.forEach { s ->
+                McpRow(
+                    server = s,
+                    count = Mcp.tools.count { it.serverId == s.id },
+                    busy = busy == s.id,
+                    onToggle = { Mcp.toggle(s.id, it) },
+                    onRefresh = {
+                        busy = s.id
+                        tip = ""
+                        scope.launch {
+                            val n = withContext(Dispatchers.IO) { Mcp.refresh(s) }
+                            val err = Mcp.lastError
+                            busy = ""
+                            tipOk = err.isEmpty() && n > 0
+                            tip = if (tipOk) ctx.getString(R.string.mcp_ok, s.name, n)
+                            else ctx.getString(
+                                R.string.mcp_fail,
+                                s.name,
+                                err.ifBlank { ctx.getString(R.string.mcp_no_tool) }
+                            )
+                        }
+                    },
+                    onEdit = { onEdit(s) }
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GhostButton(stringResource(R.string.mcp_add), modifier = Modifier.height(38.dp)) {
+                onEdit(McpServer(id = "", name = "", url = ""))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stringResource(R.string.mcp_count_all, Mcp.tools.size),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+        if (tip.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(tip, fontSize = 10.sp, color = if (tipOk) OkGreen else DangerRed)
+        }
+    }
+} //MCP 服务分区：列表 + 开关 + 刷新能力 + 新增
+
+@Composable
+private fun McpRow(
+    server: McpServer,
+    count: Int,
+    busy: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onRefresh: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(server.name.ifBlank { server.url }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+            Text(
+                stringResource(
+                    R.string.mcp_row_sub,
+                    if (server.kind == McpServer.KIND_REST) stringResource(R.string.mcp_kind_rest)
+                    else stringResource(R.string.mcp_kind_mcp),
+                    server.url,
+                    count
+                ),
+                fontSize = 10.sp,
+                color = TextSecondary,
+                maxLines = 1
+            )
+        }
+        PolicyChip(
+            if (busy) stringResource(R.string.mcp_testing) else stringResource(R.string.mcp_refresh),
+            busy
+        ) { if (!busy) onRefresh() }
+        Spacer(Modifier.width(6.dp))
+        PolicyChip(stringResource(R.string.mcp_edit), false) { onEdit() }
+        Spacer(Modifier.width(6.dp))
+        Switch(
+            checked = server.on,
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+        )
+    }
+} //MCP 服务一行
+
+@Composable
+private fun McpDialog(
+    server: McpServer,
+    onSave: (McpServer) -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit
+) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var name by remember(server.id) { mutableStateOf(server.name) }
+    var url by remember(server.id) { mutableStateOf(server.url) }
+    var token by remember(server.id) { mutableStateOf(server.token) }
+    var kind by remember(server.id) { mutableStateOf(server.kind) }
+    var tip by remember { mutableStateOf("") }
+    var tipOk by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) }
+
+    ScrimCard(onDismiss = onClose) {
+        Text(
+            if (server.id.isBlank()) stringResource(R.string.mcp_new_title) else stringResource(R.string.mcp_edit_title),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+            Field(stringResource(R.string.mcp_name), name, { name = it }, placeholder = stringResource(R.string.mcp_name_ph))
+            Field(stringResource(R.string.mcp_url), url, { url = it }, placeholder = stringResource(R.string.mcp_url_ph))
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.mcp_kind), fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PolicyChip(stringResource(R.string.mcp_kind_mcp), kind == McpServer.KIND_MCP) {
+                    kind = McpServer.KIND_MCP
+                }
+                Spacer(Modifier.width(6.dp))
+                PolicyChip(stringResource(R.string.mcp_kind_rest), kind == McpServer.KIND_REST) {
+                    kind = McpServer.KIND_REST
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.mcp_kind_hint), fontSize = 10.sp, color = TextSecondary)
+            Field(
+                stringResource(R.string.mcp_token),
+                token,
+                { token = it },
+                placeholder = stringResource(R.string.mcp_token_ph),
+                secret = true
+            )
+            Spacer(Modifier.height(8.dp))
+            GhostButton(
+                if (testing) stringResource(R.string.mcp_testing) else stringResource(R.string.mcp_test),
+                modifier = Modifier.height(38.dp)
+            ) {
+                if (testing) return@GhostButton
+                if (url.isBlank()) {
+                    tipOk = false
+                    tip = ctx.getString(R.string.mcp_need_url)
+                    return@GhostButton
+                }
+                testing = true
+                tip = ""
+                scope.launch {
+                    //测试只拉清单不写缓存，避免拿临时 id 污染能力表
+                    val tmp = McpServer(server.id.ifBlank { "tmp" }, name, url.trim(), token.trim(), kind, true)
+                    val n = withContext(Dispatchers.IO) { Mcp.listTools(tmp).size }
+                    val err = Mcp.lastError
+                    testing = false
+                    tipOk = err.isEmpty() && n > 0
+                    tip = if (tipOk) ctx.getString(R.string.mcp_test_ok, n)
+                    else ctx.getString(R.string.mcp_test_fail, err.ifBlank { ctx.getString(R.string.mcp_no_tool) })
+                }
+            }
+            if (tip.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(tip, fontSize = 10.sp, color = if (tipOk) OkGreen else DangerRed)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (server.id.isNotBlank()) {
+                DialogButton(stringResource(R.string.se_143), DangerRed, DangerRedSoft) { onDelete() }
+            }
+            DialogButton(stringResource(R.string.se_142), TextSecondary, SurfaceMuted) { onClose() }
+            DialogButton(stringResource(R.string.se_264), androidx.compose.ui.graphics.Color.White, AccentBlue) {
+                if (url.isBlank()) {
+                    tipOk = false
+                    tip = ctx.getString(R.string.mcp_need_url)
+                } else {
+                    onSave(
+                        server.copy(
+                            name = name.trim().ifBlank { url.trim() },
+                            url = url.trim(),
+                            token = token.trim(),
+                            kind = kind
+                        )
+                    )
+                }
+            }
+        }
+    }
+} //MCP 服务编辑弹窗
+
+/** 弹窗底部等宽文字按钮 */
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.DialogButton(
+    text: String,
+    fg: androidx.compose.ui.graphics.Color,
+    bg: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit
+) {
+    Text(
+        text,
+        fontSize = 12.sp,
+        color = fg,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .weight(1f)
+            .background(bg, RoundedCornerShape(10.dp))
+            .tap { onClick() }
+            .padding(vertical = 11.dp)
+    )
+} //弹窗按钮
 
 @Composable
 private fun SkillRow(s: Skill, onEdit: () -> Unit) {
