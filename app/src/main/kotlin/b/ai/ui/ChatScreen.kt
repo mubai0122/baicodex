@@ -85,6 +85,7 @@ import b.ai.core.MsgMeta
 import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Skills
+import b.ai.core.Speak
 import b.ai.core.Voice
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -101,6 +102,7 @@ import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -118,6 +120,16 @@ private fun hintPool(ctx: Context): List<String> {
 fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     val ctx = LocalContext.current
     var input by remember { mutableStateOf("") }
+    //会话切换：把输入框换成这个会话自己的草稿，切走再回来不丢
+    LaunchedEffect(Agent.sessionId) {
+        input = Cfg.draft(Agent.sessionId.orEmpty())
+    }
+    //停手 0.8 秒才落盘，避免每敲一个字都写一次 SharedPreferences
+    LaunchedEffect(input, Agent.sessionId) {
+        val sid = Agent.sessionId ?: return@LaunchedEffect
+        delay(800)
+        Cfg.setDraft(sid, input)
+    }
     //随机 placeholder：候选来自设置（默认「请输入问题」），发送后重抽一次
     val hintWords = hintPool(LocalContext.current)
     var hint by remember(hintWords) { mutableStateOf(hintWords.random()) }
@@ -424,6 +436,18 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 },
                 onCopy = {
                     copyText(ctx, mn.content)
+                    menuFor = null
+                },
+                onStar = {
+                    Agent.toggleStar(mn, !mn.starred)
+                    menuFor = null
+                },
+                onSpeak = {
+                    Speak.say(mn.content, true)
+                    menuFor = null
+                },
+                onDelete = {
+                    Agent.deleteMessage(mn)
                     menuFor = null
                 },
                 onClose = { menuFor = null }
@@ -1356,8 +1380,13 @@ private fun MsgMenuDialog(
     onRegen: () -> Unit,
     onRegenWith: () -> Unit,
     onCopy: () -> Unit,
+    onStar: () -> Unit,
+    onSpeak: () -> Unit,
+    onDelete: () -> Unit,
     onClose: () -> Unit
 ) {
+    //删除不可恢复：第一下只是把按钮变成「确认删除」，第二下才真删
+    var del by remember(m.id) { mutableStateOf(false) }
     ScrimCard(onDismiss = onClose) {
         Text(
             if (m.role == "user") stringResource(R.string.cs_this_msg) else stringResource(R.string.cs_this_reply),
@@ -1388,6 +1417,20 @@ private fun MsgMenuDialog(
             MenuRow(stringResource(R.string.cs_regen_hint2), stringResource(R.string.cs_regen_hint_desc2), onRegenWith)
         }
         MenuRow(stringResource(R.string.cs_copy_content), stringResource(R.string.cs_copy_content_desc), onCopy)
+        MenuRow(
+            if (m.starred) stringResource(R.string.cs_star_off) else stringResource(R.string.cs_star),
+            if (m.starred) stringResource(R.string.cs_star_off_desc) else stringResource(R.string.cs_star_desc),
+            onStar
+        )
+        if (m.content.isNotBlank()) {
+            MenuRow(stringResource(R.string.cs_speak), stringResource(R.string.cs_speak_desc)) { onSpeak() }
+        }
+        MenuRow(
+            if (del) stringResource(R.string.cs_del_msg_confirm) else stringResource(R.string.cs_del_msg),
+            stringResource(R.string.cs_del_msg_desc)
+        ) {
+            if (del) onDelete() else del = true
+        }
         Spacer(Modifier.height(10.dp))
         Text(
             stringResource(R.string.cs_cancel),

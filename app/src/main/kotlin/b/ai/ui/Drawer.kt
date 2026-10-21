@@ -74,9 +74,14 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
-/** 侧边栏：搜索 + 会话列表 + 底部图标栏（新对话 / 导出 / 设置） */
+/** 侧边栏：搜索 + 会话列表 + 底部按钮栏（新对话 / 收藏 / 导出 / 设置） */
 @Composable
-fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -> Unit) {
+fun DrawerPanel(
+    onNewChat: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenStars: () -> Unit,
+    onClose: () -> Unit
+) {
     val ctx = LocalContext.current
     var q by remember { mutableStateOf("") }
     var hit by remember { mutableStateOf<Set<String>?>(null) }
@@ -260,6 +265,11 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
                         toast = ""
                         onNewChat()
                     }
+                    //收藏夹由根弹窗层渲染：抽屉里挂弹窗会被画到抽屉下层且 scrim 拦点击，直接死锁
+                    DrawerAction(stringResource(R.string.dw_stars), Modifier.weight(1f)) {
+                        toast = ""
+                        onOpenStars()
+                    }
                     DrawerAction(stringResource(R.string.dw_export), Modifier.weight(1f)) {
                         scope.launch {
                             val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
@@ -346,6 +356,7 @@ fun DrawerPanel(onNewChat: () -> Unit, onOpenSettings: () -> Unit, onClose: () -
             )
         }
     }
+
 } //侧边栏
 
 @Composable

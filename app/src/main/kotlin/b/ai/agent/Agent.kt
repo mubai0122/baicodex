@@ -200,6 +200,25 @@ object Agent {
         }
     } //置顶
 
+    /** 收藏开关：改标记后重读当前会话，气泡上的星标立刻跟着变 */
+    fun toggleStar(m: ChatMsg, on: Boolean) {
+        val sid = sessionId ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) { Repo.setStarred(m.id, on) }
+            messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+        }
+    } //收藏开关
+
+    /** 删单条消息：删完重读会话，会话列表的预览也跟着更新 */
+    fun deleteMessage(m: ChatMsg) {
+        val sid = sessionId ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) { Repo.deleteMessage(sid, m.id) }
+            messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+            reloadSessions()
+        }
+    } //删单条消息
+
     fun deleteSession(id: String) {
         deleteSessions(setOf(id))
     } //删会话

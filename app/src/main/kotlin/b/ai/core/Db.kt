@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 /** 本地库：会话 + 记录 + 独立用量账 */
-class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 8) {
+class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 9) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS session(" +
@@ -21,6 +21,7 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 8)
                 "tool_calls TEXT," +
                 "tool_call_id TEXT,tool_name TEXT,error INTEGER NOT NULL DEFAULT 0," +
                 "images TEXT,meta TEXT," +
+                "starred INTEGER NOT NULL DEFAULT 0," +
                 "created_at INTEGER NOT NULL)"
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_session ON message(session_id,_id)")
@@ -103,6 +104,10 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 8)
         if (oldVersion < 8) {
             runCatching { createUsage(db) }
             runCatching { backfillUsage(db) }
+        }
+        //v8→v9：消息补收藏标记，1 = 已收藏
+        if (oldVersion < 9) {
+            runCatching { db.execSQL("ALTER TABLE message ADD COLUMN starred INTEGER NOT NULL DEFAULT 0") }
         }
     } //版本迁移
 }

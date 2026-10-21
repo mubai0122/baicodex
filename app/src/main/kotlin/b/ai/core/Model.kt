@@ -137,7 +137,9 @@ data class ChatMsg(
     /** 附带的图片（本应用私有目录里的绝对路径），仅用户消息使用 */
     val images: List<String> = emptyList(),
     /** 本轮统计，只有 assistant 消息带 */
-    val meta: MsgMeta? = null
+    val meta: MsgMeta? = null,
+    /** 已收藏：长按菜单里钉住，收藏夹里能翻回来 */
+    val starred: Boolean = false
 ) {
     fun toApiJson(): JSONObject {
         val o = JSONObject().put("role", role)
@@ -181,3 +183,11 @@ data class ChatMsg(
         return o
     }
 } //转成 OpenAI Chat Completions 的 message 结构
+
+/** 收藏夹一条：消息本体 + 所属会话（会话被删掉时 title 为空，仍可读原文） */
+data class StarHit(
+    val msg: ChatMsg,
+    val at: Long,
+    val sessionId: String,
+    val title: String
+) //收藏夹条目

@@ -430,4 +430,15 @@ object Cfg {
 
     val ready: Boolean
         get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
+
+    /** 每个会话各自一份输入框草稿：切走再回来、杀进程重进都不丢 */
+    fun draft(sid: String): String =
+        if (sid.isBlank()) "" else sp?.getString("draft_$sid", "") ?: ""
+
+    /** 写草稿：写空就当删除，省得 SP 里攒一堆空串 */
+    fun setDraft(sid: String, text: String) {
+        if (sid.isBlank()) return
+        if (text.isBlank()) sp?.edit()?.remove("draft_$sid")?.apply()
+        else sp?.edit()?.putString("draft_$sid", text)?.apply()
+    } //写草稿
 } //配置读写

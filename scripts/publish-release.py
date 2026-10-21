@@ -5,14 +5,16 @@ import os
 import urllib.request
 
 REPO = 'mubai0122/baicodex'
-TAG = 'v1.0.3'
-NAME = 'v1.0.3'
-APK = '/storage/emulated/0/AndroidCSProjects/BaiAgent/app/build/outputs/apk/release/BaiAgent-1.0.3.apk'
-ASSET = 'BaiAgent-1.0.3.apk'
-BODY = ('新增多语言支持\n\n'
-        '1. 新增多语言支持：简体中文 / 繁體中文 / English / 日本語 / Français，可跟随系统或手动切换\n'
-        '2. 优化更多多语言内容支持：首页卡片、角色卡与开场白、工作方式与权限路径、'
-        '新会话标题、设置页、语音报错、工具链检测、预置技能都按当前语言显示')
+TAG = 'v1.1.1'
+NAME = 'v1.1.1'
+APK = '/storage/emulated/0/AndroidCSProjects/BaiAgent/app/build/outputs/apk/release/BaiAgent-1.1.1.apk'
+ASSET = 'BaiAgent-1.1.1.apk'
+BODY = ('新增消息收藏、单条删除、朗读与输入草稿自动保存\n\n'
+        '1. 新增消息收藏：长按消息可收藏 / 取消收藏，侧边栏「收藏」跨会话翻回来，点一条直接跳回原会话\n'
+        '2. 新增单条消息删除：长按菜单两段确认后从会话里移除，会话预览同步更新\n'
+        '3. 新增消息朗读：长按菜单用系统 TTS 念这一条，不受「自动朗读回复」开关限制\n'
+        '4. 新增输入草稿自动保存：每个会话各自一份草稿，切会话、重进 App 都还在\n'
+        '5. 修复收藏夹弹窗层级：面板提到根弹窗层，打开时自动收起侧边栏，点外部或返回键都能关')
 
 TOKEN = os.environ['GH']
 

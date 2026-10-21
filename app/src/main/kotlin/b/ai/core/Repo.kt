@@ -214,7 +214,7 @@ object Repo {
         val out = ArrayList<ChatMsg>()
         r().query(
             "message",
-            arrayOf("_id", "role", "content", "tool_calls", "tool_call_id", "tool_name", "error", "reasoning", "images", "meta"),
+            arrayOf("_id", "role", "content", "tool_calls", "tool_call_id", "tool_name", "error", "reasoning", "images", "meta", "starred"),
             "session_id=?", arrayOf(sessionId), null, null, "_id ASC"
         ).use { c ->
             while (c.moveToNext()) {
@@ -229,7 +229,8 @@ object Repo {
                         isError = c.getInt(6) == 1,
                         reasoning = c.getString(7) ?: "",
                         images = parseList(c.getString(8)),
-                        meta = parseMeta(c.getString(9))
+                        meta = parseMeta(c.getString(9)),
+                        starred = c.getInt(10) == 1
                     )
                 )
             }
@@ -237,12 +238,55 @@ object Repo {
         return out
     } //读会话全部记录
 
+    /** 收藏开关：只改标记，不动内容与时间，删会话时跟着消息一起没 */
+    fun setStarred(id: Long, on: Boolean) {
+        w().update(
+            "message",
+            ContentValues().apply { put("starred", if (on) 1 else 0) },
+            "_id=?",
+            arrayOf(id.toString())
+        )
+    } //收藏开关
+
+    /** 收藏夹：跨会话按收藏时间倒序，带上会话标题，点进去能跳回原会话 */
+    fun starred(limit: Int = 300): List<StarHit> {
+        val out = ArrayList<StarHit>()
+        val sql = "SELECT m._id,m.role,m.content,m.created_at,m.session_id,s.title,m.reasoning " +
+            "FROM message m LEFT JOIN session s ON s.id=m.session_id " +
+            "WHERE m.starred=1 ORDER BY m.created_at DESC LIMIT ?"
+        r().rawQuery(sql, arrayOf(limit.toString())).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    StarHit(
+                        msg = ChatMsg(
+                            id = c.getLong(0),
+                            role = c.getString(1),
+                            content = c.getString(2) ?: "",
+                            reasoning = c.getString(6) ?: "",
+                            starred = true
+                        ),
+                        at = c.getLong(3),
+                        sessionId = c.getString(4) ?: "",
+                        title = c.getString(5) ?: ""
+                    )
+                )
+            }
+        }
+        return out
+    } //收藏夹列表
+
     /** 删掉 id >= fromId 的记录（编辑重发 / 重新生成回滚用） */
     fun deleteFrom(sessionId: String, fromId: Long): Int {
         val n = w().delete("message", "session_id=? AND _id>=?", arrayOf(sessionId, fromId.toString()))
         touch(sessionId)
         return n
     }
+
+    /** 删单条消息：只给长按菜单用，删完刷一下会话更新时间 */
+    fun deleteMessage(sessionId: String, id: Long) {
+        w().delete("message", "_id=?", arrayOf(id.toString()))
+        touch(sessionId)
+    } //删单条消息
 
     fun append(sessionId: String, m: ChatMsg): ChatMsg {
         val calls = if (m.toolCalls.isEmpty()) null else JSONArray().also { a ->

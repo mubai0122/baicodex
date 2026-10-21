@@ -897,4 +897,18 @@
     <string name="mcp_need_url">地址不能为空</string>
     <string name="mcp_group">MCP 能力</string>
     <string name="mcp_use_pre">用 MCP 能力 %1$s（服务 %2$s）完成下面的任务：</string>
+    <string name="dw_stars">收藏</string>
+    <string name="star_title">收藏夹</string>
+    <string name="star_empty">还没有收藏的消息：长按任意消息，选「收藏」即可</string>
+    <string name="star_untitled">未命名会话</string>
+    <string name="star_unstar">取消收藏</string>
+    <string name="cs_star">收藏</string>
+    <string name="cs_star_desc">收进收藏夹，之后从侧边栏「收藏」翻回来</string>
+    <string name="cs_star_off">取消收藏</string>
+    <string name="cs_star_off_desc">把这条从收藏夹里移除</string>
+    <string name="cs_speak">朗读</string>
+    <string name="cs_speak_desc">用系统语音把这条念一遍</string>
+    <string name="cs_del_msg">删除这条</string>
+    <string name="cs_del_msg_desc">从当前会话里移除，不可恢复</string>
+    <string name="cs_del_msg_confirm">再点一次确认删除</string>
 </resources>

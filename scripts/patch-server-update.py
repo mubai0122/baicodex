@@ -7,18 +7,18 @@ start = s.index('$UPDATE = [')
 end = s.index('];', start) + 2
 
 new = """$UPDATE = [
-    'code'            => 5,                       // 最新版本 code（纯数字，用于比较）
-    'version'         => '1.1.0',                 // 最新版本号（纯数字）
+    'code'            => 6,                       // 最新版本 code（纯数字，用于比较）
+    'version'         => '1.1.1',                 // 最新版本号（纯数字）
     'updateDate'      => '2026-10-21',            // 更新的日期
     'updateEnabled'   => true,                    // 是否开启更新
     'forceUpdate'     => false,                   // 此版本是否开启强制更新
     'minForceCode'    => 1,                       // 最小强制更新 code（forceUpdate 为 false 时生效）
     'minForceVersion' => '1',                     // 最小强制更新版本号（纯数字）
-    'title'           => 'v1.1.0',                 // 更新的标题（只写版本号）
-    'subtitle'        => '新增 MCP 客户端与技能面板，使用统计改独立累积账本', // 更新的副标题
-    'content'         => "1. 新增 MCP 客户端：JSON-RPC 2.0 over HTTP，支持会话初始化、SSE 流式响应与能力拉取\\n2. 新增 MCP 服务管理：设置 → 扩展 → MCP 服务，可增删改、测试连通、刷新能力、单服务开关\\n3. 新增 MCP 工具接入：MCP 能力自动并入工具表与 @ 面板，调用同走确认弹窗与权限路径\\n4. 新增 REST 桥支持：termux-mcp 的 /tools 取能力、/run 执行命令\\n5. 重构使用统计：改用独立累积账本，删除会话不再丢历史用量", // 更新内容，\\n 换行
-    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.1.0', // 下载跳转链接（release 页）
-    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.1.0/BaiAgent-1.1.0.apk', // 直链下载链接
+    'title'           => 'v1.1.1',                 // 更新的标题（只写版本号）
+    'subtitle'        => '新增消息收藏、单条删除、朗读与输入草稿自动保存', // 更新的副标题
+    'content'         => "1. 新增消息收藏：长按消息可收藏 / 取消收藏，侧边栏「收藏」跨会话翻回来，点一条直接跳回原会话\\n2. 新增单条消息删除：长按菜单两段确认后从会话里移除，会话预览同步更新\\n3. 新增消息朗读：长按菜单用系统 TTS 念这一条，不受「自动朗读回复」开关限制\\n4. 新增输入草稿自动保存：每个会话各自一份草稿，切会话、重进 App 都还在\\n5. 修复收藏夹弹窗层级：面板提到根弹窗层，打开时自动收起侧边栏，点外部或返回键都能关", // 更新内容，\\n 换行
+    'downloadJumpUrl' => 'https://github.com/mubai0122/baicodex/releases/tag/v1.1.1', // 下载跳转链接（release 页）
+    'downloadDirectUrl' => 'https://github.com/mubai0122/baicodex/releases/download/v1.1.1/BaiAgent-1.1.1.apk', // 直链下载链接
 ];"""
 
 s = s[:start] + new + s[end:]
@@ -27,6 +27,14 @@ print('已生成 /tmp/get.php.new，长度', len(s))
 
 #更新历史：History.php 读 Update.json，第一条为最新
 hist = """[
+  {
+    "code": 6,
+    "version": "1.1.1",
+    "date": "2026-10-21",
+    "title": "v1.1.1",
+    "subtitle": "新增消息收藏、单条删除、朗读与输入草稿自动保存",
+    "content": "1. 新增消息收藏：长按消息可收藏 / 取消收藏，侧边栏「收藏」跨会话翻回来，点一条直接跳回原会话\\n2. 新增单条消息删除：长按菜单两段确认后从会话里移除，会话预览同步更新\\n3. 新增消息朗读：长按菜单用系统 TTS 念这一条，不受「自动朗读回复」开关限制\\n4. 新增输入草稿自动保存：每个会话各自一份草稿，切会话、重进 App 都还在\\n5. 修复收藏夹弹窗层级：面板提到根弹窗层，打开时自动收起侧边栏，点外部或返回键都能关"
+  },
   {
     "code": 5,
     "version": "1.1.0",

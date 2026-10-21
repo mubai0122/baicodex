@@ -897,4 +897,18 @@
     <string name="mcp_need_url">URL is required</string>
     <string name="mcp_group">MCP tools</string>
     <string name="mcp_use_pre">Use the MCP tool %1$s (server %2$s) to do the following:</string>
+    <string name="dw_stars">Starred</string>
+    <string name="star_title">Starred</string>
+    <string name="star_empty">Nothing starred yet — long-press a message and pick Star</string>
+    <string name="star_untitled">Untitled chat</string>
+    <string name="star_unstar">Remove</string>
+    <string name="cs_star">Star</string>
+    <string name="cs_star_desc">Save to starred; reopen it later from Starred in the drawer</string>
+    <string name="cs_star_off">Unstar</string>
+    <string name="cs_star_off_desc">Remove this message from starred</string>
+    <string name="cs_speak">Read aloud</string>
+    <string name="cs_speak_desc">Read this message with system TTS</string>
+    <string name="cs_del_msg">Delete message</string>
+    <string name="cs_del_msg_desc">Remove it from this chat; cannot be undone</string>
+    <string name="cs_del_msg_confirm">Tap again to delete</string>
 </resources>

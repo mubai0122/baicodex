@@ -897,4 +897,18 @@
     <string name="mcp_need_url">L URL est obligatoire</string>
     <string name="mcp_group">Outils MCP</string>
     <string name="mcp_use_pre">Utilise l outil MCP %1$s (serveur %2$s) pour faire ce qui suit :</string>
+    <string name="dw_stars">Favoris</string>
+    <string name="star_title">Favoris</string>
+    <string name="star_empty">Aucun favori — appuyez longuement sur un message et choisissez Favori</string>
+    <string name="star_untitled">Conversation sans titre</string>
+    <string name="star_unstar">Retirer</string>
+    <string name="cs_star">Favori</string>
+    <string name="cs_star_desc">Enregistrer dans les favoris, retrouvable depuis le tiroir</string>
+    <string name="cs_star_off">Retirer des favoris</string>
+    <string name="cs_star_off_desc">Retirer ce message des favoris</string>
+    <string name="cs_speak">Lire à voix haute</string>
+    <string name="cs_speak_desc">Lire ce message avec la synthèse vocale</string>
+    <string name="cs_del_msg">Supprimer ce message</string>
+    <string name="cs_del_msg_desc">Le retirer de cette conversation, sans retour possible</string>
+    <string name="cs_del_msg_confirm">Touchez encore pour supprimer</string>
 </resources>

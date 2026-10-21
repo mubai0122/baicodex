@@ -897,4 +897,18 @@
     <string name="mcp_need_url">アドレスを入力してください</string>
     <string name="mcp_group">MCP の機能</string>
     <string name="mcp_use_pre">MCP の機能 %1$s（サーバー %2$s）を使って次を実行してください：</string>
+    <string name="dw_stars">お気に入り</string>
+    <string name="star_title">お気に入り</string>
+    <string name="star_empty">まだお気に入りがありません。メッセージを長押しして「お気に入り」を選んでください</string>
+    <string name="star_untitled">無題のチャット</string>
+    <string name="star_unstar">解除</string>
+    <string name="cs_star">お気に入り</string>
+    <string name="cs_star_desc">お気に入りに保存し、あとでサイドバーの「お気に入り」から開けます</string>
+    <string name="cs_star_off">お気に入り解除</string>
+    <string name="cs_star_off_desc">このメッセージをお気に入りから外します</string>
+    <string name="cs_speak">読み上げ</string>
+    <string name="cs_speak_desc">システム音声でこのメッセージを読み上げます</string>
+    <string name="cs_del_msg">このメッセージを削除</string>
+    <string name="cs_del_msg_desc">このチャットから削除します（元に戻せません）</string>
+    <string name="cs_del_msg_confirm">もう一度押すと削除</string>
 </resources>
