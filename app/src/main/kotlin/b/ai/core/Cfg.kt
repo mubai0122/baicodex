@@ -23,6 +23,7 @@ object Cfg {
         sp = p
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
         mem("work_mode", WorkMode.NORMAL.id).value = p.getString("work_mode", WorkMode.NORMAL.id)!!
+        mem("agent_mode", AgentMode.STANDARD.id).value = p.getString("agent_mode", AgentMode.STANDARD.id)!!
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
         mem("provider_id", "deepseek").value = p.getString("provider_id", "deepseek")!!
         mem("base_url", "").value = p.getString("base_url", "")!!
@@ -118,6 +119,11 @@ object Cfg {
     var workMode: WorkMode
         get() = WorkMode.of(mem("work_mode", WorkMode.NORMAL.id).value)
         set(v) { mem("work_mode", WorkMode.NORMAL.id).value = v.id; put("work_mode", v.id) }
+
+    /** 运行模式：计划 / 标准 / 代码 / 极简 / 创造，改的是提示 + 工具面 */
+    var agentMode: AgentMode
+        get() = AgentMode.of(mem("agent_mode", AgentMode.STANDARD.id).value)
+        set(v) { mem("agent_mode", AgentMode.STANDARD.id).value = v.id; put("agent_mode", v.id) }
 
     var zeroWidth: Boolean
         get() = mem("zero_width", false).value

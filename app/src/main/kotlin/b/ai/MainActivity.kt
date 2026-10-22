@@ -45,6 +45,7 @@ import b.ai.ui.Overlay
 import b.ai.ui.PermNoticeDialog
 import b.ai.ui.SettingsScreen
 import b.ai.ui.MemorySheet
+import b.ai.ui.PlanSheet
 import b.ai.ui.StarSheet
 import b.ai.ui.ToolConfirmDialog
 import b.ai.ui.UpdateDialog
@@ -130,7 +131,7 @@ private fun Root() {
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
-    val active = Agent.pending != null || Agent.ask != null || Overlay.active || permNotice || upd != null || updHis != null ||
+    val active = Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
         starsOpen || memOpen
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
@@ -227,8 +228,10 @@ private fun Root() {
                 overlay = {
                     val p = Agent.pending
                     val q = Agent.ask
+                    val pl = Agent.plan
                     when {
                         q != null -> AskSheet(q)
+                        pl != null -> PlanSheet(pl)
                         p != null -> ToolConfirmDialog(p)
                         permNotice -> PermNoticeDialog(
                             missing = missing,

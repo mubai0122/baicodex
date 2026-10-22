@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import b.ai.core.AgentMode
 import b.ai.core.Cfg
 import b.ai.App
 import b.ai.R
@@ -52,6 +53,16 @@ data class AskQuestion(val title: String, val options: List<String>, val multi: 
 /** 一次提问请求：deferred 由界面作答后回填，模型那一轮挂在这里等 */
 data class AskReq(val questions: List<AskQuestion>, val deferred: CompletableDeferred<List<String>>)
 
+/** 计划确认的三种结果：定下执行 / 继续改 / 不要了 */
+sealed class PlanVerdict {
+    data object Confirm : PlanVerdict()
+    data class Revise(val note: String) : PlanVerdict()
+    data object Dismiss : PlanVerdict()
+}
+
+/** 一次计划确认请求：正文是计划本身，deferred 由面板回填 */
+data class PlanReq(val text: String, val deferred: CompletableDeferred<PlanVerdict>)
+
 data class PendingTool(
     val call: ToolCall,
     val args: JSONObject,
@@ -85,6 +96,8 @@ object Agent {
     var pending by mutableStateOf<PendingTool?>(null)
         private set
     var ask by mutableStateOf<AskReq?>(null)
+        private set
+    var plan by mutableStateOf<PlanReq?>(null)
         private set
     var sessionId by mutableStateOf<String?>(null)
         private set
@@ -293,6 +306,8 @@ object Agent {
         pending = null
         ask?.let { if (!it.deferred.isCompleted) it.deferred.complete(emptyList()) }
         ask = null
+        plan?.let { if (!it.deferred.isCompleted) it.deferred.complete(PlanVerdict.Dismiss) }
+        plan = null
         status = host.getString(R.string.ag_stopped)
         sContent.setLength(0)
         sReason.setLength(0)
@@ -559,6 +574,39 @@ object Agent {
             }
             //本轮没有工具调用就是最终答案：开了「回复朗读」就念出来
             if (calls.isEmpty()) {
+                //计划模式：正文当计划给用户过一遍，没点「确定执行」绝不动手
+                if (Cfg.agentMode == AgentMode.PLAN) {
+                    when (val v = approvePlan(content)) {
+                        PlanVerdict.Confirm -> {
+                            //确认后先退出计划模式，权限面才重新放开
+                            Cfg.agentMode = AgentMode.STANDARD
+                            append(
+                                ChatMsg(
+                                    role = "user",
+                                    content = "计划已确认，已退出计划模式，按上面的计划开始执行。"
+                                )
+                            )
+                            status = host.getString(R.string.ag_think_again)
+                            busySince = System.currentTimeMillis()
+                            continue
+                        }
+                        is PlanVerdict.Revise -> {
+                            append(
+                                ChatMsg(
+                                    role = "user",
+                                    content = "这一版计划先不执行，按下面的意见调整后重新给一版完整计划：\n" + v.note
+                                )
+                            )
+                            status = host.getString(R.string.ag_think_again)
+                            busySince = System.currentTimeMillis()
+                            continue
+                        }
+                        PlanVerdict.Dismiss -> {
+                            Speak.say(content)
+                            break
+                        }
+                    }
+                }
                 Speak.say(content)
                 break
             }
@@ -570,6 +618,16 @@ object Agent {
                     busySince = System.currentTimeMillis()
                     val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
                     appendToolMsg(c, askUser(qa), Route.SANDBOX, false)
+                    return@forEachIndexed
+                }
+                //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
+                if (!Tools.allowed(c.name)) {
+                    appendToolMsg(
+                        c,
+                        "当前运行模式不允许调用「" + Tools.label(c.name) + "」，本次没有执行。",
+                        Route.SANDBOX,
+                        true
+                    )
                     return@forEachIndexed
                 }
                 //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
@@ -601,12 +659,33 @@ object Agent {
         }
     } //模型 → 工具 → 回传 的主循环
 
+    /** 弹计划确认面板并挂起，直到用户定下执行、要求再改或直接关掉 */
+    private suspend fun approvePlan(text: String): PlanVerdict {
+        val d = CompletableDeferred<PlanVerdict>()
+        plan = PlanReq(text, d)
+        status = host.getString(R.string.pl_wait)
+        val v = try {
+            d.await()
+        } finally {
+            plan = null
+        }
+        status = host.getString(R.string.ag_think_again)
+        return v
+    } //等待计划确认
+
     /** 界面作答回填：answers 与 questions 一一对应，空串表示这题没填 */
     fun answerAsk(answers: List<String>) {
         val a = ask ?: return
         ask = null
         if (!a.deferred.isCompleted) a.deferred.complete(answers)
     } //作答回填
+
+    /** 计划面板回填：执行 / 继续改 / 关掉 */
+    fun answerPlan(v: PlanVerdict) {
+        val p = plan ?: return
+        plan = null
+        if (!p.deferred.isCompleted) p.deferred.complete(v)
+    } //计划回填
 
     /** 弹提问面板并挂起，直到用户提交或跳过 */
     private suspend fun askUser(args: JSONObject): String {
@@ -723,16 +802,14 @@ object Agent {
         val persona = Personas.prompt()
         val custom = Cfg.systemPrompt.trim()
         val searching = Search.selected != null
-        val tools = buildString {
-            append("read_file / write_file / make_dir / delete_file / exec_shell / rail_query / memory_save / ask_user")
-            if (Linux.installed()) append(" / linux_shell")
-            if (searching) append(" / web_search")
-        }
+        //工具清单跟定义走同一套模式过滤，避免提示里写了模型却调不动
+        val tools = Tools.all.filter { Tools.allowed(it) }.joinToString(" / ")
         //顺序：角色 → 自定义提示 → 工作流 → 设备与规则 → 工作区 → 技能
         return buildString {
             if (persona.isNotBlank()) append(persona).append("\n\n")
             if (custom.isNotBlank()) append(custom).append("\n\n")
             append(flow).append("\n\n")
+            append(modePrompt()).append("\n\n")
             //长期记忆整段下发：用户没删就一直带着
             val memo = Memory.prompt()
             if (memo.isNotBlank()) append(memo).append("\n")
@@ -772,6 +849,25 @@ object Agent {
             append(skillPart())
         }
     } //系统提示：角色 + 自定义 + 工作流 + 环境规则 + 工作区 + 技能
+
+    /** 运行模式段：模式改的不只是措辞，工具面也按模式裁，两边必须对齐 */
+    private fun modePrompt(): String = when (Cfg.agentMode) {
+        AgentMode.PLAN ->
+            "当前是【计划模式】：只调研、只出方案，不要改动任何东西。write_file / make_dir / delete_file / memory_save / linux_shell 都已禁用，" +
+                "exec_shell 只跑只读命令（ls / cat / grep / find / head）。先给结论，再给分步计划（每步写清改哪个文件、跑什么命令、怎么验证），" +
+                "结尾列出需要用户拍板的问题；用户同意后再切到标准或代码模式动手。"
+        AgentMode.STANDARD ->
+            "当前是【标准模式】：正常干活，该读读、该改改、该跑命令就跑。"
+        AgentMode.CODE ->
+            "当前是【代码模式】：能力同标准模式，但把重复、有条件、多步的操作合并成一段脚本一次跑完" +
+                "（exec_shell 里写 python / sh 循环，别一格一格来回调工具），只在必须看中间结果时才拆开。"
+        AgentMode.MINIMAL ->
+            "当前是【极简模式】：只有 read_file / write_file / make_dir / delete_file / exec_shell 五个工具，" +
+                "搜索、记忆、火车票、Linux、MCP 全都不可用。不要提这些能力，需要时直接说明当前模式做不到。"
+        AgentMode.CREATOR ->
+            "当前是【创造模式】：在标准模式能力之上，你被授权改动自己的运行环境——" +
+                "系统提示词、技能包、工作流配置、工具权限都可以改。动手前先读现状，改完说明改了哪几处、怎么回退。"
+    } //运行模式段
 
     /** 工作区段：绑定路径 + 索引文件 + 目录树摘录，让模型不用盲猜结构 */
     private fun workspacePart(): String {

@@ -47,6 +47,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -76,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
 import b.ai.agent.Tools
+import b.ai.core.AgentMode
 import b.ai.core.Avatar
 import b.ai.core.Attach
 import b.ai.core.Cards
@@ -142,6 +144,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var wsPanel by remember { mutableStateOf(false) }
     var attachPanel by remember { mutableStateOf(false) }
     var cfgPanel by remember { mutableStateOf(false) }
+    var modePanel by remember { mutableStateOf(false) }
     var skillPanel by remember { mutableStateOf(false) }
     var personaPanel by remember { mutableStateOf(false) }
     //附件分类：同一个选择器按这里的 mime 与标签区分图片 / 音频 / 视频 / 音乐
@@ -373,6 +376,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             input = input,
             hint = hint,
             modelLabel = modelLabel,
+            modeLabel = stringResource(Cfg.agentMode.labelRes),
+            onOpenMode = { modePanel = true },
             onChange = { input = it },
             images = pendingImgs,
             //三条杠 / 加号都能再点一次关掉，与其他面板互斥
@@ -426,11 +431,12 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     }
 
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
-    HostInOverlay(detail != null || menuFor != null || promptReq != null || wsPanel || fullInput) {
+    HostInOverlay(detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel) {
         val d = detail
         val mn = menuFor
         val pr = promptReq
         when {
+            modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,
                 onChange = { input = it },
@@ -802,6 +808,8 @@ private fun InputBar(
     input: String,
     hint: String,
     modelLabel: String,
+    modeLabel: String,
+    onOpenMode: () -> Unit,
     onChange: (String) -> Unit,
     images: List<String>,
     onOpenConfig: () -> Unit,
@@ -940,6 +948,32 @@ private fun InputBar(
                             Box(Modifier.size(9.dp).graphicsLayer { rotationZ = -90f }) {
                                 IcBack(TextSecondary, side = 9.dp, stroke = 1.5.dp)
                             }
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        //运行模式胶囊：点开选计划 / 标准 / 代码 / 极简 / 创造
+                        Row(
+                            Modifier
+                                .background(
+                                    if (Cfg.agentMode == AgentMode.STANDARD) SurfaceMuted else AccentBlueSoft,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .tap { onOpenMode() }
+                                .padding(start = 7.dp, end = 5.dp, top = 3.dp, bottom = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                modeLabel,
+                                fontSize = 10.sp,
+                                color = if (Cfg.agentMode == AgentMode.STANDARD) TextSecondary else AccentBlue,
+                                maxLines = 1
+                            )
+                            Spacer(Modifier.width(3.dp))
+                            Icon(
+                                Icons.Filled.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = if (Cfg.agentMode == AgentMode.STANDARD) TextSecondary else AccentBlue,
+                                modifier = Modifier.size(11.dp)
+                            )
                         }
                         Spacer(Modifier.weight(1f))
                         //配置 / 附件 / 全屏全在底部这一排，左边模型右边三个图标

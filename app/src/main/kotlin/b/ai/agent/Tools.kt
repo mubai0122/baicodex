@@ -1,5 +1,6 @@
 package b.ai.agent
 
+import b.ai.core.AgentMode
 import b.ai.core.Cfg
 import b.ai.core.Mcp
 import b.ai.core.Memory
@@ -47,6 +48,25 @@ object Tools {
             l.addAll(Mcp.tools.map { it.full })
             return l
         }
+
+    /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
+    private val PLAN_OFF = setOf(WRITE, MAKE_DIR, DELETE, MEMORY, LINUX)
+
+    /** 极简模式只留这五个：文件四件套 + exec_shell */
+    private val MIN_SET = setOf(READ, WRITE, MAKE_DIR, DELETE, SHELL)
+
+    /** 计划模式下 exec_shell 里一律判死的写操作片段：只读命令才放过 */
+    private val PLAN_WRITE = listOf(
+        "rm ", "mv ", "cp ", "touch ", "mkdir ", "rmdir ", "tee ", "chmod ", "chown ", "ln ",
+        "sed -i", "truncate ", "dd ", ">", ">>", "git commit", "git checkout", "git reset", "git add"
+    )
+
+    /** 当前模式下这个工具能不能用：下发定义和执行前都过一遍 */
+    fun allowed(name: String): Boolean = when (Cfg.agentMode) {
+        AgentMode.PLAN -> name !in PLAN_OFF
+        AgentMode.MINIMAL -> name in MIN_SET
+        else -> true
+    }
 
     fun label(name: String): String = when (name) {
         READ -> "读取文件"
@@ -211,7 +231,14 @@ object Tools {
             val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
             arr.put(fn(t.full, "[MCP·" + t.server + "] " + t.desc, p))
         }
-        return arr
+        //按当前模式裁掉不可用的工具：模型看不到定义就不会去试
+        val out = JSONArray()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val n = o.optJSONObject("function")?.optString("name").orEmpty()
+            if (allowed(n)) out.put(o)
+        }
+        return out
     } //OpenAI tools 定义
 
     fun execute(name: String, args: JSONObject): ToolOutcome = when (name) {
@@ -316,6 +343,17 @@ object Tools {
 
     private fun execShell(command: String): ToolOutcome {
         if (command.isBlank()) return ToolOutcome(false, "命令为空", Route.SANDBOX)
+        //计划模式一律不许落盘：带写操作的命令直接拒，只放过只读命令
+        if (Cfg.agentMode == AgentMode.PLAN) {
+            val hit = PLAN_WRITE.find { command.contains(it) }
+            if (hit != null) {
+                return ToolOutcome(
+                    false,
+                    "计划模式下不允许改动文件（命中「${hit.trim()}」），本次命令没有执行；先出计划，用户确认后再动手。",
+                    Route.SANDBOX
+                )
+            }
+        }
         //绑了工作区就先把 cwd 切进去：模型只写相对路径也能跑对
         val cmd = Workspace.wrap(command)
         return when (Cfg.workMode) {
