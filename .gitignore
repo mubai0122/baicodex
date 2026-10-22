@@ -23,6 +23,9 @@ workspace.json.bak
 #内部文档（模型锚点与变更账本），不对外
 .docs/
 
+#本地工具脚本（构建 / 发版 / i18n），不进版本库
+scripts/
+
 #python
 __pycache__/
 *.pyc
