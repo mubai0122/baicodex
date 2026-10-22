@@ -58,8 +58,11 @@ object Tools {
     /** 计划模式下 exec_shell 里一律判死的写操作片段：只读命令才放过 */
     private val PLAN_WRITE = listOf(
         "rm ", "mv ", "cp ", "touch ", "mkdir ", "rmdir ", "tee ", "chmod ", "chown ", "ln ",
-        "sed -i", "truncate ", "dd ", ">", ">>", "git commit", "git checkout", "git reset", "git add"
+        "sed -i", "truncate ", "dd ", "git commit", "git checkout", "git reset", "git add"
     )
+
+    /** 重定向目标：> /dev/null 与 2>&1 这类只是丢弃输出，不算写文件 */
+    private val REDIRECT = Regex("""\d?>>?\s*([^\s;|&]+)""")
 
     /** 当前模式下这个工具能不能用：下发定义和执行前都过一遍 */
     fun allowed(name: String): Boolean = when (Cfg.agentMode) {
@@ -346,10 +349,15 @@ object Tools {
         //计划模式一律不许落盘：带写操作的命令直接拒，只放过只读命令
         if (Cfg.agentMode == AgentMode.PLAN) {
             val hit = PLAN_WRITE.find { command.contains(it) }
-            if (hit != null) {
+            //重定向只拦真正落盘的目标，/dev/null 与 2>&1 放过
+            val sink = REDIRECT.findAll(command)
+                .map { it.groupValues[1] }
+                .firstOrNull { it != "/dev/null" && it != "&1" && it != "&2" }
+            val bad = hit ?: sink
+            if (bad != null) {
                 return ToolOutcome(
                     false,
-                    "计划模式下不允许改动文件（命中「${hit.trim()}」），本次命令没有执行；先出计划，用户确认后再动手。",
+                    "计划模式下不允许改动文件（命中「${bad.trim()}」），本次命令没有执行；先出计划，用户确认后再动手。",
                     Route.SANDBOX
                 )
             }
