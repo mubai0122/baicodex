@@ -770,6 +770,15 @@
     <string name="ag_compressing">Compactage…</string>
     <string name="ag_wait_fmt">En attente de confirmation : %1$s (%2$d/%3$d)</string>
     <string name="ag_run_fmt">Exécution de %1$s (%2$d/%3$d)…</string>
+    <string name="ag_ask_fmt">En attente de vos réponses (%1$d/%2$d)</string>
+    <string name="qa_title">L’IA vous interroge</string>
+    <string name="qa_multi">Plusieurs choix possibles</string>
+    <string name="qa_other">Saisir ma réponse</string>
+    <string name="qa_hint">Saisissez votre réponse…</string>
+    <string name="qa_prev">Précédent</string>
+    <string name="qa_next">Suivant</string>
+    <string name="qa_submit">Envoyer</string>
+    <string name="qa_skip">Ignorer</string>
     <string name="ag_no_regen">Cette réponse n\'est pas dans cette session, régénération impossible</string>
     <string name="ag_no_user_msg">Aucun message utilisateur exploitable, régénération impossible</string>
     <string name="ag_ex_user">**Utilisateur**</string>

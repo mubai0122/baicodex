@@ -33,6 +33,7 @@ object Tools {
     const val WEB_SEARCH = "web_search"
     const val RAIL = "rail_query"
     const val MEMORY = "memory_save"
+    const val ASK = "ask_user"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -40,7 +41,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY))
+            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.addAll(Mcp.tools.map { it.full })
@@ -57,6 +58,7 @@ object Tools {
         WEB_SEARCH -> "联网搜索"
         RAIL -> "火车票查询"
         MEMORY -> "记住这件事"
+        ASK -> "向用户提问"
         else -> mcpLabel(name)
     }
 
@@ -177,6 +179,33 @@ object Tools {
                 ).put("required", JSONArray().put("text"))
             )
         )
+        //向用户提问：模型自己决定问什么、给哪些选项，UI 分页展示，可多选 + 自定义填写
+        val qItem = JSONObject()
+            .put("type", "object")
+            .put(
+                "properties",
+                JSONObject()
+                    .put("q", str("问题正文，一句话说清要选什么"))
+                    .put(
+                        "options",
+                        JSONObject().put("type", "array").put("description", "可选项，2-4 个，短句，不要带 A/B 前缀")
+                            .put("items", JSONObject().put("type", "string"))
+                    )
+                    .put("multi", JSONObject().put("type", "boolean").put("description", "是否可多选，默认 false"))
+                    .put("other", JSONObject().put("type", "boolean").put("description", "末尾是否给「自己填写」，默认 true"))
+            )
+            .put("required", JSONArray().put("q").put("options"))
+        arr.put(
+            fn(
+                ASK,
+                "向用户提问以便确认细节。一次可以问多个问题，界面会按页展示（‹ 1/3 ›），每题列出可选项，" +
+                    "用户还能自己填写。信息不足时先问，不要靠猜。",
+                JSONObject().put("type", "object")
+                    .put("properties", JSONObject().put("questions", JSONObject().put("type", "array")
+                        .put("description", "要问的问题，1-6 个").put("items", qItem)))
+                    .put("required", JSONArray().put("questions"))
+            )
+        )
         //MCP 能力：schema 是服务端给的 parameters 原文，原样透传给模型
         Mcp.tools.forEach { t ->
             val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
@@ -195,6 +224,8 @@ object Tools {
         WEB_SEARCH -> search(args)
         RAIL -> rail(args)
         MEMORY -> memorySave(args)
+        //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
+        ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
         else -> mcpCall(name, args)
     } //执行单个工具
 

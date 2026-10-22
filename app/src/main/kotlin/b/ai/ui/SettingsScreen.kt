@@ -47,6 +47,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -170,6 +171,8 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
     var taskDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
     var fq by remember { mutableStateOf("") }
+    //下拉选择面板的当前内容：非空时挂到根弹窗层，和其它弹窗互斥
+    var pick by remember { mutableStateOf<Pair<String, List<PickItem>>?>(null) }
     LaunchedEffect(Agent.messages.size, Agent.sessionId) {
         stats = withContext(Dispatchers.IO) { Agent.stats() }
     }
@@ -318,19 +321,21 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                         color = TextSecondary,
                         modifier = Modifier.padding(vertical = 10.dp)
                     )
-                    else -> when (tab) {
-                        0 -> ModelTab()
-                        1 -> ChatTab(stats)
-                        2 -> UiTab()
-                        3 -> StatTab()
-                        4 -> ExtTab(
-                            onEdit = { draft = it },
-                            onEditPersona = { personaDraft = it },
-                            onEditMcp = { mcpDraft = it },
-                            onNewTask = { taskDraft = true }
-                        )
-                        5 -> AboutTab()
-                        else -> UiTab()
+                    else -> CompositionLocalProvider(LocalPicker provides { t, l -> pick = t to l }) {
+                        when (tab) {
+                            0 -> ModelTab()
+                            1 -> ChatTab(stats)
+                            2 -> UiTab()
+                            3 -> StatTab()
+                            4 -> ExtTab(
+                                onEdit = { draft = it },
+                                onEditPersona = { personaDraft = it },
+                                onEditMcp = { mcpDraft = it },
+                                onNewTask = { taskDraft = true }
+                            )
+                            5 -> AboutTab()
+                            else -> UiTab()
+                        }
                     }
             }
         }
@@ -343,7 +348,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null) {
         draft?.let { s ->
             SkillDialog(
                 skill = s,
@@ -387,6 +392,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
             )
         }
         if (taskDraft) TaskDialog(onClose = { taskDraft = false })
+        pick?.let { (t, l) -> PickSheet(t, l) { pick = null } }
     }
 } //设置界面
 
@@ -441,13 +447,14 @@ private fun ModelTab() {
             )
         }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_079), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("low", "medium", "high").forEach { v ->
-                PolicyChip(v, Cfg.thinkEffort == v) { Cfg.thinkEffort = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_079),
+            Cfg.thinkEffort,
+            listOf("low", "medium", "high"),
+            optionLabel = { it },
+            isSelected = { Cfg.thinkEffort == it },
+            onSelect = { Cfg.thinkEffort = it }
+        )
         Spacer(Modifier.height(10.dp))
         CapSwitch(
             stringResource(R.string.se_080),
@@ -455,16 +462,14 @@ private fun ModelTab() {
             Cfg.maxMode
         ) { Cfg.maxMode = it }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_083), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(-1f, 0f, 0.3f, 0.7f, 1f, 1.3f).forEach { v ->
-                PolicyChip(
-                    if (v < 0f) stringResource(R.string.se_084) else v.toString(),
-                    kotlin.math.abs(Cfg.temperature - v) < 0.01f
-                ) { Cfg.temperature = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_083),
+            if (Cfg.temperature < 0f) stringResource(R.string.se_084) else Cfg.temperature.toString(),
+            listOf(-1f, 0f, 0.3f, 0.7f, 1f, 1.3f),
+            optionLabel = { if (it < 0f) stringResource(R.string.se_084) else it.toString() },
+            isSelected = { kotlin.math.abs(Cfg.temperature - it) < 0.01f },
+            onSelect = { Cfg.temperature = it }
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             stringResource(R.string.se_085),
@@ -509,15 +514,14 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             )
         }
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_094), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(32_000, 64_000, 128_000, 256_000, 1_000_000).forEach { v ->
-                PolicyChip(if (v >= 1_000_000) "1M" else "${v / 1000}k", Cfg.ctxTotal == v) {
-                    Cfg.ctxTotal = v
-                }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_094),
+            if (Cfg.ctxTotal >= 1_000_000) "1M" else "${Cfg.ctxTotal / 1000}k",
+            listOf(32_000, 64_000, 128_000, 256_000, 1_000_000),
+            optionLabel = { if (it >= 1_000_000) "1M" else "${it / 1000}k" },
+            isSelected = { Cfg.ctxTotal == it },
+            onSelect = { Cfg.ctxTotal = it }
+        )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.se2_pct, Cfg.ctxPct), fontSize = 11.sp, color = TextPrimary)
@@ -537,21 +541,23 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_098), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(4, 8, 16).forEach { v ->
-                PolicyChip(stringResource(R.string.se2_n_items, v), Cfg.ctxKeep == v) { Cfg.ctxKeep = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_098),
+            stringResource(R.string.se2_n_items, Cfg.ctxKeep),
+            listOf(4, 8, 16),
+            optionLabel = { stringResource(R.string.se2_n_items, it) },
+            isSelected = { Cfg.ctxKeep == it },
+            onSelect = { Cfg.ctxKeep = it }
+        )
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_100), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(8, 16, 32).forEach { v ->
-                PolicyChip(stringResource(R.string.se2_n_items, v), Cfg.ctxMsgCount == v) { Cfg.ctxMsgCount = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_100),
+            stringResource(R.string.se2_n_items, Cfg.ctxMsgCount),
+            listOf(8, 16, 32),
+            optionLabel = { stringResource(R.string.se2_n_items, it) },
+            isSelected = { Cfg.ctxMsgCount == it },
+            onSelect = { Cfg.ctxMsgCount = it }
+        )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton(stringResource(R.string.se_101), modifier = Modifier.height(38.dp)) { Agent.compactNow() }
@@ -870,14 +876,15 @@ private fun UiTab() {
 
     SectionTitle(stringResource(R.string.se_167), stringResource(R.string.se_168))
     CardBox {
-        Lang.options.chunked(3).forEachIndexed { i, row ->
-            if (i > 0) Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { (code, label) ->
-                    PolicyChip(label, Cfg.lang == code) { pickLang(code) }
-                }
-            }
-        }
+        val langs = Lang.options
+        SelectField(
+            stringResource(R.string.se_167),
+            langs.firstOrNull { it.first == Cfg.lang }?.second ?: stringResource(R.string.se_187),
+            langs.map { it.first },
+            optionLabel = { code -> langs.first { it.first == code }.second },
+            isSelected = { Cfg.lang == it },
+            onSelect = { pickLang(it) }
+        )
     }
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
@@ -919,11 +926,24 @@ private fun UiTab() {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_030), stringResource(R.string.se_185))
     CardBox {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(stringResource(R.string.se_187) to 0, stringResource(R.string.se_188) to 1, stringResource(R.string.se_189) to 2).forEach { (label, v) ->
-                PolicyChip(label, Cfg.darkTheme == v) { Cfg.darkTheme = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_030),
+            when (Cfg.darkTheme) {
+                1 -> stringResource(R.string.se_188)
+                2 -> stringResource(R.string.se_189)
+                else -> stringResource(R.string.se_187)
+            },
+            listOf(0, 1, 2),
+            optionLabel = {
+                when (it) {
+                    1 -> stringResource(R.string.se_188)
+                    2 -> stringResource(R.string.se_189)
+                    else -> stringResource(R.string.se_187)
+                }
+            },
+            isSelected = { Cfg.darkTheme == it },
+            onSelect = { Cfg.darkTheme = it }
+        )
         Spacer(Modifier.height(6.dp))
         Text(
             when (Cfg.darkTheme) {
@@ -939,11 +959,15 @@ private fun UiTab() {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_032), stringResource(R.string.se_193))
     CardBox {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FontPresets.forEach { (res, v) ->
-                PolicyChip(stringResource(res), kotlin.math.abs(Cfg.fontScale - v) < 0.01f) { Cfg.fontScale = v }
-            }
-        }
+        SelectField(
+            stringResource(R.string.se_032),
+            FontPresets.firstOrNull { kotlin.math.abs(Cfg.fontScale - it.second) < 0.01f }?.let { stringResource(it.first) }
+                ?: stringResource(R.string.se_164),
+            FontPresets.map { it.second },
+            optionLabel = { v -> stringResource(FontPresets.first { it.second == v }.first) },
+            isSelected = { kotlin.math.abs(Cfg.fontScale - it) < 0.01f },
+            onSelect = { Cfg.fontScale = it }
+        )
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.se_font_cur, (Cfg.fontScale * 100).toInt()), fontSize = 11.sp, color = TextSecondary)
     }
@@ -983,13 +1007,24 @@ private fun UiTab() {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_bg), stringResource(R.string.se_bg_d))
     CardBox {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            PolicyChip(stringResource(R.string.se_bg_plain), Cfg.bgStyle == 0) { Cfg.bgStyle = 0 }
-            Spacer(Modifier.width(6.dp))
-            PolicyChip(stringResource(R.string.se_bg_grad), Cfg.bgStyle == 1) { Cfg.bgStyle = 1 }
-            Spacer(Modifier.width(6.dp))
-            PolicyChip(stringResource(R.string.se_bg_dots), Cfg.bgStyle == 2) { Cfg.bgStyle = 2 }
-        }
+        SelectField(
+            stringResource(R.string.se_bg),
+            when (Cfg.bgStyle) {
+                1 -> stringResource(R.string.se_bg_grad)
+                2 -> stringResource(R.string.se_bg_dots)
+                else -> stringResource(R.string.se_bg_plain)
+            },
+            listOf(0, 1, 2),
+            optionLabel = {
+                when (it) {
+                    1 -> stringResource(R.string.se_bg_grad)
+                    2 -> stringResource(R.string.se_bg_dots)
+                    else -> stringResource(R.string.se_bg_plain)
+                }
+            },
+            isSelected = { Cfg.bgStyle == it },
+            onSelect = { Cfg.bgStyle = it }
+        )
     }
 
     Spacer(Modifier.height(14.dp))
@@ -1087,12 +1122,14 @@ private fun ExtTab(
                 color = TextSecondary
             )
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PolicyChip(stringResource(R.string.se2_search_off), sel.isBlank()) { Cfg.searchProvider = "" }
-                providers.forEach { p ->
-                    PolicyChip(p.label, sel == p.id) { Cfg.searchProvider = p.id }
-                }
-            }
+            SelectField(
+                stringResource(R.string.se_046),
+                providers.firstOrNull { it.id == sel }?.label ?: stringResource(R.string.se2_search_off),
+                listOf("") + providers.map { it.id },
+                optionLabel = { id -> providers.firstOrNull { it.id == id }?.label ?: stringResource(R.string.se2_search_off) },
+                isSelected = { sel == it },
+                onSelect = { Cfg.searchProvider = it }
+            )
             val cur = Search.selected
             if (cur != null) {
                 Spacer(Modifier.height(8.dp))
@@ -1201,27 +1238,27 @@ private fun ExtTab(
     SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
     CardBox {
         Tools.all.forEach { tool ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(Tools.label(tool), fontSize = 13.sp, color = TextPrimary)
-                    Text(
-                        if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
-                        else stringResource(R.string.se2_risk_normal, tool),
-                        fontSize = 10.sp,
-                        color = if (Tools.isHighRisk(tool)) DangerRed else TextSecondary
-                    )
-                }
-                PolicyChip(stringResource(R.string.se_238), Cfg.policy(tool) == "ask") { Cfg.setPolicy(tool, "ask") }
-                Spacer(Modifier.width(6.dp))
-                PolicyChip(stringResource(R.string.se_239), Cfg.policy(tool) == "allow") { Cfg.setPolicy(tool, "allow") }
-                Spacer(Modifier.width(6.dp))
-                PolicyChip(stringResource(R.string.se_240), Cfg.policy(tool) == "deny") { Cfg.setPolicy(tool, "deny") }
-            }
+            val pol = Cfg.policy(tool)
+            SelectField(
+                Tools.label(tool),
+                when (pol) {
+                    "allow" -> stringResource(R.string.se_239)
+                    "deny" -> stringResource(R.string.se_240)
+                    else -> stringResource(R.string.se_238)
+                },
+                listOf("ask", "allow", "deny"),
+                desc = if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
+                else stringResource(R.string.se2_risk_normal, tool),
+                optionLabel = {
+                    when (it) {
+                        "allow" -> stringResource(R.string.se_239)
+                        "deny" -> stringResource(R.string.se_240)
+                        else -> stringResource(R.string.se_238)
+                    }
+                },
+                isSelected = { pol == it },
+                onSelect = { Cfg.setPolicy(tool, it) }
+            )
         }
     }
 

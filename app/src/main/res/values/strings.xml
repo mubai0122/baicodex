@@ -770,6 +770,15 @@
     <string name="ag_compressing">正在压缩…</string>
     <string name="ag_wait_fmt">等待确认 %1$s（%2$d/%3$d）</string>
     <string name="ag_run_fmt">执行 %1$s（%2$d/%3$d）…</string>
+    <string name="ag_ask_fmt">等待作答（%1$d/%2$d）</string>
+    <string name="qa_title">AI 向你提问</string>
+    <string name="qa_multi">可多选</string>
+    <string name="qa_other">自己填写</string>
+    <string name="qa_hint">输入你的答案…</string>
+    <string name="qa_prev">上一题</string>
+    <string name="qa_next">下一题</string>
+    <string name="qa_submit">提交</string>
+    <string name="qa_skip">跳过</string>
     <string name="ag_no_regen">当前会话里没有这条回复，无法重新生成</string>
     <string name="ag_no_user_msg">没有可用的用户消息，无法重新生成</string>
     <string name="ag_ex_user">**用户**</string>

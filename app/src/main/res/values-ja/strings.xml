@@ -770,6 +770,15 @@
     <string name="ag_compressing">圧縮中…</string>
     <string name="ag_wait_fmt">確認待ち %1$s（%2$d/%3$d）</string>
     <string name="ag_run_fmt">実行中 %1$s（%2$d/%3$d）…</string>
+    <string name="ag_ask_fmt">回答待ち（%1$d/%2$d）</string>
+    <string name="qa_title">AI からの質問</string>
+    <string name="qa_multi">複数選択可</string>
+    <string name="qa_other">自分で入力</string>
+    <string name="qa_hint">回答を入力…</string>
+    <string name="qa_prev">前へ</string>
+    <string name="qa_next">次へ</string>
+    <string name="qa_submit">送信</string>
+    <string name="qa_skip">スキップ</string>
     <string name="ag_no_regen">このセッションにその返信がないため再生成できません</string>
     <string name="ag_no_user_msg">再利用できるユーザーメッセージがないため再生成できません</string>
     <string name="ag_ex_user">**ユーザー**</string>

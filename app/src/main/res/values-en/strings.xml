@@ -770,6 +770,15 @@
     <string name="ag_compressing">Compacting…</string>
     <string name="ag_wait_fmt">Waiting for confirmation: %1$s (%2$d/%3$d)</string>
     <string name="ag_run_fmt">Running %1$s (%2$d/%3$d)…</string>
+    <string name="ag_ask_fmt">Waiting for your answers (%1$d/%2$d)</string>
+    <string name="qa_title">AI is asking</string>
+    <string name="qa_multi">Multiple answers allowed</string>
+    <string name="qa_other">Write my own</string>
+    <string name="qa_hint">Type your answer…</string>
+    <string name="qa_prev">Previous</string>
+    <string name="qa_next">Next</string>
+    <string name="qa_submit">Submit</string>
+    <string name="qa_skip">Skip</string>
     <string name="ag_no_regen">That reply is not in this session, cannot regenerate</string>
     <string name="ag_no_user_msg">No usable user message, cannot regenerate</string>
     <string name="ag_ex_user">**User**</string>

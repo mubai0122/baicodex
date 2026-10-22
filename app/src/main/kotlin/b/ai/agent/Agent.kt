@@ -47,6 +47,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
+data class AskQuestion(val title: String, val options: List<String>, val multi: Boolean, val other: Boolean)
+
+/** 一次提问请求：deferred 由界面作答后回填，模型那一轮挂在这里等 */
+data class AskReq(val questions: List<AskQuestion>, val deferred: CompletableDeferred<List<String>>)
+
 data class PendingTool(
     val call: ToolCall,
     val args: JSONObject,
@@ -78,6 +83,8 @@ object Agent {
     var busySince by mutableStateOf(0L)
         private set
     var pending by mutableStateOf<PendingTool?>(null)
+        private set
+    var ask by mutableStateOf<AskReq?>(null)
         private set
     var sessionId by mutableStateOf<String?>(null)
         private set
@@ -284,6 +291,8 @@ object Agent {
         Speak.stop()
         pending?.let { if (!it.deferred.isCompleted) it.deferred.complete(false) }
         pending = null
+        ask?.let { if (!it.deferred.isCompleted) it.deferred.complete(emptyList()) }
+        ask = null
         status = host.getString(R.string.ag_stopped)
         sContent.setLength(0)
         sReason.setLength(0)
@@ -555,6 +564,14 @@ object Agent {
             }
             calls.forEachIndexed { i, c ->
                 if (!ctx.isActive) return@forEachIndexed
+                //提问工具先接住：不弹工具确认框，直接把面板推给用户并等作答
+                if (c.name == Tools.ASK) {
+                    status = host.getString(R.string.ag_ask_fmt, i + 1, calls.size)
+                    busySince = System.currentTimeMillis()
+                    val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+                    appendToolMsg(c, askUser(qa), Route.SANDBOX, false)
+                    return@forEachIndexed
+                }
                 //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
                 if (!Perms.ok(App.self)) {
                     val lack = Perms.missing(App.self).joinToString("、") { Perms.label(it) }
@@ -583,6 +600,45 @@ object Agent {
             busySince = System.currentTimeMillis()
         }
     } //模型 → 工具 → 回传 的主循环
+
+    /** 界面作答回填：answers 与 questions 一一对应，空串表示这题没填 */
+    fun answerAsk(answers: List<String>) {
+        val a = ask ?: return
+        ask = null
+        if (!a.deferred.isCompleted) a.deferred.complete(answers)
+    } //作答回填
+
+    /** 弹提问面板并挂起，直到用户提交或跳过 */
+    private suspend fun askUser(args: JSONObject): String {
+        val arr = args.optJSONArray("questions") ?: return "ask_user 需要 questions 数组"
+        val qs = ArrayList<AskQuestion>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val title = o.optString("q").trim().ifBlank { o.optString("question").trim() }
+            if (title.isBlank()) continue
+            val opts = ArrayList<String>()
+            o.optJSONArray("options")?.let { list ->
+                for (k in 0 until list.length()) {
+                    val v = list.optString(k).trim()
+                    if (v.isNotEmpty()) opts.add(v)
+                }
+            }
+            qs.add(AskQuestion(title, opts, o.optBoolean("multi", false), o.optBoolean("other", true)))
+        }
+        if (qs.isEmpty()) return "ask_user 格式不对：questions 里每项要有 q 与 options"
+        val d = CompletableDeferred<List<String>>()
+        ask = AskReq(qs, d)
+        val ans = d.await()
+        ask = null
+        if (ans.isEmpty()) return "用户跳过了提问，没有作答。"
+        return buildString {
+            append("用户的选择：\n")
+            qs.forEachIndexed { i, q ->
+                append(i + 1).append(". ").append(q.title).append(" → ")
+                    .append(ans.getOrElse(i) { "" }.ifBlank { "（未选）" }).append("\n")
+            }
+        }
+    } //向用户提问并等待
 
     /** 组装本轮统计：服务端给了 usage 就用真值，没给按 1 token ≈ 1.8 字符粗估 */
     private fun metaOf(
@@ -668,7 +724,7 @@ object Agent {
         val custom = Cfg.systemPrompt.trim()
         val searching = Search.selected != null
         val tools = buildString {
-            append("read_file / write_file / make_dir / delete_file / exec_shell / rail_query / memory_save")
+            append("read_file / write_file / make_dir / delete_file / exec_shell / rail_query / memory_save / ask_user")
             if (Linux.installed()) append(" / linux_shell")
             if (searching) append(" / web_search")
         }
@@ -693,6 +749,7 @@ object Agent {
             append("工具：").append(tools).append("。解压、安装、逆向等一律用 exec_shell 拼命令完成；")
             append("车次、时刻、余票一律用 rail_query 查（action=tickets 余票 / transfer 中转 / route 经停），不要凭记忆编车次；")
             append("值得长期记住的偏好或结论用 memory_save 存下来，不要只在回答里提醒自己；")
+            append("信息不够就先用 ask_user 问清（每题 2-4 个选项，用户还能自己填），别猜着往下做；")
             if (searching) append("需要最新信息或核实事实时用 web_search。") else append("不要假设自己能联网。")
             append("\n")
             val ws = workspacePart()

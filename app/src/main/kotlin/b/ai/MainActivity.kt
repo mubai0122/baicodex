@@ -35,6 +35,7 @@ import b.ai.core.Lang
 import b.ai.core.Perms
 import b.ai.exec.Alarms
 import b.ai.net.Update
+import b.ai.ui.AskSheet
 import b.ai.ui.BackdropHost
 import b.ai.ui.ChatScreen
 import b.ai.ui.DrawerPanel
@@ -129,7 +130,7 @@ private fun Root() {
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
-    val active = Agent.pending != null || Overlay.active || permNotice || upd != null || updHis != null ||
+    val active = Agent.pending != null || Agent.ask != null || Overlay.active || permNotice || upd != null || updHis != null ||
         starsOpen || memOpen
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
@@ -225,7 +226,9 @@ private fun Root() {
                 },
                 overlay = {
                     val p = Agent.pending
+                    val q = Agent.ask
                     when {
+                        q != null -> AskSheet(q)
                         p != null -> ToolConfirmDialog(p)
                         permNotice -> PermNoticeDialog(
                             missing = missing,
