@@ -1,3 +1,0 @@
-/storage/emulated/0/AndroidCSProjects/BaiAgent/app/.cxx/Debug/4a372b6d/armeabi-v7a/CMakeFiles/baidsl.dir
-/storage/emulated/0/AndroidCSProjects/BaiAgent/app/.cxx/Debug/4a372b6d/armeabi-v7a/CMakeFiles/edit_cache.dir
-/storage/emulated/0/AndroidCSProjects/BaiAgent/app/.cxx/Debug/4a372b6d/armeabi-v7a/CMakeFiles/rebuild_cache.dir

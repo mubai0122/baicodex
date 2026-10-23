@@ -29,3 +29,5 @@ scripts/
 #python
 __pycache__/
 *.pyc
+app/.cxx/
+.cxx/

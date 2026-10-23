@@ -1,7 +1,0 @@
-# ninja log v7
-6	1481	1792778065772510833	CMakeFiles/baidsl.dir/dsl_jni.cpp.o	eb764e510105dfe1
-5	2253	1792778065772510833	CMakeFiles/baidsl.dir/dsl.cpp.o	2c4b2f4a3fb2271e
-2253	2369	1792778068020510832	/storage/emulated/0/AndroidCSProjects/BaiAgent/app/build/intermediates/cxx/Debug/4a372b6d/obj/arm64-v8a/libbaidsl.so	8622d8a3304b6080
-140	2147	1792778393322874716	CMakeFiles/baidsl.dir/dsl_jni.cpp.o	eb764e510105dfe1
-139	4663	1792778393322874716	CMakeFiles/baidsl.dir/dsl.cpp.o	2c4b2f4a3fb2271e
-4667	4991	1792778397854874714	/storage/emulated/0/AndroidCSProjects/BaiAgent/app/build/intermediates/cxx/Debug/4a372b6d/obj/arm64-v8a/libbaidsl.so	8622d8a3304b6080
