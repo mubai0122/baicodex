@@ -331,4 +331,95 @@ Result render(const std::string &tpl, const std::string &kind,
     return r;
 } //校验并生成
 
+/** 扁平 JSON 解析：只认 {"k":"v"}，null 当空串，够传参数表与密钥表 */
+bool parseFlatJson(const std::string &s, Table &out) {
+    size_t i = 0;
+    const size_t n = s.size();
+    auto ws = [&]() { while (i < n && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) i++; };
+    auto str = [&](std::string &dst) -> bool {
+        if (i >= n || s[i] != '"') return false;
+        i++;
+        dst.clear();
+        while (i < n && s[i] != '"') {
+            const char c = s[i];
+            if (c != '\\') {
+                dst += c;
+                i++;
+                continue;
+            }
+            i++;
+            if (i >= n) return false;
+            const char e = s[i++];
+            switch (e) {
+                case 'n': dst += '\n'; break;
+                case 't': dst += '\t'; break;
+                case 'r': dst += '\r'; break;
+                case 'b': dst += '\b'; break;
+                case 'f': dst += '\f'; break;
+                case '/': dst += '/'; break;
+                case '"': dst += '"'; break;
+                case '\\': dst += '\\'; break;
+                case 'u': {
+                    //\uXXXX 只处理 BMP：参数与密钥都是短文本，够用
+                    if (i + 4 > n) return false;
+                    unsigned cp = 0;
+                    for (int k = 0; k < 4; k++) {
+                        const char h = s[i + k];
+                        cp <<= 4;
+                        if (h >= '0' && h <= '9') cp |= (unsigned) (h - '0');
+                        else if (h >= 'a' && h <= 'f') cp |= (unsigned) (h - 'a' + 10);
+                        else if (h >= 'A' && h <= 'F') cp |= (unsigned) (h - 'A' + 10);
+                        else return false;
+                    }
+                    i += 4;
+                    if (cp < 0x80) {
+                        dst += (char) cp;
+                    } else if (cp < 0x800) {
+                        dst += (char) (0xC0 | (cp >> 6));
+                        dst += (char) (0x80 | (cp & 0x3F));
+                    } else {
+                        dst += (char) (0xE0 | (cp >> 12));
+                        dst += (char) (0x80 | ((cp >> 6) & 0x3F));
+                        dst += (char) (0x80 | (cp & 0x3F));
+                    }
+                    break;
+                }
+                default: dst += e; break;
+            }
+        }
+        if (i >= n) return false;
+        i++;
+        return true;
+    };
+    ws();
+    if (i >= n || s[i] != '{') return false;
+    i++;
+    ws();
+    if (i < n && s[i] == '}') return true;
+    while (i < n) {
+        std::string k, v;
+        ws();
+        if (!str(k)) return false;
+        ws();
+        if (i >= n || s[i] != ':') return false;
+        i++;
+        ws();
+        if (i < n && s[i] == 'n') {
+            if (s.compare(i, 4, "null") == 0) i += 4;
+            else return false;
+        } else if (!str(v)) {
+            return false;
+        }
+        out[k] = v;
+        ws();
+        if (i < n && s[i] == ',') {
+            i++;
+            continue;
+        }
+        if (i < n && s[i] == '}') return true;
+        return false;
+    }
+    return true;
+} //解析扁平对象
+
 } //dsl 命名空间

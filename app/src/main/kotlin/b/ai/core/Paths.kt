@@ -32,6 +32,11 @@ object Paths {
 
     fun workspaceRoot(): File = File(ensure(), WSUB).also { runCatching { it.mkdirs() } }
 
+    /** 外部技能包根：baicode/skill，一个文件夹一个技能 */
+    const val SSKILL = "skill"
+
+    fun skillRoot(): File = File(ensure(), SSKILL).also { runCatching { it.mkdirs() } }
+
     /** 4-4-4-4-4-4 的哈希目录名：24 位小写 hex 分六段 */
     fun hashName(): String {
         val b = ByteArray(12)

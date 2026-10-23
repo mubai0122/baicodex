@@ -10,6 +10,7 @@ import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Schedules
 import b.ai.core.Skills
+import b.ai.core.SkillPacks
 import b.ai.core.Repo
 import b.ai.core.WorkMode
 import b.ai.exec.Alarms
@@ -28,6 +29,8 @@ class App : Application() {
         Cfg.init(this)
         Profiles.init()
         Skills.init(this)
+        //技能包清单：外部目录 + 旧 skills.json，启动时扫一遍并 lint 所有模板
+        runCatching { SkillPacks.reload(this) }
         Personas.init(this)
         Schedules.init(this)
         Mcp.init(this)

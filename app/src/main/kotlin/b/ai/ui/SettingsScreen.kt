@@ -84,6 +84,8 @@ import b.ai.core.Schedules
 import b.ai.core.Search
 import b.ai.core.Skill
 import b.ai.core.Skills
+import b.ai.core.Secret
+import b.ai.core.SkillPacks
 import b.ai.core.Wallpaper
 import b.ai.core.WorkMode
 import b.ai.exec.Alarms
@@ -1287,6 +1289,14 @@ private fun ExtTab(
     }
 
     Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.skp_t), stringResource(R.string.skp_d))
+    SkillPackBox()
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.skp_secret_t), stringResource(R.string.skp_secret_d))
+    SecretBox()
+
+    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
     CardBox {
         Tools.all.forEach { tool ->
@@ -1315,6 +1325,119 @@ private fun ExtTab(
     }
 
 } //扩展分类：功能专区 + 技能专区 + 工具权限
+
+/** 技能包：外部目录里有哪些包、哪些函数校验没过；改完包点重新扫描 */
+@Composable
+private fun SkillPackBox() {
+    val ctx = LocalContext.current
+    var packs by remember { mutableStateOf(SkillPacks.packs) }
+    var broken by remember { mutableStateOf(SkillPacks.broken()) }
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.skp_count, packs.size, packs.sumOf { it.funcs.size }),
+                    fontSize = 13.sp,
+                    color = TextPrimary
+                )
+                Text(stringResource(R.string.skp_d), fontSize = 9.sp, color = TextSecondary, maxLines = 2)
+            }
+            GhostButton(stringResource(R.string.skp_rescan), modifier = Modifier.height(34.dp)) {
+                runCatching { SkillPacks.reload(ctx) }
+                packs = SkillPacks.packs
+                broken = SkillPacks.broken()
+            }
+        }
+        packs.forEach { p ->
+            Spacer(Modifier.height(6.dp))
+            Text(
+                p.name.ifBlank { p.id } + "（" + p.id + "）",
+                fontSize = 12.sp,
+                color = TextPrimary,
+                maxLines = 1
+            )
+            Text(
+                p.funcs.joinToString("、") { it.name }.ifBlank { p.desc },
+                fontSize = 9.sp,
+                color = TextSecondary,
+                maxLines = 2
+            )
+        }
+        if (broken.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.skp_broken), fontSize = 10.sp, color = DangerRed)
+            broken.forEach { f ->
+                Text("· ${f.skill}/${f.name}：${f.bad}", fontSize = 9.sp, color = DangerRed)
+            }
+        }
+    }
+} //技能包列表
+
+/** 技能密钥：技能包里的 $secret.xxx 从这里取，明文存数据根 */
+@Composable
+private fun SecretBox() {
+    val ctx = LocalContext.current
+    var all by remember { mutableStateOf(Secret.all()) }
+    var name by remember { mutableStateOf("") }
+    var value by remember { mutableStateOf("") }
+    var tip by remember { mutableStateOf("") }
+    CardBox {
+        if (all.isEmpty()) Text(stringResource(R.string.skp_secret_none), fontSize = 11.sp, color = TextSecondary)
+        all.forEach { (k, v) ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(k, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+                    Text("•••• " + v.takeLast(4), fontSize = 9.sp, color = TextSecondary)
+                }
+                Text(
+                    stringResource(R.string.skp_secret_del),
+                    fontSize = 11.sp,
+                    color = DangerRed,
+                    modifier = Modifier
+                        .background(DangerRedSoft, RoundedCornerShape(8.dp))
+                        .tap {
+                            Secret.put(k, "")
+                            all = Secret.all()
+                            tip = ""
+                        }
+                        .padding(horizontal = 9.dp, vertical = 5.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Field(stringResource(R.string.skp_secret_name), name, { name = it })
+        Spacer(Modifier.height(6.dp))
+        Field(stringResource(R.string.skp_secret_val), value, { value = it }, secret = true)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            GhostButton(stringResource(R.string.skp_secret_save), modifier = Modifier.height(34.dp)) {
+                val n = name.trim()
+                if (!Secret.validName(n)) {
+                    tip = ctx.getString(R.string.skp_secret_bad)
+                    return@GhostButton
+                }
+                if (value.isEmpty()) {
+                    tip = ctx.getString(R.string.skp_secret_empty)
+                    return@GhostButton
+                }
+                Secret.put(n, value)
+                all = Secret.all()
+                name = ""
+                value = ""
+                tip = ctx.getString(R.string.skp_secret_saved, n)
+            }
+            if (tip.isNotBlank()) {
+                Spacer(Modifier.width(10.dp))
+                Text(tip, fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+    }
+} //密钥清单
 
 //官网地址：服务端基础地址，仓库那栏等建库后再填
 private const val SITE_URL = "https://agent.ai.baiccb.cn"

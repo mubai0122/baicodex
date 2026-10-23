@@ -2,10 +2,14 @@ package b.ai.agent
 
 import b.ai.core.AgentMode
 import b.ai.core.Cfg
+import b.ai.core.Dsl
 import b.ai.core.Mcp
 import b.ai.core.Memory
 import b.ai.core.Route
 import b.ai.core.Search
+import b.ai.core.Secret
+import b.ai.core.SkillFn
+import b.ai.core.SkillPacks
 import b.ai.core.WorkMode
 import b.ai.exec.FileOps
 import b.ai.exec.Linux
@@ -20,6 +24,8 @@ import b.ai.net.Rail
 import b.ai.net.Tavily
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class ToolOutcome(val ok: Boolean, val text: String, val route: Route)
 
@@ -35,6 +41,8 @@ object Tools {
     const val RAIL = "rail_query"
     const val MEMORY = "memory_save"
     const val ASK = "ask_user"
+    /** 取某个技能的完整用法（README），技能函数由技能包动态注册 */
+    const val SKILL_READ = "skill_read"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -45,6 +53,8 @@ object Tools {
             l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
+            l.add(SKILL_READ)
+            SkillPacks.funcs.forEach { if (it.name !in l) l.add(it.name) }
             l.addAll(Mcp.tools.map { it.full })
             return l
         }
@@ -82,7 +92,8 @@ object Tools {
         RAIL -> "火车票查询"
         MEMORY -> "记住这件事"
         ASK -> "向用户提问"
-        else -> mcpLabel(name)
+        SKILL_READ -> "查技能用法"
+        else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" } ?: mcpLabel(name)
     }
 
     /** MCP 能力的显示名：MCP·服务名·能力名，找不到缓存就原样返回 */
@@ -229,6 +240,26 @@ object Tools {
                     .put("required", JSONArray().put("questions"))
             )
         )
+        //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
+        arr.put(
+            fn(
+                SKILL_READ,
+                "取某个技能的完整用法（README）。第一次用一个技能前先调它，看清参数与示例再调具体函数。",
+                params("name" to str("技能 id 或名字，见系统提示里的技能清单"))
+            )
+        )
+        SkillPacks.funcs.forEach { f ->
+            val props = JSONObject()
+            f.params.forEach { (k, re) -> props.put(k, str(if (re.isBlank()) "字符串" else "需匹配：$re")) }
+            arr.put(
+                fn(
+                    f.name,
+                    "[" + f.skill + "] " + f.desc,
+                    JSONObject().put("type", "object").put("properties", props)
+                        .put("required", JSONArray(f.params.keys.toList()))
+                )
+            )
+        }
         //MCP 能力：schema 是服务端给的 parameters 原文，原样透传给模型
         Mcp.tools.forEach { t ->
             val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
@@ -256,8 +287,93 @@ object Tools {
         MEMORY -> memorySave(args)
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
-        else -> mcpCall(name, args)
+        SKILL_READ -> skillRead(args.optString("name"))
+        else -> SkillPacks.find(name)?.let { skillExec(it, args) } ?: mcpCall(name, args)
     } //执行单个工具
+
+    /** skill_read：返回技能用法，正文按需给，不进系统提示 */
+    private fun skillRead(key: String): ToolOutcome {
+        val p = SkillPacks.pack(key) ?: return ToolOutcome(false, "没有这个技能：$key", Route.SANDBOX)
+        val fns = p.funcs.joinToString("\n") { f ->
+            " - ${f.name}(${f.params.keys.joinToString(", ")})" +
+                if (f.bad.isEmpty()) "" else " ←包有问题：${f.bad}"
+        }
+        val sb = StringBuilder()
+        sb.append("# ").append(p.name.ifBlank { p.id }).append("（").append(p.id).append("）\n")
+        if (p.desc.isNotBlank()) sb.append(p.desc).append('\n')
+        if (fns.isNotBlank()) sb.append("函数：\n").append(fns).append('\n')
+        if (p.dir.isNotBlank()) sb.append("目录：").append(p.dir).append('\n')
+        sb.append('\n').append(p.readme.take(6000))
+        return ToolOutcome(true, sb.toString().trim(), Route.SANDBOX)
+    } //返回技能用法
+
+    /** 技能函数：先过 DSL 引擎校验+插值，cmd 逐行执行，http 直接发请求 */
+    private fun skillExec(f: SkillFn, args: JSONObject): ToolOutcome {
+        if (f.bad.isNotEmpty()) return ToolOutcome(false, "技能包校验没过：${f.bad}", Route.SANDBOX)
+        val vals = LinkedHashMap<String, String>()
+        f.params.forEach { (k, _) ->
+            val v = args.optString(k, "")
+            if (v.isEmpty()) return ToolOutcome(false, "缺少参数 $k（${f.name}）", Route.SANDBOX)
+            vals[k] = v
+        }
+        val (ok, out) = Dsl.render(f.body, f.kind, f.params, Secret.all(), vals)
+        if (!ok) return ToolOutcome(false, "技能模板校验失败：$out", Route.SANDBOX)
+        if (f.kind == "http") return httpRaw(out)
+        val lines = out.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        if (lines.isEmpty()) return ToolOutcome(false, "插值后没有可执行命令", Route.SANDBOX)
+        val sb = StringBuilder()
+        var route = Route.SANDBOX
+        for (l in lines) {
+            val o = execShell(l)
+            route = o.route
+            sb.append(o.text).append('\n')
+            if (!o.ok) return ToolOutcome(false, sb.toString().trim(), route)
+        }
+        return ToolOutcome(true, sb.toString().trim(), route)
+    } //执行技能函数
+
+    /** http 技能：报文照约定拆成 方法 / URL / header / body，不额外引 HTTP 库 */
+    private fun httpRaw(text: String): ToolOutcome {
+        val nl = text.indexOf('\n')
+        val first = (if (nl < 0) text else text.substring(0, nl)).trim()
+        val seg = first.split(" ", limit = 2)
+        if (seg.size < 2) return ToolOutcome(false, "http 报文首行不合法", Route.SANDBOX)
+        val method = seg[0].trim().uppercase()
+        val url = seg[1].trim()
+        val headers = ArrayList<Pair<String, String>>()
+        var i = if (nl < 0) text.length else nl + 1
+        var bodyStart = text.length
+        while (i < text.length) {
+            val e = text.indexOf('\n', i)
+            val row = text.substring(i, if (e < 0) text.length else e).trim()
+            if (row.isEmpty()) {
+                bodyStart = if (e < 0) text.length else e + 1
+                break
+            }
+            val c = row.indexOf(':')
+            if (c > 0) headers.add(row.substring(0, c).trim() to row.substring(c + 1).trim())
+            i = if (e < 0) text.length else e + 1
+        }
+        val body = if (bodyStart < text.length) text.substring(bodyStart) else ""
+        return runCatching {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = method
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 40_000
+            conn.instanceFollowRedirects = true
+            headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            if (body.isNotEmpty() && method != "GET" && method != "HEAD") {
+                conn.doOutput = true
+                conn.outputStream.use { it.write(body.toByteArray()) }
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..399) conn.inputStream else conn.errorStream
+            val txt = runCatching { stream?.bufferedReader()?.use { it.readText() }.orEmpty() }
+                .getOrDefault("")
+            conn.disconnect()
+            ToolOutcome(code in 200..299, "HTTP $code\n" + txt.take(6000), Route.SANDBOX)
+        }.getOrElse { ToolOutcome(false, "请求失败：" + (it.message ?: it.javaClass.simpleName), Route.SANDBOX) }
+    } //发 http 技能请求
 
     /** 存一条永久记忆：重复的直接告诉模型别啰嗦 */
     private fun memorySave(args: JSONObject): ToolOutcome {

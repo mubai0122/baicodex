@@ -1,0 +1,1 @@
+mkdir -p /storage/emulated/0/baicode/skill/{name}/function && echo /storage/emulated/0/baicode/skill/{name}

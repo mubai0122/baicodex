@@ -1,0 +1,82 @@
+{
+  "dsl": 1,
+  "id": "gh",
+  "name": "GitHub",
+  "desc": "查仓库 / issue / PR / 文件，提交与更新单个文件，全部走 REST",
+  "trigger": ["github", "仓库", "issue", "pr", "提交文件"],
+  "funcs": [
+    {
+      "name": "gh_repo",
+      "kind": "http",
+      "file": "repo.js",
+      "desc": "看一个仓库的基本信息：stars、语言、默认分支、是否私有",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$"
+      }
+    },
+    {
+      "name": "gh_content",
+      "kind": "http",
+      "file": "content.js",
+      "desc": "读仓库里某个文件或目录（目录返回条目列表，文件返回 base64 内容）",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$",
+        "path": "^[^\\s]{1,300}$"
+      }
+    },
+    {
+      "name": "gh_issues",
+      "kind": "http",
+      "file": "issues.js",
+      "desc": "列一个仓库的 issue，可按状态过滤",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$",
+        "state": "^(open|closed|all)$"
+      }
+    },
+    {
+      "name": "gh_prs",
+      "kind": "http",
+      "file": "prs.js",
+      "desc": "列一个仓库的 PR，可按状态过滤",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$",
+        "state": "^(open|closed|all)$"
+      }
+    },
+    {
+      "name": "gh_search",
+      "kind": "http",
+      "file": "search.js",
+      "desc": "在 GitHub 上搜仓库或代码，q 就是搜索框里那句话",
+      "params": {
+        "q": "^[^\\s\"\\\\]{1,200}$"
+      }
+    },
+    {
+      "name": "gh_file_new",
+      "kind": "http",
+      "file": "file_new.js",
+      "desc": "在一个仓库里新建文件，content 必须是 base64 编码后的正文",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$",
+        "path": "^[^\\s\"\\\\]{1,300}$",
+        "msg": "^[^\"\\\\\\n]{1,120}$",
+        "content": "^[A-Za-z0-9+/=]{1,200000}$"
+      }
+    },
+    {
+      "name": "gh_file_update",
+      "kind": "http",
+      "file": "file_update.js",
+      "desc": "更新仓库里已有的文件，必须先拿到它的 sha（gh_content 里有），content 是 base64",
+      "params": {
+        "repo": "^[A-Za-z0-9._-]{1,39}/[A-Za-z0-9._-]{1,100}$",
+        "path": "^[^\\s\"\\\\]{1,300}$",
+        "msg": "^[^\"\\\\\\n]{1,120}$",
+        "content": "^[A-Za-z0-9+/=]{1,200000}$",
+        "sha": "^[0-9a-f]{40}$"
+      }
+    }
+  ]
+}

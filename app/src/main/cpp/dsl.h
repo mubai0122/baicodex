@@ -25,4 +25,7 @@ Result lint(const std::string &tpl, const std::string &kind,
 Result render(const std::string &tpl, const std::string &kind,
               const Table &params, const Table &secrets, const Table &args);
 
+/** 解析扁平的 {"k":"v"} JSON：只给参数表/密钥表用，值一律当字符串 */
+bool parseFlatJson(const std::string &s, Table &out);
+
 } //dsl 命名空间

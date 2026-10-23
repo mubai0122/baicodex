@@ -1,0 +1,18 @@
+{
+  "dsl": 1,
+  "id": "createskill",
+  "name": "做技能包",
+  "desc": "教模型按固定格式新建一个技能包：skill.json + README + function 模板",
+  "trigger": ["帮我做一个技能包", "新建技能", "写个 skill"],
+  "funcs": [
+    {
+      "name": "skill_scaffold",
+      "kind": "cmd",
+      "file": "scaffold.js",
+      "desc": "按 id 建出技能包骨架目录（skill.json 与 function 仍需自己写），返回包路径",
+      "params": {
+        "name": "^[a-z][a-z0-9_-]{1,32}$"
+      }
+    }
+  ]
+}

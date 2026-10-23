@@ -22,6 +22,7 @@ import b.ai.core.Route
 import b.ai.core.Search
 import b.ai.core.SessionRow
 import b.ai.core.Skills
+import b.ai.core.SkillPacks
 import b.ai.core.Speak
 import b.ai.core.ToolCall
 import b.ai.core.Waifu
@@ -893,9 +894,10 @@ object Agent {
     } //工作区段
 
     private fun skillPart(): String {
-        val s = Skills.prompt()
+        //只放清单：正文和调用参数交给 skill_read 现场取，别每轮都灌几千字
+        val s = SkillPacks.prompt()
         return if (s.isBlank()) "" else "\n\n" + s
-    } //启用技能接在规则后面
+    } //技能清单接在规则后面
 
     private fun buildPayload(): JSONArray {
         val list = hist()
