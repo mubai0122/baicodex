@@ -1069,4 +1069,24 @@
     <string name="se_338">关闭：无障碍丢了要手动点</string>
     <string name="se_339">已开启，但 Shizuku 没就绪，补不了</string>
     <string name="se_340">已开启：每次回到前台自动写回无障碍</string>
+    <string name="se_346">检测到你有更高权限</string>
+    <string name="se_347">可以用 Shizuku / Root 直接写入系统设置，一键开启无障碍，不用再进系统设置手点。</string>
+    <string name="se_348">一键激活无障碍</string>
+    <string name="se_349">高权限</string>
+    <string name="se_350">确认激活无障碍权限？</string>
+    <string name="se_351">将用 %1$s 身份把 BaiAgent 的屏幕操作服务写进系统无障碍设置，这一步不需要你手动点任何开关。</string>
+    <string name="se_352">以后每次进入应用时自动激活无障碍权限</string>
+    <string name="se_353">开始激活</string>
+    <string name="se_354">正在激活无障碍</string>
+    <string name="se_355">正在尝试激活无障碍权限…</string>
+    <string name="se_356">正在激活无障碍权限…</string>
+    <string name="se_357">激活无障碍权限成功</string>
+    <string name="se_358">后续将每次为您在进入 APP 的时候自动激活。</string>
+    <string name="se_359">如果你希望不开启此功能，请前往设置里关闭。</string>
+    <string name="se_360">这次只生效一次：想改成每次自动激活，请到设置里打开「Shizuku 自动补无障碍」。</string>
+    <string name="se_361">完成</string>
+    <string name="se_362">激活没成功</string>
+    <string name="se_363">没有拿到具体原因，可以改用手动方式开启。</string>
+    <string name="se_364">关闭</string>
+    <string name="se_365">去系统设置手动开</string>
 </resources>

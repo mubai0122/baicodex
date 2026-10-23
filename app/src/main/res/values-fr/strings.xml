@@ -1065,4 +1065,24 @@
     <string name="se_338">Désactivé : à réactiver à la main</string>
     <string name="se_339">Activé, mais Shizuku n\'est pas prêt</string>
     <string name="se_340">Activé : réécrit à chaque retour au premier plan</string>
+    <string name="se_346">Privilège supérieur détecté</string>
+    <string name="se_347">Shizuku / Root peut écrire le réglage système : un appui active l\'accessibilité, sans passer par les réglages.</string>
+    <string name="se_348">Activer l\'accessibilité</string>
+    <string name="se_349">privilège élevé</string>
+    <string name="se_350">Activer l\'accessibilité ?</string>
+    <string name="se_351">BaiAgent va inscrire son service d\'accès à l\'écran dans les réglages d\'accessibilité système avec %1$s. Aucun interrupteur à toucher.</string>
+    <string name="se_352">Réactiver automatiquement à chaque ouverture de l\'app</string>
+    <string name="se_353">Démarrer</string>
+    <string name="se_354">Activation de l\'accessibilité</string>
+    <string name="se_355">Tentative d\'activation de l\'accessibilité…</string>
+    <string name="se_356">Attente de l\'attachement du service…</string>
+    <string name="se_357">Accessibilité activée</string>
+    <string name="se_358">Il sera réactivé automatiquement à chaque ouverture de l\'app.</string>
+    <string name="se_359">Si vous n\'en voulez pas, désactivez-le dans les réglages.</string>
+    <string name="se_360">Valable une seule fois : pour automatiser, activez « Accès auto via Shizuku » dans les réglages.</string>
+    <string name="se_361">Terminé</string>
+    <string name="se_362">Activation impossible</string>
+    <string name="se_363">Aucune raison précise ; vous pouvez l\'activer manuellement.</string>
+    <string name="se_364">Fermer</string>
+    <string name="se_365">Ouvrir les réglages</string>
 </resources>
