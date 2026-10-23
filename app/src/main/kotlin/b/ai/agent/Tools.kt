@@ -261,17 +261,25 @@ object Tools {
                 SCREEN,
                 "操作当前手机屏幕（无障碍）。先用 see/tree 看清界面再动手：tree 给控件树与坐标，see 额外存一张截图。" +
                     "动作：tap 点坐标、long 长按、swipe 滑动、text 往焦点输入框打字、key 系统键(back/home/recents/notifications/quick)、" +
-                    "launch 按包名启动 App、apps 列出可启动的 App。没开无障碍会失败并提示用户去开。",
+                    "launch 按包名启动 App、apps 列出可启动的 App。没开无障碍会失败并提示用户去开。" +
+                    "多步操作（连着几下点击/输入/滑动）第一步先 action=start 让顶部胶囊常驻，全部做完最后一步 action=quiet 收起，" +
+                    "中间每步不用再管胶囊。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
-                        .put("action", str("see 控件树+截图(默认) / tree / shot / tap / long / swipe / text / key / launch / apps"))
+                        .put(
+                            "action",
+                            str(
+                                "see 控件树+截图(默认) / tree / shot / tap / long / swipe / text / key / launch / apps / " +
+                                    "start 胶囊常驻 / quiet 收起胶囊"
+                            )
+                        )
                         .put("x", JSONObject().put("type", "integer").put("description", "tap/long/swipe 起点 x"))
                         .put("y", JSONObject().put("type", "integer").put("description", "tap/long/swipe 起点 y"))
                         .put("x2", JSONObject().put("type", "integer").put("description", "swipe 终点 x"))
                         .put("y2", JSONObject().put("type", "integer").put("description", "swipe 终点 y"))
                         .put("dur", JSONObject().put("type", "integer").put("description", "长按 / 滑动时长毫秒"))
-                        .put("text", str("text 动作要输入的文字"))
+                        .put("text", str("text 动作要输入的文字；start 时可给一句「正在做什么」，会显示在胶囊上"))
                         .put("key", str("key 动作：back / home / recents / notifications / quick"))
                         .put("app", str("launch 用包名；不确定就先 action=apps"))
                 ).put("required", JSONArray().put("action"))
@@ -500,6 +508,21 @@ object Tools {
     /** 屏幕操作：全部动作走 A11y；没权限就置位让界面弹引导，而不是只回一句失败 */
     private fun screen(a: JSONObject): ToolOutcome {
         val act = a.optString("action", "see").lowercase()
+        //胶囊常驻开关：不吃无障碍检查，不然 quiet 在服务挂掉时收不回来
+        if (act == "start" || act == "begin") {
+            val given = a.optString("text").trim()
+            val t = given.ifEmpty { b.ai.App.self.getString(b.ai.R.string.ag_capsule_fmt, label(SCREEN)) }
+            b.ai.exec.Capsule.begin(t)
+            return ToolOutcome(
+                true,
+                "胶囊已常驻：「$t」。接着一步步操作，全部做完再调 screen action=quiet 收起。",
+                Route.SANDBOX
+            )
+        }
+        if (act == "quiet" || act == "stop" || act == "end") {
+            b.ai.exec.Capsule.end()
+            return ToolOutcome(true, "胶囊已收起。", Route.SANDBOX)
+        }
         if (!b.ai.exec.A11y.ready()) {
             b.ai.exec.A11y.askPerm()
             return ToolOutcome(
@@ -525,7 +548,7 @@ object Tools {
             "key" -> b.ai.exec.A11y.global(a.optString("key", "back"))
             "launch", "open" -> launchApp(a.optString("app"))
             "apps", "list" -> apps(a.optString("app"))
-            else -> "不支持的 action：$act（可用 see / tree / shot / tap / long / swipe / text / key / launch / apps）"
+            else -> "不支持的 action：$act（可用 see / tree / shot / tap / long / swipe / text / key / launch / apps / start / quiet）"
         }
         val bad = t.contains("未开启") || t.contains("失败") || t.contains("不支持") || t.contains("拿不到")
         return ToolOutcome(!bad, t, Route.SANDBOX)

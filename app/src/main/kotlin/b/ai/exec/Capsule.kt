@@ -18,6 +18,9 @@ import android.widget.TextView
 object Capsule {
     private val main = Handler(Looper.getMainLooper())
 
+    /** 常驻态多久没有任何工具动作就自动收：防止模型忘了 quiet */
+    private const val IDLE_MS = 300_000L
+
     @Volatile
     private var a11yCtx: Context? = null
 
@@ -34,21 +37,57 @@ object Capsule {
 
     fun detachA11y() {
         a11yCtx = null
-        hide()
+        end()
     }
 
     fun attachApp(c: Context) {
         appCtx = c.applicationContext
     }
+    /** 是否处于多步任务常驻态：模型调 screen start 打开，screen quiet 关掉 */
+    @Volatile
+    var pinned: Boolean = false
+        private set
+
+    private var lastAt = 0L
+
+    private val guard = object : Runnable {
+        override fun run() {
+            if (!pinned) return
+            if (System.currentTimeMillis() - lastAt > IDLE_MS) end() else main.postDelayed(this, 15_000L)
+        }
+    } //看门狗：模型忘了安静也不会让胶囊永远挂着
 
     /** 显示或改文案：主线程做，重复调用只改字不重建窗口 */
     fun show(text: String) {
-        main.post { render(text) }
+        main.post {
+            lastAt = System.currentTimeMillis()
+            render(text)
+        }
     }
 
     fun hide() {
-        main.post { remove() }
+        main.post { if (!pinned) remove() }
     }
+
+    /** 常驻显示：多步操作开始时调一次，之后每步只改文案，不再开合窗口 */
+    fun begin(text: String) {
+        main.post {
+            pinned = true
+            lastAt = System.currentTimeMillis()
+            render(text)
+            main.removeCallbacks(guard)
+            main.postDelayed(guard, 15_000L)
+        }
+    } //开启常驻
+
+    /** 收起并退出常驻：模型调 screen quiet，或本轮结束兜底调用 */
+    fun end() {
+        main.post {
+            pinned = false
+            main.removeCallbacks(guard)
+            remove()
+        }
+    } //关闭常驻
 
     private fun render(text: String) {
         val w = view

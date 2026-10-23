@@ -262,6 +262,25 @@ fun SquareIconBox(
     }
 } //方形小图标按钮
 
+/** 圆形小图标按钮：刷新 / 重跑这类轻动作放标题行右侧，不占一整行 */
+@Composable
+fun CircleIconBox(
+    icon: ImageVector,
+    desc: String = "",
+    size: Dp = 30.dp,
+    onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(AccentBlueSoft)
+            .tap(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = desc, tint = AccentBlue, modifier = Modifier.size(size * 0.5f))
+    }
+} //圆形小图标按钮
+
 /**头像圆图：有图片就画图，没有就画默认人形；size 是直径 */
 @Composable
 fun AvatarView(path: String, size: Dp, tint: Color = AccentBlue) {

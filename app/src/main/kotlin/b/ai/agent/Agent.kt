@@ -316,6 +316,7 @@ object Agent {
         busy = false
                 runSid = null
                 runHistory = emptyList()
+        b.ai.exec.Capsule.end()
     }
 
     fun resolve(allow: Boolean, permanent: Boolean) {
@@ -368,6 +369,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
+                b.ai.exec.Capsule.end()
             }
         }
     } //发送并驱动循环
@@ -392,6 +394,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
+                b.ai.exec.Capsule.end()
             }
         }
     } //编辑重发
@@ -424,6 +427,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
+                b.ai.exec.Capsule.end()
             }
         }
     } //重新生成
@@ -652,8 +656,11 @@ object Agent {
                 status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
                 busySince = System.currentTimeMillis()
                 val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
-                //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限
-                b.ai.exec.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限。
+                //screen start 之后胶囊已常驻，这里只改文案；quiet 那一次干脆别先亮。
+                if (!quietCall(c.name, args)) {
+                    b.ai.exec.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                }
                 val out = try {
                     withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
                 } finally {
@@ -665,6 +672,13 @@ object Agent {
             busySince = System.currentTimeMillis()
         }
     } //模型 → 工具 → 回传 的主循环
+
+    /** 这次调用是不是「收起胶囊」：是的话别先亮再收，省一次闪 */
+    private fun quietCall(name: String, args: JSONObject): Boolean {
+        if (name != Tools.SCREEN) return false
+        val a = args.optString("action").lowercase()
+        return a == "quiet" || a == "stop" || a == "end"
+    } //是否收胶囊
 
     /** 弹计划确认面板并挂起，直到用户定下执行、要求再改或直接关掉 */
     private suspend fun approvePlan(text: String): PlanVerdict {
@@ -834,6 +848,9 @@ object Agent {
             append("车次、时刻、余票一律用 rail_query 查（action=tickets 余票 / transfer 中转 / route 经停），不要凭记忆编车次；")
             append("值得长期记住的偏好或结论用 memory_save 存下来，不要只在回答里提醒自己；")
             append("信息不够就先用 ask_user 问清（每题 2-4 个选项，用户还能自己填），别猜着往下做；")
+            if (Tools.allowed(Tools.SCREEN)) {
+                append("操作屏幕要多步时，第一步先调 screen action=start 让顶部胶囊常驻（text 写一句在做什么），全部做完最后调 screen action=quiet 收起，中间每步不用管胶囊；")
+            }
             if (searching) append("需要最新信息或核实事实时用 web_search。") else append("不要假设自己能联网。")
             append("\n")
             val ws = workspacePart()
