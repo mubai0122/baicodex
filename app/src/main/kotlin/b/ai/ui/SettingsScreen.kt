@@ -934,6 +934,7 @@ private fun PermTab() {
         val ctx = LocalContext.current
         var st by remember { mutableStateOf(Shiz.probe(ctx)) }
         var msg by remember { mutableStateOf<String?>(null) }
+        var note by remember { mutableStateOf<String?>(null) }
         Text(st.desc, fontSize = 12.sp, color = if (st.ok) OkGreen else TextSecondary)
         if (msg != null) {
             Spacer(Modifier.height(6.dp))
@@ -958,6 +959,35 @@ private fun PermTab() {
                 Shiz.openManager(ctx)
                 st = Shiz.probe(ctx)
             }
+        }
+        Spacer(Modifier.height(10.dp))
+        //Shizuku 有 shell，直接写 secure 设置就能把无障碍挂回去，不必每次进系统设置手点
+        CapSwitch(
+            stringResource(R.string.se_337),
+            when {
+                !Cfg.autoA11y -> stringResource(R.string.se_338)
+                !st.ok -> stringResource(R.string.se_339)
+                else -> stringResource(R.string.se_340)
+            },
+            Cfg.autoA11y
+        ) { on ->
+            Cfg.autoA11y = on
+            if (on) {
+                msg = null
+                note = null
+                Thread({
+                    val r = b.ai.exec.AutoA11y.run(ctx)
+                    val ok = r.startsWith("已")
+                    st = Shiz.probe(ctx)
+                    if (ok) note = r else msg = r
+                }, "auto-a11y").apply { isDaemon = true }.start()
+            } else {
+                note = null
+            }
+        }
+        if (note != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(note!!, fontSize = 11.sp, color = OkGreen)
         }
     }
 

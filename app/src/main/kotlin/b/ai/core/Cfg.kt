@@ -75,6 +75,7 @@ object Cfg {
         mem("inject_noti", false).value = p.getBoolean("inject_noti", false)
         mem("noti_limit", 0).value = p.getInt("noti_limit", 0)
         mem("inject_usage", false).value = p.getBoolean("inject_usage", false)
+        mem("auto_a11y", false).value = p.getBoolean("auto_a11y", false)
         mem("show_usage", true).value = p.getBoolean("show_usage", true)
         //模型价格：元 / 百万 token，0 = 不计价（统计页只数 token 不算钱）
         mem("price_in", 0f).value = p.getFloat("price_in", 0f)
@@ -449,6 +450,11 @@ object Cfg {
     var injectUsage: Boolean
         get() = mem("inject_usage", false).value
         set(v) { mem("inject_usage", false).value = v; put("inject_usage", v) }
+
+    /** 回到前台时用 Shizuku 把无障碍写回系统设置：掉了自动补，不用每次手动点 */
+    var autoA11y: Boolean
+        get() = mem("auto_a11y", false).value
+        set(v) { mem("auto_a11y", false).value = v; put("auto_a11y", v) }
 
     /** 回复底部显示用量：总 token 与 tok/s */
     var showUsage: Boolean

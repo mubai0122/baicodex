@@ -1065,4 +1065,8 @@
     <string name="se_334">Usage access is still needed</string>
     <string name="se_335">The switch is on but Android has not granted access: AI cannot read usage time. Once granted, only today\'s foreground time per app is read, to tell whether you have been on the phone too long.</string>
     <string name="se_336">Open settings</string>
+    <string name="se_337">Auto-grant accessibility (Shizuku)</string>
+    <string name="se_338">Off: turn it back on by hand</string>
+    <string name="se_339">On, but Shizuku is not ready</string>
+    <string name="se_340">On: rewritten every time you come back</string>
 </resources>

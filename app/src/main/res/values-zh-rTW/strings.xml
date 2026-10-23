@@ -1064,4 +1064,8 @@
     <string name="se_334">還需要使用情況存取權</string>
     <string name="se_335">開關已經打開，但系統還沒給權限：AI 現在讀不到使用時長。給權限後只會讀今天各應用的前台時長，用來判斷你是不是用太久了。</string>
     <string name="se_336">去開啟</string>
+    <string name="se_337">Shizuku 自動補無障礙</string>
+    <string name="se_338">關閉：無障礙掉了要手動點</string>
+    <string name="se_339">已開啟，但 Shizuku 沒就緒，補不了</string>
+    <string name="se_340">已開啟：每次回到前台自動寫回無障礙</string>
 </resources>
