@@ -6,20 +6,30 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -98,7 +108,7 @@ fun A11yPermCard(desc: String) {
     var tick by remember { mutableIntStateOf(0) }
     val on = remember(tick) { Perms.a11yOn(ctx) }
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("屏幕操作", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(8.dp))
             Text(
@@ -107,23 +117,50 @@ fun A11yPermCard(desc: String) {
                 color = if (on) OkGreen else WarnAmber
             )
             Spacer(Modifier.weight(1f))
-            //系统里开着也能重跑一遍，不靠开关状态决定流程要不要走
-            GhostButton("重走激活流程") { A11ySetup.open.value = true }
+            //刷新状态与重走流程都收成小圆圈图标，不占整行
+            CircleIconBox(Icons.Filled.Refresh, desc = "刷新状态") { tick++ }
+            Spacer(Modifier.width(6.dp))
+            CircleIconBox(Icons.Filled.PlayArrow, desc = "重走激活流程") { A11ySetup.open.value = true }
         }
         Spacer(Modifier.height(6.dp))
         Text(desc, fontSize = 12.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
         A11yDemo()
-        Spacer(Modifier.height(10.dp))
+        //没开才给路径：三步走完，开关是灰的再多一步
+        if (!on) {
+            Spacer(Modifier.height(10.dp))
+            Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            StepLine(1, "点下面「去开启无障碍」，跳到系统的无障碍页面")
+            StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+            StepLine(3, "打开开关，弹窗里选「允许」")
+            StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+        }
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            GhostButton(if (on) "重新检查" else "稍后再说") { tick++ }
-            Spacer(Modifier.width(10.dp))
             PrimaryButton(if (on) "已开启" else "去开启无障碍", enabled = !on) {
                 Perms.openA11y(ctx)
             }
         }
     }
 } //屏幕操作权限卡
+
+/** 一步一条：小圆圈里写序号，后面接一句话，路径类教程按它排队 */
+@Composable
+internal fun StepLine(n: Int, text: String) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            Modifier.size(16.dp).clip(CircleShape).background(AccentBlueSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("$n", fontSize = 10.sp, color = AccentBlue, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.width(7.dp))
+        Text(text, fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(1f))
+    }
+} //教程步骤行
 
 /** 工具跑不通时的弹窗：说清楚为什么、直接给跳转，别让用户自己找设置 */
 @Composable
@@ -140,12 +177,11 @@ fun A11yPermDialog(onClose: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         A11yDemo()
         Spacer(Modifier.height(10.dp))
-        Text(
-            "开启路径：设置 → 无障碍 → 已下载的服务 → BaiAgent 屏幕操作。\n" +
-                "如果开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开。",
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
+        Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
+        StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+        StepLine(3, "打开开关，弹窗里选「允许」")
+        StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             GhostButton("知道了") { onClose() }

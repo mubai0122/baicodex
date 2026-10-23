@@ -57,6 +57,12 @@ fun A11ySetupDialog(onDone: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             A11yDemo()
             Spacer(Modifier.height(10.dp))
+            Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
+            StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+            StepLine(3, "打开开关，弹窗里选「允许」")
+            StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+            Spacer(Modifier.height(10.dp))
             Text(
                 if (on) "当前状态：已开启" else "当前状态：未开启",
                 fontSize = 12.sp,
@@ -81,13 +87,13 @@ fun A11ySetupDialog(onDone: () -> Unit) {
                 color = if (on) OkGreen else DangerRed
             )
             Spacer(Modifier.height(10.dp))
-            Text(
-                "开启路径：设置 → 无障碍 → 已下载的服务 → BaiAgent 屏幕操作。\n" +
-                    "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开。",
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
-            Spacer(Modifier.height(10.dp))
+            if (!on) {
+                StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
+                StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+                StepLine(3, "打开开关，弹窗里选「允许」")
+                StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+                Spacer(Modifier.height(10.dp))
+            }
             Text("以后想重开或重走这个流程：设置 → 权限 → 特殊权限。", fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
