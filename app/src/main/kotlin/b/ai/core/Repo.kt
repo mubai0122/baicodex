@@ -5,6 +5,8 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import java.io.File
+import java.io.FileOutputStream
 
 /** 会话与记录读写 */
 object Repo {
@@ -33,6 +35,18 @@ object Repo {
         runCatching { w().rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() } }
         runCatching { sw().rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() } }
     } //压 WAL
+
+    /**
+     * 迁移前整库备份：压完 WAL 后走 Backup.export 打一个 zip 落到 数据根/backup/premigrate-时间戳.zip。
+     * 备份失败返回 null，调用方照旧迁移（不因为备份失败卡住流程）。
+     */
+    fun backupAll(ctx: Context): String? = runCatching {
+        checkpoint()
+        val dir = File(Paths.ensure(), "backup").also { runCatching { it.mkdirs() } }
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
+        val f = File(dir, "premigrate-$stamp.zip")
+        FileOutputStream(f).use { out -> if (Backup.export(ctx, out)) f.absolutePath else null }
+    }.getOrNull() //迁移前整库备份
 
     fun newSession(title: String = "", category: String = "默认"): SessionRow {
         val id = UUID.randomUUID().toString()

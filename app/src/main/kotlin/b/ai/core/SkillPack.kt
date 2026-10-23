@@ -124,6 +124,24 @@ object SkillPacks {
     /** 已经声明但校验没过的函数：设置页标红用 */
     fun broken(): List<SkillFn> = cache.value.flatMap { it.funcs }.filter { it.bad.isNotEmpty() }
 
+    /** 模板里引用到的密钥名（DollarSecret.xxx 那种写法）：设置页据此生成可配置项 */
+    fun secretsOf(body: String): List<String> {
+        val head = '$' + "secret."
+        val out = LinkedHashSet<String>()
+        var i = body.indexOf(head)
+        while (i >= 0) {
+            var j = i + head.length
+            val sb = StringBuilder()
+            while (j < body.length && (body[j].isLetterOrDigit() || body[j] == '_')) {
+                sb.append(body[j])
+                j++
+            }
+            if (sb.isNotEmpty()) out.add(sb.toString())
+            i = body.indexOf(head, j)
+        }
+        return out.toList()
+    } //模板里用到的密钥名
+
     /** 内置包：assets/skills 下一包一目录，外部没有同名目录时才铺过去，用户改过的不覆盖 */
     private fun seed(c: Context) {
         val am = c.assets

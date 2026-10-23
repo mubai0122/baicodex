@@ -13,3 +13,5 @@ target_compile_options(baidsl PRIVATE -Wall -Wextra -fvisibility=hidden)
 set_target_properties(baidsl PROPERTIES
         ANDROID_STL c++_static
         CXX_STANDARD 17)
+#链接时整表剥离：debug 构建默认带 -g，--strip-all 把 .symtab / .debug_* 一并去掉，只留 .dynsym 里的 JNI 导出
+target_link_options(baidsl PRIVATE -Wl,--strip-all -Wl,--gc-sections -s)

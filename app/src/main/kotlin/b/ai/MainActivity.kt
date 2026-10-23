@@ -45,6 +45,7 @@ import b.ai.ui.Overlay
 import b.ai.ui.PermNoticeDialog
 import b.ai.ui.SettingsScreen
 import b.ai.ui.MemorySheet
+import b.ai.ui.MigrateGate
 import b.ai.ui.PlanSheet
 import b.ai.ui.StarSheet
 import b.ai.ui.ToolConfirmDialog
@@ -100,6 +101,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Root() {
+    //启动门：检测到旧版工作区就必须先迁移，没迁完不进主界面（详情见 MigrateGate）
+    var gateOpen by remember { mutableStateOf(true) }
+    if (gateOpen) {
+        MigrateGate { gateOpen = false }
+        return
+    }
     var screen by remember { mutableStateOf(if (Cfg.onboarded) "chat" else "setup") }
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()

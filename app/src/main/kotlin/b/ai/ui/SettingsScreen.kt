@@ -86,6 +86,7 @@ import b.ai.core.Skill
 import b.ai.core.Skills
 import b.ai.core.Secret
 import b.ai.core.SkillPacks
+import b.ai.core.SkillPack
 import b.ai.core.Wallpaper
 import b.ai.core.WorkMode
 import b.ai.exec.Alarms
@@ -171,6 +172,8 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
     var draft by remember { mutableStateOf<Skill?>(null) }
     var personaDraft by remember { mutableStateOf<Persona?>(null) }
     var mcpDraft by remember { mutableStateOf<McpServer?>(null) }
+    //技能包详情：就地改 README / skill.json / 模板，填它声明出来的密钥
+    var packDraft by remember { mutableStateOf<SkillPack?>(null) }
     var taskDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
     var fq by remember { mutableStateOf("") }
@@ -334,7 +337,8 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                                 onEdit = { draft = it },
                                 onEditPersona = { personaDraft = it },
                                 onEditMcp = { mcpDraft = it },
-                                onNewTask = { taskDraft = true }
+                                onNewTask = { taskDraft = true },
+                                onEditPack = { packDraft = it }
                             )
                             5 -> AboutTab()
                             else -> UiTab()
@@ -351,7 +355,8 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null || packDraft != null) {
+        packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
         draft?.let { s ->
             SkillDialog(
                 skill = s,
@@ -1117,7 +1122,8 @@ private fun ExtTab(
     onEdit: (Skill) -> Unit,
     onEditPersona: (Persona) -> Unit,
     onEditMcp: (McpServer) -> Unit,
-    onNewTask: () -> Unit
+    onNewTask: () -> Unit,
+    onEditPack: (SkillPack) -> Unit
 ) {
     val ctx = LocalContext.current
     WorkspaceSection()
@@ -1290,7 +1296,7 @@ private fun ExtTab(
 
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.skp_t), stringResource(R.string.skp_d))
-    SkillPackBox()
+    SkillPackBox(onEdit = onEditPack)
 
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.skp_secret_t), stringResource(R.string.skp_secret_d))
@@ -1328,7 +1334,7 @@ private fun ExtTab(
 
 /** 技能包：外部目录里有哪些包、哪些函数校验没过；改完包点重新扫描 */
 @Composable
-private fun SkillPackBox() {
+private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
     val ctx = LocalContext.current
     var packs by remember { mutableStateOf(SkillPacks.packs) }
     var broken by remember { mutableStateOf(SkillPacks.broken()) }
@@ -1350,18 +1356,27 @@ private fun SkillPackBox() {
         }
         packs.forEach { p ->
             Spacer(Modifier.height(6.dp))
-            Text(
-                p.name.ifBlank { p.id } + "（" + p.id + "）",
-                fontSize = 12.sp,
-                color = TextPrimary,
-                maxLines = 1
-            )
-            Text(
-                p.funcs.joinToString("、") { it.name }.ifBlank { p.desc },
-                fontSize = 9.sp,
-                color = TextSecondary,
-                maxLines = 2
-            )
+            //包整块可点：进详情改 README / skill.json / 模板，并填它声明出来的密钥
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .tap { onEdit(p) }
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    p.name.ifBlank { p.id } + "（" + p.id + "）",
+                    fontSize = 12.sp,
+                    color = TextPrimary,
+                    maxLines = 1
+                )
+                Text(
+                    p.funcs.joinToString("、") { it.name }.ifBlank { p.desc },
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    maxLines = 2
+                )
+            }
         }
         if (broken.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
