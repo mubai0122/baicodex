@@ -499,7 +499,7 @@
     <string name="se_086">追加リクエストパラメータ（JSON）</string>
     <string name="se_087">パラメータ内容</string>
     <string name="se_088">一部の中継サービスやプロバイダーは独自フィールドで思考を有効化します。ここに入れた内容はリクエスト本文の最上位に結合されます。</string>
-    <string name="se_089">例：{\"enable_thinking\":true} または {\"thinking\":{\"type\":\"enabled\"}}。空欄なら付加しません。</string>
+    <string name="se_089">例：{"enable_thinking":true} または {"thinking":{"type":"enabled"}}。空欄なら付加しません。</string>
     <string name="se_090">コンテキストと圧縮</string>
     <string name="se_091">予算超過時は過去の会話を要約し、履歴全体の再送を避けます</string>
     <string name="se_092">自動圧縮</string>
@@ -1038,4 +1038,9 @@
     <string name="pk_ok">検証OK</string>
     <string name="pk_dir">ディレクトリ：%1$s</string>
     <string name="pk_secret_save">キーを保存</string>
+    <string name="shiz_manual">Shizuku で「拒否して今後表示しない」を選んでいるため、ダイアログは出ません: Shizuku を開く → 権限を許可したアプリ → BaiAgent をオン</string>
+    <string name="shiz_open_app">Shizuku を開く</string>
+    <string name="shiz_no_service">Shizuku サービスが起動していません: Shizuku を開いてサービスを起動してから再申請してください</string>
+    <string name="shiz_timeout">権限ダイアログから応答がありません: プロンプトが隠れていないか確認するか、Shizuku で手動許可してください</string>
+    <string name="shiz_denied">権限が拒否されました: もう一度「権限を申請」を押すか、Shizuku で手動でオンにしてください</string>
 </resources>

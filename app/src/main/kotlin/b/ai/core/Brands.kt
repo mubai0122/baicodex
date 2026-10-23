@@ -5,17 +5,19 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import b.ai.net.Net
 import java.io.File
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 
 /** 厂商图标：按 base_url 的域名自动抓官网 favicon，抓不到就返回 null 让界面退化成首字母徽章 */
 object Brands {
 
     /** 图标只显示十几 dp，存 96 够清晰又不占内存 */
     private const val SIDE = 96
+
+    /** 磁盘缓存有效期：168 天。过期就重抓，官网换 favicon 也能跟上 */
+    private const val KEEP_MS = 168L * 24 * 60 * 60 * 1000
 
     /** 内存缓存：失败也记（value 为 null），免得每次重组都重连一次已挂的域名 */
     private val mem = HashMap<String, ImageBitmap?>()
@@ -37,12 +39,13 @@ object Brands {
     /** 已经拿到的（含失败）直接给，没有就返回 null 由调用方决定要不要联网 */
     fun cached(id: String): ImageBitmap? = mem[id]
 
-    /** 取图标：内存 → 磁盘 → 联网抓一次；失败结果也缓存 */
+    /** 取图标：内存 → 磁盘（168 天内有效）→ C 层联网抓一次；失败结果也缓存 */
     fun ensure(ctx: Context, id: String, baseUrl: String): ImageBitmap? {
         if (mem.containsKey(id)) return mem[id]
         val f = File(dir(ctx), "$id.png")
         if (f.exists()) {
-            val b = runCatching { BitmapFactory.decodeFile(f.absolutePath) }.getOrNull()
+            val fresh = System.currentTimeMillis() - f.lastModified() < KEEP_MS
+            val b = if (fresh) runCatching { BitmapFactory.decodeFile(f.absolutePath) }.getOrNull() else null
             if (b != null) {
                 val img = b.asImageBitmap()
                 mem[id] = img
@@ -51,8 +54,10 @@ object Brands {
             runCatching { f.delete() }
         }
         val img = fetch(baseUrl)?.let { bmp ->
+            //写盘顺手刷 mtime：缓存有效期从这里算
             runCatching {
                 FileOutputStream(f).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                f.setLastModified(System.currentTimeMillis())
             }
             bmp.asImageBitmap()
         }
@@ -69,7 +74,8 @@ object Brands {
             "https://$d/favicon.ico"
         )
         for (u in list) {
-            val bytes = get(u) ?: continue
+            //下载走 C 层（native TLS），拿不到再退 JVM，两路都不通就换下一个源
+            val bytes = Net.fetch(u) ?: continue
             val bmp = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull() ?: continue
             return square(bmp)
         }
@@ -88,19 +94,4 @@ object Brands {
         if (src !== crop && src !== out) src.recycle()
         return out
     } //裁成方图
-
-    /** 小 GET：只为了几十 KB 的图标，超时就放弃，别拖住界面 */
-    private fun get(url: String): ByteArray? = runCatching {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 3000
-        c.readTimeout = 4000
-        c.instanceFollowRedirects = true
-        c.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) BaiAgent")
-        try {
-            if (c.responseCode !in 200..299) return null
-            c.inputStream.use { it.readBytes() }
-        } finally {
-            c.disconnect()
-        }
-    }.getOrNull() //下载图标字节
 } //厂商图标

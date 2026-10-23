@@ -499,7 +499,7 @@
     <string name="se_086">附加请求参数（JSON）</string>
     <string name="se_087">参数内容</string>
     <string name="se_088">有的中转站/厂商用私有字段开思考，这里直接拼到请求体顶层，</string>
-    <string name="se_089">例如 {\"enable_thinking\":true} 或 {\"thinking\":{\"type\":\"enabled\"}}。留空不加。</string>
+    <string name="se_089">例如 {"enable_thinking":true} 或 {"thinking":{"type":"enabled"}}。留空不加。</string>
     <string name="se_090">上下文与压缩</string>
     <string name="se_091">超出预算时把早期对话压成摘要，避免整段历史反复上送</string>
     <string name="se_092">自动压缩</string>
@@ -1038,4 +1038,13 @@
     <string name="pk_ok">校验通过</string>
     <string name="pk_dir">目录：%1$s</string>
     <string name="pk_secret_save">保存密钥</string>
+    <!-- 无障碍：屏幕操作 -->
+    <string name="a11y_label">BaiAgent 屏幕操作</string>
+    <string name="a11y_desc">让 AI 读取当前屏幕的控件与截图，并代你点击、滑动、长按、输入文字。仅在你发起任务时使用。</string>
+    <string name="ag_capsule_fmt">正在进行%1$s</string>
+    <string name="shiz_manual">Shizuku 里已经选过「拒绝且不再询问」，这里不会再弹窗：打开 Shizuku → 授权应用 → 找到 BaiAgent 打开开关</string>
+    <string name="shiz_open_app">打开 Shizuku</string>
+    <string name="shiz_no_service">Shizuku 服务没在运行：先打开 Shizuku 把服务启动，再回来申请</string>
+    <string name="shiz_timeout">等不到授权回应：确认 Shizuku 弹窗没被挡住，或去 Shizuku 里手动授权</string>
+    <string name="shiz_denied">授权被拒绝：再点一次「申请授权」，或去 Shizuku 里手动打开开关</string>
 </resources>

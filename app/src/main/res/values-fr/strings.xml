@@ -499,7 +499,7 @@
     <string name="se_086">Paramètres de requête additionnels (JSON)</string>
     <string name="se_087">Contenu des paramètres</string>
     <string name="se_088">Certaines passerelles ou fournisseurs activent la réflexion via des champs privés ; ces champs sont fusionnés à la racine du corps de requête.</string>
-    <string name="se_089">ex. {\"enable_thinking\":true} ou {\"thinking\":{\"type\":\"enabled\"}}. Laissez vide pour ne rien ajouter.</string>
+    <string name="se_089">ex. {"enable_thinking":true} ou {"thinking":{"type":"enabled"}}. Laissez vide pour ne rien ajouter.</string>
     <string name="se_090">Contexte et compression</string>
     <string name="se_091">Au-delà du budget, les premiers échanges sont résumés au lieu d\'être renvoyés en entier</string>
     <string name="se_092">Compression automatique</string>
@@ -1038,4 +1038,9 @@
     <string name="pk_ok">Validation OK</string>
     <string name="pk_dir">Chemin : %1$s</string>
     <string name="pk_secret_save">Enregistrer la cle</string>
+    <string name="shiz_manual">Vous avez choisi « Refuser et ne plus demander » dans Shizuku, aucune boîte ne s\'affichera : ouvrez Shizuku -> applis autorisées -> activez BaiAgent</string>
+    <string name="shiz_open_app">Ouvrir Shizuku</string>
+    <string name="shiz_no_service">Le service Shizuku ne tourne pas : ouvrez Shizuku, démarrez le service, puis redemandez</string>
+    <string name="shiz_timeout">Aucune réponse de la boîte de dialogue : vérifiez qu\'elle n\'est pas masquée, ou autorisez manuellement dans Shizuku</string>
+    <string name="shiz_denied">Permission refusée : appuyez à nouveau sur « Demander la permission », ou activez-la dans Shizuku</string>
 </resources>

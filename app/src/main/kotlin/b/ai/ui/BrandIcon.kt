@@ -4,7 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,7 +49,7 @@ internal fun BrandIcon(
         Image(
             bitmap = bmp,
             contentDescription = null,
-            modifier = Modifier.size(side).clip(RoundedCornerShape(side / 5)),
+            modifier = Modifier.size(side).clip(CircleShape),
             contentScale = ContentScale.Fit
         )
     } else {
@@ -58,7 +58,7 @@ internal fun BrandIcon(
         Box(
             Modifier
                 .size(side)
-                .clip(RoundedCornerShape(side / 5))
+                .clip(CircleShape)
                 .background(Color.hsl(hue, 0.32f, 0.62f)),
             contentAlignment = Alignment.Center
         ) {
