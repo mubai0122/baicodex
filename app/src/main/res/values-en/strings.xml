@@ -308,6 +308,7 @@
     <string name="md_copied">Copied</string>
     <string name="md_copy">Copy</string>
     <string name="th_image">IMG</string>
+    <string name="th_long">Long</string>
     <string name="ch_title">Add content</string>
     <string name="ch_sub">Pick a type; the model reads it by path</string>
     <string name="ch_img">Image</string>
@@ -1043,7 +1044,7 @@
     <string name="a11y_desc">Lets the AI read on-screen controls and screenshots, then tap, swipe, long-press and type for you. Used only for tasks you start.</string>
     <string name="ag_capsule_fmt">Running %1$s</string>
     <string name="shiz_manual">You chose "Deny and don\'t ask again" in Shizuku, so no dialog will appear: open Shizuku -> authorized apps -> enable BaiAgent</string>
-    <string name="shiz_open_app">Open Shizuku</string>
+    <string name="shiz_open_app">Open app</string>
     <string name="shiz_no_service">Shizuku service is not running: open Shizuku, start the service, then request again</string>
     <string name="shiz_timeout">No answer from the permission dialog: make sure the Shizuku prompt was not blocked, or grant it manually in Shizuku</string>
     <string name="shiz_denied">Permission denied: tap "Request permission" again, or enable it manually in Shizuku</string>

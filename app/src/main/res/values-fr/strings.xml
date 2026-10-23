@@ -308,6 +308,7 @@
     <string name="md_copied">Copié</string>
     <string name="md_copy">Copier</string>
     <string name="th_image">IMG</string>
+    <string name="th_long">Image longue</string>
     <string name="ch_title">Ajouter du contenu</string>
     <string name="ch_sub">Choisissez un type ; le modèle lit par le chemin</string>
     <string name="ch_img">Image</string>
@@ -1039,7 +1040,7 @@
     <string name="pk_dir">Chemin : %1$s</string>
     <string name="pk_secret_save">Enregistrer la cle</string>
     <string name="shiz_manual">Vous avez choisi « Refuser et ne plus demander » dans Shizuku, aucune boîte ne s\'affichera : ouvrez Shizuku -> applis autorisées -> activez BaiAgent</string>
-    <string name="shiz_open_app">Ouvrir Shizuku</string>
+    <string name="shiz_open_app">Ouvrir l\'app</string>
     <string name="shiz_no_service">Le service Shizuku ne tourne pas : ouvrez Shizuku, démarrez le service, puis redemandez</string>
     <string name="shiz_timeout">Aucune réponse de la boîte de dialogue : vérifiez qu\'elle n\'est pas masquée, ou autorisez manuellement dans Shizuku</string>
     <string name="shiz_denied">Permission refusée : appuyez à nouveau sur « Demander la permission », ou activez-la dans Shizuku</string>

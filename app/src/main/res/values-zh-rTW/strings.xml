@@ -308,6 +308,7 @@
     <string name="md_copied">已複製</string>
     <string name="md_copy">複製</string>
     <string name="th_image">圖</string>
+    <string name="th_long">長圖</string>
     <string name="ch_title">新增內容</string>
     <string name="ch_sub">選一類放進輸入區，模型按路徑自己讀</string>
     <string name="ch_img">圖片</string>
@@ -1042,7 +1043,7 @@
     <string name="a11y_label">BaiAgent 屏幕操作</string>
     <string name="a11y_desc">让 AI 读取当前屏幕的控件与截图，并代你点击、滑动、长按、输入文字。仅在你发起任务时使用。</string>
     <string name="shiz_manual">Shizuku 裡已經選過「拒絕且不再詢問」，這裡不會再彈窗：打開 Shizuku → 授權應用 → 找到 BaiAgent 打開開關</string>
-    <string name="shiz_open_app">打開 Shizuku</string>
+    <string name="shiz_open_app">打開應用</string>
     <string name="shiz_no_service">Shizuku 服務沒在執行：先打開 Shizuku 把服務啟動，再回來申請</string>
     <string name="shiz_timeout">等不到授權回應：確認 Shizuku 彈窗沒被擋住，或去 Shizuku 裡手動授權</string>
     <string name="shiz_denied">授權被拒絕：再點一次「申請授權」，或去 Shizuku 裡手動打開開關</string>
