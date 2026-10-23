@@ -981,4 +981,8 @@
     <string name="mem_del">削除</string>
     <string name="mem_clear">すべて消去</string>
     <string name="mem_clear_ok">消去を確定</string>
+<string name="bg_img_t">背景画像</string>
+    <string name="bg_img_d">アルバムから画像を選んで全面に敷き、下のぼかしで文字を読みやすく</string>
+    <string name="bg_blur">ぼかし %1$d</string>
+    <string name="bg_clear">クリア</string>
 </resources>

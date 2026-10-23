@@ -981,4 +981,8 @@
     <string name="mem_del">Supprimer</string>
     <string name="mem_clear">Tout vider</string>
     <string name="mem_clear_ok">Confirmer</string>
+<string name="bg_img_t">Image de fond</string>
+    <string name="bg_img_d">Choisir une photo pour remplir la page ; régler le flou ci-dessous pour garder le texte lisible</string>
+    <string name="bg_blur">Flou %1$d</string>
+    <string name="bg_clear">Effacer</string>
 </resources>

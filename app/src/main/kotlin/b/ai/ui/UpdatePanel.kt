@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import b.ai.core.ApkInstall
 import b.ai.net.Update
 import b.ai.ui.theme.AccentBlue
@@ -107,6 +108,8 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     } //下载并安装
 
     //强制更新不传 onDismiss：点卡片外部关不掉
+    //系统返回键也要吞掉，否则 ScrimCard 拦不住的返回能绕过强制更新
+    BackHandler(enabled = force) { }
     ScrimCard(onDismiss = if (force) null else onClose) {
         Text(
             info.title.ifBlank { stringResource(R.string.up_new) },

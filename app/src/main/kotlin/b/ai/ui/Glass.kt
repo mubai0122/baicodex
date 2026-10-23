@@ -40,6 +40,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import b.ai.core.Cfg
+import b.ai.core.Wallpaper
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.BorderGray
@@ -232,6 +236,24 @@ fun Modifier.pageBg(): Modifier = drawBehind {
                 y += step
             }
         }
+    }
+    //自定义背景图：按 cover 裁切铺满，上面压一层淡遮罩，保证前景文字还看得清
+    val wp = Wallpaper.get(Cfg.bgImg, Cfg.bgBlur)
+    if (wp != null) {
+        val cw = size.width.toInt().coerceAtLeast(1)
+        val ch = size.height.toInt().coerceAtLeast(1)
+        val k = maxOf(cw / wp.width.toFloat(), ch / wp.height.toFloat())
+        val sw = (cw / k).toInt().coerceIn(1, wp.width)
+        val sh = (ch / k).toInt().coerceIn(1, wp.height)
+        drawImage(
+            image = wp,
+            srcOffset = IntOffset((wp.width - sw) / 2, (wp.height - sh) / 2),
+            srcSize = IntSize(sw, sh),
+            dstOffset = IntOffset.Zero,
+            dstSize = IntSize(cw, ch),
+            filterQuality = FilterQuality.Low
+        )
+        drawRect(if (DarkColors) Color(0x66000000) else Color(0x4DFFFFFF))
     }
 } //页面背景
 

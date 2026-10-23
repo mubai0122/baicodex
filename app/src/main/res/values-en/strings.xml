@@ -981,4 +981,8 @@
     <string name="mem_del">Delete</string>
     <string name="mem_clear">Clear all</string>
     <string name="mem_clear_ok">Confirm clear</string>
+    <string name="bg_img_t">Background image</string>
+    <string name="bg_img_d">Pick a photo to fill the page; use the blur slider so text stays readable</string>
+    <string name="bg_blur">Blur %1$d</string>
+    <string name="bg_clear">Clear</string>
 </resources>

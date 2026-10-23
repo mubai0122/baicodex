@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
 import b.ai.core.Profiles
+import b.ai.core.Providers
 import b.ai.core.Skills
 import b.ai.core.Mcp
 import b.ai.ui.theme.AccentBlue
@@ -317,6 +318,13 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                //厂商图标：按 base_url 域名自动抓官网 favicon，抓不到退首字母徽章
+                BrandIcon(
+                    id = p.providerId,
+                    baseUrl = p.baseUrl,
+                    name = Providers.byId(p.providerId).name
+                )
+                Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         p.label,

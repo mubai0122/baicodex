@@ -52,9 +52,9 @@ fun PlanSheet(req: PlanReq) {
     val revise: () -> Unit = {
         Agent.answerPlan(PlanVerdict.Revise(note.trim().ifBlank { blank }))
     }
-    //返回键等于「先不执行」，不退出应用
-    BackHandler(enabled = true) { Agent.answerPlan(PlanVerdict.Dismiss) }
-    ScrimCard(onDismiss = { Agent.answerPlan(PlanVerdict.Dismiss) }) {
+    //计划面板不接受外部关闭：返回键吞掉、点遮罩无效，只能从三个按钮里选一个
+    BackHandler(enabled = true) { }
+    ScrimCard(onDismiss = null) {
         Text(stringResource(R.string.pl_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(3.dp))
         Text(stringResource(R.string.pl_desc), fontSize = 10.5.sp, color = TextSecondary)

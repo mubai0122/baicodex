@@ -326,6 +326,14 @@ object Cfg {
     var bgStyle: Int
         get() = mem("bg_style", 0).value
         set(v) { mem("bg_style", 0).value = v; put("bg_style", v) }
+    /** 自定义背景图：私有目录里的绝对路径，空 = 不铺图 */
+    var bgImg: String
+        get() = mem("bg_img", "").value
+        set(v) { mem("bg_img", "").value = v; put("bg_img", v) }
+    /** 背景图模糊度 0-100：0 原图，100 最糊 */
+    var bgBlur: Int
+        get() = mem("bg_blur", 0).value
+        set(v) { mem("bg_blur", 0).value = v.coerceIn(0, 100); put("bg_blur", v.coerceIn(0, 100)) }
 
     /** 输入框占位提示：空则显示「请输入问题」；填多行则每行一条随机轮换 */
     var hintText: String

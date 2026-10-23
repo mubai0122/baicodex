@@ -981,4 +981,8 @@
     <string name="mem_del">刪除</string>
     <string name="mem_clear">清空全部</string>
     <string name="mem_clear_ok">確認清空</string>
+<string name="bg_img_t">背景圖片</string>
+    <string name="bg_img_d">從相簿挑一張圖鋪滿頁面，搭配下面的模糊調到文字清楚</string>
+    <string name="bg_blur">模糊 %1$d</string>
+    <string name="bg_clear">清除</string>
 </resources>

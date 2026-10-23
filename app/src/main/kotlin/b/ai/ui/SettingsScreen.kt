@@ -84,6 +84,7 @@ import b.ai.core.Schedules
 import b.ai.core.Search
 import b.ai.core.Skill
 import b.ai.core.Skills
+import b.ai.core.Wallpaper
 import b.ai.core.WorkMode
 import b.ai.exec.Alarms
 import b.ai.exec.Linux
@@ -1025,6 +1026,9 @@ private fun UiTab() {
             isSelected = { Cfg.bgStyle == it },
             onSelect = { Cfg.bgStyle = it }
         )
+        Spacer(Modifier.height(10.dp))
+        //背景图：从相册选一张铺满页面，模糊度单独一条滑杆
+        BgImagePick()
     }
 
     Spacer(Modifier.height(14.dp))
@@ -2327,3 +2331,51 @@ private fun TerminalBox(
         }
     }
 } //终端式进度框
+/** 背景图一行：选图 / 清除，图存在时下面跟一条模糊滑杆 */
+@Composable
+private fun BgImagePick() {
+    val ctx = LocalContext.current
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val p = Wallpaper.import(ctx, uri) ?: return@rememberLauncherForActivityResult
+        Cfg.bgImg = p
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.bg_img_t), fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.bg_img_d), fontSize = 10.sp, color = TextSecondary)
+        }
+        Text(
+            stringResource(R.string.cm_pick_image),
+            fontSize = 11.sp,
+            color = AccentBlue,
+            modifier = Modifier
+                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .tap { pick.launch("image/*") }
+                .padding(horizontal = 9.dp, vertical = 5.dp)
+        )
+        //已经选过图才显示清除，没图时不占位置
+        if (Cfg.bgImg.isNotBlank()) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.bg_clear),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier
+                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .tap { Cfg.bgImg = "" }
+                    .padding(horizontal = 9.dp, vertical = 5.dp)
+            )
+        }
+    }
+    if (Cfg.bgImg.isNotBlank()) {
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.bg_blur, Cfg.bgBlur), fontSize = 11.sp, color = TextPrimary)
+        androidx.compose.material3.Slider(
+            value = Cfg.bgBlur.toFloat(),
+            onValueChange = { Cfg.bgBlur = it.toInt() },
+            valueRange = 0f..100f,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+} //背景图设置
