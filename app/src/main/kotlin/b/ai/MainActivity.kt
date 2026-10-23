@@ -36,6 +36,8 @@ import b.ai.core.Perms
 import b.ai.exec.Alarms
 import b.ai.net.Update
 import b.ai.ui.AskSheet
+import b.ai.ui.A11ySetup
+import b.ai.ui.A11ySetupDialog
 import b.ai.ui.BackdropHost
 import b.ai.ui.ChatScreen
 import b.ai.ui.DrawerPanel
@@ -138,8 +140,12 @@ private fun Root() {
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
+    //独立的无障碍激活流程：引导走完（进主界面）就弹一次，系统里已经开着也照样走；跑完记一笔
+    LaunchedEffect(Cfg.onboarded) {
+        if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
+    }
     val active = Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
-        starsOpen || memOpen
+        starsOpen || memOpen || A11ySetup.open.value
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
 
@@ -255,6 +261,11 @@ private fun Root() {
                         upd != null -> UpdateDialog(upd) { UpdateUi.close() }
                         updHis != null -> UpdateHistoryDialog(updHis) { UpdateUi.close() }
                         memOpen -> MemorySheet { memOpen = false }
+                        //独立激活流程优先于聊天页的失败弹窗，避免两个弹窗抢同一个 Overlay 槽
+                        A11ySetup.open.value -> A11ySetupDialog {
+                            A11ySetup.open.value = false
+                            Cfg.a11yDone = true
+                        }
                         starsOpen -> StarSheet(
                             onClose = { starsOpen = false },
                             onOpen = { sid ->

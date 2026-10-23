@@ -106,6 +106,9 @@ fun A11yPermCard(desc: String) {
                 fontSize = 11.sp,
                 color = if (on) OkGreen else WarnAmber
             )
+            Spacer(Modifier.weight(1f))
+            //系统里开着也能重跑一遍，不靠开关状态决定流程要不要走
+            GhostButton("重走激活流程") { A11ySetup.open.value = true }
         }
         Spacer(Modifier.height(6.dp))
         Text(desc, fontSize = 12.sp, color = TextSecondary)
