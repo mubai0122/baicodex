@@ -23,8 +23,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -36,9 +38,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import b.ai.R
 import b.ai.core.Perms
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
@@ -46,6 +50,8 @@ import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import b.ai.ui.theme.WarnAmber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** 屏幕操作演示动画：手指移到按钮、点下去、涟漪扩散、按钮亮一下，纯 Canvas 画，不带任何素材成本 */
 @Composable
@@ -101,18 +107,28 @@ fun A11yDemo(modifier: Modifier = Modifier) {
     }
 } //屏幕操作动画
 
-/** 权限状态卡片：引导页与设置页共用，自己刷新状态，点按钮直接跳系统无障碍页 */
+/** 权限状态卡片：引导页与设置页共用，自己刷新状态；有 Shizuku / Root 就换成一键激活 */
 @Composable
 fun A11yPermCard(desc: String) {
     val ctx = LocalContext.current
     var tick by remember { mutableIntStateOf(0) }
     val on = remember(tick) { Perms.a11yOn(ctx) }
+    //高权限探测放后台：root 模式要跑一次 su，不能在组合里干等
+    var ch by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(tick, on) {
+        ch = if (on) null else withContext(Dispatchers.IO) { b.ai.exec.AutoA11y.quickChannel(ctx) }
+    }
+    val canAuto = ch != null
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("屏幕操作", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(8.dp))
             Text(
-                if (on) "已开启" else "未开启",
+                when {
+                    on -> "已开启"
+                    canAuto -> "有高权限，可一键激活"
+                    else -> "未开启"
+                },
                 fontSize = 11.sp,
                 color = if (on) OkGreen else WarnAmber
             )
@@ -126,19 +142,25 @@ fun A11yPermCard(desc: String) {
         Text(desc, fontSize = 12.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
         A11yDemo()
-        //没开才给路径：三步走完，开关是灰的再多一步
+        //没开才给路径：有高权限就先给一键激活，没有才走手动四步
         if (!on) {
             Spacer(Modifier.height(10.dp))
-            Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            StepLine(1, "点下面「去开启无障碍」，跳到系统的无障碍页面")
-            StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
-            StepLine(3, "打开开关，弹窗里选「允许」")
-            StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+            if (canAuto) {
+                A11yAutoHint()
+            } else {
+                Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                StepLine(1, "点下面「去开启无障碍」，跳到系统的无障碍页面")
+                StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+                StepLine(3, "打开开关，弹窗里选「允许」")
+                StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+            }
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            PrimaryButton(if (on) "已开启" else "去开启无障碍", enabled = !on) {
-                Perms.openA11y(ctx)
+            when {
+                on -> PrimaryButton("已开启", enabled = false) {}
+                canAuto -> PrimaryButton(stringResource(R.string.se_348), enabled = true) { A11yAuto.open.value = true }
+                else -> PrimaryButton("去开启无障碍", enabled = true) { Perms.openA11y(ctx) }
             }
         }
     }

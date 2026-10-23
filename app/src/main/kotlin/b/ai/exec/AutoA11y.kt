@@ -4,35 +4,59 @@ import android.content.Context
 import b.ai.core.Cfg
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Shizuku 自动补无障碍：shell 持有 WRITE_SECURE_SETTINGS，直接写 secure 设置把服务挂回去 */
+/**
+ * 一键补无障碍：Shizuku / Root 都能写 secure 设置，
+ * 于是「去系统设置手点开关」这条路可以让位给一次按钮点击。
+ */
 object AutoA11y {
+    private const val WAIT_MS = 4_000L
+    private const val SU_PROBE_MS = 20_000L
     private const val COOL_MS = 30_000L
-    private const val WAIT_MS = 3_000L
 
     @Volatile
     private var lastTry = 0L
 
     private val busy = AtomicBoolean(false)
 
-    /** 要不要跑一次：开关开着、服务没连上、Shizuku 可用、30 秒内没试过 */
-    fun need(ctx: Context): Boolean {
-        if (!Cfg.autoA11y) return false
-        if (A11y.ready()) return false
-        if (System.currentTimeMillis() - lastTry < COOL_MS) return false
-        return Shiz.probe(ctx).ok
-    } //判断是否值得尝试
+    /** 便宜探测：只判断「有没有可能」，shizuku 看 binder，root 只看 su 二进制，不弹授权框 */
+    fun quickChannel(ctx: Context): String? {
+        if (Shiz.probe(ctx).ok) return "shizuku"
+        return if (Root.suPath() != null) "root" else null
+    } //快速探测高权限通道
 
-    /** 写 settings 把本服务加进已启用列表并打开总开关，然后等系统真把它 bind 上 */
-    fun run(ctx: Context): String {
-        if (!busy.compareAndSet(false, true)) return "上一次还在跑"
+    /** 真探测：root 会弹一次 su 授权框，所以只在真的要动手时调 */
+    fun channel(ctx: Context): String? {
+        if (Shiz.probe(ctx).ok) return "shizuku"
+        return if (Root.probe(SU_PROBE_MS).ok) "root" else null
+    } //严格探测高权限通道
+
+    private fun exec(ch: String, cmd: String): ShellResult =
+        if (ch == "root") Root.run(cmd, 30_000L) else Shiz.run(cmd, timeoutMs = 30_000L)
+
+    /**
+     * 写系统设置把本服务挂上去，然后等系统真的 bind。
+     * onStep：0 = 正在尝试激活，1 = 正在激活（等系统挂载），2 = 成功，3 = 失败（带原因）
+     */
+    fun run(ctx: Context, onStep: ((Int, String) -> Unit)? = null): Boolean {
+        if (!busy.compareAndSet(false, true)) return false
         lastTry = System.currentTimeMillis()
         try {
-            if (A11y.ready()) return "无障碍已经连着"
-            val p = Shiz.probe(ctx)
-            if (!p.ok) return "Shizuku 不可用：${p.desc}"
+            if (A11y.ready()) {
+                onStep?.invoke(2, "")
+                return true
+            }
+            onStep?.invoke(0, "")
+            val ch = channel(ctx)
+            if (ch == null) {
+                onStep?.invoke(3, "没有 Shizuku / Root 权限")
+                return false
+            }
             val comp = ctx.packageName + "/" + A11yService::class.java.name
-            val cur = Shiz.run("settings get secure enabled_accessibility_services", timeoutMs = 15_000)
-            if (cur.code != 0) return "读当前设置失败：${cur.out.trim()}"
+            val cur = exec(ch, "settings get secure enabled_accessibility_services")
+            if (cur.code != 0) {
+                onStep?.invoke(3, cur.out.trim().ifBlank { "读取当前设置失败（退出码 ${cur.code}）" })
+                return false
+            }
             val old = cur.out.trim().trim('\'').trim()
             val next = when {
                 old.isEmpty() || old == "null" -> comp
@@ -40,21 +64,38 @@ object AutoA11y {
                 else -> "$old:$comp"
             }
             if (next != old) {
-                val w = Shiz.run("settings put secure enabled_accessibility_services '$next'", timeoutMs = 15_000)
-                if (w.code != 0) return "写入失败：${w.out.trim()}"
+                val w = exec(ch, "settings put secure enabled_accessibility_services '$next'")
+                if (w.code != 0) {
+                    onStep?.invoke(3, w.out.trim().ifBlank { "写入失败（退出码 ${w.code}）" })
+                    return false
+                }
             }
-            //总开关单独写一次：部分 ROM 会把 accessibility_enabled 顺手清零
-            Shiz.run("settings put secure accessibility_enabled 1", timeoutMs = 15_000)
+            //部分 ROM 会顺手把总开关清零，单独再写一次
+            exec(ch, "settings put secure accessibility_enabled 1")
+            onStep?.invoke(1, "")
             val end = System.currentTimeMillis() + WAIT_MS
             while (System.currentTimeMillis() < end) {
-                if (A11y.ready()) return "已自动授予无障碍"
-                Thread.sleep(250L)
+                if (A11y.ready()) {
+                    onStep?.invoke(2, "")
+                    return true
+                }
+                Thread.sleep(200L)
             }
-            return "设置写成功了，但系统没把它挂上（去设置里手动开一次，或这台 ROM 拦了 shell 写入）"
+            onStep?.invoke(3, "设置已经写进去了，但系统没把服务挂上（这台 ROM 可能拦了 shell 写入）")
+            return false
         } catch (e: Exception) {
-            return "自动授予失败：${e.message ?: e.javaClass.simpleName}"
+            onStep?.invoke(3, e.message ?: e.javaClass.simpleName)
+            return false
         } finally {
             busy.set(false)
         }
-    } //自动授予无障碍
-} //Shizuku 自动补无障碍
+    } //一键激活无障碍
+
+    /** 要不要自动补一次：开关开着、服务没连上、有通道、30 秒内没试过 */
+    fun need(ctx: Context): Boolean {
+        if (!Cfg.autoA11y) return false
+        if (A11y.ready()) return false
+        if (System.currentTimeMillis() - lastTry < COOL_MS) return false
+        return quickChannel(ctx) != null
+    } //判断是否值得自动补
+} //一键补无障碍

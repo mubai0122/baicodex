@@ -16,15 +16,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import b.ai.R
 import b.ai.core.Perms
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 /** 独立无障碍激活流程的开关：系统里开着也照样跑一遍，只认「流程走没走过」 */
 object A11ySetup {
@@ -38,6 +42,11 @@ fun A11ySetupDialog(onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     var tick by remember { mutableIntStateOf(0) }
     val on = remember(tick) { Perms.a11yOn(ctx) }
+    //有 Shizuku / Root 时把手动四步换成一键激活：探测放后台，别在组合里跑 su
+    var canAuto by remember { mutableStateOf(false) }
+    LaunchedEffect(on) {
+        canAuto = if (on) false else withContext(Dispatchers.IO) { b.ai.exec.AutoA11y.quickChannel(ctx) != null }
+    }
     //轮询：从系统设置页回来不用手动刷新
     LaunchedEffect(Unit) {
         while (true) {
@@ -57,11 +66,15 @@ fun A11ySetupDialog(onDone: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             A11yDemo()
             Spacer(Modifier.height(10.dp))
-            Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
-            StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
-            StepLine(3, "打开开关，弹窗里选「允许」")
-            StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+            if (canAuto && !on) {
+                A11yAutoHint()
+            } else {
+                Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
+                StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+                StepLine(3, "打开开关，弹窗里选「允许」")
+                StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+            }
             Spacer(Modifier.height(10.dp))
             Text(
                 if (on) "当前状态：已开启" else "当前状态：未开启",
@@ -72,10 +85,10 @@ fun A11ySetupDialog(onDone: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 GhostButton("稍后再说") { onDone() }
                 Spacer(Modifier.width(10.dp))
-                if (on) {
-                    PrimaryButton("下一步", enabled = true) { step = 1 }
-                } else {
-                    PrimaryButton("去开启", enabled = true) { Perms.openA11y(ctx) }
+                when {
+                    on -> PrimaryButton("下一步", enabled = true) { step = 1 }
+                    canAuto -> PrimaryButton(stringResource(R.string.se_348), enabled = true) { A11yAuto.open.value = true }
+                    else -> PrimaryButton("去开启", enabled = true) { Perms.openA11y(ctx) }
                 }
             }
         } else {

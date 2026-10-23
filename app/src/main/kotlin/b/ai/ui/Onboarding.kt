@@ -286,11 +286,10 @@ private fun StepPermission(
         }
         Spacer(Modifier.height(14.dp))
         //特殊权限按模式给：普通用户三样都要，Root / Shizuku 只要悬浮窗
+        //无障碍卡在引导流程里也一律出现：Shizuku / Root 模式下它是「一键激活」入口
         val needA11y = Perms.specials(Cfg.workMode).contains(Perms.SP_A11Y)
-        if (needA11y) {
-            A11yPermCard("普通用户让 AI 代你操作屏幕，靠的就是这个开关。现在不开启也能先用，之后在设置 → 权限 里随时能开。")
-            Spacer(Modifier.height(12.dp))
-        }
+        A11yPermCard("普通用户让 AI 代你操作屏幕，靠的就是这个开关。现在不开启也能先用，之后在设置 → 权限 里随时能开。")
+        Spacer(Modifier.height(12.dp))
         SpecialPermCard(
             Perms.specials(Cfg.workMode).filter { it != Perms.SP_A11Y },
             if (needA11y) "顺便把这两样也开了，不然锁屏后任务会被系统掐掉、胶囊也浮不出来。"

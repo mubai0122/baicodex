@@ -921,10 +921,9 @@ private fun PermTab() {
     SectionTitle("特殊权限", "按当前模式分档：普通用户要无障碍 + 保活 + 悬浮窗，Root 只要悬浮窗")
     CardBox {
         val specials = Perms.specials(Cfg.workMode)
-        if (specials.contains(Perms.SP_A11Y)) {
-            A11yPermCard("AI 读屏、点屏靠这个。没开也能聊，只是屏幕类工具会跑不通。")
-            Spacer(Modifier.height(12.dp))
-        }
+        //无障碍卡一律出现：Shizuku / Root 模式下它是「一键激活」入口，不需要去系统页手点
+        A11yPermCard("AI 读屏、点屏靠这个。没开也能聊，只是屏幕类工具会跑不通。")
+        Spacer(Modifier.height(12.dp))
         SpecialPermCard(specials.filter { it != Perms.SP_A11Y })
     }
 
@@ -976,10 +975,11 @@ private fun PermTab() {
                 msg = null
                 note = null
                 Thread({
-                    val r = b.ai.exec.AutoA11y.run(ctx)
-                    val ok = r.startsWith("已")
+                    val ok = b.ai.exec.AutoA11y.run(ctx)
+                    val doneText = ctx.getString(R.string.se_357)
+                    val failText = ctx.getString(R.string.se_363)
                     st = Shiz.probe(ctx)
-                    if (ok) note = r else msg = r
+                    if (ok) note = doneText else msg = failText
                 }, "auto-a11y").apply { isDaemon = true }.start()
             } else {
                 note = null

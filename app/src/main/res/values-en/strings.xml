@@ -1069,4 +1069,24 @@
     <string name="se_338">Off: turn it back on by hand</string>
     <string name="se_339">On, but Shizuku is not ready</string>
     <string name="se_340">On: rewritten every time you come back</string>
+    <string name="se_346">Higher privilege detected</string>
+    <string name="se_347">Shizuku / Root can write the system setting for you: one tap turns accessibility on, no digging through Settings.</string>
+    <string name="se_348">Enable accessibility</string>
+    <string name="se_349">elevated privilege</string>
+    <string name="se_350">Enable accessibility now?</string>
+    <string name="se_351">BaiAgent will write its screen-access service into the system accessibility settings using %1$s. No manual toggling needed.</string>
+    <string name="se_352">Auto-enable accessibility every time the app opens</string>
+    <string name="se_353">Start</string>
+    <string name="se_354">Enabling accessibility</string>
+    <string name="se_355">Trying to enable accessibility…</string>
+    <string name="se_356">Waiting for the system to attach the service…</string>
+    <string name="se_357">Accessibility enabled</string>
+    <string name="se_358">It will be re-enabled automatically every time you open the app.</string>
+    <string name="se_359">If you don\'t want this, turn it off in Settings.</string>
+    <string name="se_360">One-off only: to make it automatic, turn on "Auto-grant accessibility (Shizuku)" in Settings.</string>
+    <string name="se_361">Done</string>
+    <string name="se_362">Could not enable accessibility</string>
+    <string name="se_363">No specific reason given; you can still turn it on manually.</string>
+    <string name="se_364">Close</string>
+    <string name="se_365">Open system settings</string>
 </resources>

@@ -1065,4 +1065,24 @@
     <string name="se_338">オフ：切れたら手動で入れ直し</string>
     <string name="se_339">オンですが Shizuku が未準備で補えません</string>
     <string name="se_340">オン：前面に戻るたびに自動で書き戻し</string>
+    <string name="se_346">高い権限を検出しました</string>
+    <string name="se_347">Shizuku / Root でシステム設定を直接書き換え、ワンタップでアクセシビリティを有効にできます。設定画面を手で触る必要はありません。</string>
+    <string name="se_348">ワンタップで有効化</string>
+    <string name="se_349">高い権限</string>
+    <string name="se_350">アクセシビリティを有効にしますか？</string>
+    <string name="se_351">BaiAgent の画面操作サービスを %1$s 権限でシステムのアクセシビリティ設定に書き込みます。手動でスイッチを触る必要はありません。</string>
+    <string name="se_352">以後アプリを開くたびに自動で有効化する</string>
+    <string name="se_353">開始</string>
+    <string name="se_354">アクセシビリティを有効化中</string>
+    <string name="se_355">アクセシビリティ権限を有効化しています…</string>
+    <string name="se_356">サービスをシステムに接続しています…</string>
+    <string name="se_357">アクセシビリティを有効化しました</string>
+    <string name="se_358">以後アプリを開くたびに自動で有効化します。</string>
+    <string name="se_359">この機能が不要なら、設定でオフにしてください。</string>
+    <string name="se_360">今回のみ有効です：毎回自動にするには、設定の「Shizuku で自動許可」をオンにしてください。</string>
+    <string name="se_361">完了</string>
+    <string name="se_362">有効化できませんでした</string>
+    <string name="se_363">理由は取得できませんでした。手動で有効化できます。</string>
+    <string name="se_364">閉じる</string>
+    <string name="se_365">システム設定を開く</string>
 </resources>

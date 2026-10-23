@@ -36,6 +36,8 @@ import b.ai.core.Perms
 import b.ai.exec.Alarms
 import b.ai.net.Update
 import b.ai.ui.AskSheet
+import b.ai.ui.A11yAuto
+import b.ai.ui.A11yAutoDialog
 import b.ai.ui.A11ySetup
 import b.ai.ui.A11ySetupDialog
 import b.ai.ui.BackdropHost
@@ -152,7 +154,7 @@ private fun Root() {
         if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
     }
     val active = Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
-        starsOpen || memOpen || A11ySetup.open.value
+        starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
 
@@ -269,6 +271,8 @@ private fun Root() {
                         updHis != null -> UpdateHistoryDialog(updHis) { UpdateUi.close() }
                         memOpen -> MemorySheet { memOpen = false }
                         //独立激活流程优先于聊天页的失败弹窗，避免两个弹窗抢同一个 Overlay 槽
+                        //一键激活优先：它本身就是从无障碍卡片点出来的，别被激活流程弹窗压住
+                        A11yAuto.open.value -> A11yAutoDialog { A11yAuto.open.value = false }
                         A11ySetup.open.value -> A11ySetupDialog {
                             A11ySetup.open.value = false
                             Cfg.a11yDone = true
