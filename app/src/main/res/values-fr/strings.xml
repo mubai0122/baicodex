@@ -1044,4 +1044,21 @@
     <string name="shiz_no_service">Le service Shizuku ne tourne pas : ouvrez Shizuku, démarrez le service, puis redemandez</string>
     <string name="shiz_timeout">Aucune réponse de la boîte de dialogue : vérifiez qu\'elle n\'est pas masquée, ou autorisez manuellement dans Shizuku</string>
     <string name="shiz_denied">Permission refusée : appuyez à nouveau sur « Demander la permission », ou activez-la dans Shizuku</string>
+    <string name="se_320">Notifications du jour</string>
+    <string name="se_321">Désactivé : notifications non lues</string>
+    <string name="se_322">Activé, mais accès aux notifications manquant</string>
+    <string name="se_323">Activé : %1$d aujourd\'hui</string>
+    <string name="se_324">Nombre injecté</string>
+    <string name="se_325">Illimité</string>
+    <string name="se_326">Illimité : tout aujourd\'hui, coupé au-delà de 8000 caractères</string>
+    <string name="se_327">Les %1$d dernières</string>
+    <string name="se_328">Temps d\'utilisation</string>
+    <string name="se_329">Désactivé : temps d\'utilisation non lu</string>
+    <string name="se_330">Activé, mais accès à l\'utilisation manquant</string>
+    <string name="se_331">Activé : %1$s aujourd\'hui</string>
+    <string name="se_332">L\'accès aux notifications est encore requis</string>
+    <string name="se_333">L\'interrupteur est activé mais Android n\'a pas accordé l\'accès : l\'IA ne peut pas lire les notifications. Une fois accordé, seuls le nom de l\'app et le titre sont conservés (pas le corps, 3 jours maximum), juste pour une phrase d\'attention à la fin.</string>
+    <string name="se_334">L\'accès à l\'utilisation est encore requis</string>
+    <string name="se_335">L\'interrupteur est activé mais Android n\'a pas accordé l\'accès : l\'IA ne peut pas lire le temps d\'utilisation. Une fois accordé, seul le temps au premier plan par app aujourd\'hui est lu, pour voir si vous êtes resté trop longtemps.</string>
+    <string name="se_336">Ouvrir</string>
 </resources>

@@ -356,7 +356,9 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null || packDraft != null) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null || packDraft != null || PermAsk.kind.value != null) {
+        //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
+        PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
         draft?.let { s ->
             SkillDialog(
@@ -612,6 +614,45 @@ private fun ChatTab(stats: Pair<Int, Int>) {
                 locPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             } else {
                 Cfg.injectPlace = on
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        //通知与使用时长都要系统侧单独授权：开关先落地，缺权限就弹窗把人送去系统页
+        CapSwitch(
+            stringResource(R.string.se_320),
+            when {
+                !Cfg.injectNoti -> stringResource(R.string.se_321)
+                !b.ai.core.Noti.allow(ctx) -> stringResource(R.string.se_322)
+                else -> stringResource(R.string.se_323, b.ai.core.Noti.count(ctx))
+            },
+            Cfg.injectNoti
+        ) { on ->
+            if (on && !b.ai.core.Noti.allow(ctx)) {
+                Cfg.injectNoti = true
+                PermAsk.kind.value = "noti"
+            } else {
+                Cfg.injectNoti = on
+            }
+        }
+        if (Cfg.injectNoti) {
+            Spacer(Modifier.height(6.dp))
+            NotiLimitRow()
+        }
+        Spacer(Modifier.height(8.dp))
+        CapSwitch(
+            stringResource(R.string.se_328),
+            when {
+                !Cfg.injectUsage -> stringResource(R.string.se_329)
+                !b.ai.core.Usage.allow(ctx) -> stringResource(R.string.se_330)
+                else -> stringResource(R.string.se_331, b.ai.core.Usage.hm(b.ai.core.Usage.today(ctx).first))
+            },
+            Cfg.injectUsage
+        ) { on ->
+            if (on && !b.ai.core.Usage.allow(ctx)) {
+                Cfg.injectUsage = true
+                PermAsk.kind.value = "usage"
+            } else {
+                Cfg.injectUsage = on
             }
         }
     }
@@ -2266,6 +2307,45 @@ internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: 
         )
     }
 } //能力勾选一行：标题 + 说明 + 开关
+
+/** 通知注入条数：0 或留空 = 不限；滑块 5 条一档，右侧能直接敲数字 */
+@Composable
+private fun NotiLimitRow() {
+    var text by remember { mutableStateOf(if (Cfg.notiLimit <= 0) "" else Cfg.notiLimit.toString()) }
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.OutlinedTextField(
+                value = text,
+                onValueChange = { s ->
+                    val d = s.filter { it.isDigit() }.take(4)
+                    text = d
+                    Cfg.notiLimit = d.toIntOrNull() ?: 0
+                },
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.se_325), fontSize = 12.sp) },
+                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 12.sp),
+                modifier = Modifier.width(84.dp)
+            )
+        }
+        androidx.compose.material3.Slider(
+            value = Cfg.notiLimit.coerceIn(0, 100).toFloat(),
+            onValueChange = {
+                val v = ((it / 5).toInt() * 5).coerceIn(0, 100)
+                Cfg.notiLimit = v
+                text = if (v == 0) "" else v.toString()
+            },
+            valueRange = 0f..100f,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            if (Cfg.notiLimit <= 0) stringResource(R.string.se_326) else stringResource(R.string.se_327, Cfg.notiLimit),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
+    }
+} //通知注入条数
 
 @Composable
 private fun ToolchainSection() {

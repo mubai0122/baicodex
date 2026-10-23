@@ -1048,4 +1048,21 @@
     <string name="shiz_no_service">Shizuku service is not running: open Shizuku, start the service, then request again</string>
     <string name="shiz_timeout">No answer from the permission dialog: make sure the Shizuku prompt was not blocked, or grant it manually in Shizuku</string>
     <string name="shiz_denied">Permission denied: tap "Request permission" again, or enable it manually in Shizuku</string>
+    <string name="se_320">Today\'s notifications</string>
+    <string name="se_321">Off: notifications not read</string>
+    <string name="se_322">On, but notification access is missing</string>
+    <string name="se_323">On: %1$d today</string>
+    <string name="se_324">Injected count</string>
+    <string name="se_325">Unlimited</string>
+    <string name="se_326">Unlimited: all of today, cut off past 8000 chars</string>
+    <string name="se_327">Last %1$d</string>
+    <string name="se_328">Device usage time</string>
+    <string name="se_329">Off: usage time not read</string>
+    <string name="se_330">On, but usage access is missing</string>
+    <string name="se_331">On: %1$s today</string>
+    <string name="se_332">Notification access is still needed</string>
+    <string name="se_333">The switch is on but Android has not granted access: AI cannot read notifications. Once granted, only the app name and title are kept (no body, 3 days at most), just enough for a caring line at the end.</string>
+    <string name="se_334">Usage access is still needed</string>
+    <string name="se_335">The switch is on but Android has not granted access: AI cannot read usage time. Once granted, only today\'s foreground time per app is read, to tell whether you have been on the phone too long.</string>
+    <string name="se_336">Open settings</string>
 </resources>

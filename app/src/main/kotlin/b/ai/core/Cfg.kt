@@ -72,6 +72,9 @@ object Cfg {
         mem("inject_time", true).value = p.getBoolean("inject_time", true)
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
         mem("inject_place", false).value = p.getBoolean("inject_place", false)
+        mem("inject_noti", false).value = p.getBoolean("inject_noti", false)
+        mem("noti_limit", 0).value = p.getInt("noti_limit", 0)
+        mem("inject_usage", false).value = p.getBoolean("inject_usage", false)
         mem("show_usage", true).value = p.getBoolean("show_usage", true)
         //模型价格：元 / 百万 token，0 = 不计价（统计页只数 token 不算钱）
         mem("price_in", 0f).value = p.getFloat("price_in", 0f)
@@ -431,6 +434,21 @@ object Cfg {
     var injectPlace: Boolean
         get() = mem("inject_place", false).value
         set(v) { mem("inject_place", false).value = v; put("inject_place", v) }
+
+    /** 注入今日通知（需通知使用权，没授权就跳过） */
+    var injectNoti: Boolean
+        get() = mem("inject_noti", false).value
+        set(v) { mem("inject_noti", false).value = v; put("inject_noti", v) }
+
+    /** 注入通知条数上限：0 = 不限，只受注入字符上限约束 */
+    var notiLimit: Int
+        get() = mem("noti_limit", 0).value
+        set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
+
+    /** 注入设备使用时长（需使用情况访问权，没授权就跳过） */
+    var injectUsage: Boolean
+        get() = mem("inject_usage", false).value
+        set(v) { mem("inject_usage", false).value = v; put("inject_usage", v) }
 
     /** 回复底部显示用量：总 token 与 tok/s */
     var showUsage: Boolean
