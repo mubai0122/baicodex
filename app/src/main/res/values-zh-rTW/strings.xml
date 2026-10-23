@@ -279,11 +279,13 @@
     <string name="ip_think">深度思考</string>
     <string name="ip_think_off">直接回答</string>
     <string name="ip_strength">思考強度</string>
+    <string name="ip_budget">工具結果預算</string>
+    <string name="ip_budget_max">max（不限）</string>
     <string name="ip_lv_low">低</string>
     <string name="ip_lv_mid">中</string>
     <string name="ip_lv_high">高</string>
     <string name="ip_max">最大模式</string>
-    <string name="ip_max_d">不下發 max_tokens，思考頂到 high</string>
+    <string name="ip_max_d">不下發 max_tokens，思考只由開關控制</string>
     <string name="ip_max_off">依設定的 max_tokens 走</string>
     <string name="ip_no_profile">還沒有模型設定，先加一個再用</string>
     <string name="ip_no_model">未填模型名</string>

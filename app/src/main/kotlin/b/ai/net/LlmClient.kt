@@ -76,10 +76,15 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         //单轮上限：最大模式不下发（交给服务端默认最大），否则按配置的 max_tokens
         val maxTok = if (b.ai.core.Cfg.maxMode) 0 else b.ai.core.Cfg.maxTokens
         if (maxTok > 0) body.put("max_tokens", maxTok)
-        //思考强度：最大模式直接顶到 high；模型不支持推理就不发
-        val effort = if (b.ai.core.Cfg.maxMode) "high" else thinkEffort
-        if ((think || b.ai.core.Cfg.maxMode) && b.ai.core.Cfg.modelReasoning) {
-            body.put("reasoning_effort", effort)
+        //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
+        if (think && b.ai.core.Cfg.modelReasoning) {
+            body.put("reasoning_effort", thinkEffort)
+        }
+        //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
+        val ds = b.ai.core.Cfg.providerId.contains("deepseek", true) ||
+            b.ai.core.Cfg.baseUrl.contains("deepseek", true)
+        if (ds && !think) {
+            body.put("thinking", JSONObject().put("type", "disabled"))
         }
         //附加参数浅合并，用来补厂商私有字段（如 thinking / enable_thinking）
         if (!extraParams.isNullOrBlank()) {

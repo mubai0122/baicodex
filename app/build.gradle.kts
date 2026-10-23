@@ -8,7 +8,6 @@ plugins {
     id("com.va.stringfog") version "v2.3.0"
 }
 
-//StringFog 密钥：由本机 local.properties 提供，缺了就退到占位串（别人 clone 后不配也能构建）
 val baiStringFogKey: String = run {
     val f = rootProject.file("local.properties")
     if (!f.exists()) return@run "bai-stringfog-placeholder-key"
@@ -20,16 +19,14 @@ val baiStringFogKey: String = run {
 android {
     namespace = "b.ai"
     compileSdk = 37
-    //skill DSL 引擎编到这两个 ABI 上，其它架构不打包，省体积
-    //28.2 是本机唯一带 linux-arm64 host toolchain 的 NDK，换版本会编不动
     ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 10
-        versionName = "1.3.0"
+        versionCode = 11
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
@@ -39,8 +36,6 @@ android {
 
     externalNativeBuild {
         cmake {
-            //C++ DSL 引擎：skill 模板的校验与生成，Kotlin 侧只走 JNI 门面
-            //cmake 用 Termux 自带的（配置在 local.properties 的 cmake.dir），SDK 那份是 glibc 编的，bionic 上跑不起来
             path = file("src/main/cpp/CMakeLists.txt")
         }
     } //native 构建
@@ -103,7 +98,7 @@ dependencies {
 stringfog {
     enabled.set(true)
     algorithm.set("aes")
-    key.set(baiStringFogKey) //密钥来自 local.properties 的 stringfog.key，不进仓库
+    key.set(baiStringFogKey)
     minLength.set(1)
     randomKeyPerString.set(true)
     randomKeyLength.set(16)

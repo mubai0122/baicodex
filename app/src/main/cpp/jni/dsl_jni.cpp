@@ -3,10 +3,9 @@
 #include <string>
 
 #include "dsl.h"
+#include "govern.h"
 
 namespace {
-
-
 
 std::string jstr(JNIEnv *env, jstring js) {
     if (js == nullptr) return "";
@@ -36,6 +35,15 @@ Java_b_ai_core_Dsl_nativeLint(JNIEnv *env, jobject, jstring tpl, jstring kind, j
     const dsl::Result r = dsl::lint(jstr(env, tpl), jstr(env, kind), p, nullptr);
     return back(env, pack(r));
 } //加载期校验
+
+/** 工具结果治理：超预算直接截止，返回 "OK\n<处理后文本>"；引擎未就绪由 Kotlin 侧兜底 */
+JNIEXPORT jstring JNICALL
+Java_b_ai_core_Dsl_nativeGovern(JNIEnv *env, jobject, jstring text, jint maxChars) {
+    std::string t = jstr(env, text);
+    std::string out;
+    baicore::govern(t, static_cast<size_t>(maxChars), out);
+    return back(env, std::string("OK\n") + out);
+} //工具结果治理
 
 JNIEXPORT jstring JNICALL
 Java_b_ai_core_Dsl_nativeRender(JNIEnv *env, jobject, jstring tpl, jstring kind, jstring params,

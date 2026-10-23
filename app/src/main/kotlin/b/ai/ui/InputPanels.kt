@@ -44,8 +44,27 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
+import b.ai.core.Effort
 import b.ai.core.Profiles
 import b.ai.core.Providers
 import b.ai.core.Skills
@@ -270,10 +289,47 @@ internal fun CfgPanel(onClose: () -> Unit) {
                 colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
             )
         }
-        //思考强度：整行铺满的三档滑杆，松手才落库，拖动过程只有视觉跟手
-        val levels = listOf("low", "medium", "high")
-        val li = levels.indexOf(Cfg.thinkEffort).coerceAtLeast(0)
-        SoftSlider(index = li, enabled = Cfg.think) { v -> Cfg.thinkEffort = levels[v.coerceIn(0, 2)] }
+        //思考强度：档位随模型走（DeepSeek 3 档、OpenAI 4~5 档），松手才落库
+        val effortLevels = Effort.levels(Cfg.providerId, Cfg.model)
+        val li = Effort.indexOf(effortLevels, Cfg.thinkEffort)
+        //换模型后旧档位可能不合法：直接落库成映射后的值，免得显示的和实际下发的不一致
+        LaunchedEffect(Cfg.providerId, Cfg.model) {
+            if (Cfg.thinkEffort.lowercase() !in effortLevels) Cfg.thinkEffort = effortLevels[li]
+        }
+        ChargeSlider(levels = effortLevels, index = li, enabled = Cfg.think) { v ->
+            Cfg.thinkEffort = effortLevels[v.coerceIn(0, effortLevels.lastIndex)]
+        }
+        //工具结果预算：0 = max 不限；右侧胶囊点一下切一档，治理层按它折算字符截止
+        val budgetSteps = intArrayOf(0, 2000, 4000, 8000, 16000, 32000)
+        Row(Modifier.fillMaxWidth().padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.ip_budget), fontSize = 12.sp, color = TextPrimary)
+                Text(
+                    if (Cfg.toolBudgetTokens <= 0) stringResource(R.string.ip_budget_max)
+                    else Cfg.toolBudgetTokens.toString() + " tok",
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Row(
+                Modifier
+                    .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                    .tap {
+                        val at = budgetSteps.indexOf(Cfg.toolBudgetTokens)
+                        Cfg.toolBudgetTokens = budgetSteps[(if (at < 0) 0 else at + 1) % budgetSteps.size]
+                    }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (Cfg.toolBudgetTokens <= 0) "max" else Cfg.toolBudgetTokens.toString(),
+                    fontSize = 11.sp,
+                    color = AccentBlue
+                )
+                Spacer(Modifier.width(4.dp))
+                Text("›", fontSize = 12.sp, color = AccentBlue)
+            }
+        }
         Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -359,206 +415,212 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
     }
 } //模型面板：本轮模型 + 配置入口
 
-//滑杆两端色：淡青 → 淡粉，轨道渐变与拇指共用这套色
-private val SoftTeal = Color(0xFF8FE3DC)
-private val SoftPink = Color(0xFFFFB0CE)
-
-//三档文案：低 / 中 / 高
+//档位文案：低 / 中 / 高
 private val SoftLevels = intArrayOf(R.string.ip_lv_low, R.string.ip_lv_mid, R.string.ip_lv_high)
 
+//充能条 24 格：一格约 4% 强度
+private const val ChargeCells = 24
+//已充能用主题深蓝，前沿热核用主题浅蓝；燃烧只在这两个色之间呼吸，不引入新色
+private val ChargeDeep = AccentBlue
+private val ChargeCore = AccentBlueSoft
+
+//落档弹簧：dampingRatio < 1 才有过冲，才有松手回弹
+private val ChargeSpring = spring<Float>(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium)
+
 /**
- * Operit 同款思考强度滑杆：整行铺满，轨道外侧套一圈描边外框，按档位落点。
- * 动效三件：拇指跟手连续滑动；按住时一道高光沿轨道循环扫过；松手吸附到最近档位。
+ * 思考强度充能条：26dp 胶囊里排 24 格，拖动跟手、松手弹到最近档位、最高档燃烧。
+ * 关键：拖动中格子颜色一律不做动画，否则前沿热核会拖影；只有落档与燃烧态才跑动画。
  */
 @Composable
-private fun SoftSlider(
+private fun ChargeSlider(
+    levels: List<String>,
     index: Int,
     enabled: Boolean,
     modifier: Modifier = Modifier,
     onIndex: (Int) -> Unit
 ) {
-    var pos by remember { mutableFloatStateOf(index.toFloat()) }
+    //档位数随模型变：少于一档就没得滑，按两档兜底防除零
+    val count = levels.size.coerceAtLeast(2)
+    val span = (count - 1).toFloat()
+    fun ratioOf(i: Int): Float = i.coerceIn(0, count - 1) / span
+    val scope = rememberCoroutineScope()
+    val settle = remember(count) { Animatable(ratioOf(index)) }
+    var dragRatio by remember(count) { mutableFloatStateOf(ratioOf(index)) }
     var dragging by remember { mutableStateOf(false) }
-    val pick = pos.roundToInt().coerceIn(0, 2)
-    //外部改档位（切角色、恢复默认）就跟着走；正在拖动时别抢手指
-    LaunchedEffect(index) { if (!dragging) pos = index.toFloat() }
-    //高光扫描：只有按住时跑，900ms 一趟线性循环，松手立刻归位
-    val shimmer = remember { Animatable(-0.24f) }
-    LaunchedEffect(dragging) {
-        if (!dragging) {
-            shimmer.snapTo(-0.24f)
-            return@LaunchedEffect
-        }
-        while (isActive) {
-            shimmer.snapTo(-0.24f)
-            shimmer.animateTo(1.24f, tween(durationMillis = 900, easing = LinearEasing))
+    var settling by remember { mutableStateOf(false) }
+    //拖动中读原始值，其余时候读落档动画值，两者无缝衔接
+    val ratio = if (dragging) dragRatio else settle.value
+    val knobDp = 14.dp
+    val knobPx = with(LocalDensity.current) { knobDp.toPx() }
+    var barPx by remember { mutableIntStateOf(0) }
+    //外部改档位（切角色、恢复默认）才跟过去，拖动与落档途中不抢
+    LaunchedEffect(index, count) {
+        if (!dragging && !settling) settle.animateTo(ratioOf(index), ChargeSpring)
+    }
+    //按压：拖动起落手动转成 PressInteraction，只喂旋钮放大
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        if (pressed) 1.1f else 1f,
+        spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium),
+        label = "charge-press"
+    )
+    var held by remember { mutableStateOf<PressInteraction.Press?>(null) }
+    fun hold(p: Offset) {
+        val e = PressInteraction.Press(p)
+        held = e
+        scope.launch { interaction.emit(e) }
+    }
+    fun drop() {
+        val e = held ?: return
+        held = null
+        scope.launch { interaction.emit(PressInteraction.Release(e)) }
+    }
+    //松手：先接管手指位置再弹到最近档位，中间不跳帧
+    fun settleTo() {
+        val v = (dragRatio * span).roundToInt().coerceIn(0, count - 1)
+        if (v != index) onIndex(v)
+        scope.launch {
+            settling = true
+            settle.snapTo(dragRatio)
+            dragging = false
+            settle.animateTo(ratioOf(v), ChargeSpring)
+            settling = false
         }
     }
+    //燃烧：最高档起两组错拍往复（已充能格 1100ms、热核 700ms），跑 0..1 进度再 lerp 颜色
+    val burn = rememberInfiniteTransition(label = "charge-burn")
+    val deepT by burn.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(1100), RepeatMode.Reverse),
+        label = "charge-burn-deep"
+    )
+    val coreT by burn.animateFloat(
+        0f, 1f,
+        infiniteRepeatable(tween(700), RepeatMode.Reverse),
+        label = "charge-burn-core"
+    )
+    //燃烧只在最高档：最后一格到手就点火，跟着手指走，不等松手
+    val burning = (ratio * span).roundToInt() >= count - 1
+    val deepColor = if (burning) lerp(ChargeDeep, ChargeCore, deepT) else ChargeDeep
+    val coreColor = if (burning) lerp(ChargeCore, Color.White, coreT) else ChargeCore
     Column(modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.35f)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.ip_strength), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                stringResource(SoftLevels[pick]),
+                //档位名直接用下发的原值，避免自造译名和实际请求对不上
+                levels[(ratio * span).roundToInt().coerceIn(0, count - 1)].uppercase(),
                 fontSize = 10.sp,
                 color = AccentBlue,
                 fontWeight = FontWeight.Bold
             )
         }
-        Canvas(
+        Spacer(Modifier.height(4.dp))
+        Box(
             Modifier
                 .fillMaxWidth()
-                .height(36.dp)
+                .height(26.dp)
+                .onSizeChanged { barPx = it.width }
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragStart = { off ->
+                            dragRatio = (off.x / size.width.toFloat()).coerceIn(0f, 1f)
                             dragging = true
-                            pos = softValueAt(off.x, size.width.toFloat(), 12.dp.toPx())
+                            hold(off)
                         },
-                        onDragEnd = {
-                            dragging = false
-                            val v = pos.roundToInt().coerceIn(0, 2)
-                            pos = v.toFloat()
-                            onIndex(v)
-                        },
-                        onDragCancel = { dragging = false }
+                        onDragEnd = { drop(); settleTo() },
+                        onDragCancel = { drop(); settleTo() }
                     ) { change, _ ->
-                        pos = softValueAt(change.position.x, size.width.toFloat(), 12.dp.toPx())
+                        //事件直更，不套任何动画，前沿热核才不会拖影
+                        dragRatio = (change.position.x / size.width.toFloat()).coerceIn(0f, 1f)
                     }
                 }
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     detectTapGestures { off ->
-                        val v = softValueAt(off.x, size.width.toFloat(), 12.dp.toPx())
-                            .roundToInt().coerceIn(0, 2)
-                        pos = v.toFloat()
-                        onIndex(v)
+                        dragRatio = (off.x / size.width.toFloat()).coerceIn(0f, 1f)
+                        dragging = true
+                        hold(off)
+                        drop()
+                        settleTo()
                     }
                 }
         ) {
-            drawSoftTrack(pos / 2f, pick, shimmer.value, dragging)
-        }
-        SoftLevelLabels(pick)
-    }
-} //思考强度滑杆
-
-//像素 x 折算成 0..2 的连续档位；两端各让出一个拇指半径，跟绘制口径一致
-private fun softValueAt(x: Float, widthPx: Float, inset: Float): Float {
-    val span = (widthPx - inset * 2f).coerceAtLeast(1f)
-    return ((x - inset) / span).coerceIn(0f, 1f) * 2f
-} //折算档位
-
-//轨道：底轨渐变只铺到拇指，外面再套一圈描边；拖动时叠一道白色柔光扫过
-private fun DrawScope.drawSoftTrack(progress: Float, pick: Int, shimmerAt: Float, showShimmer: Boolean) {
-    val trackH = 16.dp.toPx()
-    val frameH = 20.dp.toPx()
-    val stroke = 1.dp.toPx()
-    val tr = trackH / 2f
-    val fr = frameH / 2f
-    val cy = size.height / 2f
-    val p = progress.coerceIn(0f, 1f)
-    //左右各留 12dp，滑杆不贴着面板边
-    val edge = 12.dp.toPx()
-    val valueStart = edge
-    val valueEnd = size.width - edge
-    val span = (valueEnd - valueStart).coerceAtLeast(1f)
-    val center = valueStart + span * p
-    val start = valueStart - tr
-    val end = center + tr
-    drawRoundRect(
-        brush = Brush.horizontalGradient(
-            listOf(lerp(SurfaceMuted, SoftTeal, 0.45f), SoftTeal, SoftPink),
-            startX = start,
-            endX = end
-        ),
-        topLeft = Offset(start, cy - trackH / 2f),
-        size = Size(end - start, trackH),
-        cornerRadius = CornerRadius(tr, tr)
-    )
-    if (showShimmer) {
-        val w = 26.dp.toPx()
-        val c = valueStart + span * shimmerAt
-        val a = (c - w).coerceIn(start, end)
-        val b = (c + w).coerceIn(start, end)
-        if (b - a > 1f) {
-            drawRoundRect(
-                brush = Brush.horizontalGradient(
-                    listOf(Color.Transparent, Color.White.copy(alpha = 0.42f), Color.Transparent),
-                    startX = c - w,
-                    endX = c + w
-                ),
-                topLeft = Offset(a, cy - trackH / 2f),
-                size = Size(b - a, trackH),
-                cornerRadius = CornerRadius(tr, tr)
+            //底：胶囊背景单独裁切，燃烧发光画在上层才不会被裁掉
+            Box(Modifier.matchParentSize().clip(RoundedCornerShape(13.dp)).background(SurfaceMuted))
+            Canvas(Modifier.fillMaxSize()) {
+                drawCharge(ratio, burning, deepColor, coreColor)
+            }
+            //旋钮：跟着前沿走，按下放大 1.1 倍
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .offset { IntOffset(((barPx - knobPx).coerceAtLeast(0f) * ratio).roundToInt(), 0) }
+                    .size(knobDp)
+                    .graphicsLayer {
+                        scaleX = pressScale
+                        scaleY = pressScale
+                    }
+                    .background(Color.White, CircleShape)
+                    .border(2.dp, if (burning) deepColor else AccentBlue, CircleShape)
             )
         }
     }
-    //外框：比轨道高 4dp，两端各探出一个圆角
-    drawRoundRect(
-        color = BorderGray.copy(alpha = 0.62f),
-        topLeft = Offset(valueStart - fr + stroke / 2f, cy - frameH / 2f + stroke / 2f),
-        size = Size(span + fr * 2f - stroke, frameH - stroke),
-        cornerRadius = CornerRadius(fr, fr),
-        style = Stroke(stroke)
-    )
-    //三档刻度：已达档位用渐变后段，未达用灰
-    for (i in 0..2) {
-        drawCircle(
-            color = if (i <= pick) lerp(SoftTeal, SoftPink, i / 2f).copy(alpha = 0.7f)
-            else BorderGray.copy(alpha = 0.78f),
-            radius = 2.dp.toPx(),
-            center = Offset(valueStart + span * (i / 2f), cy)
+} //思考强度充能条
+
+//充能条：已充能是一整条连续色块（右端跟手、不分块），前沿一段浅色热核，只有未充能处留格子刻度
+private fun DrawScope.drawCharge(ratio: Float, burning: Boolean, deep: Color, core: Color) {
+    val padX = 3.dp.toPx()
+    val padY = 3.dp.toPx()
+    val gap = 1.2.dp.toPx()
+    val cellH = (size.height - padY * 2f).coerceAtLeast(1f)
+    val innerW = (size.width - padX * 2f).coerceAtLeast(1f)
+    val cellW = ((innerW - gap * (ChargeCells - 1)) / ChargeCells).coerceAtLeast(1f)
+    val pill = CornerRadius(cellH / 2f, cellH / 2f)
+    val tick = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+    val p = ratio.coerceIn(0f, 1f)
+    val filledW = innerW * p
+    //发光用三层同色半透明外扩，兼容 API 24，不依赖 RenderEffect 的 31+
+    if (burning) {
+        for (i in 1..3) {
+            val grow = 2.dp.toPx() * i
+            drawRoundRect(
+                color = deep.copy(alpha = 0.14f / i),
+                topLeft = Offset(-grow, padY - grow),
+                size = Size(size.width + grow * 2f, cellH + grow * 2f),
+                cornerRadius = CornerRadius((cellH + grow * 2f) / 2f, (cellH + grow * 2f) / 2f)
+            )
+        }
+    }
+    //未充能：只在填充体右侧铺刻度格，已划过的区间不留缝
+    for (i in 0 until ChargeCells) {
+        val left = padX + i * (cellW + gap)
+        if (left < padX + filledW) continue
+        drawRoundRect(
+            color = Color.White.copy(alpha = 0.72f),
+            topLeft = Offset(left, padY),
+            size = Size(cellW, cellH),
+            cornerRadius = tick
         )
     }
-    //拇指：12dp 实心圆，颜色随档位在淡青淡粉之间走，外边一圈白描边压住轨道
-    drawCircle(color = lerp(SoftTeal, SoftPink, p), radius = 6.dp.toPx(), center = Offset(center, cy))
-    drawCircle(
-        color = Color.White,
-        radius = 6.dp.toPx(),
-        center = Offset(center, cy),
-        style = Stroke(2.dp.toPx())
+    if (filledW <= 1f) return
+    //已充能：一整条连续色块，右端跟着手指走
+    drawRoundRect(
+        color = deep,
+        topLeft = Offset(padX, padY),
+        size = Size(filledW, cellH),
+        cornerRadius = pill
     )
-} //画轨道
-
-//档位文字：贴在各档刻度正下方，第一档左端、最后一档右端
-@Composable
-private fun SoftLevelLabels(pick: Int) {
-    Layout(
-        content = {
-            SoftLevels.forEachIndexed { i, res ->
-                Text(
-                    stringResource(res),
-                    color = if (i == pick) AccentBlue else TextSecondary,
-                    fontSize = 9.sp,
-                    fontWeight = if (i == pick) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center
-                )
-            }
-        },
-        modifier = Modifier.fillMaxWidth()
-    ) { measurables, constraints ->
-        val edge = 12.dp.roundToPx()
-        val usable = (constraints.maxWidth - edge * 2).coerceAtLeast(0)
-        val anchors = IntArray(3) { edge + usable * it / 2 }
-        val starts = IntArray(3) { if (it == 0) 0 else (anchors[it - 1] + anchors[it]) / 2 }
-        val ends = IntArray(3) { if (it == 2) constraints.maxWidth else (anchors[it] + anchors[it + 1]) / 2 }
-        val placeables = measurables.mapIndexed { i, m ->
-            m.measure(
-                constraints.copy(
-                    minWidth = 0,
-                    maxWidth = (ends[i] - starts[i]).coerceAtLeast(1),
-                    minHeight = 0
-                )
-            )
-        }
-        val h = placeables.maxOfOrNull { it.height } ?: 0
-        layout(constraints.maxWidth, h) {
-            placeables.forEachIndexed { i, pl ->
-                val maxX = (ends[i] - pl.width).coerceAtLeast(starts[i])
-                pl.placeRelative((anchors[i] - pl.width / 2).coerceIn(starts[i], maxX), 0)
-            }
-        }
-    }
-} //档位文字
+    //热核：贴着填充体右端的一段浅色，满格时自然消失
+    if (filledW >= innerW - 0.5f) return
+    val coreRight = padX + filledW
+    val coreLeft = (coreRight - cellW * 1.6f).coerceAtLeast(padX)
+    drawRoundRect(
+        color = core,
+        topLeft = Offset(coreLeft, padY),
+        size = Size(coreRight - coreLeft, cellH),
+        cornerRadius = pill
+    )
+} //画充能条

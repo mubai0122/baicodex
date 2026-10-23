@@ -31,3 +31,5 @@ __pycache__/
 *.pyc
 app/.cxx/
 .cxx/
+#第三方库源码（体积大，按需本地放入）
+app/src/main/cpp/_third_party/

@@ -114,6 +114,17 @@ object Tools {
 
     private val HIGH_WORDS = listOf("run", "shell", "exec", "cmd", "command", "terminal", "install", "kill")
 
+    internal fun ToolOutcome.governed(): ToolOutcome {
+        if (!Dsl.ready) return this
+        //0 = max：不限，原样放行；否则按 token 预算折算字符（1 token ≈ 1.8 字符）
+        val tok = Cfg.toolBudgetTokens
+        if (tok <= 0) return this
+        val cap = if (tok >= Int.MAX_VALUE / 18) Int.MAX_VALUE else tok * 18 / 10
+        val r = Dsl.nativeGovern(text, cap)
+        if (!r.startsWith("OK\n")) return this
+        return ToolOutcome(ok, r.substring(3), route)
+    } //工具结果治理：超预算直接截止，只保留头部
+
     private fun str(desc: String) = JSONObject().put("type", "string").put("description", desc)
 
     private fun params(vararg props: Pair<String, JSONObject>): JSONObject {
@@ -276,19 +287,20 @@ object Tools {
     } //OpenAI tools 定义
 
     fun execute(name: String, args: JSONObject): ToolOutcome = when (name) {
-        READ -> FileOps.read(args.optString("path")).toOutcome()
-        WRITE -> FileOps.write(args.optString("path"), args.optString("content")).toOutcome()
-        MAKE_DIR -> FileOps.mkdir(args.optString("path")).toOutcome()
-        DELETE -> FileOps.delete(args.optString("path")).toOutcome()
-        SHELL -> execShell(args.optString("command"))
-        LINUX -> execLinux(args.optString("command"))
-        WEB_SEARCH -> search(args)
-        RAIL -> rail(args)
-        MEMORY -> memorySave(args)
+        READ -> FileOps.read(args.optString("path")).toOutcome().governed()
+        WRITE -> FileOps.write(args.optString("path"), args.optString("content")).toOutcome().governed()
+        MAKE_DIR -> FileOps.mkdir(args.optString("path")).toOutcome().governed()
+        DELETE -> FileOps.delete(args.optString("path")).toOutcome().governed()
+        SHELL -> execShell(args.optString("command")).governed()
+        LINUX -> execLinux(args.optString("command")).governed()
+        WEB_SEARCH -> search(args).governed()
+        RAIL -> rail(args).governed()
+        MEMORY -> memorySave(args).governed()
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
-        SKILL_READ -> skillRead(args.optString("name"))
-        else -> SkillPacks.find(name)?.let { skillExec(it, args) } ?: mcpCall(name, args)
+        SKILL_READ -> skillRead(args.optString("name")).governed()
+        else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
+            ?: mcpCall(name, args).governed()
     } //执行单个工具
 
     /** skill_read：返回技能用法，正文按需给，不进系统提示 */

@@ -279,11 +279,13 @@
     <string name="ip_think">Deep thinking</string>
     <string name="ip_think_off">Answer directly</string>
     <string name="ip_strength">Thinking effort</string>
+    <string name="ip_budget">Tool result budget</string>
+    <string name="ip_budget_max">max (unlimited)</string>
     <string name="ip_lv_low">Low</string>
     <string name="ip_lv_mid">Medium</string>
     <string name="ip_lv_high">High</string>
     <string name="ip_max">Max mode</string>
-    <string name="ip_max_d">No max_tokens sent; reasoning at high</string>
+    <string name="ip_max_d">No max_tokens sent; thinking follows the switch</string>
     <string name="ip_max_off">Uses the configured max_tokens</string>
     <string name="ip_no_profile">No model config yet — add one first</string>
     <string name="ip_no_model">No model name</string>

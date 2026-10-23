@@ -279,11 +279,13 @@
     <string name="ip_think">深く考える</string>
     <string name="ip_think_off">そのまま回答</string>
     <string name="ip_strength">思考強度</string>
+    <string name="ip_budget">ツール結果の予算</string>
+    <string name="ip_budget_max">max（無制限）</string>
     <string name="ip_lv_low">低</string>
     <string name="ip_lv_mid">中</string>
     <string name="ip_lv_high">高</string>
     <string name="ip_max">最大モード</string>
-    <string name="ip_max_d">max_tokens を送らず、思考は high</string>
+    <string name="ip_max_d">max_tokens を送らず、思考はスイッチで制御</string>
     <string name="ip_max_off">設定の max_tokens に従う</string>
     <string name="ip_no_profile">モデル設定がありません。先に追加してください</string>
     <string name="ip_no_model">モデル名が未入力</string>

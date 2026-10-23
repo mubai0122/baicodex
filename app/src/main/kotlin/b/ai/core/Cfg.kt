@@ -34,6 +34,7 @@ object Cfg {
         mem("ctx_budget", 12000).value = p.getInt("ctx_budget", 12000)
         mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
+        mem("tool_budget_tokens", 0).value = p.getInt("tool_budget_tokens", 0)
         mem("think", false).value = p.getBoolean("think", false)
         mem("think_effort", "medium").value = p.getString("think_effort", "medium")!!
         mem("temperature", -1f).value = p.getFloat("temperature", -1f)
@@ -178,6 +179,11 @@ object Cfg {
     var thinkEffort: String
         get() = mem("think_effort", "medium").value
         set(v) { mem("think_effort", "medium").value = v; put("think_effort", v) }
+
+    /** 工具结果预算：单条工具结果最多留给模型多少 token，0 = max（不限） */
+    var toolBudgetTokens: Int
+        get() = mem("tool_budget_tokens", 0).value
+        set(v) { mem("tool_budget_tokens", 0).value = v; put("tool_budget_tokens", v) }
 
     /** 采样温度，负数表示不下发（跟随服务端默认） */
     var temperature: Float

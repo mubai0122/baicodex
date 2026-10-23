@@ -12,7 +12,7 @@ object Dsl {
     private var loaded = false
 
     init {
-        loaded = runCatching { System.loadLibrary("baidsl") }.isSuccess
+        loaded = runCatching { System.loadLibrary("baicodex") }.isSuccess
     } //载入 native 库
 
     val ready: Boolean get() = loaded
@@ -48,4 +48,6 @@ object Dsl {
     private external fun nativeRender(
         tpl: String, kind: String, params: String, secrets: String, args: String
     ): String
+
+    internal external fun nativeGovern(text: String, maxChars: Int): String
 } //DSL 引擎门面
