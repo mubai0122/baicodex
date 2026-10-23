@@ -22,6 +22,8 @@ object Cfg {
         val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
         sp = p
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
+        //独立无障碍激活流程：走过一次就不再自动弹，设置里仍可手动重跑
+        mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
         mem("work_mode", WorkMode.NORMAL.id).value = p.getString("work_mode", WorkMode.NORMAL.id)!!
         mem("agent_mode", AgentMode.STANDARD.id).value = p.getString("agent_mode", AgentMode.STANDARD.id)!!
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
@@ -119,6 +121,10 @@ object Cfg {
     var onboarded: Boolean
         get() = mem("onboarded", false).value
         set(v) { mem("onboarded", false).value = v; put("onboarded", v) }
+
+    var a11yDone: Boolean
+        get() = mem("a11y_done", false).value
+        set(v) { mem("a11y_done", false).value = v; put("a11y_done", v) }
     /** 界面语言：空串 = 跟随系统，其它是 BCP-47（zh-CN / zh-TW / en / ja / fr） */
     var lang: String
         get() = mem("lang", "").value
