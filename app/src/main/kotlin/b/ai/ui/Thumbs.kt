@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -111,31 +112,33 @@ fun ImgFull(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         images.forEach { p ->
-            //按原图宽高算显示尺寸：单图先吃满宽再看高度，多图先定高度再算宽
-            val dim = remember(p, single, maxWidth, maxHeight) {
-                val sz = Images.sizeOf(p)
+            //长图（高超过宽的 2.5 倍）单独一套：按原比例算必然被压成细条，改成铺宽 + 封顶高 + 顶部裁切
+            val sz = remember(p) { Images.sizeOf(p) }
+            val ar = if (sz == null || sz.second <= 0) 1f else sz.first.toFloat() / sz.second.toFloat()
+            val long = ar < 0.4f
+            //按图类型算显示尺寸：单图先吃满宽再看高度，多图先定高度再算宽
+            val dim = remember(p, single, maxWidth, maxHeight, ar, long) {
                 if (sz == null || sz.second <= 0) {
                     val s = if (single) maxWidth else 150.dp
                     s to s
-                } else {
-                    val ar = sz.first.toFloat() / sz.second.toFloat()
-                    if (single) {
-                        var w = maxWidth.value
-                        var h = w / ar
-                        if (h > maxHeight.value) {
-                            h = maxHeight.value
-                            w = h * ar
-                        }
-                        Dp(w) to Dp(h)
-                    } else {
-                        var h = 150f
-                        var w = h * ar
-                        if (w > maxWidth.value) {
-                            w = maxWidth.value
-                            h = w / ar
-                        }
-                        Dp(w) to Dp(h)
+                } else if (long) {
+                    if (single) maxWidth to maxHeight else 90.dp to 150.dp
+                } else if (single) {
+                    var w = maxWidth.value
+                    var h = w / ar
+                    if (h > maxHeight.value) {
+                        h = maxHeight.value
+                        w = h * ar
                     }
+                    Dp(w) to Dp(h)
+                } else {
+                    var h = 150f
+                    var w = h * ar
+                    if (w > maxWidth.value) {
+                        w = maxWidth.value
+                        h = w / ar
+                    }
+                    Dp(w) to Dp(h)
                 }
             }
             //解码边长按 dp 换 px，留 20% 余量，避免大图被采样糊掉
@@ -151,13 +154,27 @@ fun ImgFull(
                 contentAlignment = Alignment.Center
             ) {
                 if (bmp != null) {
-                    //容器比例已是原图比例，Fit 不裁切也不变形
+                    //普通图容器已是原图比例，Fit 不裁切；长图容器不是原比例，Crop + 顶部对齐只露顶部
                     Image(
                         bitmap = bmp,
                         contentDescription = null,
-                        contentScale = ContentScale.Fit,
+                        contentScale = if (long) ContentScale.Crop else ContentScale.Fit,
+                        alignment = Alignment.TopCenter,
                         modifier = Modifier.fillMaxSize()
                     )
+                    //长图角标：告诉用户这张被裁了，点开能看全图
+                    if (long) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = 0.45f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(stringResource(R.string.th_long), fontSize = 9.sp, color = Color.White)
+                        }
+                    }
                 } else {
                     Text(stringResource(R.string.th_image), fontSize = 12.sp, color = TextSecondary)
                 }

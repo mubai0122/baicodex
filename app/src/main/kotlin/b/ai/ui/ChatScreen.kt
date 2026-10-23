@@ -433,12 +433,15 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
-            b.ai.exec.A11y.needPerm.value
+            b.ai.exec.A11y.needPerm.value || ImgView.path.value != null
     ) {
         val d = detail
         val mn = menuFor
         val pr = promptReq
+        val img = ImgView.path.value
         when {
+            //全屏看图排最前：点开哪儿都能盖住其它面板
+            img != null -> ImgViewerDialog(img) { ImgView.close() }
             b.ai.exec.A11y.needPerm.value -> A11yPermDialog { b.ai.exec.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
@@ -1176,8 +1179,8 @@ private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress
                     ) {
                 Column {
                     if (m.images.isNotEmpty()) {
-                        //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑
-                        ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp)
+                        //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑；长图点开看全图
+                        ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp, onOpen = { ImgView.open(it) })
                         Spacer(Modifier.height(6.dp))
                     }
                     Text(m.content, fontSize = 13.sp, color = TextPrimary)

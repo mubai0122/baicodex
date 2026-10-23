@@ -308,6 +308,7 @@
     <string name="md_copied">コピーしました</string>
     <string name="md_copy">コピー</string>
     <string name="th_image">画像</string>
+    <string name="th_long">長い画像</string>
     <string name="ch_title">コンテンツを追加</string>
     <string name="ch_sub">種類を選ぶと入力欄に入り、モデルがパスから読みます</string>
     <string name="ch_img">画像</string>
@@ -1039,7 +1040,7 @@
     <string name="pk_dir">ディレクトリ：%1$s</string>
     <string name="pk_secret_save">キーを保存</string>
     <string name="shiz_manual">Shizuku で「拒否して今後表示しない」を選んでいるため、ダイアログは出ません: Shizuku を開く → 権限を許可したアプリ → BaiAgent をオン</string>
-    <string name="shiz_open_app">Shizuku を開く</string>
+    <string name="shiz_open_app">アプリを開く</string>
     <string name="shiz_no_service">Shizuku サービスが起動していません: Shizuku を開いてサービスを起動してから再申請してください</string>
     <string name="shiz_timeout">権限ダイアログから応答がありません: プロンプトが隠れていないか確認するか、Shizuku で手動許可してください</string>
     <string name="shiz_denied">権限が拒否されました: もう一度「権限を申請」を押すか、Shizuku で手動でオンにしてください</string>
