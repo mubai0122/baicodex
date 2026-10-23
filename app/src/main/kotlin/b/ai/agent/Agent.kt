@@ -851,6 +851,14 @@ object Agent {
             if (Tools.allowed(Tools.SCREEN)) {
                 append("操作屏幕要多步时，第一步先调 screen action=start 让顶部胶囊常驻（text 写一句在做什么），全部做完最后调 screen action=quiet 收起，中间每步不用管胶囊；")
             }
+            //设备状态注入时允许收尾带一句关心；角色要求严谨/不废话就不加，免得跟人设打架
+            if ((Cfg.injectNoti || Cfg.injectUsage) && !strictTone(persona, custom)) {
+                append(
+                    "用户开了设备状态注入：如果这轮是收尾回复、而且没有更要紧的事，可以顺带一句贴合数据的一句关心" +
+                        "（很晚了就提醒早点睡、今天用得久就提一句歇会儿、通知太多就问要不要帮他归拢）；" +
+                        "只一句、不重复、别硬凑，用户只想办事就不要加；"
+                )
+            }
             if (searching) append("需要最新信息或核实事实时用 web_search。") else append("不要假设自己能联网。")
             append("\n")
             val ws = workspacePart()
@@ -873,6 +881,15 @@ object Agent {
             append(skillPart())
         }
     } //系统提示：角色 + 自定义 + 工作流 + 环境规则 + 工作区 + 技能
+
+    /** 角色或自定义提示要求严谨/不废话时，关心类话术整个免掉 */
+    private val STRICT_TONE =
+        listOf("严谨", "不废话", "简洁", "直接", "专业", "严肃", "公事公办", "少寒暄", "不要寒暄", "只回答")
+
+    private fun strictTone(vararg texts: String): Boolean {
+        val s = texts.joinToString(" ")
+        return STRICT_TONE.any { s.contains(it) }
+    } //是否禁寒暄
 
     /** 运行模式段：模式改的不只是措辞，工具面也按模式裁，两边必须对齐 */
     private fun modePrompt(): String = when (Cfg.agentMode) {

@@ -13,15 +13,29 @@ import java.util.Locale
 object Env {
     /** 拼环境段；三个开关全关时返回空串，请求里就一个字都不多 */
     fun block(c: Context): String {
-        if (!Cfg.injectTime && !Cfg.injectBattery && !Cfg.injectPlace) return ""
-        val parts = ArrayList<String>(3)
+        val any = Cfg.injectTime || Cfg.injectBattery || Cfg.injectPlace || Cfg.injectNoti || Cfg.injectUsage
+        if (!any) return ""
+        val parts = ArrayList<String>(6)
         if (Cfg.injectTime) {
             parts.add("时间 " + SimpleDateFormat("yyyy-MM-dd HH:mm EEEE", Locale.CHINA).format(Date()))
         }
         if (Cfg.injectBattery) parts.add(battery(c))
         if (Cfg.injectPlace) parts.add(place(c))
+        if (Cfg.injectUsage) parts.add(used(c))
+        if (Cfg.injectNoti) parts.add(Noti.brief(c, Cfg.notiLimit))
         return "环境：" + parts.joinToString("；") + "（本机实时数据，够用就直接用，别反问用户）\n"
     } //环境段
+
+    /** 今日使用时长：没授权就如实写缺失，不编数字 */
+    private fun used(c: Context): String {
+        if (!Usage.allow(c)) return "使用时长 未授权（缺使用情况访问权限）"
+        val (min, apps) = Usage.today(c)
+        if (min <= 0) return "使用时长 今天还没记录"
+        val top = if (apps.isEmpty()) "" else apps.joinToString("、", prefix = "（", postfix = "）") {
+            it.name + " " + Usage.hm(it.minutes)
+        }
+        return "使用时长 今日 " + Usage.hm(min) + top
+    } //今日使用时长
 
     fun hasPlacePerm(c: Context): Boolean =
         c.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED

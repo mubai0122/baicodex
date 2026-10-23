@@ -1047,4 +1047,21 @@
     <string name="shiz_no_service">Shizuku 服務沒在執行：先打開 Shizuku 把服務啟動，再回來申請</string>
     <string name="shiz_timeout">等不到授權回應：確認 Shizuku 彈窗沒被擋住，或去 Shizuku 裡手動授權</string>
     <string name="shiz_denied">授權被拒絕：再點一次「申請授權」，或去 Shizuku 裡手動打開開關</string>
+    <string name="se_320">今日通知</string>
+    <string name="se_321">關閉：不讀通知</string>
+    <string name="se_322">已開啟，但缺通知使用權</string>
+    <string name="se_323">已開啟：今天 %1$d 則</string>
+    <string name="se_324">注入條數</string>
+    <string name="se_325">無限</string>
+    <string name="se_326">不限條數：今日全部給，超過 8000 字自動截斷</string>
+    <string name="se_327">最近 %1$d 則</string>
+    <string name="se_328">裝置使用時長</string>
+    <string name="se_329">關閉：不讀使用時長</string>
+    <string name="se_330">已開啟，但缺使用情況存取權</string>
+    <string name="se_331">已開啟：今天 %1$s</string>
+    <string name="se_332">還需要通知使用權</string>
+    <string name="se_333">開關已經打開，但系統還沒給權限：AI 現在讀不到通知。給權限後只會記下應用名和標題（正文不存，最多留 3 天），用來在收尾時順帶一句關心。</string>
+    <string name="se_334">還需要使用情況存取權</string>
+    <string name="se_335">開關已經打開，但系統還沒給權限：AI 現在讀不到使用時長。給權限後只會讀今天各應用的前台時長，用來判斷你是不是用太久了。</string>
+    <string name="se_336">去開啟</string>
 </resources>
