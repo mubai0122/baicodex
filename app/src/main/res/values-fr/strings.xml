@@ -1061,4 +1061,8 @@
     <string name="se_334">L\'accès à l\'utilisation est encore requis</string>
     <string name="se_335">L\'interrupteur est activé mais Android n\'a pas accordé l\'accès : l\'IA ne peut pas lire le temps d\'utilisation. Une fois accordé, seul le temps au premier plan par app aujourd\'hui est lu, pour voir si vous êtes resté trop longtemps.</string>
     <string name="se_336">Ouvrir</string>
+    <string name="se_337">Accès auto via Shizuku</string>
+    <string name="se_338">Désactivé : à réactiver à la main</string>
+    <string name="se_339">Activé, mais Shizuku n\'est pas prêt</string>
+    <string name="se_340">Activé : réécrit à chaque retour au premier plan</string>
 </resources>

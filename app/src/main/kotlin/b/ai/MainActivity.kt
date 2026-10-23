@@ -85,6 +85,13 @@ class MainActivity : ComponentActivity() {
         }
     } //入口：透明状态栏/导航条 + 浅色主题
 
+    //每次回到前台补一次无障碍：系统常把它掐掉，Shizuku 在的话直接写回 secure 设置
+    override fun onResume() {
+        super.onResume()
+        if (!b.ai.exec.AutoA11y.need(this)) return
+        Thread({ runCatching { b.ai.exec.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
+    } //自动补无障碍
+
     //通知点开而不是冷启动时也会走这里，重新把任务内容送进输入框
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

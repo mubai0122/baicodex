@@ -1061,4 +1061,8 @@
     <string name="se_334">使用状況へのアクセス権がまだ必要です</string>
     <string name="se_335">スイッチはオンですが、Android 側で権限が未許可です：AI は使用時間を読めません。許可後も今日のアプリ別フォアグラウンド時間だけを読み、使いすぎかどうかの判断に使います。</string>
     <string name="se_336">開く</string>
+    <string name="se_337">Shizuku で自動許可</string>
+    <string name="se_338">オフ：切れたら手動で入れ直し</string>
+    <string name="se_339">オンですが Shizuku が未準備で補えません</string>
+    <string name="se_340">オン：前面に戻るたびに自動で書き戻し</string>
 </resources>
