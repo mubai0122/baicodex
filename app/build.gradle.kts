@@ -20,6 +20,9 @@ val baiStringFogKey: String = run {
 android {
     namespace = "b.ai"
     compileSdk = 37
+    //skill DSL 引擎编到这两个 ABI 上，其它架构不打包，省体积
+    //28.2 是本机唯一带 linux-arm64 host toolchain 的 NDK，换版本会编不动
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "b.ai"
@@ -29,7 +32,18 @@ android {
         versionName = "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+    } //默认配置
+
+    externalNativeBuild {
+        cmake {
+            //C++ DSL 引擎：skill 模板的校验与生成，Kotlin 侧只走 JNI 门面
+            //cmake 用 Termux 自带的（配置在 local.properties 的 cmake.dir），SDK 那份是 glibc 编的，bionic 上跑不起来
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    } //native 构建
 
     buildFeatures {
         compose = true
