@@ -90,6 +90,13 @@ object Cfg {
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
         mem("bg_style", 0).value = p.getInt("bg_style", 0)
+        //背景图路径可能因清数据/换机失效，失效就清掉，免得设置页对着一条死路径
+        val bg = p.getString("bg_img", "")!!
+        val bgAlive = bg.isNotBlank() && java.io.File(bg).exists()
+        if (bg.isNotBlank() && !bgAlive) put("bg_img", "")
+        mem("bg_img", "").value = if (bgAlive) bg else ""
+        mem("bg_blur", 0).value = p.getInt("bg_blur", 0)
+        mem("profile_seed", 0).value = p.getInt("profile_seed", 0)
         mem("waifu_mode", false).value = p.getBoolean("waifu_mode", false)
         //旧版本把自定义提示只存在 SP 里，这里补写到数据根，之后改文件就生效
         if (!Store.exists(SYSTEM_PROMPT_FILE)) {

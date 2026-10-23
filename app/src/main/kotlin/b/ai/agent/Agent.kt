@@ -652,7 +652,13 @@ object Agent {
                 status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
                 busySince = System.currentTimeMillis()
                 val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
-                val out = withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
+                //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限
+                b.ai.exec.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                val out = try {
+                    withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
+                } finally {
+                    b.ai.exec.Capsule.hide()
+                }
                 appendToolMsg(c, out.text, out.route, !out.ok)
             }
             status = host.getString(R.string.ag_think_again)

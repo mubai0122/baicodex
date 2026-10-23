@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import b.ai.R
 import b.ai.core.Cfg
+import b.ai.core.Perms
 import b.ai.core.WorkMode
 import b.ai.core.Workflows
 import b.ai.exec.Linux
@@ -61,6 +62,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
     var modeMsg by remember { mutableStateOf<String?>(null) }
     var modeOk by remember { mutableStateOf(false) }
     var showZwPrompt by remember { mutableStateOf(false) }
+    var shizMsg by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(tick) {
         zwSupport = withContext(Dispatchers.IO) { Router.probe() }
@@ -149,13 +151,23 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     tick++
                 },
                 onRequestShizuku = {
-                    Shiz.requestPermission { granted ->
-                        modeOk = granted
-                        modeMsg = ctx.getString(
-                            if (granted) R.string.ob_shizuku_ok else R.string.ob_shizuku_deny
-                        )
+                    shizMsg = null
+                    Shiz.ask { r ->
+                        when (r) {
+                            Shiz.Perm.GRANTED -> {
+                                modeOk = true
+                                modeMsg = ctx.getString(R.string.ob_shizuku_ok)
+                            }
+
+                            Shiz.Perm.NEVER_ASK -> shizMsg = ctx.getString(R.string.shiz_manual)
+                            Shiz.Perm.NO_SERVICE -> shizMsg = ctx.getString(R.string.shiz_no_service)
+                            Shiz.Perm.ERROR -> shizMsg = ctx.getString(R.string.shiz_timeout)
+                            else -> shizMsg = ctx.getString(R.string.ob_shizuku_deny)
+                        }
                     }
-                }
+                },
+                shizMsg = shizMsg,
+                onOpenShizuku = { Shiz.openManager(ctx) }
             )
             2 -> StepWorkflow()
             3 -> StepEnv()
@@ -223,7 +235,9 @@ private fun StepPermission(
     modeMsg: String?,
     modeOk: Boolean,
     onRecheck: () -> Unit,
-    onRequestShizuku: () -> Unit
+    onRequestShizuku: () -> Unit,
+    shizMsg: String?,
+    onOpenShizuku: () -> Unit
 ) {
     val ctx = LocalContext.current
     CardBox {
@@ -264,6 +278,24 @@ private fun StepPermission(
                 }
             }
         }
+        if (shizMsg != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(shizMsg, fontSize = 11.sp, color = DangerRed)
+            Spacer(Modifier.height(8.dp))
+            GhostButton(stringResource(R.string.shiz_open_app)) { onOpenShizuku() }
+        }
+        Spacer(Modifier.height(14.dp))
+        //特殊权限按模式给：普通用户三样都要，Root / Shizuku 只要悬浮窗
+        val needA11y = Perms.specials(Cfg.workMode).contains(Perms.SP_A11Y)
+        if (needA11y) {
+            A11yPermCard("普通用户让 AI 代你操作屏幕，靠的就是这个开关。现在不开启也能先用，之后在设置 → 权限 里随时能开。")
+            Spacer(Modifier.height(12.dp))
+        }
+        SpecialPermCard(
+            Perms.specials(Cfg.workMode).filter { it != Perms.SP_A11Y },
+            if (needA11y) "顺便把这两样也开了，不然锁屏后任务会被系统掐掉、胶囊也浮不出来。"
+            else "这个模式下只差悬浮窗：开了才能在别的应用上看到「正在进行 xx」的胶囊。"
+        )
     }
 }
 

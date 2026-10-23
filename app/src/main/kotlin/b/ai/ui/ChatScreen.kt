@@ -431,11 +431,15 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     }
 
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
-    HostInOverlay(detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel) {
+    HostInOverlay(
+        detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
+            b.ai.exec.A11y.needPerm.value
+    ) {
         val d = detail
         val mn = menuFor
         val pr = promptReq
         when {
+            b.ai.exec.A11y.needPerm.value -> A11yPermDialog { b.ai.exec.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,

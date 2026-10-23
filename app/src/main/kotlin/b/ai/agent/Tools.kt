@@ -43,6 +43,9 @@ object Tools {
     const val ASK = "ask_user"
     /** 取某个技能的完整用法（README），技能函数由技能包动态注册 */
     const val SKILL_READ = "skill_read"
+
+    /** 屏幕操作：无障碍侧读控件树 / 截图 / 点击滑动长按输入，走 A11y */
+    const val SCREEN = "screen"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -50,7 +53,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK))
+            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK, SCREEN))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.add(SKILL_READ)
@@ -60,7 +63,7 @@ object Tools {
         }
 
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
-    private val PLAN_OFF = setOf(WRITE, MAKE_DIR, DELETE, MEMORY, LINUX)
+    private val PLAN_OFF = setOf(WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN)
 
     /** 极简模式只留这五个：文件四件套 + exec_shell */
     private val MIN_SET = setOf(READ, WRITE, MAKE_DIR, DELETE, SHELL)
@@ -93,6 +96,7 @@ object Tools {
         MEMORY -> "记住这件事"
         ASK -> "向用户提问"
         SKILL_READ -> "查技能用法"
+        SCREEN -> "操作屏幕"
         else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" } ?: mcpLabel(name)
     }
 
@@ -251,6 +255,28 @@ object Tools {
                     .put("required", JSONArray().put("questions"))
             )
         )
+        //屏幕操作：无障碍侧控制，动作合进一个工具，按 action 取参数
+        arr.put(
+            fn(
+                SCREEN,
+                "操作当前手机屏幕（无障碍）。先用 see/tree 看清界面再动手：tree 给控件树与坐标，see 额外存一张截图。" +
+                    "动作：tap 点坐标、long 长按、swipe 滑动、text 往焦点输入框打字、key 系统键(back/home/recents/notifications/quick)、" +
+                    "launch 按包名启动 App、apps 列出可启动的 App。没开无障碍会失败并提示用户去开。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("see 控件树+截图(默认) / tree / shot / tap / long / swipe / text / key / launch / apps"))
+                        .put("x", JSONObject().put("type", "integer").put("description", "tap/long/swipe 起点 x"))
+                        .put("y", JSONObject().put("type", "integer").put("description", "tap/long/swipe 起点 y"))
+                        .put("x2", JSONObject().put("type", "integer").put("description", "swipe 终点 x"))
+                        .put("y2", JSONObject().put("type", "integer").put("description", "swipe 终点 y"))
+                        .put("dur", JSONObject().put("type", "integer").put("description", "长按 / 滑动时长毫秒"))
+                        .put("text", str("text 动作要输入的文字"))
+                        .put("key", str("key 动作：back / home / recents / notifications / quick"))
+                        .put("app", str("launch 用包名；不确定就先 action=apps"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -298,6 +324,7 @@ object Tools {
         MEMORY -> memorySave(args).governed()
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
+        SCREEN -> screen(args).governed()
         SKILL_READ -> skillRead(args.optString("name")).governed()
         else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
             ?: mcpCall(name, args).governed()
@@ -469,6 +496,89 @@ object Tools {
     private val FAIL_HEADS = listOf(
         "查询失败", "找不到", "日期格式不对", "中转要指定", "没查到经停站", "第一段", "第二段"
     )
+
+    /** 屏幕操作：全部动作走 A11y；没权限就置位让界面弹引导，而不是只回一句失败 */
+    private fun screen(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "see").lowercase()
+        if (!b.ai.exec.A11y.ready()) {
+            b.ai.exec.A11y.askPerm()
+            return ToolOutcome(
+                false,
+                "无障碍服务没开，屏幕操作跑不通。已经给用户弹了引导弹窗，等用户开启后再试。" +
+                    "现在也可以改用 exec_shell（uiautomator dump / input tap / screencap），但那需要 Shizuku 或 Root。",
+                Route.SANDBOX
+            )
+        }
+        val t = when (act) {
+            "see", "shot2" -> b.ai.exec.A11y.dump() + "\n截图: " + b.ai.exec.A11y.shot(shotFile())
+            "tree", "dump" -> b.ai.exec.A11y.dump()
+            "shot", "screenshot" -> "截图: " + b.ai.exec.A11y.shot(shotFile())
+            "tap", "click" -> b.ai.exec.A11y.tap(a.optInt("x", -1), a.optInt("y", -1))
+            "long", "longpress" -> b.ai.exec.A11y.longPress(
+                a.optInt("x", -1), a.optInt("y", -1), a.optInt("dur", 800).toLong()
+            )
+            "swipe" -> b.ai.exec.A11y.swipe(
+                a.optInt("x", -1), a.optInt("y", -1), a.optInt("x2", -1), a.optInt("y2", -1),
+                a.optInt("dur", 300).toLong()
+            )
+            "text", "input" -> b.ai.exec.A11y.input(a.optString("text"))
+            "key" -> b.ai.exec.A11y.global(a.optString("key", "back"))
+            "launch", "open" -> launchApp(a.optString("app"))
+            "apps", "list" -> apps(a.optString("app"))
+            else -> "不支持的 action：$act（可用 see / tree / shot / tap / long / swipe / text / key / launch / apps）"
+        }
+        val bad = t.contains("未开启") || t.contains("失败") || t.contains("不支持") || t.contains("拿不到")
+        return ToolOutcome(!bad, t, Route.SANDBOX)
+    } //屏幕操作分发
+
+    /** 截图落盘到私有目录 shots/，路径回给模型；勾了图片输入的模型可以据此看图 */
+    private fun shotFile(): java.io.File =
+        java.io.File(b.ai.App.self.filesDir, "shots/shot-" + System.currentTimeMillis() + ".jpg")
+
+    /** 按包名或名字拉起应用 */
+    private fun launchApp(key: String): String {
+        val c = b.ai.App.self
+        val k = key.trim()
+        if (k.isEmpty()) return "缺少 app 参数：给包名（如 com.tencent.mm），不确定就先 action=apps"
+        val pm = c.packageManager
+        var i = if (k.contains('.')) runCatching { pm.getLaunchIntentForPackage(k) }.getOrNull() else null
+        if (i == null) {
+            val hit = runCatching {
+                pm.getInstalledApplications(0).firstOrNull { app ->
+                    val label = runCatching { pm.getApplicationLabel(app).toString() }.getOrDefault("")
+                    label.contains(k, true) || app.packageName.contains(k, true)
+                }
+            }.getOrNull()
+            i = hit?.let { runCatching { pm.getLaunchIntentForPackage(it.packageName) }.getOrNull() }
+        }
+        val intent = i ?: return "没找到这个应用：$k（用 action=apps 看能启动哪些）"
+        val err = runCatching {
+            c.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.exceptionOrNull()
+        if (err != null) return "启动失败：${err.message}"
+        return "已启动 " + (intent.component?.packageName ?: k)
+    } //启动应用
+
+    /** 列出可启动的应用：名字 → 包名 */
+    private fun apps(filter: String): String {
+        val pm = b.ai.App.self.packageManager
+        val kw = filter.trim()
+        val rows = runCatching {
+            pm.getInstalledApplications(0).mapNotNull { app ->
+                runCatching { pm.getLaunchIntentForPackage(app.packageName) }.getOrNull()
+                    ?: return@mapNotNull null
+                val label = runCatching { pm.getApplicationLabel(app).toString() }
+                    .getOrDefault(app.packageName)
+                if (kw.isNotBlank() && !label.contains(kw, true) && !app.packageName.contains(kw, true)) {
+                    return@mapNotNull null
+                }
+                "$label → ${app.packageName}"
+            }.sorted()
+        }.getOrDefault(emptyList())
+        if (rows.isEmpty()) return "没有匹配的可启动应用"
+        val head = rows.take(120).joinToString("\n")
+        return if (rows.size > 120) head + "\n（共 ${rows.size} 个，只列前 120）" else head
+    } //列出可启动应用
 
     private fun FileOps.Out.toOutcome() = ToolOutcome(ok, text, route)
 

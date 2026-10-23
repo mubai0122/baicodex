@@ -89,6 +89,7 @@ import b.ai.core.SkillPacks
 import b.ai.core.SkillPack
 import b.ai.core.Wallpaper
 import b.ai.core.WorkMode
+import b.ai.exec.Shiz
 import b.ai.exec.Alarms
 import b.ai.exec.Linux
 import b.ai.exec.Router
@@ -873,6 +874,50 @@ private fun PermTab() {
         )
         Spacer(Modifier.height(6.dp))
         GhostButton(stringResource(R.string.se_156), modifier = Modifier.height(38.dp)) { Perms.openAllFiles(ctx) }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("特殊权限", "按当前模式分档：普通用户要无障碍 + 保活 + 悬浮窗，Root 只要悬浮窗")
+    CardBox {
+        val specials = Perms.specials(Cfg.workMode)
+        if (specials.contains(Perms.SP_A11Y)) {
+            A11yPermCard("AI 读屏、点屏靠这个。没开也能聊，只是屏幕类工具会跑不通。")
+            Spacer(Modifier.height(12.dp))
+        }
+        SpecialPermCard(specials.filter { it != Perms.SP_A11Y })
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("Shizuku", "用 shell / root 身份跑命令时走它；授权前要先在 Shizuku 里启动服务")
+    CardBox {
+        val ctx = LocalContext.current
+        var st by remember { mutableStateOf(Shiz.probe(ctx)) }
+        var msg by remember { mutableStateOf<String?>(null) }
+        Text(st.desc, fontSize = 12.sp, color = if (st.ok) OkGreen else TextSecondary)
+        if (msg != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(msg!!, fontSize = 11.sp, color = DangerRed)
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton("重新检测") { st = Shiz.probe(ctx) }
+            GhostButton("申请授权") {
+                Shiz.ask { r ->
+                    msg = when (r) {
+                        Shiz.Perm.GRANTED -> null
+                        Shiz.Perm.NEVER_ASK -> ctx.getString(R.string.shiz_manual)
+                        Shiz.Perm.NO_SERVICE -> ctx.getString(R.string.shiz_no_service)
+                        Shiz.Perm.ERROR -> ctx.getString(R.string.shiz_timeout)
+                        else -> ctx.getString(R.string.shiz_denied)
+                    }
+                    st = Shiz.probe(ctx)
+                }
+            }
+            GhostButton(stringResource(R.string.shiz_open_app)) {
+                Shiz.openManager(ctx)
+                st = Shiz.probe(ctx)
+            }
+        }
     }
 
     Spacer(Modifier.height(14.dp))

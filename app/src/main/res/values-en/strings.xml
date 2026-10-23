@@ -79,22 +79,22 @@
     <string name="up_close">Close</string>
     <string name="mn_files">Files</string>
     <string name="mn_all">@ Skills / Tools / Files</string>
-    <string name="mn_match">Matches \"%1$s\"</string>
+    <string name="mn_match">Matches "%1$s"</string>
     <string name="mn_files_tip">Tap a folder to go in, a file to insert its path</string>
     <string name="mn_files_cmd">@files for a path</string>
     <string name="mn_loading">Loading…</string>
     <string name="mn_empty_dir">Nothing to list here</string>
     <string name="mn_dir">Folder</string>
-    <string name="mn_no_match">No matching skill, tool or workspace file for \"%1$s\"; try @files to browse</string>
+    <string name="mn_no_match">No matching skill, tool or workspace file for "%1$s"; try @files to browse</string>
     <string name="mn_skills">Skills</string>
     <string name="mn_no_skill">No skills yet: add them in Settings → Extensions → Skills</string>
     <string name="mn_off">(off)</string>
     <string name="mn_chars">%1$d chars</string>
     <string name="mn_tools">Tools</string>
     <string name="mn_ws_files">Workspace files</string>
-    <string name="mn_ws_empty">No workspace file matches \"%1$s\"</string>
+    <string name="mn_ws_empty">No workspace file matches "%1$s"</string>
     <string name="mn_files_desc">Browse by path, starting at</string>
-    <string name="mn_use_skill">Use skill \"%1$s\":\n</string>
+    <string name="mn_use_skill">Use skill "%1$s":\n</string>
     <string name="dh_trunc">\n…(%1$d chars in total)</string>
     <string name="dh_high">High risk</string>
     <string name="dh_high_msg">High-risk operation: double-check the command/path (deleting databases or overwriting system files cannot be undone).</string>
@@ -111,7 +111,7 @@
     <string name="dh_close">Close</string>
     <string name="ms_name">Config name</string>
     <string name="ms_auto">Use auto name</string>
-    <string name="ms_showing">Shown as \"%1$s\"</string>
+    <string name="ms_showing">Shown as "%1$s"</string>
     <string name="ms_provider">Provider</string>
     <string name="ms_provider_sub">Pick from the list; base_url is filled in and still editable</string>
     <string name="ms_need_base">Enter base_url manually</string>
@@ -130,7 +130,7 @@
     <string name="ms_default">Default</string>
     <string name="ms_max_tok_tip">0/Default sends no max_tokens and follows the server; too small a value truncates long answers.</string>
     <string name="ms_save">Save to current config</string>
-    <string name="ms_saved_to">Written to \"%1$s\"</string>
+    <string name="ms_saved_to">Written to "%1$s"</string>
     <string name="ms_add">New config</string>
     <string name="ms_add_sub">Copies the current config, handy for a second model from the same provider</string>
     <string name="ms_edit_tip">Edits are saved to the current config live; the button below saves once more.</string>
@@ -164,12 +164,12 @@
     <string name="tk_del">Del</string>
     <string name="tk_every">Daily</string>
     <string name="tk_paused">(paused)</string>
-    <string name="tk_note">Note: a notification is sent at the scheduled time. If \"run automatically\" is on, the app process is alive and the model is idle, a round starts directly; high-risk tools wait in the app for your approval. For on-time runs with the screen off, whitelist this app for autostart (Settings → Apps → Autostart on most ROMs).</string>
+    <string name="tk_note">Note: a notification is sent at the scheduled time. If "run automatically" is on, the app process is alive and the model is idle, a round starts directly; high-risk tools wait in the app for your approval. For on-time runs with the screen off, whitelist this app for autostart (Settings → Apps → Autostart on most ROMs).</string>
     <string name="dw_search">Search chats</string>
     <string name="dw_selected">%1$d selected</string>
     <string name="dw_all">Select all</string>
     <string name="dw_cancel">Cancel</string>
-    <string name="dw_empty">No chats yet — tap \"New chat\" below</string>
+    <string name="dw_empty">No chats yet — tap "New chat" below</string>
     <string name="dw_no_match">No matching chats</string>
     <string name="dw_new">New chat</string>
     <string name="dw_export">Export</string>
@@ -473,7 +473,7 @@
     <string name="se_058">Search settings</string>
     <string name="se_059">Back</string>
     <string name="se_060">Search settings, e.g. Theme / Linux / Toolchain</string>
-    <string name="se_063">Type a keyword to find a setting, e.g. \"theme\", \"Linux\", \"toolchain\"</string>
+    <string name="se_063">Type a keyword to find a setting, e.g. "theme", "Linux", "toolchain"</string>
     <string name="se_064">One profile per provider + key + model; tap to switch the whole set</string>
     <string name="se_065">Tick only what the model really supports; unchecked capabilities are stripped from the request so it won\'t return 400</string>
     <string name="se_066">Image input (vision)</string>
@@ -499,7 +499,7 @@
     <string name="se_086">Extra request parameters (JSON)</string>
     <string name="se_087">Parameters</string>
     <string name="se_088">Some gateways or providers enable thinking via private fields; these are merged into the top level of the request body.</string>
-    <string name="se_089">e.g. {\"enable_thinking\":true} or {\"thinking\":{\"type\":\"enabled\"}}. Leave empty to skip.</string>
+    <string name="se_089">e.g. {"enable_thinking":true} or {"thinking":{"type":"enabled"}}. Leave empty to skip.</string>
     <string name="se_090">Context and compression</string>
     <string name="se_091">When over budget, early turns are summarized instead of resending the whole history</string>
     <string name="se_092">Auto compress</string>
@@ -753,7 +753,7 @@
     <string name="shiz_back_root">root backend</string>
     <string name="shiz_back_adb">adb backend</string>
     <string name="shiz_ready">Authorized (service v%1$d, UID %2$d · %3$s)</string>
-    <string name="shiz_no_perm">Shizuku is running but this app is not authorized: tap \"Request Shizuku permission\"</string>
+    <string name="shiz_no_perm">Shizuku is running but this app is not authorized: tap "Request Shizuku permission"</string>
     <string name="ag_new_session">New chat</string>
     <string name="ag_unnamed">Untitled chat</string>
     <string name="ag_stopped">Stopped</string>
@@ -842,7 +842,7 @@
     <string name="se2_back_sub">System back-to-home and cross-task animations are on by default from targetSdk 36+ and cannot be disabled by the app; this only controls in-app gesture following</string>
     <string name="se2_back_title">Predictive gesture support</string>
     <string name="se2_back_desc">When on, Settings follows the back gesture with a scale fade and only returns to chat past the threshold, snapping back if you let go; off switches back immediately</string>
-    <string name="se2_task_sub">Notifies when due; if \"run automatically\" is checked and the model is idle it also runs one round</string>
+    <string name="se2_task_sub">Notifies when due; if "run automatically" is checked and the model is idle it also runs one round</string>
     <string name="se2_task_none">No tasks yet</string>
     <string name="se2_task_n">%1$d scheduled (%2$d enabled)</string>
     <string name="se2_task_hint">Let the model do something on schedule, e.g. summarize tickets daily at 08:30</string>
@@ -1038,4 +1038,13 @@
     <string name="pk_ok">Lint passed</string>
     <string name="pk_dir">Path: %1$s</string>
     <string name="pk_secret_save">Save key</string>
+    <!-- 无障碍：屏幕操作 -->
+    <string name="a11y_label">BaiAgent Screen Control</string>
+    <string name="a11y_desc">Lets the AI read on-screen controls and screenshots, then tap, swipe, long-press and type for you. Used only for tasks you start.</string>
+    <string name="ag_capsule_fmt">Running %1$s</string>
+    <string name="shiz_manual">You chose "Deny and don\'t ask again" in Shizuku, so no dialog will appear: open Shizuku -> authorized apps -> enable BaiAgent</string>
+    <string name="shiz_open_app">Open Shizuku</string>
+    <string name="shiz_no_service">Shizuku service is not running: open Shizuku, start the service, then request again</string>
+    <string name="shiz_timeout">No answer from the permission dialog: make sure the Shizuku prompt was not blocked, or grant it manually in Shizuku</string>
+    <string name="shiz_denied">Permission denied: tap "Request permission" again, or enable it manually in Shizuku</string>
 </resources>

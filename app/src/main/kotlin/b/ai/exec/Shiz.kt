@@ -2,10 +2,15 @@ package b.ai.exec
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.Parcel
+import android.provider.Settings
 import b.ai.App
 import b.ai.R
 import rikka.shizuku.Shizuku
@@ -22,6 +27,9 @@ object Shiz {
 
     enum class State { NOT_INSTALLED, NOT_RUNNING, NO_PERMISSION, READY }
 
+    /** 授权结果：区分「没服务」「被永久拒绝」「超时没回应」，UI 才能给对的引导 */
+    enum class Perm { GRANTED, DENIED, NEVER_ASK, NO_SERVICE, ERROR }
+
     data class Probe(val state: State, val desc: String, val uid: Int = -1) {
         val ok: Boolean get() = state == State.READY
     }
@@ -36,7 +44,12 @@ object Shiz {
     private var bound = false
 
     private var permListener: Shizuku.OnRequestPermissionResultListener? = null
+
+    @Volatile
     private var permCb: ((Boolean) -> Unit)? = null
+
+    private val main = Handler(Looper.getMainLooper())
+    private var askSeq = 0
 
     private val svcArgs: Shizuku.UserServiceArgs by lazy {
         Shizuku.UserServiceArgs(ComponentName(App.self, ShizukuShell::class.java))
@@ -88,26 +101,78 @@ object Shiz {
     } //真检测：binder 存活 + 服务版本 + 授权状态
 
     fun requestPermission(cb: (Boolean) -> Unit) {
+        ask { cb(it == Perm.GRANTED) }
+    } //旧接口：只要成败
+
+    /** 申请授权：一定回调一次；被「拒绝且不再询问」时不发请求只报状态，六秒没回应算超时 */
+    fun ask(cb: (Perm) -> Unit) {
         if (!Shizuku.pingBinder()) {
-            cb(false)
+            cb(Perm.NO_SERVICE)
             return
         }
-        if (permListener == null) {
-            val l = Shizuku.OnRequestPermissionResultListener { code, grant ->
-                if (code == REQ_CODE) {
-                    permCb?.invoke(grant == PackageManager.PERMISSION_GRANTED)
+        val granted = runCatching { Shizuku.checkSelfPermission() }
+            .getOrDefault(PackageManager.PERMISSION_DENIED)
+        if (granted == PackageManager.PERMISSION_GRANTED) {
+            cb(Perm.GRANTED)
+            return
+        }
+        //官方语义：这里为 true 表示用户选过「拒绝且不再询问」，再 request 也不会弹窗，只能去 Shizuku 里手动开
+        if (runCatching { Shizuku.shouldShowRequestPermissionRationale() }.getOrDefault(false)) {
+            cb(Perm.NEVER_ASK)
+            return
+        }
+        ensureListener()
+        val seq = ++askSeq
+        permCb = { g ->
+            if (seq == askSeq) {
+                permCb = null
+                cb(if (g) Perm.GRANTED else Perm.DENIED)
+            }
+        }
+        main.postDelayed({
+            if (seq == askSeq && permCb != null) {
+                permCb = null
+                cb(Perm.ERROR)
+            }
+        }, 6000)
+        //requestPermission 只能在主线程发，且必须 binder 活着，否则抛 IllegalStateException
+        main.post {
+            runCatching { Shizuku.requestPermission(REQ_CODE) }.onFailure {
+                if (seq == askSeq) {
                     permCb = null
+                    cb(Perm.ERROR)
                 }
             }
-            permListener = l
-            Shizuku.addRequestPermissionResultListener(l)
         }
-        permCb = cb
-        runCatching { Shizuku.requestPermission(REQ_CODE) }.onFailure {
-            permCb = null
-            cb(false)
+    } //申请授权（带超时与永久拒绝判定）
+
+    private fun ensureListener() {
+        if (permListener != null) return
+        val l = Shizuku.OnRequestPermissionResultListener { code, grant ->
+            if (code == REQ_CODE) {
+                val c = permCb
+                permCb = null
+                if (c != null) main.post { c.invoke(grant == PackageManager.PERMISSION_GRANTED) }
+            }
         }
-    } //申请授权，结果走监听回调（主线程）
+        permListener = l
+        runCatching { Shizuku.addRequestPermissionResultListener(l) }
+    } //监听只挂一次
+
+    /** 拉起 Shizuku App：手动授权、启动服务都在这边做 */
+    fun openManager(ctx: Context) {
+        val i = ctx.packageManager.getLaunchIntentForPackage(PKG)
+        if (i != null) {
+            runCatching { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            return
+        }
+        runCatching {
+            ctx.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$PKG"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+    } //打开 Shizuku
 
     private fun connect(timeoutMs: Long = 10_000L): IBinder? {
         remote?.let { if (it.isBinderAlive) return it else remote = null }
