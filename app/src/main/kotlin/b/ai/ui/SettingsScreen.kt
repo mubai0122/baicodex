@@ -677,6 +677,10 @@ private fun WsSection() {
     var tip by remember { mutableStateOf("") }
     //点一次「删除」先变成「确认删除 / 取消」，避免手滑删掉目录
     var confirm by remember { mutableStateOf<String?>(null) }
+    //旧版散在数据根下的工作区个数 / 正在迁移 / 迁移进度文案（"正在迁移 1/7：xxx"）
+    var legacy by remember { mutableStateOf(0) }
+    var migrating by remember { mutableStateOf(false) }
+    var prog by remember { mutableStateOf("") }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     suspend fun reload() {
@@ -684,11 +688,55 @@ private fun WsSection() {
         list = withContext(Dispatchers.IO) {
             runCatching { Workspace.listAll() }.getOrDefault(emptyList())
         }
+        legacy = withContext(Dispatchers.IO) {
+            runCatching { Workspace.legacyDirs().size }.getOrDefault(0)
+        }
         loading = false
-    }
+    } //重载列表与待迁移数量
     LaunchedEffect(Unit) { reload() }
 
     CardBox {
+        //旧版工作区还挂在数据根下：给一块带进度的迁移区，搬完自动刷新列表
+        if (legacy > 0 || migrating) {
+            Text(stringResource(R.string.ws_mig_t), fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.ws_mig_d), fontSize = 10.sp, color = TextSecondary)
+            if (prog.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(prog, fontSize = 10.sp, color = AccentBlue)
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(
+                stringResource(R.string.ws_mig_btn, legacy),
+                modifier = Modifier.height(36.dp)
+            ) {
+                if (migrating) return@GhostButton
+                migrating = true
+                prog = ""
+                scope.launch {
+                    val err = withContext(Dispatchers.IO) {
+                        runCatching {
+                            Workspace.migrate { i, total, name, files, bytes ->
+                                //回调用的是 IO 线程，进度文案得切回主线程再写状态
+                                scope.launch {
+                                    prog = ctx.getString(
+                                        R.string.ws_mig_step, i, total, name, files,
+                                        Workspace.human(bytes)
+                                    )
+                                }
+                            }
+                        }.getOrElse { "copy:$it" }
+                    }
+                    migrating = false
+                    prog = when (err) {
+                        null -> ctx.getString(R.string.ws_mig_done, legacy)
+                        "none" -> ctx.getString(R.string.ws_mig_none)
+                        else -> ctx.getString(R.string.ws_mig_fail, err.orEmpty().removePrefix("copy:"))
+                    }
+                    reload()
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
         when {
             loading -> Text(stringResource(R.string.se_133), fontSize = 11.sp, color = TextSecondary)
             list.isEmpty() -> Text(

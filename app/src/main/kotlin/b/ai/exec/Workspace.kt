@@ -253,43 +253,88 @@ object Workspace {
         val unbound: Boolean get() = sessions.isEmpty()
     }
 
-    /** 枚举所有工作区：数据根下的哈希目录 + 会话绑定的目录 + 全局显式绑定，按路径去重 */
+    /** 老版遗留的哈希工作区：挂在数据根下、还没搬进 workspace/ 的那些 */
+    fun legacyDirs(): List<File> = runCatching {
+        Paths.ensure().listFiles()
+            ?.filter { it.isDirectory && HASH.matches(it.name) }
+            ?.sortedBy { it.lastModified() }
+            .orEmpty()
+    }.getOrDefault(emptyList()) //老目录清单
+
+    /** 目录里普通文件的个数与总体积，跳过 SKIP 重目录 */
+    private fun stat(f: File): Pair<Int, Long> {
+        var files = 0
+        var bytes = 0L
+        runCatching {
+            val stack = ArrayDeque<File>()
+            stack.add(f)
+            var guard = 0
+            while (stack.isNotEmpty() && guard++ < 4000) {
+                val d = stack.removeFirst()
+                d.listFiles()?.forEach { k ->
+                    if (k.isDirectory) {
+                        if (k.name !in SKIP) stack.add(k)
+                    } else {
+                        files++
+                        bytes += k.length()
+                    }
+                }
+            }
+        }
+        return files to bytes
+    } //统计目录内容
+
+    /**
+     * 一键迁移：把老版挂在数据根下的哈希工作区搬进 workspace/，同步 Cfg 里记的路径与所有会话语录。
+     * onStep 在每个工作区开始时回调（序号 / 总数 / 名字 / 文件数 / 体积），失败即返回错误文案。
+     */
+    fun migrate(onStep: (Int, Int, String, Int, Long) -> Unit): String? {
+        val olds = legacyDirs()
+        if (olds.isEmpty()) return "none"
+        val root = Paths.workspaceRoot()
+        for ((i, src) in olds.withIndex()) {
+            val (files, bytes) = stat(src)
+            onStep(i + 1, olds.size, src.name, files, bytes)
+            val dst = File(root, src.name)
+            if (dst.exists()) continue
+            //优先原子改名；跨分区才会失败，失败再退化成搬运
+            val moved = runCatching { src.renameTo(dst) }.getOrDefault(false)
+            if (!moved) {
+                val ok = runCatching {
+                    src.copyRecursively(dst, overwrite = true)
+                    src.deleteRecursively()
+                }.getOrDefault(false)
+                if (!ok) return "copy:${src.name}"
+            }
+            val nb = dst.absolutePath
+            val ob = src.absolutePath
+            runCatching { Repo.remapWorkspace(ob, nb) }
+            if (Cfg.workspace.trim().trimEnd('/') == ob) Cfg.workspace = nb
+            if (Cfg.defaultWorkspace.trim().trimEnd('/') == ob) Cfg.defaultWorkspace = nb
+            if (Cfg.sessionWorkspace.trim().trimEnd('/') == ob) Cfg.sessionWorkspace = nb
+        }
+        cachedTree = null
+        return null
+    } //迁移旧工作区
+
+    /** 枚举所有工作区：workspace/ 下的新目录 + 老版本哈希目录 + 会话绑定的目录 + 全局显式绑定 */
     fun listAll(): List<WsInfo> {
         val bind = runCatching { Repo.workspaceBindings() }.getOrDefault(emptyMap())
         val paths = LinkedHashSet<String>()
-        //数据根下的哈希工作区
+        //新老两处都扫：迁移没跑过的老目录也要能看见、能删
         runCatching {
-            Paths.ensure().listFiles()
-                ?.filter { it.isDirectory && HASH.matches(it.name) }
+            Paths.workspaceRoot().listFiles()
+                ?.filter { it.isDirectory }
                 ?.forEach { paths.add(it.absolutePath) }
         }
+        legacyDirs().forEach { paths.add(it.absolutePath) }
         bind.keys.forEach { paths.add(it) }
         val fixed = Cfg.workspace.trim().trimEnd('/')
         if (fixed.isNotEmpty()) paths.add(fixed)
         val cur = path()
         return paths.map { p ->
             val f = File(p)
-            var files = 0
-            var bytes = 0L
-            if (f.isDirectory) {
-                //递归统计普通文件，但跳过 SKIP 重目录，并限制最多 4000 层遍历防炸
-                runCatching {
-                    val stack = ArrayDeque<File>()
-                    stack.add(f)
-                    var guard = 0
-                    while (stack.isNotEmpty() && guard++ < 4000) {
-                        val d = stack.removeFirst()
-                        d.listFiles()?.forEach { k ->
-                            if (k.isDirectory) {
-                                if (k.name !in SKIP) stack.add(k)
-                            } else {
-                                files++
-                                bytes += k.length()
-                            }
-                        }
-                    }
-                }
-            }
+            val (files, bytes) = if (f.isDirectory) stat(f) else 0 to 0L
             WsInfo(
                 path = p,
                 name = f.name,

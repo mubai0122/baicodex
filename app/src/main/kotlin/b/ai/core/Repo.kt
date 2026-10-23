@@ -107,6 +107,14 @@ object Repo {
         )
     } //会话工作区
 
+    /** 工作区搬家后把会话里记的旧路径换成新路径：返回改了多少行 */
+    fun remapWorkspace(old: String, new: String): Int {
+        val v = ContentValues().apply { put("workspace", new) }
+        return runCatching {
+            w().update("session", v, "workspace=?", arrayOf(old))
+        }.getOrDefault(0)
+    } //改会话语录里的工作区路径
+
     /** 工作区 → 使用它的会话标题，工作区信息页用 */
     fun workspaceBindings(): Map<String, List<String>> {
         val out = LinkedHashMap<String, MutableList<String>>()

@@ -813,6 +813,13 @@
     <string name="se2_ws_bound">lié à </string>
     <string name="se2_ws_more"> et %1$d discussions</string>
     <string name="se2_ws_deleted">%1$s supprimé</string>
+    <string name="ws_mig_t">Deplacer vers le nouveau dossier</string>
+    <string name="ws_mig_d">Les anciens espaces de travail sont sous baicode/, ils seront deplaces dans baicode/workspace/ et les chemins des sessions mis a jour</string>
+    <string name="ws_mig_btn">Tout deplacer (%1$d)</string>
+    <string name="ws_mig_step">Deplacement %1$d/%2$d : %3$s (%4$d fichiers · %5$s)</string>
+    <string name="ws_mig_none">Rien a deplacer</string>
+    <string name="ws_mig_done">%1$d espace(s) deplace(s)</string>
+    <string name="ws_mig_fail">Echec : %1$s (source conservee)</string>
     <string name="se2_hint_none">Actuel : saisissez votre question</string>
     <string name="se2_hint_n">Actuel : une ligne au hasard parmi %1$d</string>
     <string name="se2_back_sub">Les animations système back-to-home et inter-tâches sont actives par défaut à partir de targetSdk 36+ et l\'app ne peut pas les couper ; ceci ne règle que le suivi du geste dans l\'app</string>

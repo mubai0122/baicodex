@@ -27,6 +27,11 @@ object Paths {
 
     fun file(name: String): File = File(ensure(), name)
 
+    /** 新版本工作区根：baicode/workspace；旧版直接把哈希目录挂在 baicode 下面 */
+    const val WSUB = "workspace"
+
+    fun workspaceRoot(): File = File(ensure(), WSUB).also { runCatching { it.mkdirs() } }
+
     /** 4-4-4-4-4-4 的哈希目录名：24 位小写 hex 分六段 */
     fun hashName(): String {
         val b = ByteArray(12)
@@ -35,11 +40,12 @@ object Paths {
         return (0 until 6).joinToString("-") { h.substring(it * 4, it * 4 + 4) }
     } //哈希目录名
 
-    /** 新建一个哈希目录（碰撞就重摇），返回绝对路径 */
+    /** 新建一个哈希目录（碰撞就重摇），落新的 workspace 根下，返回绝对路径 */
     fun newDir(): File {
-        var f = File(ensure(), hashName())
+        val root = workspaceRoot()
+        var f = File(root, hashName())
         var i = 0
-        while (f.exists() && i++ < 8) f = File(ensure(), hashName())
+        while (f.exists() && i++ < 8) f = File(root, hashName())
         runCatching { f.mkdirs() }
         return f
     } //新哈希目录

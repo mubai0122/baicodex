@@ -813,6 +813,13 @@
     <string name="se2_ws_bound">綁定 </string>
     <string name="se2_ws_more"> 等 %1$d 個對話</string>
     <string name="se2_ws_deleted">已刪除 %1$s</string>
+    <string name="ws_mig_t">遷移到新目錄</string>
+    <string name="ws_mig_d">舊版工作區散落在 baicode/ 下，遷移會搬進 baicode/workspace/ 並同步會話裡的路徑</string>
+    <string name="ws_mig_btn">一鍵遷移（%1$d 個）</string>
+    <string name="ws_mig_step">正在遷移 %1$d/%2$d：%3$s（%4$d 個檔案 · %5$s）</string>
+    <string name="ws_mig_none">沒有需要遷移的舊工作區</string>
+    <string name="ws_mig_done">遷移完成：%1$d 個</string>
+    <string name="ws_mig_fail">遷移失敗：%1$s（來源目錄已保留）</string>
     <string name="se2_hint_none">目前：請輸入問題</string>
     <string name="se2_hint_n">目前：%1$d 條裡隨機一條</string>
     <string name="se2_back_sub">系統級 back-to-home、跨任務動畫在 targetSdk 36+ 預設開啟，應用端關不掉；這裡管的是應用內跟手動畫</string>

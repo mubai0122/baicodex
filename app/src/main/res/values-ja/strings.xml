@@ -813,6 +813,13 @@
     <string name="se2_ws_bound">バインド </string>
     <string name="se2_ws_more"> ほか %1$d 会話</string>
     <string name="se2_ws_deleted">%1$s を削除しました</string>
+    <string name="ws_mig_t">新しいフォルダへ移行</string>
+    <string name="ws_mig_d">旧バージョンのワークスペースは baicode/ 直下にあります。baicode/workspace/ へ移動し、セッションのパスも更新します</string>
+    <string name="ws_mig_btn">一括移行（%1$d 件）</string>
+    <string name="ws_mig_step">移行中 %1$d/%2$d：%3$s（%4$d ファイル · %5$s）</string>
+    <string name="ws_mig_none">移行対象はありません</string>
+    <string name="ws_mig_done">%1$d 件を移行しました</string>
+    <string name="ws_mig_fail">移行失敗：%1$s（元フォルダは保持）</string>
     <string name="se2_hint_none">現在：質問を入力してください</string>
     <string name="se2_hint_n">現在：%1$d 行からランダム</string>
     <string name="se2_back_sub">システムの back-to-home・タスク間アニメーションは targetSdk 36+ で既定有効、アプリ側では切れません。ここで扱うのはアプリ内の追従アニメーションです</string>

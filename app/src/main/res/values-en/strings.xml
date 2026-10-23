@@ -813,6 +813,13 @@
     <string name="se2_ws_bound">bound to </string>
     <string name="se2_ws_more"> and %1$d chats</string>
     <string name="se2_ws_deleted">Deleted %1$s</string>
+    <string name="ws_mig_t">Move to new folder</string>
+    <string name="ws_mig_d">Old workspaces sit under baicode/, moving them into baicode/workspace/ and updates session paths</string>
+    <string name="ws_mig_btn">Move all (%1$d)</string>
+    <string name="ws_mig_step">Moving %1$d/%2$d: %3$s (%4$d files · %5$s)</string>
+    <string name="ws_mig_none">Nothing to move</string>
+    <string name="ws_mig_done">Moved %1$d workspace(s)</string>
+    <string name="ws_mig_fail">Move failed: %1$s (source kept)</string>
     <string name="se2_hint_none">Current: default placeholder</string>
     <string name="se2_hint_n">Current: random pick of %1$d lines</string>
     <string name="se2_back_sub">System back-to-home and cross-task animations are on by default from targetSdk 36+ and cannot be disabled by the app; this only controls in-app gesture following</string>
