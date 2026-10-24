@@ -24,6 +24,17 @@ object Cfg {
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
         //独立无障碍激活流程：走过一次就不再自动弹，设置里仍可手动重跑
         mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
+        //「加入我们」卡片：join_dismissed = 勾了永不提醒；join_seen = 已提示过的 versionCode；join_joined = 跳转过 QQ 群
+        mem("join_dismissed", false).value = p.getBoolean("join_dismissed", false)
+        mem("join_seen", 0).value = p.getInt("join_seen", 0)
+        mem("join_joined", false).value = p.getBoolean("join_joined", false)
+        //累计前台使用秒数 + 评价弹窗只弹一次 + 用户关掉了评价弹窗
+        mem("used_sec", 0).value = p.getInt("used_sec", 0)
+        mem("star_shown", false).value = p.getBoolean("star_shown", false)
+        mem("no_rate", false).value = p.getBoolean("no_rate", false)
+        //用户协议同意过的版本号（0 = 没同意过）；tos_sent = 已上报过的版本号
+        mem("tos_agreed", 0).value = p.getInt("tos_agreed", 0)
+        mem("tos_sent", 0).value = p.getInt("tos_sent", 0)
         mem("work_mode", WorkMode.NORMAL.id).value = p.getString("work_mode", WorkMode.NORMAL.id)!!
         mem("agent_mode", AgentMode.STANDARD.id).value = p.getString("agent_mode", AgentMode.STANDARD.id)!!
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
@@ -125,10 +136,50 @@ object Cfg {
     var onboarded: Boolean
         get() = mem("onboarded", false).value
         set(v) { mem("onboarded", false).value = v; put("onboarded", v) }
-
     var a11yDone: Boolean
         get() = mem("a11y_done", false).value
         set(v) { mem("a11y_done", false).value = v; put("a11y_done", v) }
+
+    /** 「加入我们」卡片：勾了以后永不提醒就不再弹，设置里也没入口，属于一次性推广 */
+    var joinDismissed: Boolean
+        get() = mem("join_dismissed", false).value
+        set(v) { mem("join_dismissed", false).value = v; put("join_dismissed", v) }
+
+    /** 「加入我们」卡片已提示过的 versionCode：同版本只弹一次，升级后再弹一次 */
+    var joinSeen: Int
+        get() = mem("join_seen", 0).value
+        set(v) { mem("join_seen", 0).value = v; put("join_seen", v) }
+
+    /** 点过「立即加入」并成功跳出 QQ：下次卡片把「以后永不提醒」换成「我已加入，下次不再提示」 */
+    var joinJoined: Boolean
+        get() = mem("join_joined", false).value
+        set(v) { mem("join_joined", false).value = v; put("join_joined", v) }
+
+    /** 累计前台使用秒数：只用来判定「用了 2 小时要不要邀请评价」 */
+    var usedSec: Int
+        get() = mem("used_sec", 0).value
+        set(v) { mem("used_sec", 0).value = v; put("used_sec", v) }
+
+    /** 评价调研弹窗已经弹过一次，之后不再弹 */
+    var starShown: Boolean
+        get() = mem("star_shown", false).value
+        set(v) { mem("star_shown", false).value = v; put("star_shown", v) }
+
+    /** 用户关掉了评价调研弹窗：开关在设置「关于」与引导最后一步都能改 */
+    var noRate: Boolean
+        get() = mem("no_rate", false).value
+        set(v) { mem("no_rate", false).value = v; put("no_rate", v) }
+
+    /** 已同意的用户协议版本号，0 = 没同意过；进主界面前必须 >= Tos.VERSION */
+    var tosAgreed: Int
+        get() = mem("tos_agreed", 0).value
+        set(v) { mem("tos_agreed", 0).value = v; put("tos_agreed", v) }
+
+    /** 已上报给服务端的协议版本号，避免每次启动重复上报 */
+    var tosSent: Int
+        get() = mem("tos_sent", 0).value
+        set(v) { mem("tos_sent", 0).value = v; put("tos_sent", v) }
+
     /** 界面语言：空串 = 跟随系统，其它是 BCP-47（zh-CN / zh-TW / en / ja / fr） */
     var lang: String
         get() = mem("lang", "").value

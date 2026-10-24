@@ -1571,8 +1571,8 @@ private fun SecretBox() {
 } //密钥清单
 
 //官网地址：服务端基础地址，仓库那栏等建库后再填
-private const val SITE_URL = "https://agent.ai.baiccb.cn"
-private const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
+internal const val SITE_URL = "https://agent.ai.baiccb.cn"
+internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 / 更新历史 + 官网 / GitHub 链接 */
 @Composable
@@ -1680,6 +1680,17 @@ private fun AboutTab() {
         }
     }
     Spacer(Modifier.height(14.dp))
+    //评价调研：应用里唯一的推广弹窗，用户可以在这里彻底关掉
+    SectionTitle(stringResource(R.string.rate_title), stringResource(R.string.rate_title_d))
+    CardBox {
+        ChoiceRow(
+            stringResource(R.string.rate_off),
+            stringResource(R.string.rate_off_d),
+            Cfg.noRate
+        ) { Cfg.noRate = !Cfg.noRate }
+    }
+
+    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_bk), stringResource(R.string.se_bk_d))
     CardBox {
         var bkTip by remember { mutableStateOf("") }
@@ -1755,7 +1766,7 @@ private fun LinkRow(label: String, value: String, enabled: Boolean = true, onCli
 } //链接一行
 
 /** 用系统浏览器打开链接 */
-private fun openUrl(ctx: Context, url: String) {
+internal fun openUrl(ctx: Context, url: String) {
     runCatching {
         ctx.startActivity(
             Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

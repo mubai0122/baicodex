@@ -1,0 +1,35 @@
+BaiAgent Terms of Use
+Version 1.0
+
+1. Scope
+These terms govern your installation and use of BaiAgent and form an agreement between you and the developer. By ticking "I have read and understood the Terms of Use" and entering the app, you confirm that you have read, understood and accepted all of these terms. If you do not agree, please stop using the app and uninstall it.
+
+2. The service
+BaiAgent is an AI agent client that runs entirely on your own device. It is not an online service: the developer does not provide models, does not hold your account and does not store your conversations. You choose and configure the endpoint and key of a third-party model service; availability, billing and content compliance of that service are the responsibility of that provider.
+
+3. Keys and local data
+Your API key is stored only in the app's private directory, which other apps cannot read, and is never uploaded to the developer's server. Conversations, settings and workspace files are stored on your device by default. Keep your keys safe: leakage caused by a lost device, system backup or your own sharing is your responsibility.
+
+4. What is reported
+To count usage and diagnose failures, the app sends the following non-identifying data to the developer's server: a device fingerprint hash (SHA-256 over the Widevine device ID, model name and package name; irreversible), launch count, current version, terms acceptance state and stop-switch check results. The app never collects or uploads your chat content, contacts, SMS, photos, file contents or location.
+
+5. Acceptable use
+You agree not to use this app for any unlawful activity, including but not limited to: breaking into or controlling other people's devices, bypassing platform risk controls, bulk registration or traffic inflation, sending spam, infringing privacy or intellectual property, or attacking any system or service. The app offers high-privilege capabilities such as accessibility, overlay and Root / Shizuku; you grant them yourself and bear full responsibility for how you use them.
+
+6. Third-party services
+Ticket queries, web search and skill packs rely on third-party APIs. Accuracy and availability are decided by those providers, and their terms also apply to your use. The developer is not responsible for third-party content.
+
+7. Permissions
+Accessibility is used to read on-screen controls and to tap, swipe and type on your behalf; overlay is used to show the task capsule; usage and notification access are used to inject context into the model. Every permission can be revoked in system settings at any time, after which the related features stop working.
+
+8. Disclaimer and limitation of liability
+The app is provided "as is", without warranty of being defect-free, uninterrupted or fit for a particular purpose. Automation carries a risk of mistakes; please verify actions that involve payment, deletion or sending. To the maximum extent permitted by law, the developer is not liable for any direct or indirect loss arising from the use of, or inability to use, this app.
+
+9. Open source licence
+This app is released under GPL-3.0 and hosted on GitHub. You may study, modify and redistribute it under the terms of that licence, and redistributions must keep the same open-source licence.
+
+10. Changes and termination
+These terms are updated together with app releases; material changes are announced in the app and require you to confirm again. If you do not accept a change, stop using the app and uninstall it. You may end this agreement at any time by uninstalling the app.
+
+11. Contact
+Feedback, suggestions and security reports: GitHub Issues (repository mubai0122/baicodex) or QQ group 1105803672.

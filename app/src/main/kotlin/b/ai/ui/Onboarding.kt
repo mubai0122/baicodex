@@ -3,7 +3,9 @@ package b.ai.ui
 import android.Manifest
 import android.app.Activity
 import android.os.Build
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,9 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +31,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -37,26 +43,32 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import b.ai.R
 import b.ai.core.Cfg
+import b.ai.core.Lang
 import b.ai.core.Perms
+import b.ai.net.Consent
 import b.ai.core.WorkMode
 import b.ai.core.Workflows
 import b.ai.exec.Linux
 import b.ai.exec.Root
 import b.ai.exec.Router
 import b.ai.exec.Shiz
+import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.OkGreen
+import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 引导流程：工作方式 → 权限检查（含零宽弹窗）→ 工作流 → 装环境（可跳过）→ API key（可跳过） */
+/** 引导流程：语言 → 工作方式 → 权限检查（含零宽弹窗）→ 工作流 → 装环境（可跳过）→ API key（可跳过）→ 用户协议 */
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     var tick by remember { mutableIntStateOf(0) }
+    //协议步的勾选：没勾就不给「同意并进入」
+    var tosOk by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     var zwSupport by remember { mutableStateOf<Boolean?>(null) }
     var modeMsg by remember { mutableStateOf<String?>(null) }
@@ -69,7 +81,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
     }
 
     LaunchedEffect(step, tick) {
-        if (step != 1) return@LaunchedEffect
+        if (step != 2) return@LaunchedEffect
         modeMsg = null
         modeOk = false
         when (Cfg.workMode) {
@@ -128,11 +140,13 @@ fun OnboardingScreen(onDone: () -> Unit) {
         Text(
             stringResource(
                 when (step) {
-                    0 -> R.string.ob_step1
-                    1 -> R.string.ob_step2
-                    2 -> R.string.ob_step3
-                    3 -> R.string.ob_step4
-                    else -> R.string.ob_step5
+                    0 -> R.string.ob_step_lang
+                    1 -> R.string.ob_step1
+                    2 -> R.string.ob_step2
+                    3 -> R.string.ob_step3
+                    4 -> R.string.ob_step4
+                    5 -> R.string.ob_step5
+                    else -> R.string.ob_step_tos
                 }
             ),
             fontSize = 13.sp,
@@ -141,8 +155,9 @@ fun OnboardingScreen(onDone: () -> Unit) {
         Spacer(Modifier.height(10.dp))
 
         when (step) {
-            0 -> StepMode()
-            1 -> StepPermission(
+            0 -> StepLang()
+            1 -> StepMode()
+            2 -> StepPermission(
                 zwSupport = zwSupport,
                 modeMsg = modeMsg,
                 modeOk = modeOk,
@@ -169,9 +184,27 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 shizMsg = shizMsg,
                 onOpenShizuku = { Shiz.openManager(ctx) }
             )
-            2 -> StepWorkflow()
-            3 -> StepEnv()
-            else -> CardBox { ModelSetupPanel() }
+            3 -> StepWorkflow()
+            4 -> StepEnv()
+            5 -> Column {
+                CardBox { ModelSetupPanel() }
+                Spacer(Modifier.height(12.dp))
+                //藏在最后一步的小开关：不想被评价弹窗打扰就勾这里
+                Row(
+                    Modifier.fillMaxWidth().tap { Cfg.noRate = !Cfg.noRate },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier
+                            .size(15.dp)
+                            .background(if (Cfg.noRate) AccentBlue else SurfaceMuted, RoundedCornerShape(5.dp)),
+                        contentAlignment = Alignment.Center
+                    ) { if (Cfg.noRate) IcTick(Color.White, 9.dp) }
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.rate_off), fontSize = 10.sp, color = TextSecondary)
+                }
+            }
+            else -> TosBody(tosOk, { tosOk = it }, Modifier.height(320.dp))
         }
 
         Spacer(Modifier.height(18.dp))
@@ -180,19 +213,26 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 GhostButton(stringResource(R.string.ob_prev)) { step-- }
                 Spacer(Modifier.width(10.dp))
             }
-            if (step == 4) {
-                GhostButton(stringResource(R.string.ob_skip)) {
-                    Cfg.onboarded = true
-                    onDone()
-                }
+            if (step == 5) {
+                //跳过 API key 也要过协议，所以直接落到下一步
+                GhostButton(stringResource(R.string.ob_skip)) { step = 6 }
                 Spacer(Modifier.width(10.dp))
             }
             PrimaryButton(
-                text = stringResource(if (step < 4) R.string.ob_next else R.string.ob_start),
-                enabled = step < 4 || Cfg.ready
+                text = stringResource(if (step < 6) R.string.ob_next else R.string.tos_agree),
+                enabled = when {
+                    step < 5 -> true
+                    step == 5 -> Cfg.ready
+                    else -> tosOk
+                }
             ) {
-                if (step < 4) step++ else {
+                if (step < 6) {
+                    step++
+                } else {
+                    //同意协议才进应用，并把同意状态上报一次
+                    Cfg.tosAgreed = Tos.VERSION
                     Cfg.onboarded = true
+                    Consent.reportIfNeeded()
                     onDone()
                 }
             }
@@ -219,6 +259,26 @@ private fun ZeroWidthDialog(probeName: String, onClose: () -> Unit, onEnable: ()
         }
     }
 } //零宽拓展弹窗
+
+@Composable
+private fun StepLang() {
+    val act = LocalContext.current as? Activity
+    CardBox {
+        Lang.options.forEach { (code, label) ->
+            //语言名用各自的语言写死，任何界面语言下都认得出自己那项
+            ChoiceRow(
+                label,
+                if (code.isBlank()) stringResource(R.string.ob_lang_follow) else null,
+                Cfg.lang == code
+            ) {
+                if (Cfg.lang == code) return@ChoiceRow
+                Cfg.lang = code
+                //换语言必须重建 Activity 才生效，重建后还停在这一步
+                act?.recreate()
+            }
+        }
+    }
+} //语言选择
 
 @Composable
 private fun StepMode() {
