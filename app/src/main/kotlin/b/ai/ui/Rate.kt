@@ -46,16 +46,25 @@ object Rate {
     /** 置 true 由根弹窗层渲染卡片，关掉后回到 false */
     var ask by mutableStateOf(false)
 
+    /** 手动点「去 GitHub 点个 Star」打开时为 true：换成问句文案，且不显示「不再提示」勾选 */
+    var manual by mutableStateOf(false)
+
     /** 前台每次回来调一次：已经弹过、用户关掉了、时长不够，三种情况都不置位 */
     fun check() {
         if (ask || Cfg.noRate || Cfg.starShown) return
         if (Cfg.usedSec >= NEED_SEC) ask = true
     } //判定是否该弹
+
+    /** 设置页手动点开：不受时长与 starShown 限制，noRate 也不拦（用户自己点的） */
+    fun askManual() {
+        manual = true
+        ask = true
+    } //手动打开
 } //评价调研
 
 /** 星级邀请卡片：带 GitHub 标，只问一次，勾选后永久不再出现 */
 @Composable
-fun StarDialog(onClose: (never: Boolean) -> Unit) {
+fun StarDialog(manual: Boolean = false, onClose: (never: Boolean) -> Unit) {
     val ctx = LocalContext.current
     var never by remember { mutableStateOf(false) }
     BackHandler { onClose(never) }
@@ -76,7 +85,7 @@ fun StarDialog(onClose: (never: Boolean) -> Unit) {
             }
             Spacer(Modifier.width(10.dp))
             Text(
-                stringResource(R.string.star_title),
+                stringResource(if (manual) R.string.rate_star_title else R.string.rate_star_auto),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary
@@ -84,13 +93,14 @@ fun StarDialog(onClose: (never: Boolean) -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            stringResource(R.string.star_body, Cfg.usedSec / 3600),
+            if (manual) stringResource(R.string.rate_star_body)
+            else stringResource(R.string.star_body, Cfg.usedSec / 3600),
             fontSize = 12.sp,
             color = TextSecondary,
             lineHeight = 18.sp
         )
         Spacer(Modifier.height(12.dp))
-        Row(
+        if (!manual) Row(
             Modifier.fillMaxWidth().tap { never = !never },
             verticalAlignment = Alignment.CenterVertically
         ) {
