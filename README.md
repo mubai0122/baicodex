@@ -11,12 +11,15 @@
 
 | 手机 · 浅色 | 手机 · 深色 |
 |:---:|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png" width="240" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png" width="240" alt="手机 深色"> |
+| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png" width="280" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png" width="280" alt="手机 深色"> |
 
-| 桌面 · 浅色 | 桌面 · 深色 |
-|:---:|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/laptop-light.png" width="430" alt="桌面 浅色"> | <img src="https://agent.ai.baiccb.cn/show/laptop-dark.png" width="430" alt="桌面 深色"> |
+| 桌面 · 浅色 |
+|:---:|
+| <img src="https://agent.ai.baiccb.cn/show/laptop-light.png" width="860" alt="桌面 浅色"> |
 
+| 桌面 · 深色 |
+|:---:|
+| <img src="https://agent.ai.baiccb.cn/show/laptop-dark.png" width="860" alt="桌面 深色"> |
 
 ## 能力
 
