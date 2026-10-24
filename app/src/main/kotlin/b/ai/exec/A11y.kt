@@ -1,6 +1,7 @@
 package b.ai.exec
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,6 +11,7 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.Display
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
@@ -21,6 +23,8 @@ import java.util.concurrent.TimeUnit
 
 /** 屏幕操作：无障碍侧读控件树、注入手势、截图。服务没开时所有调用一律返回失败原因 */
 object A11y {
+    internal const val TAG = "bai.a11y"
+
     @Volatile
     private var svc: A11yService? = null
 
@@ -55,14 +59,16 @@ object A11y {
     } //服务是否就绪
 
     /** 控件树：一行一个可交互/有文字的节点，坐标是屏幕绝对坐标 */
-    fun dump(maxNodes: Int = 400): String {
+    fun dump(maxNodes: Int = 400, all: Boolean = false): String {
         val s = svc ?: return "无障碍服务未开启，先在设置里打开 BaiAgent 的屏幕操作"
-        val root = s.rootInActiveWindow ?: return "拿不到当前窗口的控件树（可能在锁屏 / 权限弹窗 / 纯图片界面）"
+        val roots = windowRoots(s)
+        if (roots.isEmpty()) return "拿不到任何窗口的控件树（可能在锁屏 / 权限弹窗 / 系统禁止截取的安全界面）"
+        val pkgs = roots.mapNotNull { runCatching { it.packageName?.toString() }.getOrNull() }.distinct()
+        Log.i(TAG, "dump windows=" + roots.size + " pkgs=" + pkgs)
         val sb = StringBuilder()
-        sb.append("前台包名: ").append(root.packageName).append('\n')
         var n = 0
         val r = Rect()
-        fun walk(node: AccessibilityNodeInfo?, depth: Int) {
+        fun walk(node: AccessibilityNodeInfo?, depth: Int, tag: String) {
             if (node == null || n >= maxNodes) return
             val cls = node.className?.toString()?.substringAfterLast('.') ?: "?"
             val text = node.text?.toString()?.trim().orEmpty()
@@ -71,28 +77,54 @@ object A11y {
             val click = node.isClickable
             val edit = node.isEditable
             val scroll = node.isScrollable
-            val show = text.isNotBlank() || desc.isNotBlank() || id.isNotBlank() || click || edit || scroll
+            val show = all || text.isNotBlank() || desc.isNotBlank() || id.isNotBlank() || click || edit || scroll
             if (show) {
                 n++
                 node.getBoundsInScreen(r)
-                sb.append(n).append(". ").append(cls)
+                sb.append(n).append(". ").append(tag).append(cls)
                 if (text.isNotBlank()) sb.append(" text=\"").append(text.take(60)).append('"')
                 if (desc.isNotBlank()) sb.append(" desc=\"").append(desc.take(60)).append('"')
                 if (id.isNotBlank()) sb.append(" id=").append(id)
                 if (click) sb.append(" click")
                 if (edit) sb.append(" input")
                 if (scroll) sb.append(" scroll")
+                if (!node.isVisibleToUser) sb.append(" hidden")
                 sb.append(" [").append(r.left).append(',').append(r.top).append("][").append(r.right).append(',')
                     .append(r.bottom).append("] center=").append((r.left + r.right) / 2).append(',')
                     .append((r.top + r.bottom) / 2).append('\n')
             }
-            if (depth < 32) for (i in 0 until node.childCount) walk(node.getChild(i), depth + 1)
+            if (depth < 32) for (i in 0 until node.childCount) walk(node.getChild(i), depth + 1, tag)
         }
-        walk(root, 0)
-        if (n == 0) return "窗口里没有可读控件（包名 ${root.packageName}，可能是纯图片或游戏界面，改用截图判断）"
+        roots.forEachIndexed { i, root ->
+            val pkg = runCatching { root.packageName?.toString() }.getOrNull() ?: "?"
+            val tag = if (roots.size > 1) "w${i + 1}:" else ""
+            sb.append("窗口").append(i + 1).append(": ").append(pkg).append('\n')
+            walk(root, 0, tag)
+        }
+        if (n == 0) {
+            val raw = dump(maxNodes, true)
+            return "默认过滤后没有可读控件，下面是诊断模式（含空壳容器）：\n" + raw
+        }
         sb.append("共 ").append(n).append(" 个可读控件（坐标可直接用于 tap / long / swipe）")
+        if (roots.size > 1) sb.append("，来自 ").append(roots.size).append(" 个窗口")
         return sb.toString()
     } //读当前界面控件树
+
+    /** 取所有可读窗口的根：先 activeWindow，再 getWindows() 兜底并去重，第三方 app 的树往往只能从后者拿到 */
+    private fun windowRoots(s: A11yService): List<AccessibilityNodeInfo> {
+        val out = ArrayList<AccessibilityNodeInfo>()
+        runCatching { s.rootInActiveWindow }.getOrNull()?.let { r ->
+            runCatching { r.refresh() }
+            out.add(r)
+        }
+        runCatching { s.windows }.getOrNull().orEmpty().forEach { w ->
+            val r = runCatching { w.root }.getOrNull() ?: return@forEach
+            if (out.any { runCatching { it.windowId == r.windowId }.getOrDefault(false) }) return@forEach
+            runCatching { r.refresh() }
+            out.add(r)
+        }
+        return out
+    } //取窗口根列表
 
     fun tap(x: Int, y: Int): String = gesture { b ->
         val p = Path().apply { moveTo(x.toFloat(), y.toFloat()) }
@@ -233,6 +265,16 @@ object A11y {
 class A11yService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
+        runCatching {
+            serviceInfo = (serviceInfo ?: AccessibilityServiceInfo()).apply {
+                flags = flags or
+                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                    AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                    AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+                notificationTimeout = 80
+            }
+        }
+        Log.i(A11y.TAG, "connected flags=" + runCatching { serviceInfo.flags }.getOrDefault(0))
         A11y.attach(this)
         //顺带把胶囊的宿主也换成无障碍窗层：不需要悬浮窗权限就能显示在上面
         Capsule.attachA11y(this)

@@ -8,10 +8,11 @@
 /storage/emulated/0/baicode/skill/<id>/
 ├── skill.json            唯一权威定义
 ├── README.md             用户看、模型 skill_read 看的用法
+├── SKILL.md              通用 Agent Skills 格式，别的工具也能读
 └── function/<fn>.js      每个函数一个模板体（后缀 js 只是沿用，不是 JS 语法）
 ```
 
-先用 `skill_scaffold` 建目录（参数 name = 包 id，小写字母开头，可带数字下划线短横），再用 `write_file` 往里写三个文件。全部写完后告诉用户「去 设置 → 技能 点重新扫描」，不要自己假装已经生效。
+先用 `skill_scaffold` 建目录（参数 name = 包 id，小写字母开头，可带数字下划线短横），再用 `write_file` 往里写四个文件（`skill.json`、`README.md`、`SKILL.md`、`function/<fn>.js`；`SKILL.md` 由 skill_scaffold 生成骨架，填好 frontmatter 的 name 与 description 即可跨运行时使用）。全部写完后告诉用户「去 设置 → 技能 点重新扫描」，不要自己假装已经生效。
 
 ## 二、skill.json 固定字段
 

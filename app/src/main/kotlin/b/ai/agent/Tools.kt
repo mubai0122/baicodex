@@ -282,6 +282,13 @@ object Tools {
                         .put("text", str("text 动作要输入的文字；start 时可给一句「正在做什么」，会显示在胶囊上"))
                         .put("key", str("key 动作：back / home / recents / notifications / quick"))
                         .put("app", str("launch 用包名；不确定就先 action=apps"))
+                        .put(
+                            "all",
+                            JSONObject().put("type", "boolean").put(
+                                "description",
+                                "tree / see 时是否连没有文字的空壳容器一起输出，默认 false；默认读不到控件时也会自动附一份诊断输出"
+                            )
+                        )
                 ).put("required", JSONArray().put("action"))
             )
         )
@@ -533,8 +540,8 @@ object Tools {
             )
         }
         val t = when (act) {
-            "see", "shot2" -> b.ai.exec.A11y.dump() + "\n截图: " + b.ai.exec.A11y.shot(shotFile())
-            "tree", "dump" -> b.ai.exec.A11y.dump()
+            "see", "shot2" -> b.ai.exec.A11y.dump(400, a.optBoolean("all", false)) + "\n截图: " + b.ai.exec.A11y.shot(shotFile())
+            "tree", "dump" -> b.ai.exec.A11y.dump(400, a.optBoolean("all", false))
             "shot", "screenshot" -> "截图: " + b.ai.exec.A11y.shot(shotFile())
             "tap", "click" -> b.ai.exec.A11y.tap(a.optInt("x", -1), a.optInt("y", -1))
             "long", "longpress" -> b.ai.exec.A11y.longPress(

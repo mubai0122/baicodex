@@ -1,1 +1,1 @@
-mkdir -p /storage/emulated/0/baicode/skill/{name}/function && echo /storage/emulated/0/baicode/skill/{name}
+mkdir -p /storage/emulated/0/baicode/skill/{name}/function && printf -- '---\nname: {name}\ndescription: 一句话说明这个技能做什么、什么情况下该用（写清做什么 + 何时用）\n---\n\n# {name}\n\n## 用法\n\n这里写步骤：什么时候用、先调哪个函数、参数怎么填、有什么坑。\n' > /storage/emulated/0/baicode/skill/{name}/SKILL.md && echo /storage/emulated/0/baicode/skill/{name}
