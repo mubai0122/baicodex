@@ -1154,14 +1154,14 @@
     <string name="fb_st_pending">Pending</string>
     <string name="fb_st_processing">In progress</string>
     <string name="fb_st_done">Resolved</string>
-    <string name="fb_st_closed">Closed</string>
+    <string name="fb_st_closed">Rated</string>
     <string name="fb_detail_title">Feedback detail</string>
     <string name="fb_thread">Conversation</string>
     <string name="fb_reply_title">Add more</string>
     <string name="fb_reply_ph">Anything to add — sent straight to the developer</string>
     <string name="fb_reply_send">Send</string>
     <string name="fb_reply_ok">Sent</string>
-    <string name="fb_closed_tip">This feedback is closed — no more messages</string>
+    <string name="fb_closed_tip">This feedback is finished — no more messages</string>
     <string name="fb_rate_q">Satisfied with the fix?</string>
     <string name="fb_rate_ph">Anything to say (optional)</string>
     <string name="fb_rate_send">Submit rating</string>
