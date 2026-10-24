@@ -66,7 +66,7 @@ object SkillPacks {
     /** 加载一个包目录：skill.json 是唯一权威定义，缺字段一律按约定兜底 */
     private fun loadDir(d: File): SkillPack? {
         val jf = File(d, "skill.json")
-        if (!jf.isFile) return null
+        if (!jf.isFile) return loadMd(d)
         val o = runCatching { JSONObject(jf.readText()) }.getOrNull() ?: return null
         val id = o.optString("id").trim().ifBlank { d.name }
         val ver = o.optInt("dsl", 1)
@@ -92,6 +92,60 @@ object SkillPacks {
         }
         return SkillPack(id, o.optString("name").trim().ifBlank { id }, o.optString("desc"), readme, list, d.absolutePath, true)
     } //加载单个包
+
+    /** 通用 Agent Skills 格式：目录名就是技能名，SKILL.md 的 frontmatter 给名字与说明，正文当 README */
+    private fun loadMd(d: File): SkillPack? {
+        val mf = File(d, "SKILL.md")
+        if (!mf.isFile) return null
+        val raw = runCatching { mf.readText() }.getOrNull() ?: return null
+        val (meta, body) = front(raw)
+        val name = meta["name"]?.trim().orEmpty().ifBlank { d.name }
+        return SkillPack(d.name, name, meta["description"]?.trim().orEmpty(), body.trim(), emptyList(), d.absolutePath, true)
+    } //加载通用格式技能
+
+    /** 拆 YAML frontmatter：只认顶层 key: value 与 > | 折行写法，够通用格式用；没有 frontmatter 就把整份当正文 */
+    private fun front(raw: String): Pair<Map<String, String>, String> {
+        val text = raw.removePrefix("\uFEFF")
+        val lines = text.split("\n")
+        if (lines.firstOrNull()?.trim() != "---") return emptyMap<String, String>() to text
+        val map = LinkedHashMap<String, String>()
+        var i = 1
+        var key = ""
+        val folded = StringBuilder()
+        fun flush() {
+            if (key.isNotEmpty() && folded.isNotEmpty()) map[key] = folded.toString().trim()
+            key = ""
+            folded.setLength(0)
+        }
+        while (i < lines.size) {
+            val l = lines[i]
+            if (l.trim() == "---") break
+            if (l.startsWith(" ") || l.startsWith("\t")) {
+                if (key.isNotEmpty()) {
+                    if (folded.isNotEmpty()) folded.append(' ')
+                    folded.append(l.trim())
+                }
+                i++
+                continue
+            }
+            flush()
+            val c = l.indexOf(':')
+            if (c > 0) {
+                val k = l.substring(0, c).trim().lowercase()
+                val v = l.substring(c + 1).trim()
+                when {
+                    v == ">" || v == "|" || v == ">-" || v == "|-" -> key = k
+                    v.length >= 2 && ((v.startsWith("\"") && v.endsWith("\"")) || (v.startsWith("'") && v.endsWith("'"))) ->
+                        map[k] = v.substring(1, v.length - 1)
+                    else -> map[k] = v
+                }
+            }
+            i++
+        }
+        flush()
+        val body = if (i < lines.size) lines.drop(i + 1).joinToString("\n") else ""
+        return map to body
+    } //解析 frontmatter
 
     /** 按 id 或名字找包：skill_read 用 */
     fun pack(key: String): SkillPack? {
@@ -149,8 +203,13 @@ object SkillPacks {
         val root = Paths.skillRoot()
         names.forEach { n ->
             val dst = File(root, n)
-            if (dst.exists()) return@forEach
-            runCatching { copyRes(am, "skills/$n", dst) }
+            if (!dst.exists()) {
+                runCatching { copyRes(am, "skills/$n", dst) }
+                return@forEach
+            }
+            //已存在的包只补 SKILL.md 这种新增说明文件，其余一律不动用户改过的内容
+            val md = File(dst, "SKILL.md")
+            if (!md.exists()) runCatching { copyRes(am, "skills/$n/SKILL.md", md) }
         }
     } //铺内置技能包
 
