@@ -72,6 +72,16 @@ app/src/main/assets/linux/   内置 Ubuntu 的 rootfs 与 proot
 scripts/   构建与素材脚本
 ```
 
+## 界面预览
+
+| 手机 · 浅色 | 手机 · 深色 |
+|:---:|:---:|
+| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png" width="240" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png" width="240" alt="手机 深色"> |
+
+| 桌面 · 浅色 | 桌面 · 深色 |
+|:---:|:---:|
+| <img src="https://agent.ai.baiccb.cn/show/laptop-light.png" width="430" alt="桌面 浅色"> | <img src="https://agent.ai.baiccb.cn/show/laptop-dark.png" width="430" alt="桌面 深色"> |
+
 ## 协议
 
 GNU General Public License v3.0，全文见 [LICENSE](LICENSE)。
