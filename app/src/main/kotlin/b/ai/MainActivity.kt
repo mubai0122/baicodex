@@ -2,8 +2,10 @@ package b.ai
 
 import android.content.Context
 import android.content.Intent
+import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -34,6 +36,8 @@ import b.ai.core.Cfg
 import b.ai.core.Lang
 import b.ai.core.Perms
 import b.ai.exec.Alarms
+import b.ai.net.Consent
+import b.ai.net.Isuse
 import b.ai.net.Update
 import b.ai.ui.AskSheet
 import b.ai.ui.A11yAuto
@@ -43,7 +47,9 @@ import b.ai.ui.A11ySetupDialog
 import b.ai.ui.BackdropHost
 import b.ai.ui.ChatScreen
 import b.ai.ui.DrawerPanel
+import b.ai.ui.HaltDialog
 import b.ai.ui.IntentInbox
+import b.ai.ui.JoinGroupDialog
 import b.ai.ui.OnboardingScreen
 import b.ai.ui.Overlay
 import b.ai.ui.PermNoticeDialog
@@ -52,7 +58,11 @@ import b.ai.ui.MemorySheet
 import b.ai.ui.MigrateGate
 import b.ai.ui.PlanSheet
 import b.ai.ui.StarSheet
+import b.ai.ui.Rate
+import b.ai.ui.StarDialog
 import b.ai.ui.ToolConfirmDialog
+import b.ai.ui.Tos
+import b.ai.ui.TosScreen
 import b.ai.ui.UpdateDialog
 import b.ai.ui.UpdateHistoryDialog
 import b.ai.ui.UpdateUi
@@ -63,12 +73,25 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.system.exitProcess
 
 class MainActivity : ComponentActivity() {
+    //本次前台开始的时刻（elapsedRealtime），onPause 时结算成累计使用时长
+    private var fgSince = 0L
     //换语言后要生效就得重建 Activity，所以 Context 在 attach 阶段就包成选定语言
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(Lang.wrap(newBase))
     } //包语言后的 Context
+    //离开前台就把这段时长累加进 used_sec：只用来判定「用满 2 小时要不要邀请评价」
+    override fun onPause() {
+        if (fgSince > 0) {
+            val add = ((SystemClock.elapsedRealtime() - fgSince) / 1000L).toInt()
+            if (add > 0) Cfg.usedSec = Cfg.usedSec + add
+            fgSince = 0L
+        }
+        super.onPause()
+    } //累计前台时长
+
     //进程退出前把 TTS 引擎关掉，否则念到一半退出会漏声音
     override fun onDestroy() {
         Speak.release()
@@ -90,6 +113,9 @@ class MainActivity : ComponentActivity() {
     //每次回到前台补一次无障碍：系统常把它掐掉，Shizuku 在的话直接写回 secure 设置
     override fun onResume() {
         super.onResume()
+        //回到前台重新开始计时，并顺手判一次要不要弹评价调研
+        fgSince = SystemClock.elapsedRealtime()
+        Rate.check()
         if (!b.ai.exec.AutoA11y.need(this)) return
         Thread({ runCatching { b.ai.exec.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
     } //自动补无障碍
@@ -118,6 +144,16 @@ private fun Root() {
         MigrateGate { gateOpen = false }
         return
     }
+    //已激活的老用户升级后补一次协议：同意过才进主界面，同意状态会上报一次
+    var needTos by remember { mutableStateOf(Cfg.tosAgreed < Tos.VERSION) }
+    if (needTos) {
+        TosScreen {
+            Cfg.tosAgreed = Tos.VERSION
+            Consent.reportIfNeeded()
+            needTos = false
+        }
+        return
+    }
     var screen by remember { mutableStateOf(if (Cfg.onboarded) "chat" else "setup") }
     val drawer = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -139,21 +175,40 @@ private fun Root() {
         missing = Perms.missing(ctx)
         permNotice = missing.isNotEmpty()
     }
+    //停机开关：服务端说停止运营就只留退出提示，别的弹窗一律不参与
+    var halted by remember { mutableStateOf(false) }
+    //「加入我们」卡片：更新卡片关掉之后再弹，同一版本只弹一次
+    var joinOpen by remember { mutableStateOf(false) }
+    //启动检查是否已经走完：没走完不弹群卡片，免得抢在更新卡片前面
+    var updChecked by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         Agent.ensureSession()
         if (missing.isNotEmpty()) permLauncher.launch(Perms.runtime().toTypedArray())
+        //停机开关先读：关掉之后检查更新没有意义，直接进退出分支
+        if (!withContext(Dispatchers.IO) { Isuse.on() }) {
+            halted = true
+            return@LaunchedEffect
+        }
         //启动静默检查更新：确实有新版本才弹卡片，网络失败一声不响
         val info = withContext(Dispatchers.IO) { runCatching { Update.check() }.getOrNull() }
         if (info != null && info.updateEnabled && info.hasUpdate) UpdateUi.prompt = info
+        updChecked = true
     }
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
+    //群卡片要等更新卡片关掉：先看完版本更新再邀请进群，避免两张卡片抢同一个槽
+    LaunchedEffect(updChecked, upd, updHis) {
+        if (!updChecked || halted || upd != null || updHis != null) return@LaunchedEffect
+        if (!Cfg.onboarded || Cfg.joinDismissed || Cfg.joinSeen >= Update.clientCode()) return@LaunchedEffect
+        Cfg.joinSeen = Update.clientCode()
+        joinOpen = true
+    }
     //独立的无障碍激活流程：引导走完（进主界面）就弹一次，系统里已经开着也照样走；跑完记一笔
     LaunchedEffect(Cfg.onboarded) {
         if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
     }
-    val active = Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
+    val active = halted || joinOpen || Rate.ask || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
     val anyOverlay = active || drawer.isOpen
@@ -252,6 +307,11 @@ private fun Root() {
                     val q = Agent.ask
                     val pl = Agent.plan
                     when {
+                        //停机是最高优先级：别的弹窗一律让位，只剩退出
+                        halted -> HaltDialog {
+                            (ctx as? Activity)?.finishAffinity()
+                            exitProcess(0)
+                        }
                         q != null -> AskSheet(q)
                         pl != null -> PlanSheet(pl)
                         p != null -> ToolConfirmDialog(p)
@@ -285,6 +345,17 @@ private fun Root() {
                                 Agent.openSession(sid)
                             }
                         )
+                        //评价调研：用满 2 小时才出现，弹过或用户关掉就再也不来
+                        Rate.ask -> StarDialog { never ->
+                            if (never) Cfg.noRate = true
+                            Cfg.starShown = true
+                            Rate.ask = false
+                        }
+                        //群卡片排在最后：其它弹窗都在它之上，勾了永不提醒就彻底不弹
+                        joinOpen -> JoinGroupDialog { never ->
+                            if (never) Cfg.joinDismissed = true
+                            joinOpen = false
+                        }
                         else -> Overlay.content?.invoke()
                     }
                 }

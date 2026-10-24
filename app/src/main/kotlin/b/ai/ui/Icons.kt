@@ -507,3 +507,36 @@ fun IcFont(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
         )
     }
 } //矢量字号
+
+/** 自绘复制（两张叠起来的纸），用在群号右侧 */
+@Composable
+fun IcCopy(color: Color, side: Dp = 13.dp, stroke: Dp = 1.5.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val back = androidx.compose.ui.geometry.Size(size.width * 0.56f, size.height * 0.56f)
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.1f, size.height * 0.1f),
+            size = back,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.16f),
+            style = Stroke(w)
+        )
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.34f, size.height * 0.34f),
+            size = back,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.16f),
+            style = Stroke(w)
+        )
+    }
+} //矢量复制
+
+/** 自绘对勾，用在自绘复选框里 */
+@Composable
+fun IcTick(color: Color, side: Dp = 10.dp, stroke: Dp = 1.7.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        drawLine(color, Offset(size.width * 0.16f, size.height * 0.54f), Offset(size.width * 0.42f, size.height * 0.8f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.42f, size.height * 0.8f), Offset(size.width * 0.86f, size.height * 0.22f), w, StrokeCap.Round)
+    }
+} //矢量对勾
