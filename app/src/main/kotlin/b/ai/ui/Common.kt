@@ -161,8 +161,11 @@ fun Field(
     minLines: Int = 1
 ) {
     Column(Modifier.padding(top = 10.dp)) {
-        Text(label, fontSize = 12.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
+        //label 为空时省掉标题行，给「只有一个输入框」的场景用
+        if (label.isNotBlank()) {
+            Text(label, fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+        }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,

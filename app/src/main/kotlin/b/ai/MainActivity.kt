@@ -47,6 +47,7 @@ import b.ai.ui.A11ySetupDialog
 import b.ai.ui.BackdropHost
 import b.ai.ui.ChatScreen
 import b.ai.ui.DrawerPanel
+import b.ai.ui.FeedbackDetailScreen
 import b.ai.ui.FeedbackScreen
 import b.ai.ui.HaltDialog
 import b.ai.ui.IntentInbox
@@ -170,6 +171,8 @@ private fun Root() {
     var backFx by remember { mutableFloatStateOf(0f) }
     //设置页从哪一页进：聊天页的模型面板点「模型配置」直接落到模型 tab
     var settingsTab by remember { mutableStateOf(0) }
+    //反馈详情页看哪一条：从反馈页点「我的反馈」进来时带上编号
+    var fbId by remember { mutableStateOf(0) }
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -296,7 +299,11 @@ private fun Root() {
                                 onBack = { screen = "chat" },
                                 onOpenFeedback = { screen = "feedback" }
                             )
-                            "feedback" -> FeedbackScreen { screen = "settings" }
+                            "feedback" -> FeedbackScreen(
+                                onBack = { screen = "settings" },
+                                onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
+                            )
+                            "fb_detail" -> FeedbackDetailScreen(fbId) { screen = "feedback" }
                             else -> ChatScreen(
                                 onOpenDrawer = { scope.launch { drawer.open() } },
                                 onOpenSettings = { t ->

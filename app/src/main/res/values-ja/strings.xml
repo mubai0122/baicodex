@@ -1145,4 +1145,26 @@
     <string name="rate_star_body">満足していただけたら、GitHub で Star を付けていただけると嬉しいです ❤️</string>
     <string name="rate_star_auto">評価・アンケート</string>
     <string name="fb_email_bad">メールアドレスの形式が正しくありません</string>
+    <string name="fb_mine">マイフィードバック</string>
+    <string name="fb_mine_hint">進捗と返信はここに表示されます。開いて追記できます</string>
+    <string name="fb_mine_empty">まだフィードバックはありません</string>
+    <string name="fb_from_admin">開発者</string>
+    <string name="fb_from_me">自分</string>
+    <string name="fb_st_pending">未対応</string>
+    <string name="fb_st_processing">対応中</string>
+    <string name="fb_st_done">対応済み</string>
+    <string name="fb_st_closed">終了</string>
+    <string name="fb_detail_title">フィードバック詳細</string>
+    <string name="fb_thread">やりとり</string>
+    <string name="fb_reply_title">追記する</string>
+    <string name="fb_reply_ph">補足があれば入力してください（開発者に届きます）</string>
+    <string name="fb_reply_send">送信</string>
+    <string name="fb_reply_ok">送信しました</string>
+    <string name="fb_closed_tip">このフィードバックは終了しました。追記できません</string>
+    <string name="fb_rate_q">今回の対応に満足ですか？</string>
+    <string name="fb_rate_ph">ひとこと（任意）</string>
+    <string name="fb_rate_send">評価を送信</string>
+    <string name="fb_rate_ok">評価ありがとうございます</string>
+    <string name="fb_rated">あなたの評価</string>
+    <string name="fb_loading">読み込み中…</string>
 </resources>

@@ -32,6 +32,8 @@ object Cfg {
         mem("used_sec", 0).value = p.getInt("used_sec", 0)
         mem("star_shown", false).value = p.getBoolean("star_shown", false)
         mem("no_rate", false).value = p.getBoolean("no_rate", false)
+        //反馈凭据：提交反馈时服务端下发，凭它只能看本机提交过的反馈
+        mem("fb_token", "").value = p.getString("fb_token", "")!!
         //用户协议同意过的版本号（0 = 没同意过）；tos_sent = 已上报过的版本号
         mem("tos_agreed", 0).value = p.getInt("tos_agreed", 0)
         mem("tos_sent", 0).value = p.getInt("tos_sent", 0)
@@ -169,6 +171,10 @@ object Cfg {
     var noRate: Boolean
         get() = mem("no_rate", false).value
         set(v) { mem("no_rate", false).value = v; put("no_rate", v) }
+
+    var fbToken: String
+        get() = mem("fb_token", "").value
+        set(v) { mem("fb_token", "").value = v; put("fb_token", v) }
 
     /** 已同意的用户协议版本号，0 = 没同意过；进主界面前必须 >= Tos.VERSION */
     var tosAgreed: Int
