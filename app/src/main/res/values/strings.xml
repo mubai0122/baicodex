@@ -1146,4 +1146,26 @@
     <string name="rate_star_body">如果满意的话，请前往我们的 GitHub 点一个宝贵的 star ❤️</string>
     <string name="rate_star_auto">评价与调研</string>
     <string name="fb_email_bad">邮箱格式不对</string>
+    <string name="fb_mine">我的反馈</string>
+    <string name="fb_mine_hint">处理进度和我的回复都在这里，点开可以继续补充</string>
+    <string name="fb_mine_empty">还没有提交过反馈</string>
+    <string name="fb_from_admin">开发者</string>
+    <string name="fb_from_me">我</string>
+    <string name="fb_st_pending">待处理</string>
+    <string name="fb_st_processing">处理中</string>
+    <string name="fb_st_done">已处理</string>
+    <string name="fb_st_closed">已结束</string>
+    <string name="fb_detail_title">反馈详情</string>
+    <string name="fb_thread">对话记录</string>
+    <string name="fb_reply_title">继续补充</string>
+    <string name="fb_reply_ph">补充说明，会直接发给开发者</string>
+    <string name="fb_reply_send">发送留言</string>
+    <string name="fb_reply_ok">已发送</string>
+    <string name="fb_closed_tip">这条反馈已结束，不能再留言</string>
+    <string name="fb_rate_q">这次处理满意吗？</string>
+    <string name="fb_rate_ph">想说点什么（可选）</string>
+    <string name="fb_rate_send">提交评价</string>
+    <string name="fb_rate_ok">谢谢你的评价</string>
+    <string name="fb_rated">你的评价</string>
+    <string name="fb_loading">正在加载…</string>
 </resources>

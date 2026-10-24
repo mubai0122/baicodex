@@ -1145,4 +1145,26 @@
     <string name="rate_star_body">Si oui, mettez une étoile à notre dépôt GitHub ❤️</string>
     <string name="rate_star_auto">Avis</string>
     <string name="fb_email_bad">Adresse e-mail invalide</string>
+    <string name="fb_mine">Mes retours</string>
+    <string name="fb_mine_hint">Suivi et réponses ici — ouvrez pour compléter</string>
+    <string name="fb_mine_empty">Aucun retour envoyé</string>
+    <string name="fb_from_admin">Développeur</string>
+    <string name="fb_from_me">Moi</string>
+    <string name="fb_st_pending">En attente</string>
+    <string name="fb_st_processing">En cours</string>
+    <string name="fb_st_done">Résolu</string>
+    <string name="fb_st_closed">Clôturé</string>
+    <string name="fb_detail_title">Détail du retour</string>
+    <string name="fb_thread">Conversation</string>
+    <string name="fb_reply_title">Compléter</string>
+    <string name="fb_reply_ph">À ajouter — envoyé au développeur</string>
+    <string name="fb_reply_send">Envoyer</string>
+    <string name="fb_reply_ok">Envoyé</string>
+    <string name="fb_closed_tip">Ce retour est clôturé — plus de messages</string>
+    <string name="fb_rate_q">Satisfait du traitement ?</string>
+    <string name="fb_rate_ph">Un commentaire (facultatif)</string>
+    <string name="fb_rate_send">Envoyer la note</string>
+    <string name="fb_rate_ok">Merci pour votre note</string>
+    <string name="fb_rated">Votre note</string>
+    <string name="fb_loading">Chargement…</string>
 </resources>

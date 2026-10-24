@@ -1146,4 +1146,26 @@
     <string name="rate_star_body">If you are, please give our GitHub repo a star ❤️</string>
     <string name="rate_star_auto">Reviews</string>
     <string name="fb_email_bad">Invalid email address</string>
+    <string name="fb_mine">My feedback</string>
+    <string name="fb_mine_hint">Progress and my replies live here — open one to add more</string>
+    <string name="fb_mine_empty">No feedback submitted yet</string>
+    <string name="fb_from_admin">Developer</string>
+    <string name="fb_from_me">Me</string>
+    <string name="fb_st_pending">Pending</string>
+    <string name="fb_st_processing">In progress</string>
+    <string name="fb_st_done">Resolved</string>
+    <string name="fb_st_closed">Closed</string>
+    <string name="fb_detail_title">Feedback detail</string>
+    <string name="fb_thread">Conversation</string>
+    <string name="fb_reply_title">Add more</string>
+    <string name="fb_reply_ph">Anything to add — sent straight to the developer</string>
+    <string name="fb_reply_send">Send</string>
+    <string name="fb_reply_ok">Sent</string>
+    <string name="fb_closed_tip">This feedback is closed — no more messages</string>
+    <string name="fb_rate_q">Satisfied with the fix?</string>
+    <string name="fb_rate_ph">Anything to say (optional)</string>
+    <string name="fb_rate_send">Submit rating</string>
+    <string name="fb_rate_ok">Thanks for the rating</string>
+    <string name="fb_rated">Your rating</string>
+    <string name="fb_loading">Loading…</string>
 </resources>
