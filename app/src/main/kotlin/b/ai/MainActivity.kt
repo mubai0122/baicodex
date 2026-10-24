@@ -47,6 +47,7 @@ import b.ai.ui.A11ySetupDialog
 import b.ai.ui.BackdropHost
 import b.ai.ui.ChatScreen
 import b.ai.ui.DrawerPanel
+import b.ai.ui.FeedbackScreen
 import b.ai.ui.HaltDialog
 import b.ai.ui.IntentInbox
 import b.ai.ui.JoinGroupDialog
@@ -289,9 +290,13 @@ private fun Root() {
                     Box(Modifier.fillMaxSize()) {
                         when (screen) {
                             "setup" -> OnboardingScreen { screen = "chat" }
-                            "settings" -> SettingsScreen(backProgress = backFx, initialTab = settingsTab) {
-                                screen = "chat"
-                            }
+                            "settings" -> SettingsScreen(
+                                backProgress = backFx,
+                                initialTab = settingsTab,
+                                onBack = { screen = "chat" },
+                                onOpenFeedback = { screen = "feedback" }
+                            )
+                            "feedback" -> FeedbackScreen { screen = "settings" }
                             else -> ChatScreen(
                                 onOpenDrawer = { scope.launch { drawer.open() } },
                                 onOpenSettings = { t ->
@@ -346,10 +351,12 @@ private fun Root() {
                             }
                         )
                         //评价调研：用满 2 小时才出现，弹过或用户关掉就再也不来
-                        Rate.ask -> StarDialog { never ->
+                        Rate.ask -> StarDialog(manual = Rate.manual) { never ->
                             if (never) Cfg.noRate = true
-                            Cfg.starShown = true
+                            //手动点开的这次不算「已经弹过」，不改 starShown，将来自动邀请照旧
+                            if (!Rate.manual) Cfg.starShown = true
                             Rate.ask = false
+                            Rate.manual = false
                         }
                         //群卡片排在最后：其它弹窗都在它之上，勾了永不提醒就彻底不弹
                         joinOpen -> JoinGroupDialog { never ->

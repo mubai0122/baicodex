@@ -165,7 +165,12 @@ private fun tabIndex(res: Int): Int =
 
 /** 设置：底部悬浮 tab 分类，各分类独立滚动；backProgress 是返回手势进度，用来做跟手跟退 */
 @Composable
-fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> Unit) {
+fun SettingsScreen(
+    backProgress: Float = 0f,
+    initialTab: Int = 0,
+    onOpenFeedback: () -> Unit = {},
+    onBack: () -> Unit
+) {
     val ctx = LocalContext.current
     //统计要读 SQLite，放 IO 线程，避免进设置页时卡主线程
     var stats by remember { mutableStateOf(0 to 0) }
@@ -341,7 +346,7 @@ fun SettingsScreen(backProgress: Float = 0f, initialTab: Int = 0, onBack: () -> 
                                 onNewTask = { taskDraft = true },
                                 onEditPack = { packDraft = it }
                             )
-                            5 -> AboutTab()
+                            5 -> AboutTab(onOpenFeedback)
                             else -> UiTab()
                         }
                     }
@@ -1576,7 +1581,7 @@ internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 / 更新历史 + 官网 / GitHub 链接 */
 @Composable
-private fun AboutTab() {
+private fun AboutTab(onOpenFeedback: () -> Unit) {
     var latest by remember { mutableStateOf("") }
     var tip by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -1680,14 +1685,62 @@ private fun AboutTab() {
         }
     }
     Spacer(Modifier.height(14.dp))
-    //评价调研：应用里唯一的推广弹窗，用户可以在这里彻底关掉
+    //反馈入口：单独一张卡，点进去是整页表单（分类 + 内容 + 联系方式）
+    CardBox {
+        Row(
+            Modifier.fillMaxWidth().tap { onOpenFeedback() },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(34.dp)
+                    .background(AccentBlueSoft, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Filled.Email, null, tint = AccentBlue, modifier = Modifier.size(18.dp)) }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.fb_entry),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary
+                )
+                Text(stringResource(R.string.fb_entry_d), fontSize = 11.sp, color = TextSecondary)
+            }
+            Text("›", fontSize = 18.sp, color = TextSecondary)
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    //评价调研：开关控制要不要接受邀请；下面一条是手动入口，点开就是同款 Star 卡片
     SectionTitle(stringResource(R.string.rate_title), stringResource(R.string.rate_title_d))
     CardBox {
-        ChoiceRow(
-            stringResource(R.string.rate_off),
-            stringResource(R.string.rate_off_d),
-            Cfg.noRate
-        ) { Cfg.noRate = !Cfg.noRate }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.rate_sw), fontSize = 14.sp, color = TextPrimary)
+                Text(stringResource(R.string.rate_sw_d), fontSize = 11.sp, color = TextSecondary)
+            }
+            Switch(
+                checked = !Cfg.noRate,
+                onCheckedChange = { Cfg.noRate = !it },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .tap { Rate.askManual() }
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.rate_star_row), fontSize = 13.sp, color = TextPrimary)
+                Text(stringResource(R.string.rate_star_row_d), fontSize = 11.sp, color = TextSecondary)
+            }
+            Text("›", fontSize = 18.sp, color = TextSecondary)
+        }
     }
 
     Spacer(Modifier.height(14.dp))
