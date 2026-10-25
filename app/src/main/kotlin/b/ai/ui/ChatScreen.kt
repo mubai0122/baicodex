@@ -215,7 +215,16 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     Box(Modifier.fillMaxSize()) {
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
     Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        TopBar(onOpenDrawer, onOpenWorkspace = { wsPanel = true }, onPersona = { personaPanel = !personaPanel })
+        //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
+        val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
+        TopBar(
+            onOpenDrawer,
+            onOpenWorkspace = { wsPanel = true },
+            onPersona = { personaPanel = !personaPanel },
+            ctxChars = cst[0],
+            ctxFreshCount = cst[1],
+            ctxFreshTok = cst[2]
+        )
 
         //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
         val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
@@ -391,13 +400,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
-        //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
-        val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
         InputBar(
             input = input,
-            ctxChars = cst[0],
-            ctxFreshCount = cst[1],
-            ctxFreshTok = cst[2],
             hint = hint,
             modelLabel = modelLabel,
             modeLabel = stringResource(Cfg.agentMode.labelRes),
@@ -582,7 +586,15 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
 } //聊天界面
 
 @Composable
-private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPersona: () -> Unit) {
+private fun TopBar(
+    onOpenDrawer: () -> Unit,
+    onOpenWorkspace: () -> Unit,
+    onPersona: () -> Unit,
+    ctxChars: Int,
+    ctxFreshCount: Int,
+    ctxFreshTok: Int
+) {
+    var ctxOpen by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -642,6 +654,18 @@ private fun TopBar(onOpenDrawer: () -> Unit, onOpenWorkspace: () -> Unit, onPers
                 color = TextSecondary,
                 maxLines = 1
             )
+        }
+        Spacer(Modifier.width(8.dp))
+        //上下文占用环：占加号左边那个位置，点开是用量小卡片
+        Box {
+            CtxRing(chars = ctxChars, budget = Cfg.ctxCharBudget) { ctxOpen = true }
+            DropdownMenu(
+                expanded = ctxOpen,
+                onDismissRequest = { ctxOpen = false },
+                offset = DpOffset(0.dp, 2.dp)
+            ) {
+                CtxCard(ctxChars, Cfg.ctxCharBudget, ctxFreshCount, ctxFreshTok)
+            }
         }
         Spacer(Modifier.width(8.dp))
         //右上角两个动作：新建会话（加号）、工作区绑定（代码尖括号）
@@ -904,8 +928,15 @@ private fun ctxStat(list: List<ChatMsg>): IntArray {
 private fun CtxRing(chars: Int, budget: Int, onTap: () -> Unit) {
     val pct = if (budget <= 0) 0f else (chars.toFloat() / budget).coerceIn(0f, 1f)
     val c = if (pct < 0.7f) OkGreen else DangerRed
-    Box(Modifier.size(30.dp).tap { onTap() }, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(24.dp)) {
+    //尺寸与底色都跟顶栏那个加号一致，摆在一起才不突兀
+    Box(
+        Modifier
+            .size(34.dp)
+            .background(SurfaceMuted, CircleShape)
+            .tap { onTap() },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.size(26.dp)) {
             val sw = 2.dp.toPx()
             val style = Stroke(width = sw, cap = StrokeCap.Round)
             val tl = Offset(sw / 2, sw / 2)
@@ -915,7 +946,7 @@ private fun CtxRing(chars: Int, budget: Int, onTap: () -> Unit) {
         }
         Text(
             "${(pct * 100).toInt()}%",
-            fontSize = 7.sp,
+            fontSize = 8.sp,
             fontWeight = FontWeight.SemiBold,
             color = c
         )
@@ -971,16 +1002,12 @@ private fun InputBar(
     images: List<String>,
     onOpenConfig: () -> Unit,
     onOpenAttach: () -> Unit,
-    ctxChars: Int,
-    ctxFreshCount: Int,
-    ctxFreshTok: Int,
     onOpenModel: () -> Unit,
     onExpand: () -> Unit,
     onRemoveImage: (String) -> Unit,
     onSend: () -> Unit
 ) {
     val ctx = LocalContext.current
-    var ctxOpen by remember { mutableStateOf(false) }
     //悬浮模式：只把输入框本体拎出来浮着，外层不铺任何背景，留着 BgGray 底
     val floating = Cfg.floatInput
     val outer = Modifier
@@ -1148,17 +1175,6 @@ private fun InputBar(
                                 tint = if (Cfg.maxMode || Cfg.think) AccentBlue else TextSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
-                        }
-                        //上下文占用环：加号左边一圈，点开是这个小卡片
-                        Box {
-                            CtxRing(chars = ctxChars, budget = Cfg.ctxCharBudget) { ctxOpen = true }
-                            DropdownMenu(
-                                expanded = ctxOpen,
-                                onDismissRequest = { ctxOpen = false },
-                                offset = DpOffset(0.dp, 2.dp)
-                            ) {
-                                CtxCard(ctxChars, Cfg.ctxCharBudget, ctxFreshCount, ctxFreshTok)
-                            }
                         }
                         Box(
                             Modifier.size(30.dp).tap { onOpenAttach() },
