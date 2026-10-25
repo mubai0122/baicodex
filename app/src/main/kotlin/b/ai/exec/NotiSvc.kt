@@ -17,5 +17,16 @@ class NotiSvc : NotificationListenerService() {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(s.packageName, 0)).toString()
         }.getOrDefault(s.packageName)
         b.ai.core.Noti.add(this, s.packageName, app, title, false)
+        fire(s.packageName, app, title)
     } //收到一条
+
+    /** 通知触发：规则命中且 Agent 空闲就把 prompt 丢给它；忙时丢掉这一条，不排队堵住 */
+    private fun fire(pkg: String, app: String, title: String) {
+        runCatching {
+            b.ai.core.Triggers.init(this)
+            val hit = b.ai.core.Triggers.match(pkg, app, title) ?: return
+            if (b.ai.agent.Agent.busy) return
+            b.ai.agent.Agent.send(hit.prompt)
+        }
+    } //命中规则开跑
 } //通知监听服务
