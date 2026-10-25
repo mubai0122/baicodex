@@ -1168,4 +1168,29 @@
     <string name="fb_rate_ok">谢谢你的评价</string>
     <string name="fb_rated">你的评价</string>
     <string name="fb_loading">正在加载…</string>
+    <string name="ntg_title">通知触发</string>
+    <string name="ntg_sub">某个应用来了带关键词的通知，就自动让我跑一轮</string>
+    <string name="ntg_none">还没有规则</string>
+    <string name="ntg_hint">例：微信来了「老板」，就把消息整理成待办</string>
+    <string name="ntg_manage">管理</string>
+    <string name="ntg_count">%1$d 条规则 · %2$d 条已开</string>
+    <string name="ntg_offall">规则都关着</string>
+    <string name="ntg_any">任意应用</string>
+    <string name="ntg_allkw">任何通知</string>
+    <string name="ntg_perm">通知使用权</string>
+    <string name="ntg_open">去开启</string>
+    <string name="ntg_app">应用（包名或名字）</string>
+    <string name="ntg_app_hint">微信 / com.tencent.mm，留空=任意应用</string>
+    <string name="ntg_kw">关键词</string>
+    <string name="ntg_kw_hint">老板 / 转账 / 验证码，留空=该应用任何通知</string>
+    <string name="ntg_prompt">命中了要让我做什么</string>
+    <string name="ntg_prompt_hint">把这条通知整理成待办，并提醒我 30 分钟内回复</string>
+    <string name="ntg_save">保存规则</string>
+    <string name="ntg_err_prompt">先写清要让我做什么</string>
+    <string name="ntg_list">已有规则</string>
+    <string name="ntg_empty">空着。上面填完点保存就多一条</string>
+    <string name="ntg_never">还没触发过</string>
+    <string name="ntg_last">上次触发 %1$s</string>
+    <string name="ntg_note">同一条规则 60 秒内只触发一次；我正忙时来的通知直接丢掉，不排队。</string>
+    <string name="ntg_del">删除</string>
 </resources>

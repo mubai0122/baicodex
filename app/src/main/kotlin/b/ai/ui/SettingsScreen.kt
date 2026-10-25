@@ -81,6 +81,7 @@ import b.ai.core.Persona
 import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Schedules
+import b.ai.core.Triggers
 import b.ai.core.Search
 import b.ai.core.Skill
 import b.ai.core.Skills
@@ -181,6 +182,8 @@ fun SettingsScreen(
     //技能包详情：就地改 README / skill.json / 模板，填它声明出来的密钥
     var packDraft by remember { mutableStateOf<SkillPack?>(null) }
     var taskDraft by remember { mutableStateOf(false) }
+    //通知触发规则面板：跟定时任务同一套弹窗挂载方式
+    var triggerDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
     var fq by remember { mutableStateOf("") }
     //下拉选择面板的当前内容：非空时挂到根弹窗层，和其它弹窗互斥
@@ -344,6 +347,7 @@ fun SettingsScreen(
                                 onEditPersona = { personaDraft = it },
                                 onEditMcp = { mcpDraft = it },
                                 onNewTask = { taskDraft = true },
+                                onNewTrigger = { triggerDraft = true },
                                 onEditPack = { packDraft = it }
                             )
                             5 -> AboutTab(onOpenFeedback)
@@ -361,7 +365,7 @@ fun SettingsScreen(
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || pick != null || packDraft != null || PermAsk.kind.value != null) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null) {
         //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
         PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
@@ -408,6 +412,7 @@ fun SettingsScreen(
             )
         }
         if (taskDraft) TaskDialog(onClose = { taskDraft = false })
+        if (triggerDraft) TriggerDialog(onClose = { triggerDraft = false })
         pick?.let { (t, l) -> PickSheet(t, l) { pick = null } }
     }
 } //设置界面
@@ -1244,6 +1249,7 @@ private fun ExtTab(
     onEditPersona: (Persona) -> Unit,
     onEditMcp: (McpServer) -> Unit,
     onNewTask: () -> Unit,
+    onNewTrigger: () -> Unit,
     onEditPack: (SkillPack) -> Unit
 ) {
     val ctx = LocalContext.current
@@ -1280,6 +1286,43 @@ private fun ExtTab(
                 )
             }
             GhostButton(stringResource(R.string.se2_manage)) { onNewTask() }
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.ntg_title), stringResource(R.string.ntg_sub))
+    CardBox {
+        val rules = Triggers.list
+        val on = rules.count { it.on }
+        val any = stringResource(R.string.ntg_any)
+        val all = stringResource(R.string.ntg_allkw)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.padding(end = 8.dp)) {
+                Icon(
+                    Icons.Filled.Email,
+                    contentDescription = null,
+                    tint = AccentBlue,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (rules.isEmpty()) stringResource(R.string.ntg_none)
+                    else stringResource(R.string.ntg_count, rules.size, on),
+                    fontSize = 13.sp,
+                    color = TextPrimary
+                )
+                Text(
+                    if (rules.isEmpty()) stringResource(R.string.ntg_hint)
+                    else rules.filter { it.on }.take(2)
+                        .joinToString("；") { t -> t.app.ifBlank { any } + " · " + t.keyword.ifBlank { all } }
+                        .ifBlank { stringResource(R.string.ntg_offall) },
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 2
+                )
+            }
+            GhostButton(stringResource(R.string.ntg_manage)) { onNewTrigger() }
         }
     }
 

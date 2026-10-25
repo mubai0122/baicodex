@@ -2,6 +2,7 @@ package b.ai
 
 import android.app.ActivityManager
 import android.app.Application
+import android.app.Application.ActivityLifecycleCallbacks
 import android.content.Context
 import android.os.Build
 import android.os.Process
@@ -16,6 +17,7 @@ import b.ai.core.Personas
 import b.ai.core.Profiles
 import b.ai.core.Schedules
 import b.ai.core.Skills
+import b.ai.core.Triggers
 import b.ai.core.SkillPacks
 import b.ai.core.Repo
 import b.ai.core.WorkMode
@@ -29,6 +31,21 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         self = this
+        //当前在前台的 Activity：WebView 需要窗口上下文，拿不到就退回 Application
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}
+            override fun onActivityStarted(a: android.app.Activity) {}
+            override fun onActivityResumed(a: android.app.Activity) {
+                act = a
+            }
+
+            override fun onActivityPaused(a: android.app.Activity) {}
+            override fun onActivityStopped(a: android.app.Activity) {}
+            override fun onActivitySaveInstanceState(a: android.app.Activity, b: android.os.Bundle) {}
+            override fun onActivityDestroyed(a: android.app.Activity) {
+                if (act === a) act = null
+            }
+        })
         //:exec 进程只跑 Shizuku 命令，不做应用初始化，否则会多挂一个胶囊、白扫一遍库
         if (procName() != packageName) return
         //胶囊的兜底宿主：没有无障碍时靠悬浮窗权限显示
@@ -52,6 +69,7 @@ class App : Application() {
         runCatching { SkillPacks.reload(this) }
         Personas.init(this)
         Schedules.init(this)
+        Triggers.init(this)
         Mcp.init(this)
         Repo.init(this)
         Memory.init()
@@ -76,5 +94,8 @@ class App : Application() {
     companion object {
         lateinit var self: App
             private set
+
+        /** 前台 Activity：浏览器要窗口上下文，没有就退回 Application */
+        var act: android.app.Activity? = null
     }
 }

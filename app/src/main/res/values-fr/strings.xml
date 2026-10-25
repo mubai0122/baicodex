@@ -1167,4 +1167,29 @@
     <string name="fb_rate_ok">Merci pour votre note</string>
     <string name="fb_rated">Votre note</string>
     <string name="fb_loading">Chargement…</string>
+    <string name="ntg_title">Déclencheurs de notification</string>
+    <string name="ntg_sub">Quand une app envoie une notification contenant un mot-clé, je lance une tâche automatiquement</string>
+    <string name="ntg_none">Aucune règle</string>
+    <string name="ntg_hint">ex. un message WeChat du patron devient une tâche</string>
+    <string name="ntg_manage">Gérer</string>
+    <string name="ntg_count">%1$d règles · %2$d actives</string>
+    <string name="ntg_offall">toutes les règles sont désactivées</string>
+    <string name="ntg_any">n\'importe quelle app</string>
+    <string name="ntg_allkw">toute notification</string>
+    <string name="ntg_perm">Accès aux notifications</string>
+    <string name="ntg_open">Autoriser</string>
+    <string name="ntg_app">App (paquet ou nom)</string>
+    <string name="ntg_app_hint">WeChat / com.tencent.mm, vide = toute app</string>
+    <string name="ntg_kw">Mot-clé</string>
+    <string name="ntg_kw_hint">patron / virement / code, vide = toute notification de cette app</string>
+    <string name="ntg_prompt">Que dois-je faire quand ça tombe</string>
+    <string name="ntg_prompt_hint">Transformer cette notification en tâche et me rappeler de répondre sous 30 minutes</string>
+    <string name="ntg_save">Enregistrer</string>
+    <string name="ntg_err_prompt">Dis-moi d\'abord quoi faire</string>
+    <string name="ntg_list">Règles existantes</string>
+    <string name="ntg_empty">Vide. Remplis le formulaire puis enregistre</string>
+    <string name="ntg_never">jamais déclenchée</string>
+    <string name="ntg_last">dernier déclenchement %1$s</string>
+    <string name="ntg_note">Chaque règle se déclenche au plus une fois par 60 secondes ; les notifications reçues quand je travaille sont ignorées, pas mises en file.</string>
+    <string name="ntg_del">Supprimer</string>
 </resources>

@@ -1,5 +1,6 @@
 package b.ai.agent
 
+import b.ai.core.Apk
 import b.ai.core.AgentMode
 import b.ai.core.Cfg
 import b.ai.core.Dsl
@@ -44,6 +45,25 @@ object Tools {
     /** 取某个技能的完整用法（README），技能函数由技能包动态注册 */
     const val SKILL_READ = "skill_read"
 
+    /** 1.6.0 补齐的文件与系统工具：列目录 / 取信息 / 移动复制 / 压缩解压 / 内容搜索 */
+    const val LIST = "list_dir"
+    const val INFO = "file_info"
+    const val MOVE = "move_path"
+    const val ZIP = "zip_op"
+    const val GREP = "grep_files"
+
+    /** 剪贴板 / 打开链接 / 分享 / 本地通知与今日通知 / 直发 HTTP */
+    const val CLIP = "clipboard"
+    const val OPEN = "open_link"
+    const val NOTI = "notification"
+    const val HTTP = "http_fetch"
+
+    /** APK 逆向：签名证书 / 二进制清单 / 权限与组件 / dex 字符串 / 包内文件 */
+    const val APKTOOL = "apk"
+
+    /** 浏览器：内置 WebView 读正文、点链接、填表单，不弹外置浏览器 */
+    const val BROWSE = "browser"
+
     /** 屏幕操作：无障碍侧读控件树 / 截图 / 点击滑动长按输入，走 A11y */
     const val SCREEN = "screen"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
@@ -54,6 +74,7 @@ object Tools {
         get() {
             val l = ArrayList<String>()
             l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK, SCREEN))
+            l.addAll(listOf(LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.add(SKILL_READ)
@@ -63,7 +84,9 @@ object Tools {
         }
 
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
-    private val PLAN_OFF = setOf(WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN)
+    private val PLAN_OFF = setOf(
+        WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI
+    )
 
     /** 极简模式只留这五个：文件四件套 + exec_shell */
     private val MIN_SET = setOf(READ, WRITE, MAKE_DIR, DELETE, SHELL)
@@ -97,6 +120,17 @@ object Tools {
         ASK -> "向用户提问"
         SKILL_READ -> "查技能用法"
         SCREEN -> "操作屏幕"
+        LIST -> "列目录"
+        INFO -> "看文件信息"
+        MOVE -> "移动/复制"
+        ZIP -> "压缩/解压"
+        GREP -> "搜文件内容"
+        CLIP -> "剪贴板"
+        OPEN -> "打开/分享"
+        NOTI -> "通知"
+        HTTP -> "发 HTTP 请求"
+        APKTOOL -> "看安装包"
+        BROWSE -> "浏览网页"
         else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" } ?: mcpLabel(name)
     }
 
@@ -292,6 +326,151 @@ object Tools {
                 ).put("required", JSONArray().put("action"))
             )
         )
+        //1.6.0 补齐的文件与系统工具：参数化动作合并到一个工具里，少一个工具就少一次误选
+        arr.put(
+            fn(
+                LIST,
+                "列目录（比 read_file 读目录更清楚）：带类型、体积、修改时间。recurse=true 递归到 6 层。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("path", str("目录绝对路径"))
+                        .put("recurse", JSONObject().put("type", "boolean").put("description", "是否递归，默认 false"))
+                        .put("limit", JSONObject().put("type", "integer").put("description", "最多列多少项，默认 200"))
+                ).put("required", JSONArray().put("path"))
+            )
+        )
+        arr.put(
+            fn(
+                INFO, "看文件或目录的信息：体积、修改时间、图片尺寸、md5 与 sha256（20MB 内）。",
+                params("path" to str("绝对路径"))
+            )
+        )
+        arr.put(
+            fn(
+                MOVE, "移动文件或目录；copy=true 改成复制。跨通道（root / Shizuku / 零宽）会自动选路。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("from", str("源路径"))
+                        .put("to", str("目标路径"))
+                        .put("copy", JSONObject().put("type", "boolean").put("description", "true=复制，默认 false=移动"))
+                ).put("required", JSONArray().put("from").put("to"))
+            )
+        )
+        arr.put(
+            fn(
+                ZIP, "压缩或解压 zip：action=zip 把 paths 打包（英文逗号分隔多个路径）；action=unzip 解压到 to。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("zip（默认）或 unzip"))
+                        .put("paths", str("仅 zip：要打包的路径，英文逗号分隔"))
+                        .put("path", str("仅 unzip：zip 文件路径"))
+                        .put("out", str("仅 zip：压缩包输出路径"))
+                        .put("to", str("仅 unzip：解压目标目录，留空则解到压缩包同名的文件夹"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
+        arr.put(
+            fn(
+                GREP, "在文件或整个目录里按内容搜（正则），输出 路径:行号: 内容；跳过二进制与超 2MB 的文件。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("path", str("文件或目录的绝对路径"))
+                        .put("pattern", str("正则表达式"))
+                        .put("ext", str("只搜这些扩展名，英文逗号分隔，留空=全部"))
+                        .put("max", JSONObject().put("type", "integer").put("description", "最多命中多少条，默认 60"))
+                        .put("ignore_case", JSONObject().put("type", "boolean").put("description", "是否忽略大小写，默认 true"))
+                ).put("required", JSONArray().put("path").put("pattern"))
+            )
+        )
+        arr.put(
+            fn(
+                CLIP, "读写剪贴板：action=get 读当前剪贴板文本；action=set 把 text 写进剪贴板。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("get（默认）或 set"))
+                        .put("text", str("仅 set：要复制进剪贴板的文字"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
+        arr.put(
+            fn(
+                OPEN, "打开链接或分享文本：action=url 用浏览器打开网页；action=share 拉起系统分享面板把 text 发出去。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("url（默认）或 share"))
+                        .put("url", str("仅 url：要打开的网址"))
+                        .put("text", str("仅 share：要分享的文字"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
+        arr.put(
+            fn(
+                NOTI, "通知：action=list 看今天收到的通知（app 可按应用名/包名筛）；action=send 给用户发一条本地通知。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("list（默认）或 send"))
+                        .put("app", str("仅 list：只看这个应用的通知，留空=全部"))
+                        .put("limit", JSONObject().put("type", "integer").put("description", "仅 list：最多几条，默认 30"))
+                        .put("title", str("仅 send：通知标题"))
+                        .put("text", str("仅 send：通知正文"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
+        arr.put(
+            fn(
+                HTTP, "直接发 HTTP 请求（不用拼 curl）：返回状态码与正文前 8000 字。headers 每行一个「名: 值」。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("method", str("GET（默认）/ POST / PUT / DELETE / HEAD"))
+                        .put("url", str("完整 URL，带 https://"))
+                        .put("headers", str("可选：每行一个「名: 值」"))
+                        .put("body", str("可选：请求体，JSON 或纯文本"))
+                ).put("required", JSONArray().put("url"))
+            )
+        )
+        arr.put(
+            fn(
+                APKTOOL,
+                "看 APK 安装包（纯本地解析，不用装 apktool）：action=info 概览（包名/版本/SDK/签名指纹/权限/组件）；" +
+                    "sign 签名证书详情；permissions 权限清单；components 组件清单；" +
+                    "dex 搜 dex 里的字符串（keyword 可给正则）；files 包内文件。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("info（默认）/ sign / permissions / components / dex / files"))
+                        .put("path", str("apk 文件的绝对路径"))
+                        .put("keyword", str("仅 dex：字符串过滤，支持正则，留空=按体积列前几条"))
+                        .put("limit", JSONObject().put("type", "integer").put("description", "最多多少条/项，默认 60"))
+                ).put("required", JSONArray().put("path"))
+            )
+        )
+        arr.put(
+            fn(
+                BROWSE,
+                "内置浏览器（不弹外置 App，直接在应用里抓页面）：action=open 打开网址并返回正文；" +
+                    "text 重读正文；links 列链接；find 找页面里的文字；click 按文字点链接或按钮；" +
+                    "input 往输入框填内容（target 指定框的提示文字）；scroll 往下翻；back / forward / reload / url；" +
+                    "eval 跑一段 JS 取结果。要查网页里才有的内容、要点开链接、要登录后的页面，用它而不是 web_search。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("action", str("open（默认）/ text / links / find / click / input / scroll / back / forward / reload / url / eval"))
+                        .put("url", str("仅 open：完整网址，可省略 https://"))
+                        .put("text", str("find / click 要匹配的文字；input 要填的内容；scroll 翻多少像素"))
+                        .put("target", str("仅 input：输入框的提示文字或 name，留空=第一个能填的框"))
+                        .put("script", str("仅 eval：要执行的 JS，返回值转成字符串"))
+                        .put("limit", JSONObject().put("type", "integer").put("description", "text 最多返回多少字，默认 4000"))
+                ).put("required", JSONArray().put("action"))
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -340,6 +519,24 @@ object Tools {
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
         SCREEN -> screen(args).governed()
+        LIST -> FileOps.list(
+            args.optString("path"), args.optBoolean("recurse", false), args.optInt("limit", 200)
+        ).toOutcome().governed()
+        INFO -> FileOps.info(args.optString("path")).toOutcome().governed()
+        MOVE -> FileOps.move(
+            args.optString("from"), args.optString("to"), args.optBoolean("copy", false)
+        ).toOutcome().governed()
+        ZIP -> zipOp(args).governed()
+        GREP -> FileOps.grep(
+            args.optString("path"), args.optString("pattern"), args.optString("ext"),
+            args.optInt("max", 60), args.optBoolean("ignore_case", true)
+        ).toOutcome().governed()
+        CLIP -> clip(args).governed()
+        OPEN -> openLink(args).governed()
+        NOTI -> noti(args).governed()
+        HTTP -> httpFetch(args).governed()
+        APKTOOL -> apk(args).governed()
+        BROWSE -> browse(args).governed()
         SKILL_READ -> skillRead(args.optString("name")).governed()
         else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
             ?: mcpCall(name, args).governed()
@@ -611,6 +808,101 @@ object Tools {
     } //列出可启动应用
 
     private fun FileOps.Out.toOutcome() = ToolOutcome(ok, text, route)
+
+    /** 压缩 / 解压：action 分流，未给输出路径就按源路径推导 */
+    private fun zipOp(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "zip").lowercase()
+        if (act == "unzip") {
+            val z = a.optString("path").trim()
+            if (z.isEmpty()) return ToolOutcome(false, "unzip 需要 path（zip 文件路径）", Route.SANDBOX)
+            val to = a.optString("to").trim()
+                .ifEmpty { z.removeSuffix(".zip").removeSuffix(".ZIP") + "_unzip" }
+            return FileOps.unzip(z, to).toOutcome()
+        }
+        val paths = a.optString("paths").trim()
+        if (paths.isEmpty()) return ToolOutcome(false, "zip 需要 paths（要打包的路径，逗号分隔）", Route.SANDBOX)
+        val out = a.optString("out").trim().ifEmpty {
+            paths.split(',').first().trim().trimEnd('/') + ".zip"
+        }
+        return FileOps.zip(paths, out).toOutcome()
+    } //压缩解压
+
+    /** 剪贴板：get 读、set 写，失败统一以「失败」开头由调用方判 ok */
+    private fun clip(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "get").lowercase()
+        val t = if (act == "set") b.ai.exec.Device.clipSet(a.optString("text"))
+        else b.ai.exec.Device.clipGet()
+        return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
+    } //剪贴板
+
+    /** 打开链接 / 分享：url 走浏览器，share 走系统分享面板 */
+    private fun openLink(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "url").lowercase()
+        val t = if (act == "share") b.ai.exec.Device.shareText(a.optString("text"))
+        else b.ai.exec.Device.openUrl(a.optString("url"))
+        return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
+    } //打开或分享
+
+    /** 通知：list 读今日通知（可按应用筛），send 发一条本地通知给用户 */
+    private fun noti(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "list").lowercase()
+        if (act == "send") {
+            val t = b.ai.exec.Device.sendNoti(a.optString("title"), a.optString("text"))
+            return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
+        }
+        return ToolOutcome(true, b.ai.exec.Device.notiList(a.optInt("limit", 30), a.optString("app")), Route.SANDBOX)
+    } //通知
+
+    /** 直发 HTTP：不依赖 curl，headers 每行一个「名: 值」，返回状态码与正文前 8000 字 */
+    private fun httpFetch(a: JSONObject): ToolOutcome {
+        val url = a.optString("url").trim()
+        if (url.isEmpty()) return ToolOutcome(false, "缺少 url", Route.SANDBOX)
+        val method = a.optString("method", "GET").trim().uppercase().ifEmpty { "GET" }
+        val body = a.optString("body")
+        val heads = ArrayList<Pair<String, String>>()
+        a.optString("headers").lines().forEach { line ->
+            val i = line.indexOf(':')
+            if (i > 0) heads.add(line.substring(0, i).trim() to line.substring(i + 1).trim())
+        }
+        return runCatching {
+            val conn = URL(url).openConnection() as java.net.HttpURLConnection
+            conn.requestMethod = method
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 45_000
+            conn.instanceFollowRedirects = true
+            heads.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            if (body.isNotEmpty() && method != "GET" && method != "HEAD") {
+                conn.doOutput = true
+                conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..399) conn.inputStream else conn.errorStream
+            val text = runCatching { stream?.bufferedReader()?.use { it.readText() }.orEmpty() }.getOrDefault("")
+            val ctype = conn.contentType.orEmpty()
+            conn.disconnect()
+            val head = "HTTP $code" + if (ctype.isNotEmpty()) "（$ctype）" else ""
+            val cut = if (text.length > 8000) text.take(8000) + "\n…已截断（共 ${text.length} 字符）" else text
+            ToolOutcome(code in 200..299, "$head\n$cut", Route.SANDBOX)
+        }.getOrElse {
+            ToolOutcome(false, "请求失败：" + (it.message ?: it.javaClass.simpleName), Route.SANDBOX)
+        }
+    } //直发 HTTP
+
+    private fun apk(a: JSONObject): ToolOutcome {
+        val r = Apk.run(
+            a.optString("action", "info"), a.optString("path"),
+            a.optString("keyword"), a.optInt("limit", 60)
+        )
+        return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+    } //看安装包
+
+    private fun browse(a: JSONObject): ToolOutcome {
+        val t = b.ai.exec.Browser.run(
+            a.optString("action", "open"), a.optString("url"), a.optString("text"),
+            a.optString("target"), a.optString("script"), a.optInt("limit", 4000)
+        )
+        return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
+    } //浏览网页
 
     private fun execShell(command: String): ToolOutcome {
         if (command.isBlank()) return ToolOutcome(false, "命令为空", Route.SANDBOX)

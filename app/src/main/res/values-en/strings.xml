@@ -1168,4 +1168,29 @@
     <string name="fb_rate_ok">Thanks for the rating</string>
     <string name="fb_rated">Your rating</string>
     <string name="fb_loading">Loading…</string>
+    <string name="ntg_title">Notification triggers</string>
+    <string name="ntg_sub">When an app posts a notification matching a keyword, run a task for me automatically</string>
+    <string name="ntg_none">No rules yet</string>
+    <string name="ntg_hint">e.g. a WeChat message from the boss becomes a to-do</string>
+    <string name="ntg_manage">Manage</string>
+    <string name="ntg_count">%1$d rules · %2$d enabled</string>
+    <string name="ntg_offall">all rules are off</string>
+    <string name="ntg_any">any app</string>
+    <string name="ntg_allkw">any notification</string>
+    <string name="ntg_perm">Notification access</string>
+    <string name="ntg_open">Grant</string>
+    <string name="ntg_app">App (package or name)</string>
+    <string name="ntg_app_hint">WeChat / com.tencent.mm, empty = any app</string>
+    <string name="ntg_kw">Keyword</string>
+    <string name="ntg_kw_hint">boss / transfer / code, empty = any notification from that app</string>
+    <string name="ntg_prompt">What should I do when it hits</string>
+    <string name="ntg_prompt_hint">Turn this notification into a to-do and remind me to reply within 30 minutes</string>
+    <string name="ntg_save">Save rule</string>
+    <string name="ntg_err_prompt">Tell me what to do first</string>
+    <string name="ntg_list">Existing rules</string>
+    <string name="ntg_empty">Empty. Fill the form above and hit save</string>
+    <string name="ntg_never">never fired</string>
+    <string name="ntg_last">last fired %1$s</string>
+    <string name="ntg_note">Each rule fires at most once per 60 seconds; notifications that arrive while I\'m busy are dropped, not queued.</string>
+    <string name="ntg_del">Delete</string>
 </resources>
