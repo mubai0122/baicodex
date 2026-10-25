@@ -1356,9 +1356,6 @@ private fun ExtTab(
     LinuxSection()
 
     Spacer(Modifier.height(14.dp))
-    ToolchainSection()
-
-    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_046), stringResource(R.string.se2_search_sub))
     CardBox {
         val providers = Search.providers
@@ -1489,10 +1486,6 @@ private fun ExtTab(
     SkillPackBox(onEdit = onEditPack)
 
     Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.skp_secret_t), stringResource(R.string.skp_secret_d))
-    SecretBox()
-
-    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
     CardBox {
         Tools.all.forEach { tool ->
@@ -1577,72 +1570,6 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
         }
     }
 } //技能包列表
-
-/** 技能密钥：技能包里的 $secret.xxx 从这里取，明文存数据根 */
-@Composable
-private fun SecretBox() {
-    val ctx = LocalContext.current
-    var all by remember { mutableStateOf(Secret.all()) }
-    var name by remember { mutableStateOf("") }
-    var value by remember { mutableStateOf("") }
-    var tip by remember { mutableStateOf("") }
-    CardBox {
-        if (all.isEmpty()) Text(stringResource(R.string.skp_secret_none), fontSize = 11.sp, color = TextSecondary)
-        all.forEach { (k, v) ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(k, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
-                    Text("•••• " + v.takeLast(4), fontSize = 9.sp, color = TextSecondary)
-                }
-                Text(
-                    stringResource(R.string.skp_secret_del),
-                    fontSize = 11.sp,
-                    color = DangerRed,
-                    modifier = Modifier
-                        .background(DangerRedSoft, RoundedCornerShape(8.dp))
-                        .tap {
-                            Secret.put(k, "")
-                            all = Secret.all()
-                            tip = ""
-                        }
-                        .padding(horizontal = 9.dp, vertical = 5.dp)
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
-        Field(stringResource(R.string.skp_secret_name), name, { name = it })
-        Spacer(Modifier.height(6.dp))
-        Field(stringResource(R.string.skp_secret_val), value, { value = it }, secret = true)
-        Spacer(Modifier.height(6.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.skp_secret_save), modifier = Modifier.height(34.dp)) {
-                val n = name.trim()
-                if (!Secret.validName(n)) {
-                    tip = ctx.getString(R.string.skp_secret_bad)
-                    return@GhostButton
-                }
-                if (value.isEmpty()) {
-                    tip = ctx.getString(R.string.skp_secret_empty)
-                    return@GhostButton
-                }
-                Secret.put(n, value)
-                all = Secret.all()
-                name = ""
-                value = ""
-                tip = ctx.getString(R.string.skp_secret_saved, n)
-            }
-            if (tip.isNotBlank()) {
-                Spacer(Modifier.width(10.dp))
-                Text(tip, fontSize = 10.sp, color = TextSecondary)
-            }
-        }
-    }
-} //密钥清单
 
 //官网地址：服务端基础地址，仓库那栏等建库后再填
 internal const val SITE_URL = "https://agent.ai.baiccb.cn"
@@ -2471,36 +2398,29 @@ internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: 
     }
 } //能力勾选一行：标题 + 说明 + 开关
 
-/** 通知注入条数：0 或留空 = 不限；输入框紧跟条数，滑块只占一小段，别把整张卡撑满 */
+/**通知注入条数：0 或留空 = 不限；输入框和滑块挤在同一行，说明文字不再单独占一行 */
 @Composable
 private fun NotiLimitRow() {
     var text by remember { mutableStateOf(if (Cfg.notiLimit <= 0) "" else Cfg.notiLimit.toString()) }
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
-            Spacer(Modifier.width(8.dp))
-            androidx.compose.material3.OutlinedTextField(
-                value = text,
-                onValueChange = { s ->
-                    val d = s.filter { it.isDigit() }.take(4)
-                    text = d
-                    Cfg.notiLimit = d.toIntOrNull() ?: 0
-                },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.se_325), fontSize = 12.sp) },
-                textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 12.sp),
-                modifier = Modifier.width(64.dp).height(46.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                if (Cfg.notiLimit <= 0) stringResource(R.string.se_326)
-                else stringResource(R.string.se_327, Cfg.notiLimit),
-                fontSize = 10.sp,
-                color = TextSecondary,
-                maxLines = 2,
-                modifier = Modifier.weight(1f)
-            )
-        }
+    Row(
+        Modifier.fillMaxWidth().padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
+        Spacer(Modifier.width(8.dp))
+        androidx.compose.material3.OutlinedTextField(
+            value = text,
+            onValueChange = { s ->
+                val d = s.filter { it.isDigit() }.take(4)
+                text = d
+                Cfg.notiLimit = d.toIntOrNull() ?: 0
+            },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.se_325), fontSize = 12.sp) },
+            textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 12.sp),
+            modifier = Modifier.width(64.dp).height(46.dp)
+        )
+        Spacer(Modifier.width(10.dp))
         androidx.compose.material3.Slider(
             value = Cfg.notiLimit.coerceIn(0, 100).toFloat(),
             onValueChange = {
@@ -2509,66 +2429,10 @@ private fun NotiLimitRow() {
                 text = if (v == 0) "" else v.toString()
             },
             valueRange = 0f..100f,
-            modifier = Modifier.width(150.dp).padding(top = 2.dp)
+            modifier = Modifier.weight(1f)
         )
     }
 } //通知注入条数
-
-@Composable
-private fun ToolchainSection() {
-    val ctx = LocalContext.current
-    var tick by remember { mutableStateOf(0) }
-    var loading by remember { mutableStateOf(true) }
-    var rep by remember { mutableStateOf<Toolchain.Report?>(null) }
-    LaunchedEffect(tick) {
-        loading = true
-        rep = withContext(Dispatchers.IO) { Toolchain.probe(ctx) }
-        loading = false
-    }
-    fun copy(text: String) {
-        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-        cm.setPrimaryClip(ClipData.newPlainText("bai", text))
-    }
-
-    SectionTitle(
-        stringResource(R.string.se_051),
-        stringResource(R.string.se_291)
-    )
-    CardBox {
-        val r = rep
-        if (loading) {
-            Text(stringResource(R.string.se_292), fontSize = 13.sp, color = TextSecondary)
-        } else if (r == null || !r.reachable) {
-            Text(r?.note ?: stringResource(R.string.se_293), fontSize = 12.sp, color = DangerRed)
-        } else {
-            Text(r.note, fontSize = 12.sp, color = if (r.ok) OkGreen else DangerRed)
-            Spacer(Modifier.height(6.dp))
-            r.items.forEach { item ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (item.ok) "✓" else "✗",
-                        fontSize = 12.sp,
-                        color = if (item.ok) OkGreen else DangerRed
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(item.name, fontSize = 12.sp, color = TextPrimary)
-                }
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(stringResource(R.string.se_294), modifier = Modifier.height(38.dp)) { tick++ }
-            GhostButton(stringResource(R.string.se_295), modifier = Modifier.height(38.dp)) {
-                copy(Toolchain.INSTALL_CMD)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_296), fontSize = 11.sp, color = TextSecondary)
-        CmdLine(Toolchain.INSTALL_CMD) { copy(it) }
-        CmdLine(Toolchain.SDK_CMD) { copy(it) }
-        CmdLine(Toolchain.ENV_CMD) { copy(it) }
-    }
-} //工具链检测卡
 
 @Composable
 private fun CmdLine(cmd: String, onCopy: (String) -> Unit) {
