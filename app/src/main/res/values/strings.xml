@@ -1303,4 +1303,8 @@
     <string name="pet_perm_fgs_sub">全局展示靠前台服务保活，通知栏会有常驻提示</string>
     <string name="pet_pos_reset">位置复位</string>
     <string name="pet_test">试一下</string>
+    <string name="ctx_tip_title">上下文占用</string>
+    <string name="ctx_tip_used">已用 %1$s，预算 %2$s</string>
+    <string name="ctx_tip_total">本对话累计 %1$s token</string>
+    <string name="ctx_tip_fresh">未压缩部分 %1$s token（%2$d 条）</string>
 </resources>

@@ -566,6 +566,25 @@ object Repo {
         return out
     } //按模型聚合
 
+    /** 单个会话的累计用量：prompt / completion，调用方负责 IO 线程 */
+    fun usageSession(sid: String): LongArray {
+        val out = LongArray(2)
+        if (sid.isBlank()) return out
+        runCatching {
+            sr().rawQuery(
+                "SELECT IFNULL(SUM(prompt),0),IFNULL(SUM(completion),0) FROM usage " +
+                    "WHERE session_id=? AND prompt+completion>0",
+                arrayOf(sid)
+            ).use { c ->
+                if (c.moveToFirst()) {
+                    out[0] = c.getLong(0)
+                    out[1] = c.getLong(1)
+                }
+            }
+        }
+        return out
+    } //单会话用量
+
     /** 统计用：读独立账本（usage 表），调用方负责 IO 线程 */
     fun eachUsageAt(
         block: (at: Long, provider: String, model: String, prompt: Long, cached: Long, completion: Long) -> Unit
