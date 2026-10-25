@@ -286,7 +286,7 @@ object Pet {
                         .start()
                 }.start()
         }
-        if (Cfg.petSound) PetSound.boing(Cfg.petSoundVol / 100f)
+        PetSound.boing(v.context, if (Cfg.petSound) Cfg.petSoundVol / 100f else 0f)
     } //上下 Q 弹 + 音效
 
     private fun showBubble(c: Context, text: String) {

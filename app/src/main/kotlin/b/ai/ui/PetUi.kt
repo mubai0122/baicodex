@@ -111,8 +111,8 @@ fun PetInApp(modifier: Modifier = Modifier) {
     val jy = remember { Animatable(0f) }
 
     fun qBounce() {
+        PetSound.boing(ctx, if (Cfg.petSound) Cfg.petSoundVol / 100f else 0f)
         if (!Cfg.petBounce) return
-        if (Cfg.petSound) PetSound.boing(Cfg.petSoundVol / 100f)
         scope.launch {
             jy.snapTo(0f)
             jy.animateTo(-Cfg.petBouncePct.toFloat() * 3f, tween(110, easing = FastOutSlowInEasing))

@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -1109,20 +1110,16 @@ private fun UiTab(onOpenPet: () -> Unit) {
         ChoiceRow(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
             Cfg.waifuMode = !Cfg.waifuMode
         }
-        //桌宠自己是一整页设置：外观、动效、台词、行为、权限都在那边
-        ChoiceRow(
-            stringResource(R.string.pet_sec),
-            if (!Cfg.petOn) stringResource(R.string.pet_route_none)
-            else if (Cfg.petGlobal) stringResource(R.string.pet_global)
-            else stringResource(R.string.pet_in_app),
-            false
-        ) { onOpenPet() }
     }
+    Spacer(Modifier.height(10.dp))
+    //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
+    PetEntryRow(onOpenPet)
     Spacer(Modifier.height(10.dp))
     AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
         Avatar.forget(Cfg.avatarUser)
         Cfg.avatarUser = p
     }
+    Spacer(Modifier.height(14.dp))
     AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
         Avatar.forget(Cfg.avatarAi)
         Cfg.avatarAi = p
@@ -2750,3 +2747,54 @@ private fun BgImagePick() {
         )
     }
 } //背景图设置
+
+/** 桌宠入口：独立一行，开关在右，配置图标贴在开关左边 */
+@Composable
+private fun PetEntryRow(onOpenPet: () -> Unit) {
+    val ctx = LocalContext.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(SurfaceWhite, RoundedCornerShape(14.dp))
+            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.pet_sec), fontSize = 13.sp, color = TextPrimary)
+            Text(
+                if (!Cfg.petOn) stringResource(R.string.pet_route_none)
+                else if (Cfg.petGlobal) stringResource(R.string.pet_global)
+                else stringResource(R.string.pet_in_app),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+        Box(
+            Modifier
+                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .tap { onOpenPet() }
+                .padding(7.dp)
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_pet_cfg),
+                contentDescription = stringResource(R.string.pet_pg_t),
+                tint = AccentBlue,
+                modifier = Modifier.size(15.dp)
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Switch(
+            checked = Cfg.petOn,
+            onCheckedChange = { on ->
+                Cfg.petOn = on
+                if (on) {
+                    //全局展示才需要悬浮窗：无障碍在跑就不需要额外权限
+                    if (Cfg.petGlobal && b.ai.exec.Pet.canShow(ctx)) b.ai.exec.PetSvc.start(ctx)
+                } else {
+                    b.ai.exec.PetSvc.stop(ctx)
+                    b.ai.exec.Pet.hide()
+                }
+            }
+        )
+    }
+} //桌宠入口
