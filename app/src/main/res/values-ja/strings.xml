@@ -1215,4 +1215,5 @@
     <string name="se_sum_prompt">要約プロンプト</string>
     <string name="se_sum_prompt_hint">空欄なら内蔵：目的・作業・未完了を残して300字以内</string>
     <string name="se_sum_prompt_note">自動要約・手動要約・長押しの作り直しはすべてこのプロンプトを使います。</string>
+    <string name="ag_br_fail">ここに切り替えられる分岐はありません</string>
 </resources>

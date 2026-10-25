@@ -1215,4 +1215,5 @@
     <string name="se_sum_prompt">Prompt de résumé</string>
     <string name="se_sum_prompt_hint">Vide = prompt intégré : objectifs, actions et tâches en cours, sous 300 mots</string>
     <string name="se_sum_prompt_note">Résumé auto, résumé manuel et refaire par appui long utilisent ce prompt.</string>
+    <string name="ag_br_fail">Pas d\'autre branche ici</string>
 </resources>

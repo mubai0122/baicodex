@@ -1216,4 +1216,5 @@
     <string name="se_sum_prompt">Summary prompt</string>
     <string name="se_sum_prompt_hint">Empty uses the built-in: keep goals, actions and open items, under 300 words</string>
     <string name="se_sum_prompt_note">Auto summary, manual summary and long-press redo all use this prompt.</string>
+    <string name="ag_br_fail">No other branch here</string>
 </resources>

@@ -378,7 +378,7 @@ object Repo {
     fun siblings(sessionId: String, msgId: Long): List<Long> {
         val out = ArrayList<Long>()
         r().rawQuery(
-            "SELECT _id FROM message WHERE session_id=? AND IFNULL(parent_id,0)=? ORDER BY _id",
+            "SELECT _id FROM message WHERE session_id=? AND CAST(IFNULL(parent_id,0) AS INTEGER)=CAST(? AS INTEGER) ORDER BY _id",
             arrayOf(sessionId, parentOf(msgId).toString())
         ).use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
         return out
@@ -436,7 +436,7 @@ object Repo {
             val cur = out[i]
             i++
             r().rawQuery(
-                "SELECT _id FROM message WHERE session_id=? AND IFNULL(parent_id,0)=?",
+                "SELECT _id FROM message WHERE session_id=? AND CAST(IFNULL(parent_id,0) AS INTEGER)=CAST(? AS INTEGER)",
                 arrayOf(sessionId, cur.toString())
             ).use { c -> while (c.moveToNext()) out.add(c.getLong(0)) }
         }
@@ -448,7 +448,7 @@ object Repo {
         while (true) {
             val next = runCatching {
                 r().rawQuery(
-                    "SELECT IFNULL(MAX(_id),0) FROM message WHERE session_id=? AND IFNULL(parent_id,0)=?",
+                    "SELECT IFNULL(MAX(_id),0) FROM message WHERE session_id=? AND CAST(IFNULL(parent_id,0) AS INTEGER)=CAST(? AS INTEGER)",
                     arrayOf(sessionId, cur.toString())
                 ).use { if (it.moveToFirst()) it.getLong(0) else 0L }
             }.getOrDefault(0L)
