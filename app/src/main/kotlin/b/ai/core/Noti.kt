@@ -42,13 +42,22 @@ object Noti {
         }
     } //去通知使用权页
 
-    /** 记一条：自己发的、常驻的、没标题的都不收 */
-    fun add(c: Context, pkg: String, app: String, title: String, ongoing: Boolean) {
+    /** 进程内已记过的「应用|标题|发布时间」：通知使用权重连时系统会把通知栏里的存量通知回放一遍，靠它挡重复 */
+    private val seen = HashSet<String>()
+
+    /** 这个时间戳算不算今天：回放的存量通知 postTime 往往是前几天的，不能算今天收到 */
+    fun isToday(at: Long): Boolean = day(at) == day()
+
+    /** 记一条：自己发的、常驻的、没标题的都不收；at 用通知本身的发布时间，不用记账时刻 */
+    fun add(c: Context, pkg: String, app: String, title: String, ongoing: Boolean, at: Long = System.currentTimeMillis()) {
         if (ongoing) return
         if (pkg == c.packageName) return
+        if (!isToday(at)) return
         val t = title.trim().take(60)
         if (t.isEmpty()) return
-        val row = JSONObject().put("t", System.currentTimeMillis()).put("a", app).put("s", t)
+        if (!seen.add(app + "|" + t + "|" + at)) return
+        if (seen.size > 2000) seen.clear()
+        val row = JSONObject().put("t", at).put("a", app).put("s", t)
         runCatching { file(c).appendText(row.toString() + "\n") }
         clean(c)
     } //落一条

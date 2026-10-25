@@ -12,11 +12,14 @@ class NotiSvc : NotificationListenerService() {
         val n = s.notification ?: return
         //常驻通知（音乐、下载、前台服务）不算用户要看的推送，直接跳过
         if (n.flags and Notification.FLAG_ONGOING_EVENT != 0) return
+        //回放的存量通知 postTime 是它当初发布的时间，不是今天的就不当今天收到
+        val at = s.postTime
+        if (!b.ai.core.Noti.isToday(at)) return
         val title = n.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         val app = runCatching {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(s.packageName, 0)).toString()
         }.getOrDefault(s.packageName)
-        b.ai.core.Noti.add(this, s.packageName, app, title, false)
+        b.ai.core.Noti.add(this, s.packageName, app, title, false, at)
         fire(s.packageName, app, title)
     } //收到一条
 

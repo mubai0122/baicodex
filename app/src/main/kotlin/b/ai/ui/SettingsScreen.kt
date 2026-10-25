@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -2398,7 +2400,7 @@ internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: 
     }
 } //能力勾选一行：标题 + 说明 + 开关
 
-/**通知注入条数：0 或留空 = 不限；输入框和滑块挤在同一行，说明文字不再单独占一行 */
+/**通知注入条数：0 或留空 = 不限；输入框贴右侧并做扁，高度跟滑块一致 */
 @Composable
 private fun NotiLimitRow() {
     var text by remember { mutableStateOf(if (Cfg.notiLimit <= 0) "" else Cfg.notiLimit.toString()) }
@@ -2407,19 +2409,6 @@ private fun NotiLimitRow() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
-        Spacer(Modifier.width(8.dp))
-        androidx.compose.material3.OutlinedTextField(
-            value = text,
-            onValueChange = { s ->
-                val d = s.filter { it.isDigit() }.take(4)
-                text = d
-                Cfg.notiLimit = d.toIntOrNull() ?: 0
-            },
-            singleLine = true,
-            placeholder = { Text(stringResource(R.string.se_325), fontSize = 12.sp) },
-            textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 12.sp),
-            modifier = Modifier.width(64.dp).height(46.dp)
-        )
         Spacer(Modifier.width(10.dp))
         androidx.compose.material3.Slider(
             value = Cfg.notiLimit.coerceIn(0, 100).toFloat(),
@@ -2431,6 +2420,37 @@ private fun NotiLimitRow() {
             valueRange = 0f..100f,
             modifier = Modifier.weight(1f)
         )
+        Spacer(Modifier.width(10.dp))
+        Box(
+            Modifier
+                .width(52.dp)
+                .height(32.dp)
+                .background(SurfaceWhite, RoundedCornerShape(9.dp))
+                .border(1.dp, BorderGray, RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            BasicTextField(
+                value = text,
+                onValueChange = { s ->
+                    val d = s.filter { it.isDigit() }.take(4)
+                    text = d
+                    Cfg.notiLimit = d.toIntOrNull() ?: 0
+                },
+                singleLine = true,
+                textStyle = TextStyle(fontSize = 12.sp, color = TextPrimary, textAlign = TextAlign.Center),
+                cursorBrush = SolidColor(AccentBlue),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.Center) {
+                        if (text.isEmpty()) {
+                            Text(stringResource(R.string.se_325), fontSize = 11.sp, color = TextSecondary)
+                        }
+                        inner()
+                    }
+                }
+            )
+        }
     }
 } //通知注入条数
 
