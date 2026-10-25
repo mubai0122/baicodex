@@ -365,7 +365,7 @@ fun SettingsScreen(
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open) {
         //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
         PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
@@ -414,6 +414,7 @@ fun SettingsScreen(
         if (taskDraft) TaskDialog(onClose = { taskDraft = false })
         if (triggerDraft) TriggerDialog(onClose = { triggerDraft = false })
         pick?.let { (t, l) -> PickSheet(t, l) { pick = null } }
+        if (WsPurge.open) WsPurgeDialog { WsPurge.open = false }
     }
 } //设置界面
 
@@ -753,6 +754,8 @@ private fun WsSection() {
         loading = false
     } //重载列表与待迁移数量
     LaunchedEffect(Unit) { reload() }
+    //一键清理跑完会让 ver 加一，这里跟着重扫，列表立刻变成清理后的样子
+    LaunchedEffect(WsPurge.ver) { if (WsPurge.ver > 0) reload() }
 
     CardBox {
         //旧版工作区还挂在数据根下：给一块带进度的迁移区，搬完自动刷新列表
@@ -874,6 +877,15 @@ private fun WsSection() {
             Text(tip, fontSize = 10.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(8.dp))
+        //还有没被任何会话绑定的目录才给清理入口，全都绑上了就整块不出现
+        val idle = list.count { it.unbound && !it.current && it.exists }
+        if (idle > 0) {
+            GhostButton(
+                stringResource(R.string.wsq_btn, idle),
+                modifier = Modifier.height(38.dp)
+            ) { WsPurge.open = true }
+            Spacer(Modifier.height(8.dp))
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton(stringResource(R.string.se_144), modifier = Modifier.height(38.dp)) { scope.launch { reload() } }
             Spacer(Modifier.width(8.dp))
@@ -2445,14 +2457,14 @@ internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: 
     }
 } //能力勾选一行：标题 + 说明 + 开关
 
-/** 通知注入条数：0 或留空 = 不限；滑块 5 条一档，右侧能直接敲数字 */
+/** 通知注入条数：0 或留空 = 不限；输入框紧跟条数，滑块只占一小段，别把整张卡撑满 */
 @Composable
 private fun NotiLimitRow() {
     var text by remember { mutableStateOf(if (Cfg.notiLimit <= 0) "" else Cfg.notiLimit.toString()) }
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
             androidx.compose.material3.OutlinedTextField(
                 value = text,
                 onValueChange = { s ->
@@ -2463,7 +2475,16 @@ private fun NotiLimitRow() {
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.se_325), fontSize = 12.sp) },
                 textStyle = androidx.compose.material3.LocalTextStyle.current.copy(fontSize = 12.sp),
-                modifier = Modifier.width(84.dp)
+                modifier = Modifier.width(64.dp).height(46.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                if (Cfg.notiLimit <= 0) stringResource(R.string.se_326)
+                else stringResource(R.string.se_327, Cfg.notiLimit),
+                fontSize = 10.sp,
+                color = TextSecondary,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
             )
         }
         androidx.compose.material3.Slider(
@@ -2474,12 +2495,7 @@ private fun NotiLimitRow() {
                 text = if (v == 0) "" else v.toString()
             },
             valueRange = 0f..100f,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            if (Cfg.notiLimit <= 0) stringResource(R.string.se_326) else stringResource(R.string.se_327, Cfg.notiLimit),
-            fontSize = 10.sp,
-            color = TextSecondary
+            modifier = Modifier.width(150.dp).padding(top = 2.dp)
         )
     }
 } //通知注入条数

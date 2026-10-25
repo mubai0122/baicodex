@@ -361,4 +361,23 @@ object Workspace {
         cachedTree = null
         return null
     } //安全删除工作区
+
+    /** 一键清理未使用：只扫没被任何会话绑定的，当前使用中的与数据根自动跳过；回调给清理进度 */
+    fun purgeUnused(c: Context, onStep: (Int, Int, String) -> Unit): Triple<Int, Long, Int> {
+        val batch = listAll().filter { it.unbound && !it.current && it.exists }
+        var ok = 0
+        var bytes = 0L
+        var bad = 0
+        batch.forEachIndexed { i, w ->
+            onStep(i + 1, batch.size, w.name)
+            if (delete(c, w.path) == null) {
+                ok++
+                bytes += w.bytes
+            } else {
+                bad++
+            }
+        }
+        cachedTree = null
+        return Triple(ok, bytes, bad)
+    } //批量清理未使用工作区
 } //工作区绑定

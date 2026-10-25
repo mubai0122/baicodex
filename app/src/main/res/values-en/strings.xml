@@ -1193,4 +1193,16 @@
     <string name="ntg_last">last fired %1$s</string>
     <string name="ntg_note">Each rule fires at most once per 60 seconds; notifications that arrive while I\'m busy are dropped, not queued.</string>
     <string name="ntg_del">Delete</string>
+    <string name="wsq_btn">Clean unused (%1$d)</string>
+    <string name="wsq_t">Clean unused workspaces</string>
+    <string name="wsq_d">%1$d folders are not bound to any chat, %2$s in total.</string>
+    <string name="wsq_note">Only these unused folders are removed. The current one, bound ones and the data root are skipped. Deletion cannot be undone.</string>
+    <string name="wsq_keep">The current and bound ones are left alone</string>
+    <string name="wsq_go">Start cleaning</string>
+    <string name="wsq_cancel">Cancel</string>
+    <string name="wsq_running">Cleaning…</string>
+    <string name="wsq_step">%1$d/%2$d: %3$s</string>
+    <string name="wsq_done">Cleaned %1$d folders, freed %2$s</string>
+    <string name="wsq_fail">%1$d could not be removed (in use)</string>
+    <string name="wsq_ok">OK</string>
 </resources>

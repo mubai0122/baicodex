@@ -1192,4 +1192,16 @@
     <string name="ntg_last">dernier déclenchement %1$s</string>
     <string name="ntg_note">Chaque règle se déclenche au plus une fois par 60 secondes ; les notifications reçues quand je travaille sont ignorées, pas mises en file.</string>
     <string name="ntg_del">Supprimer</string>
+    <string name="wsq_btn">Nettoyer les inutilisés (%1$d)</string>
+    <string name="wsq_t">Nettoyer les espaces de travail inutilisés</string>
+    <string name="wsq_d">%1$d dossiers ne sont liés à aucune conversation, %2$s au total.</string>
+    <string name="wsq_note">Seuls ces dossiers inutilisés sont supprimés. Le dossier courant, ceux liés à une conversation et la racine des données sont ignorés. Suppression définitive.</string>
+    <string name="wsq_keep">Le dossier courant et ceux liés ne sont pas touchés</string>
+    <string name="wsq_go">Lancer le nettoyage</string>
+    <string name="wsq_cancel">Annuler</string>
+    <string name="wsq_running">Nettoyage…</string>
+    <string name="wsq_step">%1$d/%2$d : %3$s</string>
+    <string name="wsq_done">%1$d dossiers nettoyés, %2$s libérés</string>
+    <string name="wsq_fail">%1$d n\'ont pas pu être supprimés (en cours d\'utilisation)</string>
+    <string name="wsq_ok">OK</string>
 </resources>

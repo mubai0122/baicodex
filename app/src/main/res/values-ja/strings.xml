@@ -1192,4 +1192,16 @@
     <string name="ntg_last">前回 %1$s</string>
     <string name="ntg_note">同じルールは 60 秒に 1 回だけ発動します。実行中に届いた通知は破棄され、待ち行列には入りません。</string>
     <string name="ntg_del">削除</string>
+    <string name="wsq_btn">未使用を一括削除（%1$d）</string>
+    <string name="wsq_t">未使用のワークスペースを削除</string>
+    <string name="wsq_d">%1$d 個のフォルダがどの会話にも紐づいていません。合計 %2$s。</string>
+    <string name="wsq_note">未使用のものだけを削除します。使用中のもの・会話に紐づくもの・データのルートは対象外です。削除すると元に戻せません。</string>
+    <string name="wsq_keep">使用中・紐づけ済みのものは残ります</string>
+    <string name="wsq_go">削除を開始</string>
+    <string name="wsq_cancel">キャンセル</string>
+    <string name="wsq_running">削除中…</string>
+    <string name="wsq_step">%1$d/%2$d：%3$s</string>
+    <string name="wsq_done">%1$d 個を削除し、%2$s を解放しました</string>
+    <string name="wsq_fail">%1$d 個は削除できませんでした（使用中の可能性）</string>
+    <string name="wsq_ok">OK</string>
 </resources>
