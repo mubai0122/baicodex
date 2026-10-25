@@ -31,14 +31,20 @@ object PetSound {
                         .build()
                 )
                 .build()
-            p.setOnLoadCompleteListener { _, id, status ->
-                if (id == sid && status == 0) ready = true
+            //小采样常同步加载完，回调会早于 sid 赋值，所以不能拿 id == sid 判
+            p.setOnLoadCompleteListener { _, _, status ->
+                if (status == 0) ready = true
             }
             sid = p.load(c.applicationContext, R.raw.pet_boing, 1)
             pool = p
             true
         }.getOrDefault(false)
     } //懒加载音频
+
+    /** 提前把采样加载好，免第一次点击走合成 */
+    fun warm(c: Context) {
+        runCatching { ensure(c) }
+    } //预热
 
     /** 放一声「Q弹」，vol 取 0..1；没给 Context 就只走合成 */
     fun boing(c: Context?, vol: Float) {
@@ -65,31 +71,32 @@ object PetSound {
             val s = (Math.sin(phase) * 0.78 + Math.sin(phase * 2.0) * 0.26 + Math.sin(phase * 3.0) * 0.09) * env * vol * 0.85
             buf[i] = (s * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort()
         }
-        runCatching {
-            val min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-                .coerceAtLeast(4096)
-            val at = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(rate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(min * 2)
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-            at.play()
-            at.write(buf, 0, n)
-            Thread.sleep(240)
-            runCatching { at.stop() }
-            at.release()
-        }
+        //播放丢到子线程：MODE_STATIC 一次写满再播，别在点击回调里 sleep 卡界面
+        Thread {
+            runCatching {
+                val at = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(rate)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(n * 2)
+                    .setTransferMode(AudioTrack.MODE_STATIC)
+                    .build()
+                at.write(buf, 0, n)
+                at.play()
+                Thread.sleep(240)
+                runCatching { at.stop() }
+                at.release()
+            }
+        }.start()
     } //合成兜底
 } //桌宠音效

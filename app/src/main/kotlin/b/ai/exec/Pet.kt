@@ -71,6 +71,7 @@ object Pet {
 
     fun attachApp(c: Context) {
         appCtx = c.applicationContext
+        PetSound.warm(appCtx!!) //顺手把音效采样预加载，避免第一次点击没声
     }
 
     /** 无障碍连上/断开时换宿主层级（无障碍窗层不需要悬浮窗权限） */
