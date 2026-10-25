@@ -1304,7 +1304,7 @@
     <string name="pet_pos_reset">位置復位</string>
     <string name="pet_test">試一下</string>
     <string name="ctx_tip_title">上下文佔用</string>
-    <string name="ctx_tip_used">已用 %1$s，預算 %2$s</string>
+    <string name="ctx_tip_used">已用 %1$s，預算 %2$s token</string>
     <string name="ctx_tip_total">本對話累計 %1$s token</string>
     <string name="ctx_tip_fresh">未壓縮部分 %1$s token（%2$d 則）</string>
 </resources>

@@ -708,9 +708,14 @@ object Cfg {
             put("ctx_pct", n)
         }
 
-    /** 折成字符预算：中文按 1 token ≈ 1.8 字粗估，给压缩判定用 */
+    /** 中文折算：1 token 大约等于 1.8 个字，字符数除以它就是 token 估算 */
+    const val CHARS_PER_TOKEN = 1.8f
+    /** 上下文预算（token）：总窗口 × 压缩阈值百分比，界面直接显示这个 */
+    val ctxTokenBudget: Int
+        get() = (ctxTotal.toLong() * ctxPct / 100L).toInt()
+    /** 折成字符预算：给压缩判定用（内部还是按字符数比较） */
     val ctxCharBudget: Int
-        get() = (ctxTotal.toLong() * ctxPct / 100L * 1.8).toInt()
+        get() = (ctxTokenBudget.toLong() * CHARS_PER_TOKEN).toInt()
 
     /** 已注入的预置技能版本：小于 Skills.PRESET_SEED 时补一次新版预置 */
     var presetSeed: Int

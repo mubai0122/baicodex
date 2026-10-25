@@ -221,7 +221,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             onOpenDrawer,
             onOpenWorkspace = { wsPanel = true },
             onPersona = { personaPanel = !personaPanel },
-            ctxChars = cst[0],
+            ctxTok = cst[0],
             ctxFreshCount = cst[1],
             ctxFreshTok = cst[2]
         )
@@ -590,7 +590,7 @@ private fun TopBar(
     onOpenDrawer: () -> Unit,
     onOpenWorkspace: () -> Unit,
     onPersona: () -> Unit,
-    ctxChars: Int,
+    ctxTok: Int,
     ctxFreshCount: Int,
     ctxFreshTok: Int
 ) {
@@ -658,13 +658,13 @@ private fun TopBar(
         Spacer(Modifier.width(8.dp))
         //上下文占用环：占加号左边那个位置，点开是用量小卡片
         Box {
-            CtxRing(chars = ctxChars, budget = Cfg.ctxCharBudget) { ctxOpen = true }
+            CtxRing(tokens = ctxTok, budget = Cfg.ctxTokenBudget) { ctxOpen = true }
             DropdownMenu(
                 expanded = ctxOpen,
                 onDismissRequest = { ctxOpen = false },
                 offset = DpOffset(0.dp, 2.dp)
             ) {
-                CtxCard(ctxChars, Cfg.ctxCharBudget, ctxFreshCount, ctxFreshTok)
+                CtxCard(ctxTok, Cfg.ctxTokenBudget, ctxFreshCount, ctxFreshTok)
             }
         }
         Spacer(Modifier.width(8.dp))
@@ -910,8 +910,8 @@ private fun fmtNum(v: Long): String = when {
 private fun fmtNum(v: Int): String = fmtNum(v.toLong())
 
 /**
- * 未压缩那一段的统计：跟 Agent.compact 同一口径——摘要（summary）之后的消息才算，
- * 返回 [字符数, 条数, 这些轮次的 token 合计]。
+ * 未压缩那一段的统计：跟 Agent.compact 同一口径——摘要（summary）之后的消息才算。
+ * 返回 [token 估算, 条数, 这些轮次真实用掉的 token 合计]；token 估算 = 字符数 / 1.8。
  */
 private fun ctxStat(list: List<ChatMsg>): IntArray {
     val sm = list.lastOrNull { it.role == "summary" }
@@ -920,13 +920,14 @@ private fun ctxStat(list: List<ChatMsg>): IntArray {
     } ?: 0L
     val fresh = list.filter { it.role != "summary" && it.id > bound }
     val chars = fresh.sumOf { m -> m.content.length + m.toolCalls.sumOf { c -> c.arguments.length } }
-    return intArrayOf(chars, fresh.size, fresh.sumOf { it.meta?.totalTokens ?: 0 })
+    val tokens = (chars / Cfg.CHARS_PER_TOKEN).toInt()
+    return intArrayOf(tokens, fresh.size, fresh.sumOf { it.meta?.totalTokens ?: 0 })
 } //未压缩段统计
 
 /** 上下文占用的环形进度：环长按真实百分比画，70% 以下是绿的，70% 起变红 */
 @Composable
-private fun CtxRing(chars: Int, budget: Int, onTap: () -> Unit) {
-    val pct = if (budget <= 0) 0f else (chars.toFloat() / budget).coerceIn(0f, 1f)
+private fun CtxRing(tokens: Int, budget: Int, onTap: () -> Unit) {
+    val pct = if (budget <= 0) 0f else (tokens.toFloat() / budget).coerceIn(0f, 1f)
     val c = if (pct < 0.7f) OkGreen else DangerRed
     //尺寸与底色都跟顶栏那个加号一致，摆在一起才不突兀
     Box(
@@ -955,13 +956,13 @@ private fun CtxRing(chars: Int, budget: Int, onTap: () -> Unit) {
 
 /** 点环之后的小卡片：占用多少、这个对话一共烧了多少、没压缩的那段烧了多少 */
 @Composable
-private fun CtxCard(chars: Int, budget: Int, freshCount: Int, freshTok: Int) {
+private fun CtxCard(tokens: Int, budget: Int, freshCount: Int, freshTok: Int) {
     val sid = Agent.sessionId.orEmpty()
     var spent by remember(sid) { mutableStateOf(0L) }
     LaunchedEffect(sid) {
         spent = withContext(Dispatchers.IO) { Repo.usageSession(sid).sum() }
     }
-    val over = budget > 0 && chars * 100 / budget >= 70
+    val over = budget > 0 && tokens.toLong() * 100 / budget >= 70
     Column(Modifier.width(214.dp).padding(horizontal = 12.dp, vertical = 10.dp)) {
         Text(
             stringResource(R.string.ctx_tip_title),
@@ -971,7 +972,7 @@ private fun CtxCard(chars: Int, budget: Int, freshCount: Int, freshTok: Int) {
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            stringResource(R.string.ctx_tip_used, fmtNum(chars), fmtNum(budget)),
+            stringResource(R.string.ctx_tip_used, fmtNum(tokens), fmtNum(budget)),
             fontSize = 10.5.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (over) DangerRed else OkGreen
