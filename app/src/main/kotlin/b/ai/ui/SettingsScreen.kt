@@ -590,6 +590,20 @@ private fun ChatTab(stats: Pair<Int, Int>) {
                 color = TextSecondary
             )
         }
+        //总结提示词：留空用内置那套，填了就整套替换；自动总结与长按重总结都走它
+        Field(
+            label = stringResource(R.string.se_sum_prompt),
+            value = Cfg.summaryPrompt,
+            onValueChange = { Cfg.summaryPrompt = it },
+            placeholder = stringResource(R.string.se_sum_prompt_hint),
+            singleLine = false,
+            minLines = 3
+        )
+        Text(
+            stringResource(R.string.se_sum_prompt_note),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
     }
 
     Spacer(Modifier.height(14.dp))

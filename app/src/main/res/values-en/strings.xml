@@ -193,7 +193,7 @@
     <string name="cs_see_images">Look at these images</string>
     <string name="cs_edit_resend">Edit and resend</string>
     <string name="cs_regen_hint">Regenerate with a hint</string>
-    <string name="cs_edit_desc">Send when done; everything after this message is deleted</string>
+    <string name="cs_edit_desc">Send an edited copy; the original stays in the branch, switch back with ‹ n/m ›</string>
     <string name="cs_regen_hint_desc">Add what you want changed, then regenerate this one</string>
     <string name="cs_send">Send</string>
     <string name="cs_regen">Regenerate</string>
@@ -246,7 +246,7 @@
     <string name="cs_this_msg">This message</string>
     <string name="cs_this_reply">This reply</string>
     <string name="cs_no_content">(empty)</string>
-    <string name="cs_edit_resend_desc">Delete this and everything after, then ask with the new text</string>
+    <string name="cs_edit_resend_desc">Resend with new text; the old message and its replies stay in the branch</string>
     <string name="cs_regen_desc">Re-request from here; the rest gets deleted</string>
     <string name="cs_regen_hint_desc2">Add a requirement first, then regenerate</string>
     <string name="cs_copy_content">Copy text</string>
@@ -1206,4 +1206,14 @@
     <string name="wsq_fail">%1$d could not be removed (in use)</string>
     <string name="wsq_ok">OK</string>
     <string name="wsq_more">…and %1$d more</string>
+    <string name="cs_sum_menu_desc">A summary of earlier chat, can be redone</string>
+    <string name="cs_sum_regen">Summarize again</string>
+    <string name="cs_sum_regen_desc">Recompress the same range with the current prompt</string>
+    <string name="cs_sum_note">Summarize with an instruction</string>
+    <string name="cs_sum_note_desc">Add a requirement (shorter / keep paths / conclusions only), then recompress</string>
+    <string name="cs_sum_note_hint">e.g. keep every file path and command, compress the rest under 150 words</string>
+    <string name="cs_sum_note_confirm">Redo</string>
+    <string name="se_sum_prompt">Summary prompt</string>
+    <string name="se_sum_prompt_hint">Empty uses the built-in: keep goals, actions and open items, under 300 words</string>
+    <string name="se_sum_prompt_note">Auto summary, manual summary and long-press redo all use this prompt.</string>
 </resources>

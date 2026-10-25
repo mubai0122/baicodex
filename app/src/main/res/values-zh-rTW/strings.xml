@@ -193,7 +193,7 @@
     <string name="cs_see_images">看這些圖片</string>
     <string name="cs_edit_resend">編輯後重送</string>
     <string name="cs_regen_hint">帶上提示重新產生</string>
-    <string name="cs_edit_desc">改完直接傳送，這之後的內容會被刪除</string>
+    <string name="cs_edit_desc">改完送一條新的，原訊息留在分支裡，用 ‹ n/m › 切回</string>
     <string name="cs_regen_hint_desc">補充你想要的改動，再重新產生這條</string>
     <string name="cs_send">傳送</string>
     <string name="cs_regen">重新產生</string>
@@ -246,7 +246,7 @@
     <string name="cs_this_msg">這則訊息</string>
     <string name="cs_this_reply">這則回覆</string>
     <string name="cs_no_content">（無內容）</string>
-    <string name="cs_edit_resend_desc">刪掉這則及之後的內容，用新文字重新提問</string>
+    <string name="cs_edit_resend_desc">用新文字重送一條，舊訊息和它之後的回覆都留在分支裡</string>
     <string name="cs_regen_desc">從這則開始重新請求，後面已有的內容會被刪掉</string>
     <string name="cs_regen_hint_desc2">先補一句要求，再重新產生這則</string>
     <string name="cs_copy_content">複製內容</string>
@@ -1206,4 +1206,14 @@
     <string name="wsq_fail">%1$d 個沒刪掉（可能正被佔用）</string>
     <string name="wsq_ok">好的</string>
     <string name="wsq_more">…還有 %1$d 個</string>
+    <string name="cs_sum_menu_desc">早期對話壓出來的摘要，可以重做一次</string>
+    <string name="cs_sum_regen">重新總結</string>
+    <string name="cs_sum_regen_desc">按原本覆蓋的範圍再壓一遍，用目前提示詞</string>
+    <string name="cs_sum_note">加指令重總結</string>
+    <string name="cs_sum_note_desc">補一句要求（更短 / 保留路徑 / 只留結論）再壓</string>
+    <string name="cs_sum_note_hint">例如：保留所有檔案路徑和指令，其餘壓到 150 字內</string>
+    <string name="cs_sum_note_confirm">重做</string>
+    <string name="se_sum_prompt">總結提示詞</string>
+    <string name="se_sum_prompt_hint">留空用內建：壓成要點，保留目標、動作與未完成事項，300 字內</string>
+    <string name="se_sum_prompt_note">自動總結、立即總結、長按重總結都用這段提示詞。</string>
 </resources>

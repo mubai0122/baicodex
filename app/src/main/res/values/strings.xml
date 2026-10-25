@@ -193,7 +193,7 @@
     <string name="cs_see_images">看这些图片</string>
     <string name="cs_edit_resend">编辑后重发</string>
     <string name="cs_regen_hint">带上提示重新生成</string>
-    <string name="cs_edit_desc">改完直接发送，这条之后的内容会被删除</string>
+    <string name="cs_edit_desc">改完发一条新的，原消息留在分支里，用 ‹ n/m › 切回</string>
     <string name="cs_regen_hint_desc">补充你想要的改动，再重新生成这条</string>
     <string name="cs_send">发送</string>
     <string name="cs_regen">重新生成</string>
@@ -246,7 +246,7 @@
     <string name="cs_this_msg">这条消息</string>
     <string name="cs_this_reply">这条回复</string>
     <string name="cs_no_content">（无内容）</string>
-    <string name="cs_edit_resend_desc">删掉这条及之后的内容，用新文本重新提问</string>
+    <string name="cs_edit_resend_desc">用新文本重发一条，旧消息和它之后的回复都留在分支里</string>
     <string name="cs_regen_desc">从这条开始重新请求，后面已有的内容会被删掉</string>
     <string name="cs_regen_hint_desc2">先补一句要求，再重新生成这条</string>
     <string name="cs_copy_content">复制内容</string>
@@ -1206,4 +1206,14 @@
     <string name="wsq_fail">%1$d 个没删掉（可能正被占用）</string>
     <string name="wsq_ok">好的</string>
     <string name="wsq_more">…还有 %1$d 个</string>
+    <string name="cs_sum_menu_desc">早期对话压出来的摘要，可以重做一次</string>
+    <string name="cs_sum_regen">重新总结</string>
+    <string name="cs_sum_regen_desc">按原来覆盖的范围再压一遍，用当前提示词</string>
+    <string name="cs_sum_note">加指令重总结</string>
+    <string name="cs_sum_note_desc">补一句要求（更短 / 保留路径 / 只留结论）再压</string>
+    <string name="cs_sum_note_hint">例如：保留所有文件路径和命令，其余压到 150 字内</string>
+    <string name="cs_sum_note_confirm">重做</string>
+    <string name="se_sum_prompt">总结提示词</string>
+    <string name="se_sum_prompt_hint">留空用内置：压成要点，保留目标、动作与未完成事项，300 字内</string>
+    <string name="se_sum_prompt_note">自动总结、立即总结、长按重总结都用这段提示词。</string>
 </resources>
