@@ -1302,4 +1302,8 @@
     <string name="pet_perm_fgs_sub">L’affichage global est maintenu par un service de premier plan ; une notification reste visible</string>
     <string name="pet_pos_reset">Réinitialiser la position</string>
     <string name="pet_test">Essayer</string>
+    <string name="ctx_tip_title">Occupation du contexte</string>
+    <string name="ctx_tip_used">%1$s sur %2$s utilisés</string>
+    <string name="ctx_tip_total">Cette conversation : %1$s jetons</string>
+    <string name="ctx_tip_fresh">Non compressé : %1$s jetons (%2$d msg)</string>
 </resources>

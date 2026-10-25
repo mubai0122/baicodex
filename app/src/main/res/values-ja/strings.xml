@@ -1302,4 +1302,8 @@
     <string name="pet_perm_fgs_sub">常時表示はフォアグラウンドサービスで維持され、通知が残ります</string>
     <string name="pet_pos_reset">位置を戻す</string>
     <string name="pet_test">試してみる</string>
+    <string name="ctx_tip_title">コンテキスト使用量</string>
+    <string name="ctx_tip_used">%1$s / %2$s 使用中</string>
+    <string name="ctx_tip_total">この会話の合計 %1$s トークン</string>
+    <string name="ctx_tip_fresh">未圧縮 %1$s トークン（%2$d 件）</string>
 </resources>

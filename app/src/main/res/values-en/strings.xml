@@ -1303,4 +1303,8 @@
     <string name="pet_perm_fgs_sub">Global display is kept alive by a foreground service; a notice stays in the shade</string>
     <string name="pet_pos_reset">Reset position</string>
     <string name="pet_test">Try it</string>
+    <string name="ctx_tip_title">Context usage</string>
+    <string name="ctx_tip_used">Used %1$s of %2$s</string>
+    <string name="ctx_tip_total">This chat: %1$s tokens total</string>
+    <string name="ctx_tip_fresh">Uncompressed: %1$s tokens (%2$d msgs)</string>
 </resources>

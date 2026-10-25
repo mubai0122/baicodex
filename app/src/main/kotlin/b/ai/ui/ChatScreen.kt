@@ -14,6 +14,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,8 +69,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -77,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
 import b.ai.agent.Tools
@@ -89,6 +96,7 @@ import b.ai.core.ChatMsg
 import b.ai.core.Images
 import b.ai.core.MsgMeta
 import b.ai.core.Personas
+import b.ai.core.Repo
 import b.ai.core.Profiles
 import b.ai.core.Skills
 import b.ai.core.Speak
@@ -383,8 +391,12 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
+        val cst = ctxStat(Agent.messages)
         InputBar(
             input = input,
+            ctxChars = cst[0],
+            ctxFreshCount = cst[1],
+            ctxFreshTok = cst[2],
             hint = hint,
             modelLabel = modelLabel,
             modeLabel = stringResource(Cfg.agentMode.labelRes),
@@ -863,6 +875,90 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
     }
 } //发送键
 
+/** 数字缩写：12,345 显示成 12.3k，1,234,567 显示成 1.2M */
+private fun fmtNum(v: Long): String = when {
+    v >= 1_000_000L -> String.format(Locale.US, "%.1fM", v / 1_000_000f)
+    v >= 10_000L -> String.format(Locale.US, "%.1fk", v / 1000f)
+    else -> v.toString()
+} //数字缩写
+
+private fun fmtNum(v: Int): String = fmtNum(v.toLong())
+
+/**
+ * 未压缩那一段的统计：跟 Agent.compact 同一口径——摘要（summary）之后的消息才算，
+ * 返回 [字符数, 条数, 这些轮次的 token 合计]。
+ */
+private fun ctxStat(list: List<ChatMsg>): IntArray {
+    val sm = list.lastOrNull { it.role == "summary" }
+    val bound = sm?.let {
+        Regex("""\[\[upto:(\d+)]]""").find(it.content)?.groupValues?.get(1)?.toLongOrNull()
+    } ?: 0L
+    val fresh = list.filter { it.role != "summary" && it.id > bound }
+    val chars = fresh.sumOf { m -> m.content.length + m.toolCalls.sumOf { c -> c.arguments.length } }
+    return intArrayOf(chars, fresh.size, fresh.sumOf { it.meta?.totalTokens ?: 0 })
+} //未压缩段统计
+
+/** 上下文占用的环形进度：环长按真实百分比画，70% 以下是绿的，70% 起变红 */
+@Composable
+private fun CtxRing(chars: Int, budget: Int, onTap: () -> Unit) {
+    val pct = if (budget <= 0) 0f else (chars.toFloat() / budget).coerceIn(0f, 1f)
+    val c = if (pct < 0.7f) OkGreen else DangerRed
+    Box(Modifier.size(30.dp).tap { onTap() }, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(24.dp)) {
+            val sw = 2.dp.toPx()
+            val style = Stroke(width = sw, cap = StrokeCap.Round)
+            val tl = Offset(sw / 2, sw / 2)
+            val sz = Size(size.width - sw, size.height - sw)
+            drawArc(BorderGray, -90f, 360f, false, tl, sz, style = style)
+            if (pct > 0f) drawArc(c, -90f, 360f * pct, false, tl, sz, style = style)
+        }
+        Text(
+            "${(pct * 100).toInt()}%",
+            fontSize = 7.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = c
+        )
+    }
+} //上下文占用环
+
+/** 点环之后的小卡片：占用多少、这个对话一共烧了多少、没压缩的那段烧了多少 */
+@Composable
+private fun CtxCard(chars: Int, budget: Int, freshCount: Int, freshTok: Int) {
+    val sid = Agent.sessionId.orEmpty()
+    var spent by remember(sid) { mutableStateOf(0L) }
+    LaunchedEffect(sid) {
+        spent = withContext(Dispatchers.IO) { Repo.usageSession(sid).sum() }
+    }
+    val over = budget > 0 && chars * 100 / budget >= 70
+    Column(Modifier.width(214.dp).padding(horizontal = 12.dp, vertical = 10.dp)) {
+        Text(
+            stringResource(R.string.ctx_tip_title),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            stringResource(R.string.ctx_tip_used, fmtNum(chars), fmtNum(budget)),
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (over) DangerRed else OkGreen
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            stringResource(R.string.ctx_tip_total, fmtNum(spent)),
+            fontSize = 10.5.sp,
+            color = TextPrimary
+        )
+        Spacer(Modifier.height(3.dp))
+        Text(
+            stringResource(R.string.ctx_tip_fresh, fmtNum(freshTok), freshCount),
+            fontSize = 10.5.sp,
+            color = TextSecondary
+        )
+    }
+} //上下文小卡片
+
 @Composable
 private fun InputBar(
     input: String,
@@ -874,12 +970,16 @@ private fun InputBar(
     images: List<String>,
     onOpenConfig: () -> Unit,
     onOpenAttach: () -> Unit,
+    ctxChars: Int,
+    ctxFreshCount: Int,
+    ctxFreshTok: Int,
     onOpenModel: () -> Unit,
     onExpand: () -> Unit,
     onRemoveImage: (String) -> Unit,
     onSend: () -> Unit
 ) {
     val ctx = LocalContext.current
+    var ctxOpen by remember { mutableStateOf(false) }
     //悬浮模式：只把输入框本体拎出来浮着，外层不铺任何背景，留着 BgGray 底
     val floating = Cfg.floatInput
     val outer = Modifier
@@ -1047,6 +1147,17 @@ private fun InputBar(
                                 tint = if (Cfg.maxMode || Cfg.think) AccentBlue else TextSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
+                        }
+                        //上下文占用环：加号左边一圈，点开是这个小卡片
+                        Box {
+                            CtxRing(chars = ctxChars, budget = Cfg.ctxCharBudget) { ctxOpen = true }
+                            DropdownMenu(
+                                expanded = ctxOpen,
+                                onDismissRequest = { ctxOpen = false },
+                                offset = DpOffset(0.dp, 2.dp)
+                            ) {
+                                CtxCard(ctxChars, Cfg.ctxCharBudget, ctxFreshCount, ctxFreshTok)
+                            }
                         }
                         Box(
                             Modifier.size(30.dp).tap { onOpenAttach() },
