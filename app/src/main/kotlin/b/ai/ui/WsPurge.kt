@@ -48,6 +48,7 @@ fun WsPurgeDialog(onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     //confirm 先摆清单等确认，running 逐条删，done 收尾给结果
     var stage by remember { mutableStateOf("confirm") }
+    var batch by remember { mutableStateOf<List<Workspace.WsInfo>>(emptyList()) }
     var total by remember { mutableStateOf(0) }
     var bytes by remember { mutableStateOf(0L) }
     var step by remember { mutableStateOf("") }
@@ -57,12 +58,12 @@ fun WsPurgeDialog(onClose: () -> Unit) {
 
     LaunchedEffect(Unit) {
         val r = withContext(Dispatchers.IO) {
-            val l = runCatching { Workspace.listAll() }.getOrDefault(emptyList())
+            runCatching { Workspace.listAll() }.getOrDefault(emptyList())
                 .filter { it.unbound && !it.current && it.exists }
-            l.size to l.sumOf { it.bytes }
         }
-        total = r.first
-        bytes = r.second
+        batch = r
+        total = r.size
+        bytes = r.sumOf { it.bytes }
     }
 
     ScrimCard(onDismiss = if (stage == "running") null else onClose) {
@@ -98,6 +99,29 @@ fun WsPurgeDialog(onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
+                //把要删的目录点名列出，别让用户凭一个数字就点「开始清理」
+                batch.take(6).forEach { w ->
+                    Spacer(Modifier.height(5.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            w.name,
+                            fontSize = 11.sp,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(Workspace.human(w.bytes), fontSize = 10.sp, color = TextSecondary)
+                    }
+                }
+                if (batch.size > 6) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.wsq_more, batch.size - 6),
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
                 Spacer(Modifier.height(6.dp))
                 Text(
                     stringResource(R.string.wsq_note),
