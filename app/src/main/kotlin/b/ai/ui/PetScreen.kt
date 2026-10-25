@@ -360,21 +360,28 @@ private fun PetSlider(label: String, min: Int, max: Int, value: Int, onChange: (
         Slider(
             value = value.toFloat().coerceIn(min.toFloat(), max.toFloat()),
             valueRange = min.toFloat()..max.toFloat(),
-            onValueChange = { onChange(it.toInt().coerceIn(min, max)) }
+            onValueChange = { onChange(it.toInt().coerceIn(min, max)) },
+            onValueChangeFinished = { live() }
         )
     }
 } //数值滑块
+
+/** 配置改完统一走这里：悬浮窗按新配置重画，应用内那只跟着重组 */
+private fun live() {
+    Pet.applyLive()
+    petVer.value++
+} //应用配置
 
 /** 外观：尺寸、透明度、镜像、阴影、卡片底、气泡排版 */
 @Composable
 private fun PetLookTab(onResetPos: () -> Unit, tip: String) {
     SectionTitle(stringResource(R.string.pet_tab_look), stringResource(R.string.pet_look_sub))
     CardBox {
-        PetSlider(stringResource(R.string.pet_size, Cfg.petSize), 60, 260, Cfg.petSize) { Cfg.petSize = it }
-        PetSlider(stringResource(R.string.pet_alpha, Cfg.petAlpha), 30, 100, Cfg.petAlpha) { Cfg.petAlpha = it }
-        CapSwitch(stringResource(R.string.pet_flip), "", Cfg.petFlip) { Cfg.petFlip = it }
-        CapSwitch(stringResource(R.string.pet_shadow), "", Cfg.petShadow) { Cfg.petShadow = it }
-        CapSwitch(stringResource(R.string.pet_card), "", Cfg.petCard) { Cfg.petCard = it }
+        PetSlider(stringResource(R.string.pet_size, Cfg.petSize), 60, 260, Cfg.petSize) { Cfg.petSize = it; live() }
+        PetSlider(stringResource(R.string.pet_alpha, Cfg.petAlpha), 30, 100, Cfg.petAlpha) { Cfg.petAlpha = it; live() }
+        CapSwitch(stringResource(R.string.pet_flip), "", Cfg.petFlip) { Cfg.petFlip = it; live() }
+        CapSwitch(stringResource(R.string.pet_shadow), "", Cfg.petShadow) { Cfg.petShadow = it; live() }
+        CapSwitch(stringResource(R.string.pet_card), "", Cfg.petCard) { Cfg.petCard = it; live() }
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
@@ -387,11 +394,11 @@ private fun PetLookTab(onResetPos: () -> Unit, tip: String) {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.pet_bubble_w), null)
     CardBox {
-        PetSlider(stringResource(R.string.pet_font, Cfg.petFont), 9, 20, Cfg.petFont) { Cfg.petFont = it }
-        CapSwitch(stringResource(R.string.pet_font_bold), "", Cfg.petFontBold) { Cfg.petFontBold = it }
-        PetSlider(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), 100, 320, Cfg.petBubbleW) { Cfg.petBubbleW = it }
-        PetSlider(stringResource(R.string.pet_bubble_r, Cfg.petBubbleR), 0, 28, Cfg.petBubbleR) { Cfg.petBubbleR = it }
-        CapSwitch(stringResource(R.string.pet_bubble_dark), "", Cfg.petBubbleDark) { Cfg.petBubbleDark = it }
+        PetSlider(stringResource(R.string.pet_font, Cfg.petFont), 9, 20, Cfg.petFont) { Cfg.petFont = it; live() }
+        CapSwitch(stringResource(R.string.pet_font_bold), "", Cfg.petFontBold) { Cfg.petFontBold = it; live() }
+        PetSlider(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), 100, 320, Cfg.petBubbleW) { Cfg.petBubbleW = it; live() }
+        PetSlider(stringResource(R.string.pet_bubble_r, Cfg.petBubbleR), 0, 28, Cfg.petBubbleR) { Cfg.petBubbleR = it; live() }
+        CapSwitch(stringResource(R.string.pet_bubble_dark), "", Cfg.petBubbleDark) { Cfg.petBubbleDark = it; live() }
     }
 } //外观分类
 
@@ -401,23 +408,23 @@ private fun PetFxTab() {
     val ctx = LocalContext.current
     SectionTitle(stringResource(R.string.pet_tab_fx), stringResource(R.string.pet_fx_sub))
     CardBox {
-        CapSwitch(stringResource(R.string.pet_float), "", Cfg.petFloat) { Cfg.petFloat = it }
-        PetSlider(stringResource(R.string.pet_float_amp, Cfg.petFloatAmp), 0, 24, Cfg.petFloatAmp) { Cfg.petFloatAmp = it }
-        PetSlider(stringResource(R.string.pet_float_ms, Cfg.petFloatMs), 400, 4000, Cfg.petFloatMs) { Cfg.petFloatMs = it }
+        CapSwitch(stringResource(R.string.pet_float), "", Cfg.petFloat) { Cfg.petFloat = it; live() }
+        PetSlider(stringResource(R.string.pet_float_amp, Cfg.petFloatAmp), 0, 24, Cfg.petFloatAmp) { Cfg.petFloatAmp = it; live() }
+        PetSlider(stringResource(R.string.pet_float_ms, Cfg.petFloatMs), 400, 4000, Cfg.petFloatMs) { Cfg.petFloatMs = it; live() }
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
         CapSwitch(stringResource(R.string.pet_swim), "", Cfg.petSwim) {
-            Cfg.petSwim = it
-            Pet.rebuildSoon()
+            Cfg.petSwim = it; live()
+
         }
-        PetSlider(stringResource(R.string.pet_swim_speed, Cfg.petSwimSpeed), 10, 200, Cfg.petSwimSpeed) { Cfg.petSwimSpeed = it }
-        CapSwitch(stringResource(R.string.pet_swim_bounce), "", Cfg.petSwimBounce) { Cfg.petSwimBounce = it }
+        PetSlider(stringResource(R.string.pet_swim_speed, Cfg.petSwimSpeed), 10, 200, Cfg.petSwimSpeed) { Cfg.petSwimSpeed = it; live() }
+        CapSwitch(stringResource(R.string.pet_swim_bounce), "", Cfg.petSwimBounce) { Cfg.petSwimBounce = it; live() }
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
-        CapSwitch(stringResource(R.string.pet_bounce), "", Cfg.petBounce) { Cfg.petBounce = it }
-        PetSlider(stringResource(R.string.pet_bounce_pct, Cfg.petBouncePct), 0, 30, Cfg.petBouncePct) { Cfg.petBouncePct = it }
+        CapSwitch(stringResource(R.string.pet_bounce), "", Cfg.petBounce) { Cfg.petBounce = it; live() }
+        PetSlider(stringResource(R.string.pet_bounce_pct, Cfg.petBouncePct), 0, 30, Cfg.petBouncePct) { Cfg.petBouncePct = it; live() }
         GhostButton(stringResource(R.string.pet_test)) {
             PetSound.boing(ctx, if (Cfg.petSound) Cfg.petSoundVol / 100f else 0f)
             Pet.sayNow(ctx)

@@ -56,6 +56,8 @@ object Pet {
     private var inner: FrameLayout? = null
     private var icon: ImageView? = null
     private var floatAnim: ObjectAnimator? = null
+    private var lastApply = 0L
+    private var applyPend: Runnable? = null
 
     /** 窗口顶部给上跳留出的余量（px）：不留的话弹跳会被窗口边界裁掉 */
     private var padTop = 0
@@ -99,7 +101,30 @@ object Pet {
     fun hide() = main.post { remove() }
 
     /** 改了尺寸、动效一类要重建窗口的配置之后调它 */
-    fun rebuildSoon() = main.post { rebuild() }
+    fun rebuildSoon() = main.post { if (Cfg.petOn && Cfg.petGlobal && petView != null) rebuild() }
+    /**
+     * 配置页拖动滑块/点开关时调它：桌宠正在显示就按新配置重画，
+     * 120ms 内只重建一次，免得拖动时抖成一片。
+     */
+    fun applyLive() {
+        main.post {
+            if (!Cfg.petOn || !Cfg.petGlobal || petView == null) return@post
+            val wait = 120L - (System.currentTimeMillis() - lastApply)
+            if (wait <= 0L) {
+                lastApply = System.currentTimeMillis()
+                rebuild()
+                return@post
+            }
+            if (applyPend != null) return@post
+            val r = Runnable {
+                applyPend = null
+                lastApply = System.currentTimeMillis()
+                if (Cfg.petOn && Cfg.petGlobal && petView != null) rebuild()
+            }
+            applyPend = r
+            main.postDelayed(r, wait)
+        }
+    } //实时应用配置
 
     /** 面板里「试一下」：弹一下并说话 */
     fun sayNow(c: Context) {
@@ -108,9 +133,17 @@ object Pet {
     }
 
     private fun rebuild() {
+        //重建前把当前位置记回配置，不然游泳/拖动过的位置会跳回去
+        val lp = petLp
+        if (lp != null) {
+            if (Cfg.petX != lp.x || Cfg.petY != lp.y) {
+                Cfg.petX = lp.x
+                Cfg.petY = lp.y
+            }
+        }
         remove()
         render()
-    }
+    } //重建窗口
 
     private fun current(): Context? = a11yCtx ?: appCtx
 

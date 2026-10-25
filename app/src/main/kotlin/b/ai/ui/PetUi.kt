@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -92,9 +93,19 @@ fun PetIntroDialog(onClose: () -> Unit, onOpen: () -> Unit = {}) {
     }
 } //桌宠引导
 
+/** 桌宠配置版本号：Cfg 是普通字段不是 Compose State，改配置后靠它触发重组 */
+val petVer = mutableStateOf(0)
+
 /** 应用内那只桌宠：只在「仅应用内展示」时出现，位置固定，弹跳与缓动都做在图片自己身上 */
 @Composable
 fun PetInApp(modifier: Modifier = Modifier) {
+    key(petVer.value) { //配置改了就整块重新组一遍
+    PetInAppBody(modifier)
+    }
+} //应用内桌宠外壳
+
+@Composable
+private fun PetInAppBody(modifier: Modifier = Modifier) {
     if (!Cfg.petOn || Cfg.petGlobal) return
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
