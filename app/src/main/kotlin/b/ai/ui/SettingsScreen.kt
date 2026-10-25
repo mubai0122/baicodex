@@ -172,6 +172,7 @@ fun SettingsScreen(
     backProgress: Float = 0f,
     initialTab: Int = 0,
     onOpenFeedback: () -> Unit = {},
+    onOpenPet: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -342,7 +343,7 @@ fun SettingsScreen(
                         when (tab) {
                             0 -> ModelTab()
                             1 -> ChatTab(stats)
-                            2 -> UiTab()
+                            2 -> UiTab(onOpenPet)
                             3 -> StatTab()
                             4 -> ExtTab(
                                 onEdit = { draft = it },
@@ -353,7 +354,7 @@ fun SettingsScreen(
                                 onEditPack = { packDraft = it }
                             )
                             5 -> AboutTab(onOpenFeedback)
-                            else -> UiTab()
+                            else -> UiTab(onOpenPet)
                         }
                     }
             }
@@ -1074,7 +1075,7 @@ private fun PermTab() {
 private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f, R.string.se_165 to 1.15f, R.string.se_166 to 1.3f)
 
 @Composable
-private fun UiTab() {
+private fun UiTab(onOpenPet: () -> Unit) {
     //切语言：存完配置要重建 Activity，界面才会真的换语言
     val act = LocalContext.current as? Activity
     val pickLang: (String) -> Unit = { code ->
@@ -1108,6 +1109,14 @@ private fun UiTab() {
         ChoiceRow(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
             Cfg.waifuMode = !Cfg.waifuMode
         }
+        //桌宠自己是一整页设置：外观、动效、台词、行为、权限都在那边
+        ChoiceRow(
+            stringResource(R.string.pet_sec),
+            if (!Cfg.petOn) stringResource(R.string.pet_route_none)
+            else if (Cfg.petGlobal) stringResource(R.string.pet_global)
+            else stringResource(R.string.pet_in_app),
+            false
+        ) { onOpenPet() }
     }
     Spacer(Modifier.height(10.dp))
     AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->

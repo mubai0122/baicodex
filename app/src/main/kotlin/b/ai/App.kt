@@ -50,10 +50,16 @@ class App : Application() {
         if (procName() != packageName) return
         //胶囊的兜底宿主：没有无障碍时靠悬浮窗权限显示
         b.ai.exec.Capsule.attachApp(this)
+        //桌宠的兜底宿主：没有无障碍时靠悬浮窗权限显示
+        b.ai.exec.Pet.attachApp(this)
         Paths.ensure()
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
         Cfg.init(this)
+        //桌宠默认全局展示：有权限就直接起前台服务，没权限交给界面弹授权
+        runCatching {
+            if (Cfg.petOn && Cfg.petGlobal && b.ai.exec.Pet.canShow(this)) b.ai.exec.PetSvc.start(this)
+        }
         Profiles.init()
         //进应用就把厂商图标捞一遍：C 层抓，磁盘缓存 168 天，之后设置页打开直接出图
         Thread({

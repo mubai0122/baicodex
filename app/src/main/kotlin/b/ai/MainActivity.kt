@@ -55,6 +55,8 @@ import b.ai.ui.JoinGroupDialog
 import b.ai.ui.OnboardingScreen
 import b.ai.ui.Overlay
 import b.ai.ui.PermNoticeDialog
+import b.ai.ui.PetPermAsk
+import b.ai.ui.PetScreen
 import b.ai.ui.SettingsScreen
 import b.ai.ui.MemorySheet
 import b.ai.ui.MigrateGate
@@ -163,6 +165,8 @@ private fun Root() {
     //进应用即申请全部运行期权限：拒绝过一次之后只提示、不反复弹系统框
     var missing by remember { mutableStateOf(Perms.missing(ctx)) }
     var permNotice by remember { mutableStateOf(false) }
+    //桌宠默认全局展示：没悬浮窗权限就先弹一次授权
+    var petPerm by remember { mutableStateOf(false) }
     //收藏夹面板：必须挂在根弹窗层，抽屉内部挂弹窗会被抽屉盖住且无法点外部关闭
     var starsOpen by remember { mutableStateOf(false) }
     //永久记忆面板：同样走根弹窗层
@@ -233,6 +237,10 @@ private fun Root() {
         )
     }
 
+    //只在启动时判一次：无障碍在跑或者已有悬浮窗权限就不会弹
+    LaunchedEffect(Unit) {
+        if (Cfg.petOn && Cfg.petGlobal && Cfg.onboarded && !b.ai.exec.Pet.canShow(ctx)) petPerm = true
+    }
     //返回键：抽屉开着先关抽屉；设置页在开「预测性手势支持」时走 PredictiveBackHandler，跟手缩放后再回聊天
     BackHandler(enabled = drawer.isOpen) {
         if (drawer.isOpen) scope.launch { drawer.close() }
@@ -241,14 +249,14 @@ private fun Root() {
     BackHandler(enabled = starsOpen) { starsOpen = false }
     BackHandler(enabled = memOpen) { memOpen = false }
     //关掉预测性手势时退回普通返回，不做跟手动画
-    BackHandler(enabled = !Cfg.predictiveBack && screen == "settings") {
-        screen = "chat"
+    BackHandler(enabled = !Cfg.predictiveBack && (screen == "settings" || screen == "pet")) {
+        screen = if (screen == "pet") "settings" else "chat"
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && screen == "settings" && !drawer.isOpen) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet") && !drawer.isOpen) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
-            screen = "chat"
+            screen = if (screen == "pet") "settings" else "chat"
         } catch (e: CancellationException) {
             throw e
         } finally {
@@ -297,8 +305,10 @@ private fun Root() {
                                 backProgress = backFx,
                                 initialTab = settingsTab,
                                 onBack = { screen = "chat" },
-                                onOpenFeedback = { screen = "feedback" }
+                                onOpenFeedback = { screen = "feedback" },
+                                onOpenPet = { screen = "pet" }
                             )
+                            "pet" -> PetScreen(backProgress = backFx, onBack = { screen = "settings" })
                             "feedback" -> FeedbackScreen(
                                 onBack = { screen = "settings" },
                                 onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
@@ -327,6 +337,19 @@ private fun Root() {
                         q != null -> AskSheet(q)
                         pl != null -> PlanSheet(pl)
                         p != null -> ToolConfirmDialog(p)
+                        petPerm -> PetPermAsk(
+                            onClose = { petPerm = false },
+                            onGrant = {
+                                petPerm = false
+                                b.ai.exec.PetGrant.grant(ctx) { r ->
+                                    if (r.ok && Cfg.petGlobal) b.ai.exec.PetSvc.start(ctx)
+                                }
+                            },
+                            onOpen = {
+                                petPerm = false
+                                b.ai.exec.PetGrant.openOverlaySetting(ctx)
+                            }
+                        )
                         permNotice -> PermNoticeDialog(
                             missing = missing,
                             onRetry = {

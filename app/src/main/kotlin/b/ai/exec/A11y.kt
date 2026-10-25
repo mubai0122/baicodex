@@ -276,8 +276,9 @@ class A11yService : AccessibilityService() {
         }
         Log.i(A11y.TAG, "connected flags=" + runCatching { serviceInfo.flags }.getOrDefault(0))
         A11y.attach(this)
-        //顺带把胶囊的宿主也换成无障碍窗层：不需要悬浮窗权限就能显示在上面
+        //顺带把胶囊与桌宠的宿主也换成无障碍窗层：不需要悬浮窗权限就能显示在上面
         Capsule.attachA11y(this)
+        Pet.attachA11y(this)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
@@ -286,6 +287,7 @@ class A11yService : AccessibilityService() {
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         A11y.detach(this)
+        Pet.detachA11y()
         return super.onUnbind(intent)
     }
 

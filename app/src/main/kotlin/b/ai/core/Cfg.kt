@@ -122,6 +122,35 @@ object Cfg {
             val v = p.getString("system_prompt", "")!!
             if (v.isNotBlank()) Store.write(SYSTEM_PROMPT_FILE, v)
         }
+        mem("pet_on", true).value = p.getBoolean("pet_on", true)
+        mem("pet_global", true).value = p.getBoolean("pet_global", true)
+        mem("pet_x", -1).value = p.getInt("pet_x", -1)
+        mem("pet_y", -1).value = p.getInt("pet_y", -1)
+        mem("pet_size", 120).value = p.getInt("pet_size", 120)
+        mem("pet_seen", 0).value = p.getInt("pet_seen", 0)
+        mem("pet_alpha", 100).value = p.getInt("pet_alpha", 100)
+        mem("pet_flip", false).value = p.getBoolean("pet_flip", false)
+        mem("pet_shadow", true).value = p.getBoolean("pet_shadow", true)
+        mem("pet_card", false).value = p.getBoolean("pet_card", false)
+        mem("pet_font", 14).value = p.getInt("pet_font", 14)
+        mem("pet_font_bold", true).value = p.getBoolean("pet_font_bold", true)
+        mem("pet_bubble_w", 210).value = p.getInt("pet_bubble_w", 210)
+        mem("pet_bubble_r", 14).value = p.getInt("pet_bubble_r", 14)
+        mem("pet_bubble_dark", false).value = p.getBoolean("pet_bubble_dark", false)
+        mem("pet_float", true).value = p.getBoolean("pet_float", true)
+        mem("pet_float_amp", 4).value = p.getInt("pet_float_amp", 4)
+        mem("pet_float_ms", 1600).value = p.getInt("pet_float_ms", 1600)
+        mem("pet_swim", false).value = p.getBoolean("pet_swim", false)
+        mem("pet_swim_speed", 60).value = p.getInt("pet_swim_speed", 60)
+        mem("pet_swim_bounce", true).value = p.getBoolean("pet_swim_bounce", true)
+        mem("pet_bounce", true).value = p.getBoolean("pet_bounce", true)
+        mem("pet_bounce_pct", 14).value = p.getInt("pet_bounce_pct", 14)
+        mem("pet_talk", true).value = p.getBoolean("pet_talk", true)
+        mem("pet_bubble_ms", 2600).value = p.getInt("pet_bubble_ms", 2600)
+        mem("pet_timed_pct", 35).value = p.getInt("pet_timed_pct", 35)
+        mem("pet_dbl_bal", true).value = p.getBoolean("pet_dbl_bal", true)
+        mem("pet_sound", true).value = p.getBoolean("pet_sound", true)
+        mem("pet_sound_vol", 70).value = p.getInt("pet_sound_vol", 70)
     } //读盘并预热状态
 
     private fun put(k: String, v: Any?) {
@@ -506,6 +535,139 @@ object Cfg {
     var notiLimit: Int
         get() = mem("noti_limit", 0).value
         set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
+
+    /** 桌宠总开关：默认开，装完就有一只待在应用里 */
+    var petOn: Boolean
+        get() = mem("pet_on", true).value
+        set(v) { mem("pet_on", true).value = v; put("pet_on", v) }
+
+    /** true = 所有状态下都浮在屏幕上（默认）；false = 只在应用内展示 */
+    var petGlobal: Boolean
+        get() = mem("pet_global", true).value
+        set(v) { mem("pet_global", true).value = v; put("pet_global", v) }
+
+    /** 悬浮窗位置（px，-1 表示还没摆过）与边长（dp） */
+    var petX: Int
+        get() = mem("pet_x", -1).value
+        set(v) { mem("pet_x", -1).value = v; put("pet_x", v) }
+
+    var petY: Int
+        get() = mem("pet_y", -1).value
+        set(v) { mem("pet_y", -1).value = v; put("pet_y", v) }
+
+    var petSize: Int
+        get() = mem("pet_size", 120).value
+        set(v) { val n = v.coerceIn(60, 260); mem("pet_size", 120).value = n; put("pet_size", n) }
+
+    /** 看过桌宠引导的版本号：比当前 versionCode 低就弹一次 */
+    var petSeen: Int
+        get() = mem("pet_seen", 0).value
+        set(v) { mem("pet_seen", 0).value = v; put("pet_seen", v) }
+
+    /** 立绘不透明度（%）：越低越透 */
+    var petAlpha: Int
+        get() = mem("pet_alpha", 100).value
+        set(v) { val n = v.coerceIn(30, 100); mem("pet_alpha", 100).value = n; put("pet_alpha", n) }
+
+    /** 左右镜像 */
+    var petFlip: Boolean
+        get() = mem("pet_flip", false).value
+        set(v) { mem("pet_flip", false).value = v; put("pet_flip", v) }
+
+    /** 脚下垫一层淡阴影，深色背景里立绘不至于糊住 */
+    var petShadow: Boolean
+        get() = mem("pet_shadow", true).value
+        set(v) { mem("pet_shadow", true).value = v; put("pet_shadow", v) }
+
+    /** 立绘垫白色圆角卡片 */
+    var petCard: Boolean
+        get() = mem("pet_card", false).value
+        set(v) { mem("pet_card", false).value = v; put("pet_card", v) }
+
+    /** 气泡字号（sp）、是否加粗、最大宽（dp）、圆角（dp）、深色底 */
+    var petFont: Int
+        get() = mem("pet_font", 14).value
+        set(v) { val n = v.coerceIn(9, 20); mem("pet_font", 14).value = n; put("pet_font", n) }
+
+    var petFontBold: Boolean
+        get() = mem("pet_font_bold", true).value
+        set(v) { mem("pet_font_bold", true).value = v; put("pet_font_bold", v) }
+
+    var petBubbleW: Int
+        get() = mem("pet_bubble_w", 210).value
+        set(v) { val n = v.coerceIn(100, 320); mem("pet_bubble_w", 210).value = n; put("pet_bubble_w", n) }
+
+    var petBubbleR: Int
+        get() = mem("pet_bubble_r", 14).value
+        set(v) { val n = v.coerceIn(0, 28); mem("pet_bubble_r", 14).value = n; put("pet_bubble_r", n) }
+
+    var petBubbleDark: Boolean
+        get() = mem("pet_bubble_dark", false).value
+        set(v) { mem("pet_bubble_dark", false).value = v; put("pet_bubble_dark", v) }
+
+    /** 原地上下缓动：窗口不动，只动图片自己 */
+    var petFloat: Boolean
+        get() = mem("pet_float", true).value
+        set(v) { mem("pet_float", true).value = v; put("pet_float", v) }
+
+    var petFloatAmp: Int
+        get() = mem("pet_float_amp", 4).value
+        set(v) { val n = v.coerceIn(0, 24); mem("pet_float_amp", 4).value = n; put("pet_float_amp", n) }
+
+    var petFloatMs: Int
+        get() = mem("pet_float_ms", 1600).value
+        set(v) { val n = v.coerceIn(400, 4000); mem("pet_float_ms", 1600).value = n; put("pet_float_ms", n) }
+
+    /** 游泳状态：窗口自己在屏幕上跑，比原地浮动费电 */
+    var petSwim: Boolean
+        get() = mem("pet_swim", false).value
+        set(v) { mem("pet_swim", false).value = v; put("pet_swim", v) }
+
+    var petSwimSpeed: Int
+        get() = mem("pet_swim_speed", 60).value
+        set(v) { val n = v.coerceIn(10, 200); mem("pet_swim_speed", 60).value = n; put("pet_swim_speed", n) }
+
+    /** true = 撞到屏幕边反弹；false = 从对面绕回来 */
+    var petSwimBounce: Boolean
+        get() = mem("pet_swim_bounce", true).value
+        set(v) { mem("pet_swim_bounce", true).value = v; put("pet_swim_bounce", v) }
+
+    /** 点击弹跳与幅度（%） */
+    var petBounce: Boolean
+        get() = mem("pet_bounce", true).value
+        set(v) { mem("pet_bounce", true).value = v; put("pet_bounce", v) }
+
+    var petBouncePct: Int
+        get() = mem("pet_bounce_pct", 14).value
+        set(v) { val n = v.coerceIn(0, 30); mem("pet_bounce_pct", 14).value = n; put("pet_bounce_pct", n) }
+
+    /** 单击是否说话；气泡停留时长（ms） */
+    var petTalk: Boolean
+        get() = mem("pet_talk", true).value
+        set(v) { mem("pet_talk", true).value = v; put("pet_talk", v) }
+
+    var petBubbleMs: Int
+        get() = mem("pet_bubble_ms", 2600).value
+        set(v) { val n = v.coerceIn(800, 8000); mem("pet_bubble_ms", 2600).value = n; put("pet_bubble_ms", n) }
+
+    /** 说「高峰 / 错峰」这类时段提示的概率（%），0 = 不说 */
+    var petTimedPct: Int
+        get() = mem("pet_timed_pct", 35).value
+        set(v) { val n = v.coerceIn(0, 100); mem("pet_timed_pct", 35).value = n; put("pet_timed_pct", n) }
+
+    /** 双击查余额 */
+    var petDblBal: Boolean
+        get() = mem("pet_dbl_bal", true).value
+        set(v) { mem("pet_dbl_bal", true).value = v; put("pet_dbl_bal", v) }
+
+    /** Q 弹音效与音量（%） */
+    var petSound: Boolean
+        get() = mem("pet_sound", true).value
+        set(v) { mem("pet_sound", true).value = v; put("pet_sound", v) }
+
+    var petSoundVol: Int
+        get() = mem("pet_sound_vol", 70).value
+        set(v) { val n = v.coerceIn(20, 100); mem("pet_sound_vol", 70).value = n; put("pet_sound_vol", n) }
 
     /** 注入设备使用时长（需使用情况访问权，没授权就跳过） */
     var injectUsage: Boolean
