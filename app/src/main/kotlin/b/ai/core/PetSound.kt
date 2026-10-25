@@ -1,53 +1,95 @@
 package b.ai.core
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.SoundPool
+import b.ai.R
 
-/** Q 弹音效：现场合成一段下滑正弦，不占包体积、没有版权问题，想换真音效再说 */
+/**
+ * Q 弹音效：优先用打包的 pet_boing.wav（SoundPool，走媒体音量流），
+ * 采样还没加载好或者资源缺失时现场合成一段，保证一定有声。
+ */
 object PetSound {
-    private const val RATE = 44100
+    private var pool: SoundPool? = null
+    private var sid = 0
+    private var ready = false
+    private var tried = false
 
-    /** 放一声「Q弹」，vol 取 0..1 */
-    fun boing(vol: Float) {
+    @Synchronized
+    private fun ensure(c: Context): Boolean {
+        if (tried) return ready
+        tried = true
+        return runCatching {
+            val p = SoundPool.Builder()
+                .setMaxStreams(2)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                .build()
+            p.setOnLoadCompleteListener { _, id, status ->
+                if (id == sid && status == 0) ready = true
+            }
+            sid = p.load(c.applicationContext, R.raw.pet_boing, 1)
+            pool = p
+            true
+        }.getOrDefault(false)
+    } //懒加载音频
+
+    /** 放一声「Q弹」，vol 取 0..1；没给 Context 就只走合成 */
+    fun boing(c: Context?, vol: Float) {
         if (vol <= 0f) return
-        Thread { runCatching { play(vol) } }.apply { isDaemon = true }.start()
+        val v = vol.coerceIn(0f, 1f)
+        if (c != null && runCatching { ensure(c) }.getOrDefault(false)) {
+            val p = pool
+            if (p != null && ready && runCatching { p.play(sid, v, v, 1, 0, 1f) }.getOrDefault(0) > 0) return
+        }
+        synth(v)
     } //对外放音
 
-    private fun play(vol: Float) {
-        val n = (RATE * 0.18f).toInt()
+    private fun synth(vol: Float) {
+        val rate = 44100
+        val n = (rate * 0.2f).toInt()
         val buf = ShortArray(n)
         var phase = 0.0
         for (i in 0 until n) {
-            val t = i.toFloat() / RATE
-            //频率从 900Hz 指数滑到 180Hz，就是弹回来那一下的手感
-            val f = 900.0 * Math.exp(-9.0 * t) + 180.0
-            phase += 2.0 * Math.PI * f / RATE
-            val env = Math.exp(-14.0 * t)
-            val s = (Math.sin(phase) * 0.72 + Math.sin(phase * 2.0) * 0.24) * env * vol
+            val t = i.toFloat() / rate
+            //频率从 1150Hz 指数滑到 250Hz，就是弹回来那一下的手感
+            val f = 1150.0 * Math.exp(-13.0 * t) + 250.0
+            phase += 2.0 * Math.PI * f / rate
+            val env = Math.exp(-10.5 * t) * (1.0 - Math.exp(-400.0 * t))
+            val s = (Math.sin(phase) * 0.78 + Math.sin(phase * 2.0) * 0.26 + Math.sin(phase * 3.0) * 0.09) * env * vol * 0.85
             buf[i] = (s * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort()
         }
-        val at = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(RATE)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
-            .setBufferSizeInBytes(n * 2)
-            .setTransferMode(AudioTrack.MODE_STATIC)
-            .build()
-        at.write(buf, 0, n)
-        at.play()
-        Thread.sleep(320)
-        runCatching { at.stop() }
-        at.release()
-    } //合成并播放
+        runCatching {
+            val min = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+                .coerceAtLeast(4096)
+            val at = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(rate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(min * 2)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+            at.play()
+            at.write(buf, 0, n)
+            Thread.sleep(240)
+            runCatching { at.stop() }
+            at.release()
+        }
+    } //合成兜底
 } //桌宠音效

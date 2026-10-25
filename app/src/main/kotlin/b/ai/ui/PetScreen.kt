@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -64,11 +65,21 @@ private val PetOffGreen = Color(0xFF2E7D4F)
 
 /** 桌宠自己的底栏分类：外观 / 动效 / 台词 / 行为 / 权限，图标用 emoji 免图标依赖 */
 private val PetTabs = listOf(
-    FloatTab(R.string.pet_tab_look) { c -> Text("🎨", fontSize = 13.sp, color = c) },
-    FloatTab(R.string.pet_tab_fx) { c -> Text("🌊", fontSize = 13.sp, color = c) },
-    FloatTab(R.string.pet_tab_line) { c -> Text("💬", fontSize = 13.sp, color = c) },
-    FloatTab(R.string.pet_tab_act) { c -> Text("⚙", fontSize = 13.sp, color = c) },
-    FloatTab(R.string.pet_tab_perm) { c -> Text("🔒", fontSize = 13.sp, color = c) }
+    FloatTab(R.string.pet_tab_look) { c ->
+        Icon(painterResource(R.drawable.ic_pet_look), null, tint = c, modifier = Modifier.size(16.dp))
+    },
+    FloatTab(R.string.pet_tab_fx) { c ->
+        Icon(painterResource(R.drawable.ic_pet_fx), null, tint = c, modifier = Modifier.size(16.dp))
+    },
+    FloatTab(R.string.pet_tab_line) { c ->
+        Icon(painterResource(R.drawable.ic_pet_line), null, tint = c, modifier = Modifier.size(16.dp))
+    },
+    FloatTab(R.string.pet_tab_act) { c ->
+        Icon(painterResource(R.drawable.ic_pet_act), null, tint = c, modifier = Modifier.size(16.dp))
+    },
+    FloatTab(R.string.pet_tab_perm) { c ->
+        Icon(painterResource(R.drawable.ic_pet_perm), null, tint = c, modifier = Modifier.size(16.dp))
+    }
 )
 
 /** 桌宠页索引：搜索只查这张表，命中后跳到对应分类 */
@@ -408,7 +419,7 @@ private fun PetFxTab() {
         CapSwitch(stringResource(R.string.pet_bounce), "", Cfg.petBounce) { Cfg.petBounce = it }
         PetSlider(stringResource(R.string.pet_bounce_pct, Cfg.petBouncePct), 0, 30, Cfg.petBouncePct) { Cfg.petBouncePct = it }
         GhostButton(stringResource(R.string.pet_test)) {
-            if (Cfg.petSound) PetSound.boing(Cfg.petSoundVol / 100f)
+            PetSound.boing(ctx, if (Cfg.petSound) Cfg.petSoundVol / 100f else 0f)
             Pet.sayNow(ctx)
         }
     }
