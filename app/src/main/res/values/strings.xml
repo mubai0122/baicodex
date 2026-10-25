@@ -1216,4 +1216,5 @@
     <string name="se_sum_prompt">总结提示词</string>
     <string name="se_sum_prompt_hint">留空用内置：压成要点，保留目标、动作与未完成事项，300 字内</string>
     <string name="se_sum_prompt_note">自动总结、立即总结、长按重总结都用这段提示词。</string>
+    <string name="ag_br_fail">这条没有可切换的分支</string>
 </resources>

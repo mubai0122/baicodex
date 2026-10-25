@@ -459,7 +459,10 @@ object Agent {
                 true
             }
             //成功失败都重读一次：失败时也把界面拉回数据库真身，免得看着像点了没反应
-            if (!ok) android.util.Log.w("BaiDBG", "switchBranch miss msg=$msgId dir=$dir")
+            if (!ok) {
+                status = host.getString(R.string.ag_br_fail)
+                android.util.Log.w("BaiDBG", "switchBranch miss msg=$msgId dir=$dir")
+            }
             messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
         }
     } //切分支

@@ -1216,4 +1216,5 @@
     <string name="se_sum_prompt">總結提示詞</string>
     <string name="se_sum_prompt_hint">留空用內建：壓成要點，保留目標、動作與未完成事項，300 字內</string>
     <string name="se_sum_prompt_note">自動總結、立即總結、長按重總結都用這段提示詞。</string>
+    <string name="ag_br_fail">這條沒有可切換的分支</string>
 </resources>
