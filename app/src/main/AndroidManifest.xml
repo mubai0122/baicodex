@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission
         android:name="android.permission.INTERNET" />
     <uses-permission
@@ -34,6 +35,10 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- 读取已安装应用列表：跑应用 / 判断 Shizuku 是否装 / 按包名选目标 App -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <!-- 设备使用时长：声明了系统「使用情况访问」列表里才会出现本应用，否则无从授权 -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <!-- 屏幕操作：悬浮胶囊与无障碍服务 -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
