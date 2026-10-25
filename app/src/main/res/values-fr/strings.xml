@@ -1204,4 +1204,5 @@
     <string name="wsq_done">%1$d dossiers nettoyés, %2$s libérés</string>
     <string name="wsq_fail">%1$d n\'ont pas pu être supprimés (en cours d\'utilisation)</string>
     <string name="wsq_ok">OK</string>
+    <string name="wsq_more">…et %1$d de plus</string>
 </resources>

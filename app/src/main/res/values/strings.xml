@@ -1205,4 +1205,5 @@
     <string name="wsq_done">清理完成 %1$d 个，释放 %2$s</string>
     <string name="wsq_fail">%1$d 个没删掉（可能正被占用）</string>
     <string name="wsq_ok">好的</string>
+    <string name="wsq_more">…还有 %1$d 个</string>
 </resources>
