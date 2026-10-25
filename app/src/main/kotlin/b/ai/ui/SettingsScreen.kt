@@ -1126,6 +1126,7 @@ private fun UiTab(onOpenPet: () -> Unit) {
         //清空就等于放弃自定义，回落到跟角色卡
         Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
     }
+    Spacer(Modifier.height(16.dp))
     CardBox {
         ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
             Cfg.avatarAiMode = "persona"
