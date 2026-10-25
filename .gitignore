@@ -6,6 +6,7 @@ app/build/
 
 #参考源码（体积大，不进版本库）
 _operit/
+_dsp/
 
 #本地日志与备份
 logs/
