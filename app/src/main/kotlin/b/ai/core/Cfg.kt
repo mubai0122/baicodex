@@ -243,6 +243,10 @@ object Cfg {
     var ctxMsgCount: Int
         get() = mem("ctx_msg_count", 16).value
         set(v) { mem("ctx_msg_count", 16).value = v; put("ctx_msg_count", v) }
+    /**总结提示词：留空走内置默认；填了就整套替换，自动总结与手动重新总结都用它 */
+    var summaryPrompt: String
+        get() = mem("summary_prompt", "").value
+        set(v) { mem("summary_prompt", "").value = v; put("summary_prompt", v) }
 
     /** 是否让模型先思考再回答（下发 reasoning_effort） */
     var think: Boolean

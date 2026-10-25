@@ -297,6 +297,16 @@ object Repo {
         }
     } //读当前分支
 
+    /**改写某条摘要的正文：重新总结只换文字，不动它覆盖到哪一段历史 */
+    fun updateSummary(id: Long, text: String) {
+        w().update(
+            "message",
+            ContentValues().apply { put("content", text) },
+            "_id=?",
+            arrayOf(id.toString())
+        )
+    } //改写摘要正文
+
     /** 收藏开关：只改标记，不动内容与时间，删会话时跟着消息一起没 */
     fun setStarred(id: Long, on: Boolean) {
         w().update(

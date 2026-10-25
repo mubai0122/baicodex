@@ -193,7 +193,7 @@
     <string name="cs_see_images">Regarde ces images</string>
     <string name="cs_edit_resend">Modifier et renvoyer</string>
     <string name="cs_regen_hint">Régénérer avec consigne</string>
-    <string name="cs_edit_desc">Envoyez une fois modifié ; la suite sera supprimée</string>
+    <string name="cs_edit_desc">Envoie une copie modifiée ; l\'original reste dans la branche, revenez avec ‹ n/m ›</string>
     <string name="cs_regen_hint_desc">Précisez la modification, puis régénérez</string>
     <string name="cs_send">Envoyer</string>
     <string name="cs_regen">Régénérer</string>
@@ -246,7 +246,7 @@
     <string name="cs_this_msg">Ce message</string>
     <string name="cs_this_reply">Cette réponse</string>
     <string name="cs_no_content">(vide)</string>
-    <string name="cs_edit_resend_desc">Supprime ce message et la suite, puis repose avec le nouveau texte</string>
+    <string name="cs_edit_resend_desc">Renvoyer avec un nouveau texte ; l\'ancien message et ses réponses restent dans la branche</string>
     <string name="cs_regen_desc">Relance ici ; la suite sera supprimée</string>
     <string name="cs_regen_hint_desc2">Ajoutez une consigne, puis régénérez</string>
     <string name="cs_copy_content">Copier le texte</string>
@@ -1205,4 +1205,14 @@
     <string name="wsq_fail">%1$d n\'ont pas pu être supprimés (en cours d\'utilisation)</string>
     <string name="wsq_ok">OK</string>
     <string name="wsq_more">…et %1$d de plus</string>
+    <string name="cs_sum_menu_desc">Résumé des échanges précédents, refaisable</string>
+    <string name="cs_sum_regen">Refaire le résumé</string>
+    <string name="cs_sum_regen_desc">Recompresser la même plage avec le prompt actuel</string>
+    <string name="cs_sum_note">Résumer avec une consigne</string>
+    <string name="cs_sum_note_desc">Ajouter une exigence (plus court / garder les chemins / conclusions seules) puis recompresser</string>
+    <string name="cs_sum_note_hint">ex. : garder tous les chemins et commandes, le reste sous 150 mots</string>
+    <string name="cs_sum_note_confirm">Refaire</string>
+    <string name="se_sum_prompt">Prompt de résumé</string>
+    <string name="se_sum_prompt_hint">Vide = prompt intégré : objectifs, actions et tâches en cours, sous 300 mots</string>
+    <string name="se_sum_prompt_note">Résumé auto, résumé manuel et refaire par appui long utilisent ce prompt.</string>
 </resources>

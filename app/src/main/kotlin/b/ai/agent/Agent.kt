@@ -374,7 +374,7 @@ object Agent {
         }
     } //发送并驱动循环
 
-    fun editResend(msgId: Long, text: String) {
+    fun editResend(msgId: Long, text: String, images: List<String> = emptyList()) {
         val t = text.trim()
         if (busy || t.isEmpty()) return
         busy = true
@@ -383,7 +383,8 @@ object Agent {
                 runSid = sessionId
                 runHistory = messages
                 rollbackTo(msgId)
-                append(ChatMsg(role = "user", content = t))
+                //原消息和它引出的回复都留在树里，新消息成了另一个分支，图片照旧带上
+                append(ChatMsg(role = "user", content = t, images = images))
                 runLoop()
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
@@ -457,7 +458,9 @@ object Agent {
                 Repo.switchTo(sid, list[j])
                 true
             }
-            if (ok) messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+            //成功失败都重读一次：失败时也把界面拉回数据库真身，免得看着像点了没反应
+            if (!ok) android.util.Log.w("BaiDBG", "switchBranch miss msg=$msgId dir=$dir")
+            messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
         }
     } //切分支
 
@@ -1008,7 +1011,7 @@ object Agent {
         }
     } //手动触发一次总结
 
-    private suspend fun compact(force: Boolean): Boolean {
+    private suspend fun compact(force: Boolean, note: String? = null): Boolean {
         val sid = runSid ?: sessionId ?: return false
         if (!force && !Cfg.ctxAuto) return false
         val list = withContext(Dispatchers.IO) { Repo.messages(sid) }
@@ -1029,27 +1032,12 @@ object Agent {
         if (cut >= fresh.size) return false
         val old = fresh.subList(0, cut)
         val prev = list.lastOrNull { it.role == "summary" }?.let { stripMarker(it.content) }
-        fun renderOld(cap: Int): String = old.joinToString("\n") { m ->
-            when (m.role) {
-                "tool" -> "工具(${m.toolName ?: ""})结果: ${m.content.take(cap)}"
-                "assistant" -> "助手: ${m.content.take(cap)}" +
-                    if (m.toolCalls.isEmpty()) "" else " / " + m.toolCalls.joinToString("; ") {
-                        "调用 ${it.name}(${it.arguments.take(cap / 3)})"
-                    }
-                else -> "用户: ${m.content.take(cap)}"
-            }
-        }
         //二次压缩要把上一次的摘要带进去，否则最早那段历史直接被忘掉
-        val head = if (prev.isNullOrBlank()) "" else "此前摘要：$prev\n"
-        //超长时逐级压缩单条上限，避免直接截断丢掉后半段
-        var render = head + renderOld(600)
-        if (render.length > 12_000) render = head + renderOld(300)
-        if (render.length > 12_000) render = head + renderOld(120)
-        if (render.length > 12_000) render = render.take(12_000)
+        val render = renderPart(old, prev)
         if (render.isBlank()) return false
         status = host.getString(R.string.ag_compress_run)
         val pay = JSONArray().apply {
-            put(JSONObject().put("role", "system").put("content", SUMMARY_PROMPT))
+            put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
             put(JSONObject().put("role", "user").put("content", render))
         }
         val resp = runCatching {
@@ -1064,6 +1052,81 @@ object Agent {
         status = host.getString(R.string.ag_think_again)
         return true
     } //超预算或条数到线时压成摘要
+
+    /** 单条消息压成一行，供摘要渲染 */
+    private fun oneLine(m: ChatMsg, cap: Int): String = when (m.role) {
+        "tool" -> "工具(${m.toolName ?: ""})结果: ${m.content.take(cap)}"
+        "assistant" -> "助手: ${m.content.take(cap)}" +
+            if (m.toolCalls.isEmpty()) "" else " / " + m.toolCalls.joinToString("; ") {
+                "调用 ${it.name}(${it.arguments.take(cap / 3)})"
+            }
+        else -> "用户: ${m.content.take(cap)}"
+    } //单条一行
+
+    /** 把一段历史渲染成压缩器的输入：超长就逐级压低单条上限，别一刀切断后半段 */
+    private fun renderPart(list: List<ChatMsg>, prev: String?): String {
+        val head = if (prev.isNullOrBlank()) "" else "此前摘要：$prev\n"
+        for (cap in intArrayOf(600, 300, 120)) {
+            val s = head + list.joinToString("\n") { oneLine(it, cap) }
+            if (s.length <= 12_000) return s
+        }
+        return (head + list.joinToString("\n") { oneLine(it, 120) }).take(12_000)
+    } //渲染待压缩历史
+
+    /** 总结用的 system 提示词：用户在设置里填了就用用户的 */
+    private fun summaryText(): String = Cfg.summaryPrompt.trim().ifBlank { SUMMARY_PROMPT }
+
+    /** 用户附加的微调要求，拼在总结提示词后面 */
+    private fun extraBlock(note: String?): String {
+        val t = note?.trim().orEmpty()
+        return if (t.isEmpty()) "" else "\n\n本次额外要求（优先满足，可以覆盖上面的字数限制）：$t"
+    } //附加要求
+
+    /** 重新总结：没有摘要就当第一次总结，有摘要就按它原来覆盖的范围重写 */
+    fun recompact(note: String? = null) {
+        if (busy) {
+            status = host.getString(R.string.ag_compress_busy)
+            return
+        }
+        scope.launch {
+            busy = true
+            status = host.getString(R.string.ag_compress_run)
+            val ok = runCatching { rebuildSummary(note) }.getOrDefault(false)
+            status = host.getString(if (ok) R.string.ag_compress_done else R.string.ag_compress_none)
+            busy = false
+            runSid = null
+            runHistory = emptyList()
+        }
+    } //重新总结
+
+    private suspend fun rebuildSummary(note: String?): Boolean {
+        val sid = sessionId ?: return false
+        val list = withContext(Dispatchers.IO) { Repo.messages(sid) }
+        val last = list.lastOrNull { it.role == "summary" } ?: return compact(true, note)
+        val upto = Regex("""\[\[upto:(\d+)]]""").find(last.content)
+            ?.groupValues?.get(1)?.toLongOrNull() ?: return false
+        val part = list.filter { it.role != "summary" && it.id <= upto }
+        if (part.isEmpty()) return false
+        val prev = list.lastOrNull { it.role == "summary" && it.id < last.id }
+            ?.let { stripMarker(it.content) }
+        val render = renderPart(part, prev)
+        if (render.isBlank()) return false
+        val pay = JSONArray().apply {
+            put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
+            put(JSONObject().put("role", "user").put("content", render))
+        }
+        val resp = runCatching {
+            withContext(Dispatchers.IO) {
+                LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).chat(Cfg.model, pay)
+            }
+        }.getOrNull() ?: return false
+        val text = resp.text("content").trim()
+        if (text.isBlank()) return false
+        //覆盖范围沿用旧摘要的：重总结只换文字，不动它负责的那一段历史
+        withContext(Dispatchers.IO) { Repo.updateSummary(last.id, "[[upto:$upto]]" + text) }
+        messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+        return true
+    } //重写摘要
 
     fun compressNow(): String {
         if (busy) return host.getString(R.string.ag_compress_busy)

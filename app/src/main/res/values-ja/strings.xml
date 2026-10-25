@@ -193,7 +193,7 @@
     <string name="cs_see_images">この画像を見て</string>
     <string name="cs_edit_resend">編集して再送</string>
     <string name="cs_regen_hint">指示付きで再生成</string>
-    <string name="cs_edit_desc">編集後そのまま送信。この後の内容は削除されます</string>
+    <string name="cs_edit_desc">修正版を新しく送ります。元のメッセージは分岐に残り、‹ n/m › で戻せます</string>
     <string name="cs_regen_hint_desc">変えたい点を足してから再生成してください</string>
     <string name="cs_send">送信</string>
     <string name="cs_regen">再生成</string>
@@ -246,7 +246,7 @@
     <string name="cs_this_msg">このメッセージ</string>
     <string name="cs_this_reply">この返信</string>
     <string name="cs_no_content">（内容なし）</string>
-    <string name="cs_edit_resend_desc">この投稿以降を削除し、新しい文で質問します</string>
+    <string name="cs_edit_resend_desc">新しい文面で送り直します。元のメッセージとその後の返信は分岐に残ります</string>
     <string name="cs_regen_desc">ここから再リクエストします。以降の内容は削除されます</string>
     <string name="cs_regen_hint_desc2">要件を一言足してから再生成</string>
     <string name="cs_copy_content">内容をコピー</string>
@@ -1205,4 +1205,14 @@
     <string name="wsq_fail">%1$d 個は削除できませんでした（使用中の可能性）</string>
     <string name="wsq_ok">OK</string>
     <string name="wsq_more">…ほか %1$d 件</string>
+    <string name="cs_sum_menu_desc">過去のやり取りを圧縮した要約です。作り直せます</string>
+    <string name="cs_sum_regen">要約し直す</string>
+    <string name="cs_sum_regen_desc">同じ範囲を今のプロンプトで圧縮し直す</string>
+    <string name="cs_sum_note">指示を足して要約</string>
+    <string name="cs_sum_note_desc">条件（短く／パスを残す／結論だけ）を足して圧縮し直す</string>
+    <string name="cs_sum_note_hint">例：ファイルパスとコマンドは全部残し、他は150字以内に</string>
+    <string name="cs_sum_note_confirm">作り直す</string>
+    <string name="se_sum_prompt">要約プロンプト</string>
+    <string name="se_sum_prompt_hint">空欄なら内蔵：目的・作業・未完了を残して300字以内</string>
+    <string name="se_sum_prompt_note">自動要約・手動要約・長押しの作り直しはすべてこのプロンプトを使います。</string>
 </resources>

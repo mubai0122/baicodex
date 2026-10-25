@@ -16,7 +16,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -140,6 +143,9 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var fullInput by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ChatMsg?>(null) }
     var menuFor by remember { mutableStateOf<ChatMsg?>(null) }
+    //摘要卡片的菜单：重新总结 / 加指令重总结；sumNote 为真时弹指令输入框
+    var sumMenu by remember { mutableStateOf<ChatMsg?>(null) }
+    var sumNote by remember { mutableStateOf(false) }
     var promptReq by remember { mutableStateOf<PromptReq?>(null) }
     var wsPanel by remember { mutableStateOf(false) }
     var attachPanel by remember { mutableStateOf(false) }
@@ -244,7 +250,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                             MessageItem(
                                 m,
                                 onToolDetail = { detail = it },
-                                onLongPress = { menuFor = it }
+                                onLongPress = { menuFor = it },
+                                onSumLong = { sumMenu = it }
                             )
                         }
                     }
@@ -433,10 +440,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
-            b.ai.exec.A11y.needPerm.value || ImgView.path.value != null
+            sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null
     ) {
         val d = detail
         val mn = menuFor
+        val sm = sumMenu
         val pr = promptReq
         val img = ImgView.path.value
         when {
@@ -468,6 +476,32 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             )
             wsPanel -> WorkspaceDialog { wsPanel = false }
             d != null -> ToolDetailDialog(d) { detail = null }
+            sm != null -> SummaryMenuDialog(
+                onRegen = {
+                    Agent.recompact()
+                    sumMenu = null
+                },
+                onRegenNote = {
+                    sumNote = true
+                    sumMenu = null
+                },
+                onCopy = {
+                    copyText(ctx, sm.content.replace(Regex("""\[\[upto:\d+]]"""), "").trim())
+                    sumMenu = null
+                },
+                onClose = { sumMenu = null }
+            )
+            sumNote -> PromptDialog(
+                title = stringResource(R.string.cs_sum_note),
+                hint = stringResource(R.string.cs_sum_note_hint),
+                initial = "",
+                confirm = stringResource(R.string.cs_sum_note_confirm),
+                onClose = { sumNote = false },
+                onConfirm = { text ->
+                    sumNote = false
+                    Agent.recompact(text)
+                }
+            )
             mn != null -> MsgMenuDialog(
                 m = mn,
                 onEdit = {
@@ -508,7 +542,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 onClose = { promptReq = null },
                 onConfirm = { text ->
                     promptReq = null
-                    if (pr.edit) Agent.editResend(pr.m.id, text) else Agent.regenerate(pr.m.id, text)
+                    if (pr.edit) Agent.editResend(pr.m.id, text, pr.m.images) else Agent.regenerate(pr.m.id, text)
                 }
             )
         }
@@ -1131,39 +1165,47 @@ private fun StreamingMsg(text: String, reason: String) {
     }
 } //流式输出中的临时气泡
 
-/** 分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head 就跟到哪条 */
+/**分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head就跟到哪条 */
 @Composable
 private fun BranchBar(idx: Int, total: Int, onSwitch: (Int) -> Unit) {
     Row(
-        Modifier.padding(start = 42.dp, top = 2.dp, bottom = 2.dp),
+        Modifier.padding(start = 42.dp, top = 3.dp, bottom = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        BranchArrow("‹") { onSwitch(-1) }
         Text(
-            "‹",
-            fontSize = 15.sp,
-            color = AccentBlue,
-            modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(7.dp))
-                .tap { onSwitch(-1) }
-                .padding(horizontal = 7.dp, vertical = 1.dp)
+            "$idx/$total",
+            fontSize = 11.sp,
+            color = TextSecondary,
+            modifier = Modifier.padding(horizontal = 6.dp)
         )
-        Spacer(Modifier.width(5.dp))
-        Text("$idx/$total", fontSize = 10.sp, color = TextSecondary)
-        Spacer(Modifier.width(5.dp))
-        Text(
-            "›",
-            fontSize = 15.sp,
-            color = AccentBlue,
-            modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(7.dp))
-                .tap { onSwitch(1) }
-                .padding(horizontal = 7.dp, vertical = 1.dp)
-        )
+        BranchArrow("›") { onSwitch(1) }
     }
 } //分支切换条
 
+/** 箭头小块：34dp 圆角方块，按下变实心，别再让手指去抠二十来像素的小字 */
 @Composable
-private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress: (ChatMsg) -> Unit) {
+private fun BranchArrow(glyph: String, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }
+    val press by src.collectIsPressedAsState()
+    Box(
+        Modifier
+            .size(34.dp)
+            .background(if (press) AccentBlue else AccentBlueSoft, RoundedCornerShape(10.dp))
+            .clickable(interactionSource = src, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(glyph, fontSize = 18.sp, color = if (press) SurfaceWhite else AccentBlue)
+    }
+} //分支箭头
+
+@Composable
+private fun MessageItem(
+    m: ChatMsg,
+    onToolDetail: (ChatMsg) -> Unit,
+    onLongPress: (ChatMsg) -> Unit,
+    onSumLong: (ChatMsg) -> Unit
+) {
     when (m.role) {
         "user" -> Row(
             Modifier.fillMaxWidth(),
@@ -1193,7 +1235,7 @@ private fun MessageItem(m: ChatMsg, onToolDetail: (ChatMsg) -> Unit, onLongPress
         }
 
         "tool" -> ToolMsg(m, onOpen = { onToolDetail(m) })
-        "summary" -> SummaryMsg(m)
+        "summary" -> SummaryMsg(m) { onSumLong(m) }
 
         else -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             //AI 头像：设置里选「跟角色卡」就用当前角色那张，否则用自定义图
@@ -1476,14 +1518,15 @@ private fun prettyJson(raw: String): String =
     runCatching { JSONObject(raw).toString(2) }.getOrDefault(raw)
 
 @Composable
-private fun SummaryMsg(m: ChatMsg) {
+private fun SummaryMsg(m: ChatMsg, onLongPress: () -> Unit) {
     var open by remember(m.id) { mutableStateOf(false) }
     val body = m.content.replace(Regex("""\[\[upto:\d+]]"""), "").trim()
     Column(
         Modifier
             .fillMaxWidth()
             .background(SurfaceMuted, bubbleShape(12.dp))
-            .tap { open = !open }
+            //点一下展开/收起，长按出「重新总结」菜单
+            .tapLong(onClick = { open = !open }, onLong = onLongPress)
             .padding(horizontal = bubblePadH(10.dp), vertical = bubblePadV(10.dp))
             ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1501,6 +1544,42 @@ private fun SummaryMsg(m: ChatMsg) {
         )
     }
 } //上下文摘要卡片
+
+/** 摘要卡片的长按菜单：重做一次摘要，或带着自己的要求重做 */
+@Composable
+private fun SummaryMenuDialog(
+    onRegen: () -> Unit,
+    onRegenNote: () -> Unit,
+    onCopy: () -> Unit,
+    onClose: () -> Unit
+) {
+    ScrimCard(onDismiss = onClose) {
+        Text(
+            stringResource(R.string.cs_summary),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.cs_sum_menu_desc), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        MenuRow(stringResource(R.string.cs_sum_regen), stringResource(R.string.cs_sum_regen_desc), onRegen)
+        MenuRow(stringResource(R.string.cs_sum_note), stringResource(R.string.cs_sum_note_desc), onRegenNote)
+        MenuRow(stringResource(R.string.cs_copy_content), stringResource(R.string.cs_copy_content_desc), onCopy)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            stringResource(R.string.cs_cancel),
+            fontSize = 12.sp,
+            color = TextSecondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .tap { onClose() }
+                .padding(vertical = 11.dp)
+        )
+    }
+} //摘要菜单
 
 /** 长按菜单里发起的输入请求：edit=true 编辑重发，false 带提示重新生成 */
 private data class PromptReq(val m: ChatMsg, val edit: Boolean)
