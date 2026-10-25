@@ -391,7 +391,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
-        val cst = ctxStat(Agent.messages)
+        //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
+        val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
         InputBar(
             input = input,
             ctxChars = cst[0],
