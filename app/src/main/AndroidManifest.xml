@@ -95,6 +95,15 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- 桌宠：前台服务只用来让悬浮窗常驻，Android 14 起前台服务必须声明 specialUse 类型 -->
+        <service
+            android:name=".exec.PetSvc"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="floating_pet_overlay" />
+        </service>
         <!-- Shizuku 用户服务：由 Shizuku 服务端拉起，跑 shell/root 身份的命令 -->
         <service
             android:name=".exec.ShizukuShell"

@@ -201,6 +201,10 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         }
     }
 
+    //新版第一次进聊天就弹一次桌宠引导，看过就把版本号写进 petSeen
+    var petIntro by remember { mutableStateOf(Cfg.petSeen < b.ai.net.Update.clientCode()) }
+    //外层 Box 只为了给「应用内桌宠」一个右下角锚点
+    Box(Modifier.fillMaxSize()) {
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
     Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing)) {
         TopBar(onOpenDrawer, onOpenWorkspace = { wsPanel = true }, onPersona = { personaPanel = !personaPanel })
@@ -440,7 +444,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
-            sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null
+            sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null ||
+            petIntro
     ) {
         val d = detail
         val mn = menuFor
@@ -450,6 +455,17 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         when {
             //全屏看图排最前：点开哪儿都能盖住其它面板
             img != null -> ImgViewerDialog(img) { ImgView.close() }
+            petIntro -> PetIntroDialog(
+                onClose = {
+                    Cfg.petSeen = b.ai.net.Update.clientCode()
+                    petIntro = false
+                },
+                onOpen = {
+                    Cfg.petSeen = b.ai.net.Update.clientCode()
+                    petIntro = false
+                    onOpenSettings(2)
+                }
+            )
             b.ai.exec.A11y.needPerm.value -> A11yPermDialog { b.ai.exec.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
@@ -546,6 +562,9 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 }
             )
         }
+    }
+        //应用内桌宠：只在「仅应用内展示」时出现，压在输入区右上，不挡发送键
+        PetInApp(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 96.dp))
     }
 } //聊天界面
 
