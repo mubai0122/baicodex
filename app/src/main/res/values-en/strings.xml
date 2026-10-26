@@ -1307,4 +1307,10 @@
     <string name="ctx_tip_used">Used %1$s of %2$s tokens</string>
     <string name="ctx_tip_total">This chat: %1$s tokens total</string>
     <string name="ctx_tip_fresh">Uncompressed: %1$s tokens (%2$d msgs)</string>
+    <string name="http_warn_title">Plaintext HTTP connection</string>
+    <string name="http_warn_body">%1$s is not encrypted. Your API key and messages can be intercepted on the same network.</string>
+    <string name="http_warn_risk">Pick use anyway only when the relay requires HTTP. Use HTTPS whenever you can.</string>
+    <string name="http_warn_https">Switch to HTTPS</string>
+    <string name="http_warn_use">Use HTTP anyway</string>
+    <string name="http_warn_wait">Confirm in %1$d s</string>
 </resources>

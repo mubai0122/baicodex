@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,7 @@ import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -59,7 +61,31 @@ fun ModelSetupPanel() {
     var models by remember { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
-    var dialog by remember { mutableStateOf("") } //空串 = 不弹，provider / model 各对应一个
+    var dialog by remember { mutableStateOf("") } //空串 = 不弹，provider / model / http 各对应一个
+    var httpUrl by remember { mutableStateOf("") } //待确认的 http 地址
+    var httpLeft by remember { mutableStateOf(0) } //5 秒倒计时剩余
+    var urlTick by remember { mutableStateOf(0) } //输入防抖的触发计数
+
+    //输入停下来 700ms 再检查协议，免得逐字敲的时候反复弹窗
+    LaunchedEffect(urlTick) {
+        if (urlTick == 0) return@LaunchedEffect
+        delay(700)
+        val t = Cfg.baseUrl.trim()
+        if (t.startsWith("http://", true) && !Cfg.httpConfirmed && dialog.isEmpty()) {
+            httpUrl = t
+            httpLeft = 5
+            dialog = "http"
+        }
+    }
+    //倒计时读完才让点「仍然使用」，逼着看一眼风险
+    LaunchedEffect(dialog) {
+        if (dialog != "http") return@LaunchedEffect
+        httpLeft = 5
+        while (httpLeft > 0) {
+            delay(1000)
+            httpLeft -= 1
+        }
+    }
 
     //弹窗挂在根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(dialog.isNotEmpty()) {
@@ -85,6 +111,20 @@ fun ModelSetupPanel() {
                     dialog = ""
                 },
                 onClose = { dialog = "" }
+            )
+            "http" -> HttpWarnDialog(
+                url = httpUrl,
+                left = httpLeft,
+                onCancel = { dialog = "" },
+                onUseHttps = {
+                    Cfg.baseUrl = httpUrl.replaceFirst("http://", "https://").replaceFirst("HTTP://", "https://")
+                    Profiles.capture()
+                    dialog = ""
+                },
+                onUseHttp = {
+                    Cfg.httpConfirmed = true
+                    dialog = ""
+                }
             )
         }
     }
@@ -137,7 +177,7 @@ fun ModelSetupPanel() {
             }
             Text(stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
         }
-        Field("base_url", Cfg.baseUrl, { Cfg.baseUrl = it; Profiles.capture() }, placeholder = "https://api.deepseek.com/v1")
+        Field("base_url", Cfg.baseUrl, { Cfg.baseUrl = it; Profiles.capture(); urlTick++ }, placeholder = "https://api.deepseek.com/v1")
         //可填多个 Key：一行一个，请求失败自动换下一个
         Field(
             "API key",
@@ -398,3 +438,64 @@ private fun ModelDialog(
         Text(stringResource(R.string.ms_model_count, models.size), fontSize = 10.sp, color = TextSecondary)
     }
 } //模型弹窗
+@Composable
+private fun HttpWarnDialog(
+    url: String,
+    left: Int,
+    onCancel: () -> Unit,
+    onUseHttps: () -> Unit,
+    onUseHttp: () -> Unit
+) {
+    val ready = left <= 0
+    ScrimCard {
+        DialogHead(stringResource(R.string.http_warn_title), onCancel)
+        Spacer(Modifier.height(10.dp))
+        Text(
+            stringResource(R.string.http_warn_body, url),
+            fontSize = 12.sp,
+            color = TextPrimary,
+            lineHeight = 18.sp
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.http_warn_risk),
+            fontSize = 11.sp,
+            color = TextSecondary,
+            lineHeight = 16.sp
+        )
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                    .tap { onUseHttps() }
+                    .padding(vertical = 11.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    stringResource(R.string.http_warn_https),
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(if (ready) AccentBlue else SurfaceMuted, RoundedCornerShape(12.dp))
+                    .tap(enabled = ready) { if (ready) onUseHttp() }
+                    .padding(vertical = 11.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (ready) stringResource(R.string.http_warn_use)
+                    else stringResource(R.string.http_warn_wait, left),
+                    fontSize = 13.sp,
+                    color = if (ready) Color.White else TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+} //HTTP 明文警告：5 秒后才允许确认
