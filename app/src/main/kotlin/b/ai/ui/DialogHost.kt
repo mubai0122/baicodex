@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -131,6 +133,48 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
     }
 } //统一弹窗外壳：玻璃卡片，入场 scale+fade，位置回传给背景模糊层
 
+private val SheetShape = RoundedCornerShape(24.dp)
+
+/** 底部吸附卡片：同 ScrimCard 的玻璃底，但从下往上滑入、最大占屏 62% */
+@Composable
+fun BottomSheetCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    val slot = LocalCardSlot.current
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val t by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(220),
+        label = "sheetIn"
+    )
+    val sh = LocalConfiguration.current.screenHeightDp
+    Box(
+        Modifier
+            .fillMaxSize()
+            .tap(enabled = onDismiss != null) { onDismiss?.invoke() },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = (sh * 0.62f).dp)
+                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                //卡片自己吞掉点击，否则点卡片里任何空白都会关掉
+                .tap { }
+                .onGloballyPositioned { slot?.rect = it.boundsInWindow() }
+                .graphicsLayer {
+                    alpha = t
+                    translationY = (1f - t) * 80.dp.toPx()
+                }
+                .shadow(26.dp, SheetShape)
+                .background(GlassWhite, SheetShape)
+                .border(1.dp, BorderGray, SheetShape)
+                .navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 16.dp),
+            content = content
+        )
+    }
+} //底部吸附卡片
+
 private fun argPreview(ctx: Context, name: String, args: JSONObject): String = when (name) {
     Tools.SHELL -> args.optString("command")
     Tools.WEB_SEARCH -> "query: ${args.optString("query")}"
@@ -148,6 +192,8 @@ fun ToolConfirmDialog(p: PendingTool) {
     val name = p.call.name
     ScrimCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            ToolIcon(name, AccentBlue, side = 17.dp)
+            Spacer(Modifier.width(6.dp))
             Text(Tools.label(name), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(8.dp))
             Tag(stringResource(p.route.labelRes))

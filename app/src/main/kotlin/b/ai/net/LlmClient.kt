@@ -63,14 +63,17 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         temperature: Double?,
         think: Boolean,
         thinkEffort: String,
-        extraParams: String?
+        extraParams: String?,
+        tools: JSONArray? = null
     ): JSONObject {
         val body = JSONObject()
             .put("model", model)
             .put("messages", messages)
         //模型不支持工具调用就别发 tools，发了有的中转站直接 400
         if (b.ai.core.Cfg.modelToolCall) {
-            body.put("tools", b.ai.agent.Tools.definitions()).put("tool_choice", "auto")
+            //传了就按传的来（分智能体只下发只读工具），传空数组等于这轮不给工具
+            val defs = tools ?: b.ai.agent.Tools.definitions()
+            if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
         temperature?.let { body.put("temperature", it) }
         //单轮上限：最大模式不下发（交给服务端默认最大），否则按配置的 max_tokens
@@ -114,10 +117,11 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         temperature: Double? = null,
         think: Boolean = false,
         thinkEffort: String = "medium",
-        extraParams: String? = null
+        extraParams: String? = null,
+        tools: JSONArray? = null
     ): JSONObject {
         if (base.isBlank()) throw LlmException("base_url 未配置")
-        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams)
+        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
         return messageOf(exec(conn("/chat/completions"), body.toString()))
     } //对话：带 tools 定义
 
@@ -132,6 +136,7 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         think: Boolean = false,
         thinkEffort: String = "medium",
         extraParams: String? = null,
+        tools: JSONArray? = null,
         shouldStop: () -> Boolean = { false },
         onDelta: (String, String) -> Unit
     ): JSONObject {
@@ -140,7 +145,7 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
             setRequestProperty("Accept", "text/event-stream")
             setRequestProperty("Cache-Control", "no-cache")
         }
-        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams)
+        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
             .put("stream", true)
         return try {
             c.outputStream.use { it.write(body.toString().toByteArray()) }

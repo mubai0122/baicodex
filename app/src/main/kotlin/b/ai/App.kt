@@ -31,6 +31,8 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         self = this
+        //上次进程被杀留下的过期粘贴文件，启动时清一遍
+        runCatching { b.ai.core.Pastes.purge() }
         //当前在前台的 Activity：WebView 需要窗口上下文，拿不到就退回 Application
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}

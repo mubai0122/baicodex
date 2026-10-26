@@ -12,6 +12,8 @@ data class ModelProfile(
     val baseUrl: String,
     val apiKey: String,
     val model: String,
+    /** 设置里勾选过的模型：聊天页的模型卡片只在这几个里挑，可同时存多条 */
+    val models: List<String> = emptyList(),
     val vision: Boolean = true,
     val toolCall: Boolean = true,
     val reasoning: Boolean = true,
@@ -67,6 +69,7 @@ object Profiles {
         baseUrl = Cfg.baseUrl,
         apiKey = Cfg.apiKey,
         model = Cfg.model,
+        models = if (Cfg.model.isBlank()) emptyList() else listOf(Cfg.model),
         vision = Cfg.modelVision,
         toolCall = Cfg.modelToolCall,
         reasoning = Cfg.modelReasoning,
@@ -91,6 +94,10 @@ object Profiles {
                 //Key 只在私有 SP 里；老文件可能还留着明文字段，读出来是为了迁移
                 apiKey = Cfg.profileKey(id).ifBlank { o.optString("apiKey", o.optString("api_key", "")) },
                 model = modelName,
+                //老文件没有 models 字段：把当前那条模型当成已勾选的唯一一条
+                models = o.optJSONArray("models")?.let { a ->
+                    (0 until a.length()).mapNotNull { j -> a.optString(j).takeIf { it.isNotBlank() } }
+                } ?: listOfNotNull(modelName.takeIf { it.isNotBlank() }),
                 vision = o.optBoolean("vision", true),
                 toolCall = o.optBoolean("toolCall", o.optBoolean("tool_call", true)),
                 reasoning = o.optBoolean("reasoning", true),
@@ -112,6 +119,7 @@ object Profiles {
                     .put("baseUrl", p.baseUrl)
                     //Key 不落这里：models.json 在公共存储，明文 Key 会被别的应用读到
                     .put("model", p.model)
+                    .put("models", JSONArray(p.models))
                     .put("vision", p.vision)
                     .put("toolCall", p.toolCall)
                     .put("reasoning", p.reasoning)
@@ -134,6 +142,7 @@ object Profiles {
         Cfg.baseUrl = p.baseUrl
         Cfg.apiKey = p.apiKey
         Cfg.model = p.model
+        Cfg.profileModels = p.models
         Cfg.modelVision = p.vision
         Cfg.modelToolCall = p.toolCall
         Cfg.modelReasoning = p.reasoning
@@ -161,6 +170,7 @@ object Profiles {
             baseUrl = Cfg.baseUrl,
             apiKey = Cfg.apiKey,
             model = Cfg.model,
+            models = Cfg.profileModels,
             vision = Cfg.modelVision,
             toolCall = Cfg.modelToolCall,
             reasoning = Cfg.modelReasoning,
@@ -168,6 +178,16 @@ object Profiles {
         )
         upsert(p)
     } //当前值写回
+
+    /** 设置里勾选完模型：写回当前配置并灌进 Cfg，聊天页卡片据此列可选模型 */
+    fun setModels(list: List<String>) {
+        val cur = selected ?: return
+        val clean = list.distinct().filter { it.isNotBlank() }
+        Cfg.profileModels = clean
+        //当前模型被取消勾选就落到剩下的第一条，免得请求一个已经不在列表里的模型
+        if (Cfg.model.isBlank() || Cfg.model !in clean) Cfg.model = clean.firstOrNull() ?: Cfg.model
+        upsert(cur.copy(models = clean, model = Cfg.model))
+    } //保存勾选结果
 
     fun upsert(p: ModelProfile) {
         val exists = cache.value.any { it.id == p.id }
@@ -186,6 +206,7 @@ object Profiles {
             baseUrl = cur?.baseUrl ?: Cfg.baseUrl,
             apiKey = cur?.apiKey ?: Cfg.apiKey,
             model = cur?.model ?: Cfg.model,
+            models = cur?.models ?: emptyList(),
             vision = cur?.vision ?: Cfg.modelVision,
             toolCall = cur?.toolCall ?: Cfg.modelToolCall,
             reasoning = cur?.reasoning ?: Cfg.modelReasoning,
@@ -198,6 +219,30 @@ object Profiles {
         select(id)
         return id
     } //新增一条
+
+    /** 新样式：新增一条空白供应商配置，选完厂商再填 Key 就行（模型交给列表挑） */
+    fun add(): String {
+        val id = "p${System.currentTimeMillis()}"
+        upsert(
+            ModelProfile(
+                id = id,
+                name = "",
+                providerId = "custom",
+                baseUrl = "",
+                apiKey = "",
+                model = "",
+                models = emptyList(),
+                vision = Cfg.modelVision,
+                toolCall = Cfg.modelToolCall,
+                reasoning = Cfg.modelReasoning,
+                maxTokens = 0,
+                custom = false
+            )
+        )
+        Cfg.setProfileKey(id, "")
+        select(id)
+        return id
+    } //新增空白配置
 
     fun rename(id: String, name: String) {
         val n = name.trim()

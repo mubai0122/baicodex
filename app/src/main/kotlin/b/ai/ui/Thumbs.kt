@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -25,12 +26,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.Images
+import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed
+import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import androidx.compose.ui.res.stringResource
 import b.ai.R
@@ -94,6 +98,53 @@ fun ImgThumbs(
         }
     }
 } //缩略图排
+
+/** 文件附件排：选中就直接挂着一条，图标 + 文件名 + ×，多了横向滑 */
+@Composable
+fun FileChips(
+    files: List<String>,
+    onRemove: ((String) -> Unit)? = null,
+    onOpen: ((String) -> Unit)? = null
+) {
+    if (files.isEmpty()) return
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        files.forEach { p ->
+            val name = remember(p) { p.substringAfterLast('/') }
+            Row(
+                Modifier
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(AccentBlueSoft)
+                    .then(if (onOpen != null) Modifier.tap { onOpen(p) } else Modifier)
+                    .padding(start = 8.dp, end = if (onRemove != null) 4.dp else 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IcFile(AccentBlue, side = 13.dp)
+                Spacer(Modifier.width(5.dp))
+                Text(
+                    name,
+                    fontSize = 10.sp,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 150.dp)
+                )
+                if (onRemove != null) {
+                    Spacer(Modifier.width(4.dp))
+                    Box(
+                        Modifier.size(16.dp).clip(CircleShape).tap { onRemove(p) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("×", fontSize = 12.sp, color = TextSecondary)
+                    }
+                }
+            }
+        }
+    }
+} //附件文件排
 
 /**发出去的气泡里按图片原始比例完整展示：单图等比放到气泡最大宽，多图各自等比横排，都不裁切 */
 @Composable

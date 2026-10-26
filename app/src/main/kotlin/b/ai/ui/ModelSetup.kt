@@ -16,9 +16,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +44,7 @@ import b.ai.core.Providers
 import b.ai.core.Profiles
 import b.ai.net.LlmClient
 import b.ai.ui.theme.AccentBlue
+import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.SurfaceMuted
@@ -61,10 +66,30 @@ fun ModelSetupPanel() {
     var models by remember { mutableStateOf<List<String>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
-    var dialog by remember { mutableStateOf("") } //空串 = 不弹，provider / model / http 各对应一个
+    var dialog by remember { mutableStateOf("") } //空串 = 不弹，provider / models / http 各对应一个
+    //多选卡片的临时勾选与搜索词：点确定才写回配置，取消就丢掉
+    var draft by remember { mutableStateOf(emptySet<String>()) }
+    var q by remember { mutableStateOf("") }
     var httpUrl by remember { mutableStateOf("") } //待确认的 http 地址
     var httpLeft by remember { mutableStateOf(0) } //5 秒倒计时剩余
     var urlTick by remember { mutableStateOf(0) } //输入防抖的触发计数
+
+    //拉模型列表：只刷新候选，不动已勾选结果
+    fun pull() {
+        if (loading) return
+        loading = true
+        err = null
+        scope.launch {
+            val res = runCatching {
+                withContext(Dispatchers.IO) {
+                    LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).listModels()
+                }
+            }
+            loading = false
+            res.onSuccess { models = it; if (it.isEmpty()) err = ctx.getString(R.string.ms_no_models) }
+                .onFailure { err = it.message }
+        }
+    } //拉列表
 
     //输入停下来 700ms 再检查协议，免得逐字敲的时候反复弹窗
     LaunchedEffect(urlTick) {
@@ -102,12 +127,19 @@ fun ModelSetupPanel() {
                 },
                 onClose = { dialog = "" }
             )
-            "model" -> ModelDialog(
+            "models" -> ModelPickMulti(
                 models = models,
-                current = Cfg.model,
-                onPick = { m ->
-                    Cfg.model = m
-                    Profiles.capture()
+                loading = loading,
+                err = err,
+                q = q,
+                onQ = { q = it },
+                picked = draft,
+                onToggle = { m -> draft = if (m in draft) draft - m else draft + m },
+                onAll = { shown -> draft = draft + shown },
+                onClear = { draft = emptySet() },
+                onRetry = { pull() },
+                onOk = {
+                    Profiles.setModels(draft.toList())
                     dialog = ""
                 },
                 onClose = { dialog = "" }
@@ -130,6 +162,30 @@ fun ModelSetupPanel() {
     }
 
     Column {
+        //一条配置只管一个供应商，加一条就选一次厂商
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .tap {
+                    Profiles.capture()
+                    Profiles.add()
+                    dialog = "provider"
+                }
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.ms_add_provider), fontSize = 13.sp, color = TextPrimary)
+                Text(
+                    stringResource(R.string.ms_add_provider_sub),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Text("＋", fontSize = 13.sp, color = AccentBlue)
+        }
+        Spacer(Modifier.height(8.dp))
         //配置名：留空就跟随「厂商 · 模型」，右侧方按钮一键回到自动名
         val autoNow = Profiles.autoLabel(Cfg.providerId, Cfg.model)
         FieldBox(
@@ -189,60 +245,48 @@ fun ModelSetupPanel() {
             placeholder = stringResource(R.string.ms_keys_hint)
         )
         Spacer(Modifier.height(10.dp))
+        //模型多选：设置里勾一批存进这条配置，聊天页的模型卡片只在这批里挑
+        SectionTitle(stringResource(R.string.ms_models_t), stringResource(R.string.ms_models_sub))
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(SurfaceMuted, RoundedCornerShape(12.dp))
-                .tap { if (!loading) dialog = "model" }
+                .tap {
+                    if (loading) return@tap
+                    draft = Cfg.profileModels.toSet()
+                    q = ""
+                    dialog = "models"
+                    //还没拉过列表就先拉一次，拉完在卡片里勾
+                    if (models.isEmpty()) pull()
+                }
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    Cfg.model.ifBlank { stringResource(R.string.ms_no_model) },
+                    if (Cfg.profileModels.isEmpty()) stringResource(R.string.ms_models_none)
+                    else stringResource(R.string.ms_models_picked, Cfg.profileModels.size),
                     fontSize = 14.sp,
                     color = TextPrimary,
                     maxLines = 1
                 )
                 Text(
-                    if (models.isEmpty()) stringResource(R.string.ms_pull_first) else stringResource(R.string.ms_pulled, models.size),
+                    Cfg.model.ifBlank { stringResource(R.string.ms_no_model) },
                     fontSize = 10.sp,
-                    color = TextSecondary
+                    color = TextSecondary,
+                    maxLines = 1
                 )
             }
-            Text(if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_fetch)) {
-                if (loading) return@GhostButton
-                loading = true
-                err = null
-                scope.launch {
-                    val res = runCatching {
-                        withContext(Dispatchers.IO) {
-                            LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).listModels()
-                        }
-                    }
-                    loading = false
-                    res.onSuccess {
-                        models = it
-                        if (it.isEmpty()) err = ctx.getString(R.string.ms_no_models) else dialog = "model"
-                    }.onFailure { err = it.message }
-                }
-            }
-            Spacer(Modifier.width(8.dp))
             Text(
-                stringResource(R.string.ms_get_models_tip),
-                fontSize = 10.sp,
-                color = TextSecondary
+                if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_models_pick),
+                fontSize = 11.sp,
+                color = AccentBlue
             )
         }
         if (err != null) {
             Spacer(Modifier.height(6.dp))
             Text(err!!, fontSize = 11.sp, color = DangerRed)
         }
-        Field(stringResource(R.string.ms_model_name), Cfg.model, { Cfg.model = it; Profiles.capture() }, placeholder = stringResource(R.string.ms_model_hint))
         Spacer(Modifier.height(10.dp))
         Text(stringResource(R.string.ms_max_tok), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
@@ -284,9 +328,17 @@ fun ProfileList() {
         }
         Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.ms_add)) { Profiles.capture().let { Profiles.duplicateCurrent() } }
+            GhostButton(stringResource(R.string.ms_add)) {
+                Profiles.capture()
+                //加的是空白供应商配置，厂商与模型在设置里各自选
+                Profiles.add()
+            }
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.ms_add_sub), fontSize = 10.sp, color = TextSecondary)
+            Text(
+                stringResource(R.string.ms_add_provider_sub),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(
@@ -400,44 +452,183 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
     }
 } //厂商弹窗
 
+/** 模型多选卡片：全量列表带搜索，勾上的存进当前配置，聊天页只在这批里挑 */
 @Composable
-private fun ModelDialog(
+private fun ModelPickMulti(
     models: List<String>,
-    current: String,
-    onPick: (String) -> Unit,
+    loading: Boolean,
+    err: String?,
+    q: String,
+    onQ: (String) -> Unit,
+    picked: Set<String>,
+    onToggle: (String) -> Unit,
+    onAll: (List<String>) -> Unit,
+    onClear: () -> Unit,
+    onRetry: () -> Unit,
+    onOk: () -> Unit,
     onClose: () -> Unit
 ) {
-    ScrimCard {
-        DialogHead(stringResource(R.string.ms_pick_model), onClose)
+    val kw = q.trim()
+    val shown = if (kw.isEmpty()) models else models.filter { it.contains(kw, ignoreCase = true) }
+    //返回键先收卡片，别把整个设置页带出去
+    BackHandler { onClose() }
+    BottomSheetCard(onDismiss = onClose) {
+        Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(36.dp).height(4.dp).background(BorderGray, CircleShape))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.ms_pick_model),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Text(
+                    if (loading) stringResource(R.string.ms_fetching)
+                    else stringResource(R.string.ms_models_picked, picked.size),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Text(
+                stringResource(R.string.ms_fetch),
+                fontSize = 11.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { onRetry() }.padding(horizontal = 6.dp, vertical = 4.dp)
+            )
+        }
         Spacer(Modifier.height(8.dp))
-        Column(
+        //搜索只过滤本地已拉到的列表，不发请求
+        Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(max = 420.dp)
-                .verticalScroll(rememberScrollState())
+                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            models.forEach { m ->
-                val sel = m == current
+            Text("⌕", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.weight(1f)) {
+                if (q.isEmpty()) {
+                    Text(stringResource(R.string.ms_search), fontSize = 12.sp, color = TextSecondary)
+                }
+                BasicTextField(
+                    value = q,
+                    onValueChange = onQ,
+                    textStyle = TextStyle(fontSize = 12.sp, color = TextPrimary),
+                    singleLine = true,
+                    cursorBrush = SolidColor(AccentBlue),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (q.isNotEmpty()) {
                 Text(
-                    m,
+                    "✕",
                     fontSize = 12.sp,
-                    color = if (sel) AccentBlue else TextPrimary,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            if (sel) AccentBlueSoft else Color.Transparent,
-                            RoundedCornerShape(8.dp)
-                        )
-                        .tap { onPick(m) }
-                        .padding(horizontal = 10.dp, vertical = 9.dp)
+                    color = TextSecondary,
+                    modifier = Modifier.tap { onQ("") }.padding(start = 6.dp)
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.ms_model_count, models.size), fontSize = 10.sp, color = TextSecondary)
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.ms_select_all),
+                fontSize = 11.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { onAll(shown) }.padding(vertical = 4.dp)
+            )
+            Spacer(Modifier.width(14.dp))
+            Text(
+                stringResource(R.string.ms_clear_all),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.tap { onClear() }.padding(vertical = 4.dp)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        if (err != null) {
+            Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
+        }
+        if (loading) {
+            Box(
+                Modifier.fillMaxWidth().padding(vertical = 44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(stringResource(R.string.ms_fetching), fontSize = 13.sp, color = TextSecondary)
+            }
+        } else {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                shown.forEach { m ->
+                    val on = m in picked
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (on) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+                            .tap { onToggle(m) }
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            m,
+                            fontSize = 14.sp,
+                            color = if (on) AccentBlue else TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            if (on) "✓" else "○",
+                            fontSize = 13.sp,
+                            color = if (on) AccentBlue else TextSecondary
+                        )
+                    }
+                }
+                if (shown.isEmpty()) {
+                    Text(
+                        stringResource(R.string.ms_no_models),
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(vertical = 18.dp)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                    .tap { onClose() }
+                    .padding(vertical = 11.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(stringResource(R.string.ms_multi_cancel), fontSize = 13.sp, color = TextPrimary)
+            }
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(if (picked.isEmpty()) SurfaceMuted else AccentBlue, RoundedCornerShape(12.dp))
+                    .tap { if (picked.isNotEmpty()) onOk() }
+                    .padding(vertical = 11.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    stringResource(R.string.ms_multi_ok),
+                    fontSize = 13.sp,
+                    color = if (picked.isEmpty()) TextSecondary else Color.White,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
     }
-} //模型弹窗
+} //模型多选卡片
 @Composable
 private fun HttpWarnDialog(
     url: String,
@@ -499,3 +690,87 @@ private fun HttpWarnDialog(
         }
     }
 } //HTTP 明文警告：5 秒后才允许确认
+
+@Composable
+private fun ModelSheet(
+    stage: String,
+    providerId: String,
+    models: List<String>,
+    current: String,
+    err: String?,
+    onPickProvider: (Provider) -> Unit,
+    onPickModel: (String) -> Unit,
+    onBack: () -> Unit,
+    onClose: () -> Unit
+) {
+    BottomSheetCard(onDismiss = onClose) {
+        //顶部把手
+        Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(36.dp).height(4.dp).background(BorderGray, CircleShape))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (stage != "provider") {
+                Text(
+                    "‹",
+                    fontSize = 20.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .tap { onBack() }
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+            Text(
+                stringResource(if (stage == "provider") R.string.ms_pick_provider else R.string.ms_pick_model),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        if (stage == "loading") {
+            Box(
+                Modifier.fillMaxWidth().padding(vertical = 44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(stringResource(R.string.ms_fetching), fontSize = 13.sp, color = TextSecondary)
+            }
+        } else {
+            if (err != null) {
+                Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
+            }
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                if (stage == "provider") {
+                    Providers.builtin.forEach { p ->
+                        SheetRow(p.name, p.baseUrl, p.id == providerId) { onPickProvider(p) }
+                    }
+                } else {
+                    models.forEach { m ->
+                        SheetRow(m, null, m == current) { onPickModel(m) }
+                    }
+                }
+            }
+        }
+    }
+} //模型选择吸附卡片
+
+@Composable
+private fun SheetRow(title: String, sub: String?, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (selected) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+            .tap { onClick() }
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, color = if (selected) AccentBlue else TextPrimary, maxLines = 1)
+            if (!sub.isNullOrBlank()) {
+                Text(sub, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+            }
+        }
+        if (selected) Text("✓", fontSize = 13.sp, color = AccentBlue)
+    }
+} //吸附卡片里的一行
+
+//模型配置的说明文字在设置项里，这里不再单独弹提示

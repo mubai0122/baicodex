@@ -45,6 +45,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -72,8 +74,11 @@ data class PendingTool(
     val deferred: CompletableDeferred<Boolean>
 )
 
+/** 正在执行的工具：模型一返回调用就进这里，界面据此立刻弹出转圈卡片 */
+data class RunningTool(val seq: Long, val name: String, val args: String, val fromSub: Boolean = false)
+
 object Agent {
-    private const val MAX_ROUND = 24
+    //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     private const val SUMMARY_PROMPT =
         "你是上下文压缩器。把给你的对话记录压成要点摘要，保留：用户目标、已执行的动作与关键路径/命令、" +
             "已得结论、未完成事项。不要编造，不要客套，直接输出摘要，300 字以内。"
@@ -95,6 +100,9 @@ object Agent {
     var busySince by mutableStateOf(0L)
         private set
     var pending by mutableStateOf<PendingTool?>(null)
+        private set
+    /** 正在执行的工具：界面据此立刻画转圈卡，别等结果回来才出现 */
+    var runningTools by mutableStateOf<List<RunningTool>>(emptyList())
         private set
     var ask by mutableStateOf<AskReq?>(null)
         private set
@@ -317,6 +325,7 @@ object Agent {
                 runSid = null
                 runHistory = emptyList()
         b.ai.exec.Capsule.end()
+        clearTools()
     }
 
     fun resolve(allow: Boolean, permanent: Boolean) {
@@ -326,7 +335,7 @@ object Agent {
         if (!p.deferred.isCompleted) p.deferred.complete(allow)
     } //弹窗结果回填
 
-    fun send(text: String, images: List<String> = emptyList()) {
+    fun send(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
         if (busy) return
         if (!Cfg.ready) {
             appendLocalAsync(ChatMsg(role = "assistant", content = host.getString(R.string.ag_no_model), isError = true))
@@ -358,7 +367,7 @@ object Agent {
                     reloadSessions()
                     scope.launch { runCatching { autoTitle(sid, text) } }
                 }
-                append(ChatMsg(role = "user", content = text, images = images))
+                append(ChatMsg(role = "user", content = text, images = images, files = files))
                 runLoop()
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
@@ -370,11 +379,12 @@ object Agent {
                 runSid = null
                 runHistory = emptyList()
                 b.ai.exec.Capsule.end()
+                clearTools()
             }
         }
     } //发送并驱动循环
 
-    fun editResend(msgId: Long, text: String, images: List<String> = emptyList()) {
+    fun editResend(msgId: Long, text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
         val t = text.trim()
         if (busy || t.isEmpty()) return
         busy = true
@@ -383,8 +393,8 @@ object Agent {
                 runSid = sessionId
                 runHistory = messages
                 rollbackTo(msgId)
-                //原消息和它引出的回复都留在树里，新消息成了另一个分支，图片照旧带上
-                append(ChatMsg(role = "user", content = t, images = images))
+                //原消息和它引出的回复都留在树里，新消息成了另一个分支，图片与文件照旧带上
+                append(ChatMsg(role = "user", content = t, images = images, files = files))
                 runLoop()
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
@@ -396,6 +406,7 @@ object Agent {
                 runSid = null
                 runHistory = emptyList()
                 b.ai.exec.Capsule.end()
+                clearTools()
             }
         }
     } //编辑重发
@@ -429,6 +440,7 @@ object Agent {
                 runSid = null
                 runHistory = emptyList()
                 b.ai.exec.Capsule.end()
+                clearTools()
             }
         }
     } //重新生成
@@ -469,6 +481,12 @@ object Agent {
 
     private var keyIdx = 0
 
+    /** 正在跑的工具列表要跨线程改（子智能体并行），用锁护住 list 的读改写 */
+    private val runLock = Any()
+    private var runSeq = 0L
+    /** 确认弹窗单槽：主智能体与多个子智能体排队轮流问，不然互相覆盖 */
+    private val confirmGate = Mutex()
+
     private fun keys(): List<String> =
         Cfg.keyList(Cfg.profileId).ifEmpty { listOf(Cfg.apiKey) }.filter { it.isNotBlank() }
     private fun keyCount(): Int = keys().size.coerceAtLeast(1)
@@ -490,10 +508,9 @@ object Agent {
         val temp = Cfg.temperature.takeIf { it >= 0f }?.toDouble()
         status = host.getString(R.string.ag_ask_model)
         busySince = System.currentTimeMillis()
-        var round = 0
         compact(false)
-        while (ctx.isActive && round < MAX_ROUND) {
-            round++
+        //无限轮：模型给完最终答案（本轮无工具调用）或用户点停止才退出
+        while (ctx.isActive) {
             val payload = withContext(Dispatchers.IO) { buildPayload() }
             val t0 = System.currentTimeMillis()
             val firstAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -621,63 +638,111 @@ object Agent {
                 Speak.say(content)
                 break
             }
+            //模型一返回调用就先把卡片全摆出来转圈：排队里的、等确认的、等作答的都看得见
+            val seqs = calls.map { beginTool(it.name, it.arguments) }
             calls.forEachIndexed { i, c ->
-                if (!ctx.isActive) return@forEachIndexed
-                //提问工具先接住：不弹工具确认框，直接把面板推给用户并等作答
-                if (c.name == Tools.ASK) {
-                    status = host.getString(R.string.ag_ask_fmt, i + 1, calls.size)
+                //每张卡跟自己的调用绑定：这一条一出结果就收掉，跟结果行无缝接上
+                val rs = seqs[i]
+                try {
+                    if (!ctx.isActive) return@forEachIndexed
+                    //提问工具先接住：不弹工具确认框，直接把面板推给用户并等作答
+                    if (c.name == Tools.ASK) {
+                        status = host.getString(R.string.ag_ask_fmt, i + 1, calls.size)
+                        busySince = System.currentTimeMillis()
+                        val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+                        appendToolMsg(c, askUser(qa), Route.SANDBOX, false)
+                        return@forEachIndexed
+                    }
+                    //分智能体：免确认，直接并行跑完把合并结果当一次工具输出回灌
+                    if (c.name == Tools.SUB) {
+                        val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+                        val tasks = subTasks(qa)
+                        if (tasks.isEmpty()) {
+                            appendToolMsg(c, "没有可执行的子任务（tasks 为空）。", Route.SANDBOX, true)
+                            return@forEachIndexed
+                        }
+                        status = host.getString(R.string.ag_sub_start, tasks.size)
+                        busySince = System.currentTimeMillis()
+                        val text = SubAgents.run(
+                            tasks, qa.optInt("rounds", SubAgents.DEFAULT_ROUNDS),
+                            onStatus = { s -> status = s },
+                            confirm = { n, a, id -> confirmFromSub(n, a, id) }
+                        )
+                        status = host.getString(R.string.ag_think_again)
+                        busySince = System.currentTimeMillis()
+                        appendToolMsg(c, text, Route.SANDBOX, false)
+                        return@forEachIndexed
+                    }
+                    //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
+                    if (!Tools.allowed(c.name)) {
+                        appendToolMsg(
+                            c,
+                            "当前运行模式不允许调用「" + Tools.label(c.name) + "」，本次没有执行。",
+                            Route.SANDBOX,
+                            true
+                        )
+                        return@forEachIndexed
+                    }
+                    //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
+                    if (!Perms.ok(App.self)) {
+                        val lack = Perms.missing(App.self).joinToString("、") { Perms.label(it) }
+                        appendToolMsg(
+                            c,
+                            "缺少系统权限（$lack），已直接拒绝本次工具调用。请到系统设置 → 应用 → 权限里重新开启。",
+                            Route.SANDBOX,
+                            true
+                        )
+                        return@forEachIndexed
+                    }
+                    status = host.getString(R.string.ag_wait_fmt, Tools.label(c.name), i + 1, calls.size)
                     busySince = System.currentTimeMillis()
-                    val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
-                    appendToolMsg(c, askUser(qa), Route.SANDBOX, false)
-                    return@forEachIndexed
-                }
-                //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
-                if (!Tools.allowed(c.name)) {
-                    appendToolMsg(
-                        c,
-                        "当前运行模式不允许调用「" + Tools.label(c.name) + "」，本次没有执行。",
-                        Route.SANDBOX,
-                        true
-                    )
-                    return@forEachIndexed
-                }
-                //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
-                if (!Perms.ok(App.self)) {
-                    val lack = Perms.missing(App.self).joinToString("、") { Perms.label(it) }
-                    appendToolMsg(
-                        c,
-                        "缺少系统权限（$lack），已直接拒绝本次工具调用。请到系统设置 → 应用 → 权限里重新开启。",
-                        Route.SANDBOX,
-                        true
-                    )
-                    return@forEachIndexed
-                }
-                status = host.getString(R.string.ag_wait_fmt, Tools.label(c.name), i + 1, calls.size)
-                busySince = System.currentTimeMillis()
-                val allowed = decide(c)
-                if (!allowed) {
-                    appendToolMsg(c, "用户拒绝执行该工具调用，未做任何改动。", Route.SANDBOX, true)
-                    return@forEachIndexed
-                }
-                status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
-                busySince = System.currentTimeMillis()
-                val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
-                //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限。
-                //screen start 之后胶囊已常驻，这里只改文案；quiet 那一次干脆别先亮。
-                if (!quietCall(c.name, args)) {
-                    b.ai.exec.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
-                }
-                val out = try {
-                    withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
+                    val allowed = decide(c)
+                    if (!allowed) {
+                        appendToolMsg(c, "用户拒绝执行该工具调用，未做任何改动。", Route.SANDBOX, true)
+                        return@forEachIndexed
+                    }
+                    status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
+                    busySince = System.currentTimeMillis()
+                    val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+                    //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限。
+                    //screen start 之后胶囊已常驻，这里只改文案；quiet 那一次干脆别先亮。
+                    if (!quietCall(c.name, args)) {
+                        b.ai.exec.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                    }
+                    val out = try {
+                        withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
+                    } finally {
+                        b.ai.exec.Capsule.hide()
+                    }
+                    appendToolMsg(c, out.text, out.route, !out.ok)
                 } finally {
-                    b.ai.exec.Capsule.hide()
+                    endTool(rs)
                 }
-                appendToolMsg(c, out.text, out.route, !out.ok)
             }
             status = host.getString(R.string.ag_think_again)
             busySince = System.currentTimeMillis()
         }
     } //模型 → 工具 → 回传 的主循环
+
+    /** 把 subagent_run 的 tasks 解析成任务列表，兼容「对象数组」和「纯字符串数组」两种写法 */
+    private fun subTasks(args: JSONObject): List<SubTask> {
+        val arr = args.optJSONArray("tasks") ?: return emptyList()
+        val out = ArrayList<SubTask>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i)
+            if (o != null) {
+                val t = o.text("task").trim()
+                if (t.isNotEmpty()) {
+                    val title = o.text("title").trim().ifBlank { "任务" + (i + 1) }
+                    out.add(SubTask(title, t, o.text("priority").trim().ifBlank { "normal" }))
+                }
+            } else {
+                val s = arr.optString(i).trim()
+                if (s.isNotEmpty()) out.add(SubTask("任务" + (i + 1), s))
+            }
+        }
+        return out.take(SubAgents.MAX_TASKS)
+    } //子任务解析
 
     /** 这次调用是不是「收起胶囊」：是的话别先亮再收，省一次闪 */
     private fun quietCall(name: String, args: JSONObject): Boolean {
@@ -778,6 +843,45 @@ object Agent {
             model = Cfg.model
         )
     } //本轮统计
+
+    /** 工具开始执行：进列表，界面立刻画转圈卡 */
+    internal fun beginTool(name: String, args: String, fromSub: Boolean = false): Long =
+        synchronized(runLock) {
+            runSeq++
+            runningTools = runningTools + RunningTool(runSeq, name, args, fromSub)
+            runSeq
+        } //开始执行
+
+    /** 工具执行结束：出列表，接着照常落一条结果消息 */
+    internal fun endTool(seq: Long) {
+        synchronized(runLock) { runningTools = runningTools.filterNot { it.seq == seq } }
+    } //结束执行
+
+    /** 收尾时把残留转圈卡清掉：取消 / 异常导致 endTool 没执行到时，卡片不能一直转 */
+    private fun clearTools() {
+        synchronized(runLock) { runningTools = emptyList() }
+    } //清转圈卡
+
+    /** 子智能体的工具确认：策略跟随主智能体（永久允许/拒绝直接生效），否则走同一个确认弹窗排队问 */
+    internal suspend fun confirmFromSub(name: String, args: JSONObject, callId: String): Boolean {
+        val p = Cfg.policy(name)
+        if (p == "allow") return true
+        if (p == "deny") return false
+        return confirmGate.withLock {
+            val d = CompletableDeferred<Boolean>()
+            pending = PendingTool(
+                ToolCall(callId, name, args.toString()), args, routeOf(name, args),
+                Tools.isHighRisk(name), d
+            )
+            status = host.getString(R.string.ag_sub_ask, Tools.label(name))
+            busySince = System.currentTimeMillis()
+            try {
+                d.await()
+            } finally {
+                pending = null
+            }
+        }
+    } //子智能体确认
 
     private suspend fun decide(c: ToolCall): Boolean {
         val p = Cfg.policy(c.name)

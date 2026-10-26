@@ -219,7 +219,9 @@ private fun Root() {
     val active = halted || joinOpen || Rate.ask || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
-    val anyOverlay = active || drawer.isOpen
+    //抽屉一开始动（targetValue 变 Open）就起模糊，不等抽屉动画跑完，视觉上才是跟手
+    val drawerOpening = drawer.isOpen || drawer.targetValue == DrawerValue.Open
+    val anyOverlay = active || drawerOpening
 
     //深色模式下状态栏/导航条要换成浅色图标，不然黑图标贴在深底上看不见
     val wantDark = when (Cfg.darkTheme) {

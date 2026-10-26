@@ -27,16 +27,29 @@ object Speak {
         if (!force && !Cfg.speakReplies) return
         val t = plain(text)
         if (t.isBlank()) return
+        //接口模式：先请求音频再播；接口失败就退回系统 TTS，别让人听不到
+        if (Cfg.ttsMode == "api") {
+            speaking = t
+            Thread({
+                if (!Audio.speak(t)) sysSay(t)
+            }, "bai-tts").start()
+            return
+        }
+        sysSay(t)
+    } //朗读
+
+    private fun sysSay(t: String) {
         ensure()
         speaking = t
         runCatching {
             tts?.stop()
             tts?.speak(t.take(4000), TextToSpeech.QUEUE_FLUSH, null, "bai-reply")
         }
-    } //朗读
+    } //系统 TTS 念
 
     fun stop() {
         speaking = ""
+        Audio.stop()
         runCatching { tts?.stop() }
     } //停止
 

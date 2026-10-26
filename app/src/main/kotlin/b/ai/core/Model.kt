@@ -136,6 +136,8 @@ data class ChatMsg(
     val reasoning: String = "",
     /** 附带的图片（本应用私有目录里的绝对路径），仅用户消息使用 */
     val images: List<String> = emptyList(),
+    /** 附带的文件（本地绝对路径），仅用户消息使用；模型拿 read_file 自己去读 */
+    val files: List<String> = emptyList(),
     /** 本轮统计，只有 assistant 消息带 */
     val meta: MsgMeta? = null,
     /** 已收藏：长按菜单里钉住，收藏夹里能翻回来 */
@@ -148,6 +150,12 @@ data class ChatMsg(
 ) {
     fun toApiJson(): JSONObject {
         val o = JSONObject().put("role", role)
+        //附件文件不走进图片那种多模态结构：路径直接写进正文，模型用 read_file 自己读
+        val body = if (files.isEmpty()) content else buildString {
+            if (content.isNotBlank()) append(content).append("\n")
+            append("（用户附了 ").append(files.size).append(" 个文件，本地绝对路径如下，需要时用 read_file 读）\n")
+            files.forEach { append(it).append("\n") }
+        }
         if (role == "assistant" && toolCalls.isNotEmpty()) {
             o.put("content", content)
             val arr = JSONArray()
@@ -168,12 +176,12 @@ data class ChatMsg(
             //模型不支持视觉：不塞图片，降级成一句话，省得上游直接 400
             if (!Cfg.modelVision) {
                 val note = "（用户附了 ${images.size} 张图片，当前模型不支持图片输入，看不到图片内容）"
-                o.put("content", content.ifBlank { note } + "\n" + note)
+                o.put("content", body.ifBlank { note } + "\n" + note)
                 return o
             }
             //多模态：内容走数组，文本在前图片在后，OpenAI 兼容接口都认这个结构
             val parts = JSONArray()
-            parts.put(JSONObject().put("type", "text").put("text", content.ifBlank { "看这些图片" }))
+            parts.put(JSONObject().put("type", "text").put("text", body.ifBlank { "看这些图片" }))
             images.forEach { p ->
                 val url = Images.dataUrl(p) ?: return@forEach
                 parts.put(
@@ -183,11 +191,11 @@ data class ChatMsg(
             }
             o.put("content", parts)
         } else {
-            o.put("content", content.ifBlank { "[空]" })
+            o.put("content", body.ifBlank { "[空]" })
         }
         return o
-    }
-} //转成 OpenAI Chat Completions 的 message 结构
+    } //转成 OpenAI Chat Completions 的 message 结构
+} //一条会话记录
 
 /** 收藏夹一条：消息本体 + 所属会话（会话被删掉时 title 为空，仍可读原文） */
 data class StarHit(
