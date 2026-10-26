@@ -1,5 +1,6 @@
 package b.ai.ui
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,7 +59,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
-/** 厂商 + 连通配置面板：引导页与设置页共用 */
+/** 厂商 + 连通配置面板：引导页与设置页共用。表单全是临时态，点「保存到当前配置」才写回配置与磁盘 */
 @Composable
 fun ModelSetupPanel() {
     val ctx = LocalContext.current
@@ -67,14 +68,105 @@ fun ModelSetupPanel() {
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
     var dialog by remember { mutableStateOf("") } //空串 = 不弹，provider / models / http 各对应一个
-    //多选卡片的临时勾选与搜索词：点确定才写回配置，取消就丢掉
+    //模型多选卡片的临时勾选与搜索词：点确定只进表单，表单再点保存才落盘
     var draft by remember { mutableStateOf(emptySet<String>()) }
     var q by remember { mutableStateOf("") }
     var httpUrl by remember { mutableStateOf("") } //待确认的 http 地址
     var httpLeft by remember { mutableStateOf(0) } //5 秒倒计时剩余
     var urlTick by remember { mutableStateOf(0) } //输入防抖的触发计数
+    //表单草稿：这里改的全是临时值，只有点「保存到当前配置」才写回配置
+    var fId by remember { mutableStateOf("") }
+    var fName by remember { mutableStateOf("") }
+    var fCustom by remember { mutableStateOf(false) }
+    var fProv by remember { mutableStateOf("custom") }
+    var fBase by remember { mutableStateOf("") }
+    var fKey by remember { mutableStateOf("") }
+    var fModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var fModel by remember { mutableStateOf("") }
+    var fTok by remember { mutableStateOf(0) }
+    var snap by remember { mutableStateOf("") } //上次载入或保存后的指纹，用来判断有没有改动
+    var savedTo by remember { mutableStateOf("") } //保存成功的提示，一改动就失效
+    var formErr by remember { mutableStateOf<String?>(null) }
 
-    //拉模型列表：只刷新候选，不动已勾选结果
+    //表单指纹：任何一项变了就算脏，保存提示随之失效
+    fun finger(): String = listOf(
+        fId, fName, fCustom.toString(), fProv, fBase, fKey,
+        fModels.joinToString(","), fModel, fTok.toString()
+    ).joinToString("|")
+
+    //把一条配置装进表单；没保存的改动直接丢掉
+    fun loadForm(p: ModelProfile?) {
+        fId = p?.id ?: ""
+        fName = p?.name ?: ""
+        fCustom = p?.custom ?: false
+        fProv = p?.providerId ?: "custom"
+        fBase = p?.baseUrl ?: ""
+        fKey = p?.apiKey ?: ""
+        fModels = p?.models ?: emptyList()
+        fModel = p?.model ?: ""
+        fTok = p?.maxTokens ?: 0
+        formErr = null
+        savedTo = ""
+        snap = finger()
+    } //载入表单
+
+    //清成一张空白表单：不落库，点保存才真正新增一条配置
+    fun newForm() {
+        fId = ""
+        fName = ""
+        fCustom = false
+        fProv = "custom"
+        fBase = ""
+        fKey = ""
+        fModels = emptyList()
+        fModel = ""
+        fTok = 0
+        formErr = null
+        savedTo = ""
+        snap = finger()
+    } //空白表单
+
+    //点保存才校验并写回：先落 models.json，再切到这条配置让 Cfg 生效
+    fun save() {
+        formErr = null
+        val base = fBase.trim()
+        val key = fKey.trim()
+        if (base.isEmpty()) {
+            formErr = ctx.getString(R.string.ms_need_base)
+            return
+        }
+        val ms = (fModels + listOfNotNull(fModel.trim().takeIf { it.isNotEmpty() }))
+            .distinct().filter { it.isNotBlank() }
+        val one = fModel.trim().ifBlank { ms.firstOrNull() ?: "" }
+        if (one.isEmpty()) {
+            formErr = ctx.getString(R.string.ms_no_model)
+            return
+        }
+        val id = fId.ifBlank { "p" + System.currentTimeMillis() }
+        val custom = fCustom && fName.isNotBlank()
+        val p = ModelProfile(
+            id = id,
+            name = if (custom) fName.trim() else Profiles.autoLabel(fProv, one),
+            providerId = fProv,
+            baseUrl = base,
+            apiKey = key,
+            model = one,
+            models = ms,
+            vision = Cfg.modelVision,
+            toolCall = Cfg.modelToolCall,
+            reasoning = Cfg.modelReasoning,
+            maxTokens = fTok,
+            custom = custom
+        )
+        Cfg.setProfileKey(id, key)
+        Profiles.upsert(p)
+        Profiles.select(id)
+        loadForm(p)
+        savedTo = ctx.getString(R.string.ms_saved_to, p.label)
+        Toast.makeText(ctx, savedTo, Toast.LENGTH_SHORT).show()
+    } //保存到当前配置
+
+    //拉模型列表：只刷新候选，不动已勾选结果，用的是表单里的 base_url 与 Key
     fun pull() {
         if (loading) return
         loading = true
@@ -82,7 +174,7 @@ fun ModelSetupPanel() {
         scope.launch {
             val res = runCatching {
                 withContext(Dispatchers.IO) {
-                    LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).listModels()
+                    LlmClient(fBase.trim(), fKey.trim(), Providers.byId(fProv).auth).listModels()
                 }
             }
             loading = false
@@ -91,11 +183,18 @@ fun ModelSetupPanel() {
         }
     } //拉列表
 
+    //切配置就把表单整体换掉；刚保存的那条 id 已对上，不重载，保住成功提示
+    LaunchedEffect(Cfg.profileId) {
+        if (Cfg.profileId != fId) {
+            loadForm(Profiles.list.firstOrNull { it.id == Cfg.profileId } ?: Profiles.selected)
+        }
+    }
+
     //输入停下来 700ms 再检查协议，免得逐字敲的时候反复弹窗
     LaunchedEffect(urlTick) {
         if (urlTick == 0) return@LaunchedEffect
         delay(700)
-        val t = Cfg.baseUrl.trim()
+        val t = fBase.trim()
         if (t.startsWith("http://", true) && !Cfg.httpConfirmed && dialog.isEmpty()) {
             httpUrl = t
             httpLeft = 5
@@ -116,13 +215,16 @@ fun ModelSetupPanel() {
     HostInOverlay(dialog.isNotEmpty()) {
         when (dialog) {
             "provider" -> ProviderDialog(
-                current = Cfg.providerId,
+                current = fProv,
                 onPick = { p ->
-                    //换厂商就清掉旧模型名，免得卡片显示「通义千问 · deepseek-chat」这种混搭
-                    if (Cfg.providerId != p.id) Cfg.model = ""
-                    Cfg.providerId = p.id
-                    Cfg.baseUrl = p.baseUrl
-                    Profiles.capture()
+                    //换厂商就清掉旧模型名与勾选，免得卡片显示「通义千问 · deepseek-chat」这种混搭
+                    if (fProv != p.id) {
+                        fModel = ""
+                        fModels = emptyList()
+                    }
+                    fProv = p.id
+                    fBase = p.baseUrl
+                    formErr = null
                     dialog = ""
                 },
                 onClose = { dialog = "" }
@@ -139,7 +241,10 @@ fun ModelSetupPanel() {
                 onClear = { draft = emptySet() },
                 onRetry = { pull() },
                 onOk = {
-                    Profiles.setModels(draft.toList())
+                    val list = draft.toList()
+                    fModels = list
+                    if (fModel.isBlank() || fModel !in list) fModel = list.firstOrNull() ?: fModel
+                    formErr = null
                     dialog = ""
                 },
                 onClose = { dialog = "" }
@@ -149,8 +254,7 @@ fun ModelSetupPanel() {
                 left = httpLeft,
                 onCancel = { dialog = "" },
                 onUseHttps = {
-                    Cfg.baseUrl = httpUrl.replaceFirst("http://", "https://").replaceFirst("HTTP://", "https://")
-                    Profiles.capture()
+                    fBase = httpUrl.replaceFirst("http://", "https://").replaceFirst("HTTP://", "https://")
                     dialog = ""
                 },
                 onUseHttp = {
@@ -162,16 +266,12 @@ fun ModelSetupPanel() {
     }
 
     Column {
-        //一条配置只管一个供应商，加一条就选一次厂商
+        //一条配置只管一个供应商；这里只清成空白表单，点保存才真新增
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(SurfaceMuted, RoundedCornerShape(12.dp))
-                .tap {
-                    Profiles.capture()
-                    Profiles.add()
-                    dialog = "provider"
-                }
+                .tap { newForm(); dialog = "provider" }
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -187,21 +287,20 @@ fun ModelSetupPanel() {
         }
         Spacer(Modifier.height(8.dp))
         //配置名：留空就跟随「厂商 · 模型」，右侧方按钮一键回到自动名
-        val autoNow = Profiles.autoLabel(Cfg.providerId, Cfg.model)
+        val autoNow = Profiles.autoLabel(fProv, fModel)
         FieldBox(
             stringResource(R.string.ms_name),
-            if (Cfg.profileCustom) Cfg.profileName else "",
+            if (fCustom) fName else "",
             {
-                Cfg.profileName = it
-                Cfg.profileCustom = it.isNotBlank()
-                Profiles.capture()
+                fName = it
+                fCustom = it.isNotBlank()
+                formErr = null
             },
             placeholder = autoNow,
             trailing = {
                 SquareIconBox(Icons.Filled.Refresh, desc = stringResource(R.string.ms_auto)) {
-                    Cfg.profileName = ""
-                    Cfg.profileCustom = false
-                    Profiles.capture()
+                    fName = ""
+                    fCustom = false
                 }
             }
         )
@@ -223,9 +322,9 @@ fun ModelSetupPanel() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
-                Text(Providers.byId(Cfg.providerId).name, fontSize = 14.sp, color = TextPrimary)
+                Text(Providers.byId(fProv).name, fontSize = 14.sp, color = TextPrimary)
                 Text(
-                    Providers.byId(Cfg.providerId).baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
+                    Providers.byId(fProv).baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
                     fontSize = 10.sp,
                     color = TextSecondary,
                     maxLines = 1
@@ -233,19 +332,24 @@ fun ModelSetupPanel() {
             }
             Text(stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
         }
-        Field("base_url", Cfg.baseUrl, { Cfg.baseUrl = it; Profiles.capture(); urlTick++ }, placeholder = "https://api.deepseek.com/v1")
+        Field(
+            "base_url",
+            fBase,
+            { fBase = it; formErr = null; urlTick++ },
+            placeholder = "https://api.deepseek.com/v1"
+        )
         //可填多个 Key：一行一个，请求失败自动换下一个
         Field(
             "API key",
-            Cfg.apiKey,
-            { Cfg.apiKey = it; Profiles.capture() },
+            fKey,
+            { fKey = it; formErr = null },
             secret = true,
             singleLine = false,
             minLines = 2,
             placeholder = stringResource(R.string.ms_keys_hint)
         )
         Spacer(Modifier.height(10.dp))
-        //模型多选：设置里勾一批存进这条配置，聊天页的模型卡片只在这批里挑
+        //模型多选：勾一批进表单，保存后才写进这条配置
         SectionTitle(stringResource(R.string.ms_models_t), stringResource(R.string.ms_models_sub))
         Row(
             Modifier
@@ -253,7 +357,7 @@ fun ModelSetupPanel() {
                 .background(SurfaceMuted, RoundedCornerShape(12.dp))
                 .tap {
                     if (loading) return@tap
-                    draft = Cfg.profileModels.toSet()
+                    draft = fModels.toSet()
                     q = ""
                     dialog = "models"
                     //还没拉过列表就先拉一次，拉完在卡片里勾
@@ -264,14 +368,14 @@ fun ModelSetupPanel() {
         ) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (Cfg.profileModels.isEmpty()) stringResource(R.string.ms_models_none)
-                    else stringResource(R.string.ms_models_picked, Cfg.profileModels.size),
+                    if (fModels.isEmpty()) stringResource(R.string.ms_models_none)
+                    else stringResource(R.string.ms_models_picked, fModels.size),
                     fontSize = 14.sp,
                     color = TextPrimary,
                     maxLines = 1
                 )
                 Text(
-                    Cfg.model.ifBlank { stringResource(R.string.ms_no_model) },
+                    fModel.ifBlank { stringResource(R.string.ms_no_model) },
                     fontSize = 10.sp,
                     color = TextSecondary,
                     maxLines = 1
@@ -283,6 +387,13 @@ fun ModelSetupPanel() {
                 color = AccentBlue
             )
         }
+        //列表拉不到时的兜底：直接手打模型名，保存时自动并进已选列表
+        Field(
+            stringResource(R.string.ms_model_name),
+            fModel,
+            { fModel = it; formErr = null },
+            placeholder = stringResource(R.string.ms_model_hint)
+        )
         if (err != null) {
             Spacer(Modifier.height(6.dp))
             Text(err!!, fontSize = 11.sp, color = DangerRed)
@@ -292,9 +403,8 @@ fun ModelSetupPanel() {
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(0, 2048, 4096, 8192, 16384).forEach { v ->
-                PolicyChip(if (v == 0) stringResource(R.string.ms_default) else v.toString(), Cfg.maxTokens == v) {
-                    Cfg.maxTokens = v
-                    Profiles.capture()
+                PolicyChip(if (v == 0) stringResource(R.string.ms_default) else v.toString(), fTok == v) {
+                    fTok = v
                 }
             }
         }
@@ -305,14 +415,28 @@ fun ModelSetupPanel() {
             color = TextSecondary
         )
         Spacer(Modifier.height(10.dp))
+        //保存才落盘：脏的时候按钮实心，存完给一句写回哪条
+        val dirty = finger() != snap
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.ms_save)) { Profiles.capture() }
+            PrimaryButton(stringResource(R.string.ms_save), enabled = dirty) { save() }
             Spacer(Modifier.width(8.dp))
             Text(
-                stringResource(R.string.ms_saved_to, Profiles.selected?.label ?: stringResource(R.string.ms_new_cfg)),
+                when {
+                    formErr != null -> formErr!!
+                    dirty -> stringResource(R.string.ms_edit_tip)
+                    savedTo.isNotEmpty() -> "✓ " + savedTo
+                    else -> stringResource(
+                        R.string.ms_saved_to,
+                        Profiles.selected?.label ?: stringResource(R.string.ms_new_cfg)
+                    )
+                },
                 fontSize = 10.sp,
-                color = TextSecondary,
-                maxLines = 1
+                color = when {
+                    formErr != null -> DangerRed
+                    dirty -> TextSecondary
+                    else -> AccentBlue
+                },
+                maxLines = 2
             )
         }
     }
@@ -329,8 +453,8 @@ fun ProfileList() {
         Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton(stringResource(R.string.ms_add)) {
+                //加的是空白供应商配置，填完在下面表单里点保存才生效
                 Profiles.capture()
-                //加的是空白供应商配置，厂商与模型在设置里各自选
                 Profiles.add()
             }
             Spacer(Modifier.width(8.dp))
@@ -352,23 +476,16 @@ fun ProfileList() {
 @Composable
 private fun ProfileRow(p: ModelProfile) {
     val sel = p.id == Cfg.profileId
-    //选中项直接读 Cfg：编辑区改一个字符卡片就跟着变，不等落盘重组
-    val title = if (sel) {
-        if (Cfg.profileCustom && Cfg.profileName.isNotBlank()) Cfg.profileName
-        else Profiles.autoLabel(Cfg.providerId, Cfg.model)
-    } else p.label
-    val sub = if (sel) {
-        Cfg.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " + Cfg.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
-    } else {
-        p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " + p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
-    }
+    //卡片只反映已保存的内容：表单里改了一半的东西不会漏到这里
+    val title = p.label
+    val sub = p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " +
+        p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
     Row(
         Modifier
             .fillMaxWidth()
             .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(12.dp))
             .tap {
-                //切走之前先把当前表单值写回旧配置，避免改了一半的输入丢掉
-                Profiles.capture()
+                //切配置就整组换成那条的已保存内容，表单里没保存的改动会丢
                 Profiles.select(p.id)
             }
             .padding(horizontal = 12.dp, vertical = 10.dp),

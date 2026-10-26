@@ -122,7 +122,7 @@
     <string name="ms_pulled">%1$d fetched, tap to pick</string>
     <string name="ms_fetching">Fetching…</string>
     <string name="ms_fetch">Fetch models</string>
-    <string name="ms_no_models">The API returned no models; type the model name manually</string>
+    <string name="ms_no_models">The API returned no models. Try a BASEURL ending in /v1, or type the model name below.</string>
     <string name="ms_get_models_tip">Uses GET {base_url}/models, then pick in the dialog or type it</string>
     <string name="ms_model_name">Model name</string>
     <string name="ms_model_hint">Type one, e.g. deepseek-chat</string>
@@ -142,12 +142,12 @@
     <string name="ms_models_pick">Choose models</string>
     <string name="ms_select_all">Select all</string>
     <string name="ms_clear_all">Clear</string>
-    <string name="ms_multi_ok">Save</string>
+    <string name="ms_multi_ok">OK</string>
     <string name="ms_multi_cancel">Cancel</string>
     <string name="ms_multi_empty">This config has no models yet, pick some in Settings</string>
     <string name="ms_multi_go">Choose models in Settings</string>
     <string name="ms_multi_hint">Only models ticked in Settings show up here</string>
-    <string name="ms_edit_tip">Edits are saved to the current config live; the button below saves once more.</string>
+    <string name="ms_edit_tip">Nothing is written until you tap Save below; unsaved edits are lost when you switch configs.</string>
     <string name="ms_no_base">No base_url</string>
     <string name="ms_pick_provider">Choose provider</string>
     <string name="ms_pick_provider_sub">base_url is filled into the form automatically and can be edited</string>

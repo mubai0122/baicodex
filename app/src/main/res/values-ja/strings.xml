@@ -122,7 +122,7 @@
     <string name="ms_pulled">%1$d 件取得済み、タップで選択</string>
     <string name="ms_fetching">取得中…</string>
     <string name="ms_fetch">モデルを取得</string>
-    <string name="ms_no_models">API がモデルを返しませんでした。モデル名を手入力してください</string>
+    <string name="ms_no_models">API がモデルを返しませんでした。BASEURL（通常は /v1 まで）を見直すか、下にモデル名を入力してください。</string>
     <string name="ms_get_models_tip">GET {base_url}/models を使います。取得後はダイアログで選択、手入力も可</string>
     <string name="ms_model_name">モデル名</string>
     <string name="ms_model_hint">手入力（例: deepseek-chat）</string>
@@ -142,12 +142,12 @@
     <string name="ms_models_pick">モデルを選ぶ</string>
     <string name="ms_select_all">すべて選択</string>
     <string name="ms_clear_all">クリア</string>
-    <string name="ms_multi_ok">保存</string>
+    <string name="ms_multi_ok">OK</string>
     <string name="ms_multi_cancel">キャンセル</string>
     <string name="ms_multi_empty">この設定にはまだモデルがありません。設定で選んでください</string>
     <string name="ms_multi_go">設定でモデルを選ぶ</string>
     <string name="ms_multi_hint">設定でチェックしたモデルだけがここに出ます</string>
-    <string name="ms_edit_tip">変更は即座に現在の設定へ書き戻されます。下のボタンでもう一度保存できます。</string>
+    <string name="ms_edit_tip">下の「保存」を押すまで反映されません。未保存の変更は切り替えで失われます。</string>
     <string name="ms_no_base">base_url なし</string>
     <string name="ms_pick_provider">プロバイダーを選択</string>
     <string name="ms_pick_provider_sub">選択すると base_url がフォームに入ります。変更も可能</string>

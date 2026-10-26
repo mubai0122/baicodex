@@ -421,8 +421,8 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                             //切走前先把当前表单值写回旧配置，改了一半的输入不丢
                             Profiles.capture()
                             Profiles.select(p.id)
-                            //有勾过的模型就进二级卡片挑，没有就收起来等去设置里选
-                            if (Cfg.profileModels.isEmpty()) onClose() else sub = p.id
+                            //一律进二级卡片：没勾模型时那里有「去设置里选模型」的入口，不再直接关掉面板
+                            sub = p.id
                         }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically

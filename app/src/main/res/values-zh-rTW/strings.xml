@@ -122,7 +122,7 @@
     <string name="ms_pulled">已拉取 %1$d 個，點開選</string>
     <string name="ms_fetching">取得中…</string>
     <string name="ms_fetch">取得模型</string>
-    <string name="ms_no_models">介面沒有回傳模型，手動填寫模型名稱即可</string>
+    <string name="ms_no_models">介面沒有回傳模型，換個 BASEURL（通常要帶 /v1）再試，或在下面手填模型名稱</string>
     <string name="ms_get_models_tip">走 GET {base_url}/models；拿到後在彈窗裡選，也可手動填</string>
     <string name="ms_model_name">模型名</string>
     <string name="ms_model_hint">手動填寫，如 deepseek-chat</string>
@@ -142,12 +142,12 @@
     <string name="ms_models_pick">選擇模型</string>
     <string name="ms_select_all">全選</string>
     <string name="ms_clear_all">清空</string>
-    <string name="ms_multi_ok">儲存</string>
+    <string name="ms_multi_ok">確定</string>
     <string name="ms_multi_cancel">取消</string>
     <string name="ms_multi_empty">這條設定還沒勾模型，去設定裡選一下</string>
     <string name="ms_multi_go">去設定裡選模型</string>
     <string name="ms_multi_hint">只列設定裡勾過的模型，換一批去設定裡改</string>
-    <string name="ms_edit_tip">改動即時寫回目前設定；點下面按鈕可以再手動存一次。</string>
+    <string name="ms_edit_tip">改完點下面的「儲存到目前設定」才生效，沒儲存的改動切走就丟。</string>
     <string name="ms_no_base">無 base_url</string>
     <string name="ms_pick_provider">選擇廠商</string>
     <string name="ms_pick_provider_sub">選完會自動把 base_url 填進表單，可以再改</string>

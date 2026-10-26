@@ -122,7 +122,7 @@
     <string name="ms_pulled">%1$d récupérés, touchez pour choisir</string>
     <string name="ms_fetching">Récupération…</string>
     <string name="ms_fetch">Récupérer les modèles</string>
-    <string name="ms_no_models">L\'API n\'a renvoyé aucun modèle ; saisissez le nom</string>
+    <string name="ms_no_models">L\'API n\'a renvoyé aucun modèle. Essayez un BASEURL en /v1, ou saisissez le nom du modèle ci-dessous.</string>
     <string name="ms_get_models_tip">Utilise GET {base_url}/models, puis choisissez ou saisissez</string>
     <string name="ms_model_name">Nom du modèle</string>
     <string name="ms_model_hint">Saisissez, ex. deepseek-chat</string>
@@ -142,12 +142,12 @@
     <string name="ms_models_pick">Choisir les modeles</string>
     <string name="ms_select_all">Tout cocher</string>
     <string name="ms_clear_all">Vider</string>
-    <string name="ms_multi_ok">Enregistrer</string>
+    <string name="ms_multi_ok">OK</string>
     <string name="ms_multi_cancel">Annuler</string>
     <string name="ms_multi_empty">Cette config n a pas encore de modele, choisissez-les dans les reglages</string>
     <string name="ms_multi_go">Choisir dans les reglages</string>
     <string name="ms_multi_hint">Seuls les modeles coches dans les reglages apparaissent ici</string>
-    <string name="ms_edit_tip">Les modifications sont enregistrées en direct ; le bouton ci-dessous enregistre à nouveau.</string>
+    <string name="ms_edit_tip">Rien n\'est enregistré avant d\'appuyer sur « Enregistrer » ci-dessous ; les modifications non enregistrées sont perdues.</string>
     <string name="ms_no_base">Sans base_url</string>
     <string name="ms_pick_provider">Choisir un fournisseur</string>
     <string name="ms_pick_provider_sub">base_url est rempli automatiquement et reste modifiable</string>
