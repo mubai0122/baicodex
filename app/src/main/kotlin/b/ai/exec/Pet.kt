@@ -348,13 +348,25 @@ object Pet {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START }
+        //先量出宽高、把位置算好并置成全透明再挂上去：否则第一帧会实打实闪在屏幕左上角 (0,0)
+        tv.alpha = 0f
+        val pl = petLp
+        if (pl != null) {
+            tv.measure(
+                View.MeasureSpec.makeMeasureSpec(dp(c, Cfg.petBubbleW), View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            if (tv.measuredWidth > 0 && tv.measuredHeight > 0) {
+                lp.x = (pl.x + pl.width / 2 - tv.measuredWidth / 2).coerceAtLeast(0)
+                lp.y = (pl.y + padTop - tv.measuredHeight - dp(c, 6)).coerceAtLeast(0)
+            }
+        }
         if (runCatching { wm.addView(tv, lp) }.isFailure) return
         bubbleView = tv
         bubbleLp = lp
-        //宽度量出来之后摆到头顶居中
+        //真宽高出来后再对一次位置，然后原地淡入（位置已经对了，不会再跳）
         tv.post {
             relocateBubble()
-            tv.alpha = 0f
             tv.animate().alpha(1f).setDuration(140).start()
         }
         val r = Runnable { fadeBubble() }

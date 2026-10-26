@@ -1307,4 +1307,10 @@
     <string name="ctx_tip_used">已用 %1$s，预算 %2$s token</string>
     <string name="ctx_tip_total">本对话累计 %1$s token</string>
     <string name="ctx_tip_fresh">未压缩部分 %1$s token（%2$d 条）</string>
+    <string name="http_warn_title">HTTP 明文连接</string>
+    <string name="http_warn_body">%1$s 不走加密传输，同一网络下的 API Key 和对话内容都可能被截获。</string>
+    <string name="http_warn_risk">中转站必须填 HTTP 时才选「仍然使用」；能走 HTTPS 就直接点左边。</string>
+    <string name="http_warn_https">改成 HTTPS</string>
+    <string name="http_warn_use">仍然使用 HTTP</string>
+    <string name="http_warn_wait">%1$d 秒后可确认</string>
 </resources>

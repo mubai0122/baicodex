@@ -1306,4 +1306,10 @@
     <string name="ctx_tip_used">%1$s sur %2$s jetons utilisés</string>
     <string name="ctx_tip_total">Cette conversation : %1$s jetons</string>
     <string name="ctx_tip_fresh">Non compressé : %1$s jetons (%2$d msg)</string>
+    <string name="http_warn_title">Connexion HTTP en clair</string>
+    <string name="http_warn_body">%1$s n\x27est pas chiffré. La clé API et vos messages peuvent être interceptés sur le même réseau.</string>
+    <string name="http_warn_risk">Ne choisissez l\x27option HTTP que si le relais l\x27exige.</string>
+    <string name="http_warn_https">Passer en HTTPS</string>
+    <string name="http_warn_use">Utiliser HTTP</string>
+    <string name="http_warn_wait">Confirmer dans %1$d s</string>
 </resources>

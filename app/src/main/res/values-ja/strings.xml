@@ -1306,4 +1306,10 @@
     <string name="ctx_tip_used">%1$s / %2$s トークン使用中</string>
     <string name="ctx_tip_total">この会話の合計 %1$s トークン</string>
     <string name="ctx_tip_fresh">未圧縮 %1$s トークン（%2$d 件）</string>
+    <string name="http_warn_title">HTTP（平文）で接続します</string>
+    <string name="http_warn_body">%1$s は暗号化されません。同じネットワーク上で API キーと会話が傍受される可能性があります。</string>
+    <string name="http_warn_risk">中継サイトが HTTP 必須の場合のみ「そのまま使用」を選んでください。</string>
+    <string name="http_warn_https">HTTPS に変更</string>
+    <string name="http_warn_use">HTTP のまま使用</string>
+    <string name="http_warn_wait">%1$d 秒後に確認できます</string>
 </resources>

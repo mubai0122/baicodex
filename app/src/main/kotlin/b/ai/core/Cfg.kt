@@ -42,6 +42,8 @@ object Cfg {
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
         mem("provider_id", "deepseek").value = p.getString("provider_id", "deepseek")!!
         mem("base_url", "").value = p.getString("base_url", "")!!
+        //明文 HTTP 已确认过风险，不再弹 5 秒倒计时
+        mem("http_confirmed", false).value = p.getBoolean("http_confirmed", false)
         mem("api_key", "").value = p.getString("api_key", "")!!
         mem("model", "").value = p.getString("model", "")!!
         mem("workflow", "general").value = p.getString("workflow", "general")!!
@@ -240,6 +242,9 @@ object Cfg {
     var baseUrl: String
         get() = mem("base_url", "").value
         set(v) { mem("base_url", "").value = v; put("base_url", v) }
+    var httpConfirmed: Boolean
+        get() = mem("http_confirmed", false).value
+        set(v) { mem("http_confirmed", false).value = v; put("http_confirmed", v) }
 
     var apiKey: String
         get() = mem("api_key", "").value
