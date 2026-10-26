@@ -1,6 +1,8 @@
 package b.ai.ui
 
 import android.os.Environment
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +56,7 @@ import b.ai.exec.PetGrant
 import b.ai.exec.PetSvc
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
+import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -163,6 +166,12 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
         remark()
     }
 
+    //页面层：底栏的玻璃就采样这一层
+    val pageBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -175,7 +184,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
             .pageBg()
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -347,7 +356,8 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
             tabs = PetTabs,
             selected = tab,
             onSelect = { tab = it },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+            backdrop = pageBackdrop
         )
     }
 } //桌宠设置页

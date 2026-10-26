@@ -66,6 +66,8 @@ object Tools {
 
     /** 屏幕操作：无障碍侧读控件树 / 截图 / 点击滑动长按输入，走 A11y */
     const val SCREEN = "screen"
+    /** 分智能体：一次派多条只读子任务并行跑，主智能体只收结论 */
+    const val SUB = "subagent_run"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -74,7 +76,7 @@ object Tools {
         get() {
             val l = ArrayList<String>()
             l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK, SCREEN))
-            l.addAll(listOf(LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE))
+            l.addAll(listOf(LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB))
             if (Linux.installed()) l.add(LINUX)
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.add(SKILL_READ)
@@ -131,6 +133,7 @@ object Tools {
         HTTP -> "发 HTTP 请求"
         APKTOOL -> "看安装包"
         BROWSE -> "浏览网页"
+        SUB -> "分智能体"
         else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" } ?: mcpLabel(name)
     }
 
@@ -471,6 +474,40 @@ object Tools {
                 ).put("required", JSONArray().put("action"))
             )
         )
+        //分智能体：一次派多条互相独立的只读子任务并行跑，只有结论回主上下文，省主模型 token
+        val subItem = JSONObject().put("type", "object")
+            .put(
+                "properties", JSONObject()
+                    .put("title", str("这条子任务的名字，2-8 字，汇总时用它分节"))
+                    .put("task", str("交给分智能体的完整指令：做什么、在哪做、要什么格式的结论"))
+                    .put(
+                        "priority",
+                        str("优先级 high / normal / low，默认 normal。high 先占并行槽；会写文件或执行命令的任务至少给 normal，关键步骤给 high")
+                    )
+            )
+            .put("required", JSONArray().put("title").put("task"))
+        arr.put(
+            fn(
+                SUB,
+                "派分智能体并行干活：一次给 2-4 条互相独立的子任务（查资料、读文件、搜代码、写文件、跑命令、查车次），" +
+                    "它们同时跑，各自返回结论，最后一次给你合并后的结果。每条任务必须标 priority：high 先跑、low 最后跑。" +
+                    "子智能体的工具权限和确认弹窗跟你完全一致，用户拒绝的那一步会如实回报。" +
+                    "适合「同时推进几件互不依赖的事」；只有一件事时自己做更快。",
+                JSONObject().put("type", "object").put(
+                    "properties", JSONObject()
+                        .put(
+                            "tasks",
+                            JSONObject().put("type", "array").put("items", subItem)
+                                .put("description", "子任务列表，2-4 条最好，最多 6 条")
+                        )
+                        .put(
+                            "rounds",
+                            JSONObject().put("type", "integer")
+                                .put("description", "每个分智能体最多几轮工具调用，默认 6，上限 12")
+                        )
+                ).put("required", JSONArray().put("tasks"))
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -538,6 +575,8 @@ object Tools {
         APKTOOL -> apk(args).governed()
         BROWSE -> browse(args).governed()
         SKILL_READ -> skillRead(args.optString("name")).governed()
+        //subagent_run 由主循环并行调度（要拿 Agent.status 报进度），走到这里说明调用链不对
+        SUB -> ToolOutcome(false, "subagent_run 需要主循环调度，不能在后台单独执行", Route.SANDBOX)
         else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
             ?: mcpCall(name, args).governed()
     } //执行单个工具

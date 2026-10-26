@@ -44,9 +44,15 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
-    <!-- Android 11+ 包可见性：不加这条查不到 Shizuku 是否安装 -->
+    <!-- Android 11+ 包可见性：不加这条查不到 Shizuku 是否安装，也查不到系统语音识别 / 朗读服务 -->
     <queries>
         <package android:name="moe.shizuku.privileged.api" />
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
     </queries>
 
     <application

@@ -44,6 +44,10 @@ object Cfg {
         mem("base_url", "").value = p.getString("base_url", "")!!
         //明文 HTTP 已确认过风险，不再弹 5 秒倒计时
         mem("http_confirmed", false).value = p.getBoolean("http_confirmed", false)
+        //当前配置勾选过的模型集合：只跟着 models.json 走，这里给个空默认
+        mem("profile_models", emptyList<String>())
+        //1.7.0 的「全新模型配置」只提示一次，跟旧的桌宠引导解耦
+        mem("pet_model_tip", false).value = p.getBoolean("pet_model_tip", false)
         mem("api_key", "").value = p.getString("api_key", "")!!
         mem("model", "").value = p.getString("model", "")!!
         mem("workflow", "general").value = p.getString("workflow", "general")!!
@@ -110,6 +114,8 @@ object Cfg {
         mem("glass_card", false).value = p.getBoolean("glass_card", false)
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
+        mem("glass_blur", 4).value = p.getInt("glass_blur", 4)
+        mem("theme_tint", 0).value = p.getInt("theme_tint", 0)
         mem("bg_style", 0).value = p.getInt("bg_style", 0)
         //背景图路径可能因清数据/换机失效，失效就清掉，免得设置页对着一条死路径
         val bg = p.getString("bg_img", "")!!
@@ -245,6 +251,13 @@ object Cfg {
     var httpConfirmed: Boolean
         get() = mem("http_confirmed", false).value
         set(v) { mem("http_confirmed", false).value = v; put("http_confirmed", v) }
+    /** 当前配置在设置里勾选过的模型：聊天页的模型卡片只在这几个里挑，不落 SP */
+    var profileModels: List<String>
+        get() = mem("profile_models", emptyList<String>()).value
+        set(v) { mem("profile_models", emptyList<String>()).value = v }
+    var petModelTip: Boolean
+        get() = mem("pet_model_tip", false).value
+        set(v) { mem("pet_model_tip", false).value = v; put("pet_model_tip", v) }
 
     var apiKey: String
         get() = mem("api_key", "").value
@@ -425,6 +438,21 @@ object Cfg {
         get() = mem("float_input", false).value
         set(v) { mem("float_input", false).value = v; put("float_input", v) }
 
+    /** 全新的全屏输入逻辑：输入超 700 字才在语音右侧出现全屏入口，关掉则入口常驻 */
+    var fullInputNew: Boolean
+        get() = mem("full_input_new", true).value
+        set(v) { mem("full_input_new", true).value = v; put("full_input_new", v) }
+
+    /** 粘贴超长文本自动转成工作区文件 */
+    var pasteToFile: Boolean
+        get() = mem("paste_to_file", true).value
+        set(v) { mem("paste_to_file", true).value = v; put("paste_to_file", v) }
+
+    /** 转文件的字数阈值 */
+    var pasteLimit: Int
+        get() = mem("paste_limit", 3000).value
+        set(v) { mem("paste_limit", 3000).value = v; put("paste_limit", v) }
+
     /** 液态玻璃卡片：所有卡片换成半透玻璃 + 手指位置柔光 */
     var glassCard: Boolean
         get() = mem("glass_card", false).value
@@ -439,6 +467,16 @@ object Cfg {
     var glassBar: Boolean
         get() = mem("glass_bar", false).value
         set(v) { mem("glass_bar", false).value = v; put("glass_bar", v) }
+
+    /** 玻璃模糊强度（dp）：底栏与面板共用，0 = 只折射不模糊 */
+    var glassBlur: Int
+        get() = mem("glass_blur", 4).value
+        set(v) { mem("glass_blur", 4).value = v; put("glass_blur", v) }
+
+    /** 色系主题：0 默认蓝 / 1 冰川 / 2 春野 / 3 紫罗兰 / 4 珊瑚 / 5 石墨 / 6 玫红 / 7 青柠 */
+    var themeTint: Int
+        get() = mem("theme_tint", 0).value
+        set(v) { mem("theme_tint", 0).value = v; put("theme_tint", v) }
 
     /** 页面背景：0 纯色 / 1 柔光渐变 / 2 点阵 */
     var bgStyle: Int
@@ -698,6 +736,49 @@ object Cfg {
     var speakReplies: Boolean
         get() = mem("speak_replies", false).value
         set(v) { mem("speak_replies", false).value = v; put("speak_replies", v) }
+
+    //语音识别/合成：sys = 系统自带的识别器与 TTS，api = 自己填的 OpenAI 兼容接口
+    var asrMode: String
+        get() = mem("asr_mode", "sys").value
+        set(v) { mem("asr_mode", "sys").value = v; put("asr_mode", v) }
+
+    var asrBase: String
+        get() = mem("asr_base", "").value
+        set(v) { mem("asr_base", "").value = v; put("asr_base", v.trim()) }
+
+    var asrKey: String
+        get() = mem("asr_key", "").value
+        set(v) { mem("asr_key", "").value = v; put("asr_key", v.trim()) }
+
+    var asrModel: String
+        get() = mem("asr_model", "whisper-1").value
+        set(v) { mem("asr_model", "whisper-1").value = v; put("asr_model", v.trim()) }
+
+    /** 识别语种：系统识别器与接口都吃这个值，留空 = 自动 */
+    var asrLang: String
+        get() = mem("asr_lang", "zh-CN").value
+        set(v) { mem("asr_lang", "zh-CN").value = v; put("asr_lang", v.trim()) }
+
+    var ttsMode: String
+        get() = mem("tts_mode", "sys").value
+        set(v) { mem("tts_mode", "sys").value = v; put("tts_mode", v) }
+
+    var ttsBase: String
+        get() = mem("tts_base", "").value
+        set(v) { mem("tts_base", "").value = v; put("tts_base", v.trim()) }
+
+    var ttsKey: String
+        get() = mem("tts_key", "").value
+        set(v) { mem("tts_key", "").value = v; put("tts_key", v.trim()) }
+
+    var ttsModel: String
+        get() = mem("tts_model", "tts-1").value
+        set(v) { mem("tts_model", "tts-1").value = v; put("tts_model", v.trim()) }
+
+    /** 音色名，接口模式才用得上（alloy / nova …） */
+    var ttsVoice: String
+        get() = mem("tts_voice", "alloy").value
+        set(v) { mem("tts_voice", "alloy").value = v; put("tts_voice", v.trim()) }
 
     /** 模型总上下文窗口（token），压缩阈值按它的百分比折算 */
     var ctxTotal: Int

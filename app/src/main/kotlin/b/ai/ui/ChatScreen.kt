@@ -3,6 +3,7 @@ package b.ai.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -18,7 +19,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +57,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Text
@@ -63,6 +68,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +82,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -86,6 +93,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
+import b.ai.agent.RunningTool
 import b.ai.agent.Tools
 import b.ai.core.AgentMode
 import b.ai.core.Avatar
@@ -95,6 +103,7 @@ import b.ai.core.Cfg
 import b.ai.core.ChatMsg
 import b.ai.core.Images
 import b.ai.core.MsgMeta
+import b.ai.core.Pastes
 import b.ai.core.Personas
 import b.ai.core.Repo
 import b.ai.core.Profiles
@@ -119,7 +128,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.CompositionLocalProvider
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
@@ -164,8 +179,14 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //附件分类：同一个选择器按这里的 mime 与标签区分图片 / 音频 / 视频 / 音乐
     var attachKind by remember { mutableStateOf(ctx.getString(R.string.cs_attach)) }
     var pendingImgs by remember { mutableStateOf<List<String>>(emptyList()) }
+    //待发送文件：选文件 / 超长粘贴进来的，发送前就挂在输入区，跟选完文件是一个形态
+    var pendingFiles by remember { mutableStateOf<List<String>>(emptyList()) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
+    val pageBackdrop = rememberLayerBackdrop { drawContent() }
+    //输入区实测高度，面板浮层贴它上沿
+    var inputH by remember { mutableIntStateOf(0) }
     //相册多选：压缩进私有目录，发送时按 base64 内联给模型
     val pickImgs = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         if (uris.isNotEmpty()) {
@@ -177,14 +198,12 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             }
         }
     }
-    //任意文件：复制进私有目录，路径插到输入框，模型自己用 read_file 看
+    //任意文件：复制进私有目录，直接挂成待发送附件，模型自己用 read_file 看
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 val p = withContext(Dispatchers.IO) { Attach.importFrom(ctx, uri) }
-                if (p != null) {
-                    input = (if (input.isBlank()) "" else "$input\n") + "[$attachKind] $p"
-                }
+                if (p != null && p !in pendingFiles) pendingFiles = pendingFiles + p
             }
         }
     }
@@ -209,12 +228,14 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         }
     }
 
-    //新版第一次进聊天就弹一次桌宠引导，看过就把版本号写进 petSeen
-    var petIntro by remember { mutableStateOf(Cfg.petSeen < b.ai.net.Update.clientCode()) }
+    //1.7.0 起只提示一次「全新模型配置」；旧的桌宠引导属于 1.6.0，不再反复弹
+    var petIntro by remember { mutableStateOf(!Cfg.petModelTip) }
+    //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
+    val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
     //外层 Box 只为了给「应用内桌宠」一个右下角锚点
     Box(Modifier.fillMaxSize()) {
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-    Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing).layerBackdrop(pageBackdrop)) {
         //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
         val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
         TopBar(
@@ -226,8 +247,14 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             ctxFreshTok = cst[2]
         )
 
-        //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
-        val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
+        //面板开着时返回键先收面板，别直接退出应用
+        BackHandler(enabled = panelOpen) {
+            attachPanel = false
+            cfgPanel = false
+            skillPanel = false
+            modelPanel = false
+            personaPanel = false
+        }
         Box(
             Modifier
                 .weight(1f)
@@ -274,6 +301,12 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                                 onLongPress = { menuFor = it },
                                 onSumLong = { sumMenu = it }
                             )
+                        }
+                    }
+                    //工具执行中的转圈卡：模型一返回调用就出现，执行完才换成正常结果行
+                    if (Agent.runningHere()) {
+                        Agent.runningTools.forEach { rt ->
+                            item("run-" + rt.seq) { RunningCard(rt) }
                         }
                     }
                     //流式增量：边收边渲染，落库前就看得见字在长
@@ -328,10 +361,112 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 }
             }
         }
+        //输入区上方：+ / 三条横线的内联面板不再挤在 Column 里，改成页面外浮层（见 Column 之后），才能采到真背景
 
-//输入区上方：+ / 三条横线的内联面板，跟 @ 面板同一位置；进场短促，弹出/收起都跟手
+
+        //末尾 @token 命中就在输入区上方弹出候选：技能填正文、工具填名字、files 接路径
+        val mi = mentionOf(input)
+        //两个面板互斥：+ 面板开着时不弹 @ 候选，免得同时占两倍高度把输入框挤扁
+        if (mi != null && !panelOpen) {
+            MentionPanel(token = mi.token) { text ->
+                input = input.substring(0, mi.start) + text
+            }
+        }
+
+        //输入框以 / 开头：弹快捷指令，点一条当场执行并把结果写进占位提示
+        val si = slashToken(input)
+        if (si != null && !panelOpen) {
+            SlashPanel(si) { cmd ->
+                input = ""
+                val msg = execSlash(cmd, ctx, onOpenSettings, persona = { personaPanel = true })
+                if (msg.isNotEmpty()) hint = msg
+            }
+        }
+
+        //左下角 chip 显示当前配置名；没配过就退回模型名
+        val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
+            ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
+        Box(Modifier.fillMaxWidth().onSizeChanged { inputH = it.height }) {
+        InputBar(
+            input = input,
+            hint = hint,
+            modelLabel = modelLabel,
+            modeLabel = stringResource(Cfg.agentMode.labelRes),
+            onOpenMode = { modePanel = true },
+            onChange = { v -> input = pasteGuard(input, v) { p -> pendingFiles = pendingFiles + p } },
+            images = pendingImgs,
+            files = pendingFiles,
+            //三条杠 / 加号都能再点一次关掉，与其他面板互斥
+            onOpenConfig = {
+                val on = !cfgPanel
+                cfgPanel = on
+                if (on) {
+                    attachPanel = false
+                    skillPanel = false
+                    modelPanel = false
+                    personaPanel = false
+                }
+            },
+            onOpenAttach = {
+                val on = !attachPanel
+                attachPanel = on
+                if (on) {
+                    cfgPanel = false
+                    skillPanel = false
+                    modelPanel = false
+                    personaPanel = false
+                }
+            },
+            onOpenModel = {
+                val on = !modelPanel
+                modelPanel = on
+                if (on) {
+                    cfgPanel = false
+                    attachPanel = false
+                    skillPanel = false
+                    personaPanel = false
+                }
+            },
+            onExpand = { fullInput = true },
+            onRemoveImage = { p ->
+                pendingImgs = pendingImgs - p
+                Images.delete(p)
+            },
+            onRemoveFile = { p ->
+                pendingFiles = pendingFiles - p
+                //粘贴转存的文件跟着一起清；用户自己选的文件不动原件
+                if (p.startsWith(Pastes.dir().absolutePath)) Pastes.forget(p)
+            },
+            onSend = {
+                val t = input.trim()
+                val imgs = pendingImgs
+                val fs = pendingFiles
+                if (t.isNotEmpty() || imgs.isNotEmpty() || fs.isNotEmpty()) {
+                    input = ""
+                    pendingImgs = emptyList()
+                    pendingFiles = emptyList()
+                    hint = hintWords.random()
+                    fullInput = false
+                    val fallback = when {
+                        imgs.isNotEmpty() -> ctx.getString(R.string.cs_see_images)
+                        else -> ctx.getString(R.string.cs_see_files)
+                    }
+                    Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
+                }
+            }
+        )
+        }
+    }
+
+    //底部面板浮层：贴在输入区上沿，玻璃采样 pageBackdrop（自己不在采样层里，不会糊到自己）
+    val inputDp = with(LocalDensity.current) { inputH.toDp() }
+    CompositionLocalProvider(LocalPageBackdrop provides pageBackdrop) {
         AnimatedVisibility(
             visible = panelOpen,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(bottom = inputDp),
             enter = fadeIn(tween(90)) + slideInVertically(tween(150)) { it / 2 },
             exit = fadeOut(tween(80)) + slideOutVertically(tween(120)) { it / 2 }
         ) {
@@ -370,92 +505,13 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                     onClose = { personaPanel = false },
                     onManage = {
                         personaPanel = false
-                        //扩展是第 5 个 tab（索引 4）：模型 / 对话 / 外观 / 统计 / 扩展 / 关于
-                        onOpenSettings(4)
+                        //扩展是第 4 个 tab（索引 3）：模型 / 对话 / 外观 / 扩展 / 统计 / 关于
+                        onOpenSettings(3)
                     }
                 )
                 else -> CfgPanel(onClose = { cfgPanel = false })
             }
         }
-
-        //末尾 @token 命中就在输入区上方弹出候选：技能填正文、工具填名字、files 接路径
-        val mi = mentionOf(input)
-        //两个面板互斥：+ 面板开着时不弹 @ 候选，免得同时占两倍高度把输入框挤扁
-        if (mi != null && !panelOpen) {
-            MentionPanel(token = mi.token) { text ->
-                input = input.substring(0, mi.start) + text
-            }
-        }
-
-        //输入框以 / 开头：弹快捷指令，点一条当场执行并把结果写进占位提示
-        val si = slashToken(input)
-        if (si != null && !panelOpen) {
-            SlashPanel(si) { cmd ->
-                input = ""
-                val msg = execSlash(cmd, ctx, onOpenSettings, persona = { personaPanel = true })
-                if (msg.isNotEmpty()) hint = msg
-            }
-        }
-
-        //左下角 chip 显示当前配置名；没配过就退回模型名
-        val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
-            ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
-        InputBar(
-            input = input,
-            hint = hint,
-            modelLabel = modelLabel,
-            modeLabel = stringResource(Cfg.agentMode.labelRes),
-            onOpenMode = { modePanel = true },
-            onChange = { input = it },
-            images = pendingImgs,
-            //三条杠 / 加号都能再点一次关掉，与其他面板互斥
-            onOpenConfig = {
-                val on = !cfgPanel
-                cfgPanel = on
-                if (on) {
-                    attachPanel = false
-                    skillPanel = false
-                    modelPanel = false
-                    personaPanel = false
-                }
-            },
-            onOpenAttach = {
-                val on = !attachPanel
-                attachPanel = on
-                if (on) {
-                    cfgPanel = false
-                    skillPanel = false
-                    modelPanel = false
-                    personaPanel = false
-                }
-            },
-            onOpenModel = {
-                val on = !modelPanel
-                modelPanel = on
-                if (on) {
-                    cfgPanel = false
-                    attachPanel = false
-                    skillPanel = false
-                    personaPanel = false
-                }
-            },
-            onExpand = { fullInput = true },
-            onRemoveImage = { p ->
-                pendingImgs = pendingImgs - p
-                Images.delete(p)
-            },
-            onSend = {
-                val t = input.trim()
-                val imgs = pendingImgs
-                if (t.isNotEmpty() || imgs.isNotEmpty()) {
-                    input = ""
-                    pendingImgs = emptyList()
-                    hint = hintWords.random()
-                    fullInput = false
-                    Agent.send(if (t.isEmpty()) ctx.getString(R.string.cs_see_images) else t, imgs)
-                }
-            }
-        )
     }
 
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
@@ -472,38 +528,46 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         when {
             //全屏看图排最前：点开哪儿都能盖住其它面板
             img != null -> ImgViewerDialog(img) { ImgView.close() }
-            petIntro -> PetIntroDialog(
+            petIntro -> ModelIntroDialog(
                 onClose = {
+                    Cfg.petModelTip = true
                     Cfg.petSeen = b.ai.net.Update.clientCode()
                     petIntro = false
-                },
-                onOpen = {
-                    Cfg.petSeen = b.ai.net.Update.clientCode()
-                    petIntro = false
-                    onOpenSettings(2)
                 }
             )
             b.ai.exec.A11y.needPerm.value -> A11yPermDialog { b.ai.exec.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,
-                onChange = { input = it },
+                onChange = { v -> input = pasteGuard(input, v) { p -> pendingFiles = pendingFiles + p } },
                 images = pendingImgs,
+                files = pendingFiles,
                 onRemoveImage = { p ->
                     pendingImgs = pendingImgs - p
                     Images.delete(p)
                 },
-                canSend = !Agent.busy && (input.isNotBlank() || pendingImgs.isNotEmpty()),
+                onRemoveFile = { p ->
+                    pendingFiles = pendingFiles - p
+                    if (p.startsWith(Pastes.dir().absolutePath)) Pastes.forget(p)
+                },
+                canSend = !Agent.busy &&
+                    (input.isNotBlank() || pendingImgs.isNotEmpty() || pendingFiles.isNotEmpty()),
                 onClose = { fullInput = false },
                 onSend = {
                     val t = input.trim()
                     val imgs = pendingImgs
-                    if (t.isNotEmpty() || imgs.isNotEmpty()) {
+                    val fs = pendingFiles
+                    if (t.isNotEmpty() || imgs.isNotEmpty() || fs.isNotEmpty()) {
                         input = ""
                         pendingImgs = emptyList()
+                        pendingFiles = emptyList()
                         hint = hintWords.random()
                         fullInput = false
-                        Agent.send(if (t.isEmpty()) ctx.getString(R.string.cs_see_images) else t, imgs)
+                        val fallback = when {
+                            imgs.isNotEmpty() -> ctx.getString(R.string.cs_see_images)
+                            else -> ctx.getString(R.string.cs_see_files)
+                        }
+                        Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
                     }
                 }
             )
@@ -575,7 +639,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 onClose = { promptReq = null },
                 onConfirm = { text ->
                     promptReq = null
-                    if (pr.edit) Agent.editResend(pr.m.id, text, pr.m.images) else Agent.regenerate(pr.m.id, text)
+                    if (pr.edit) Agent.editResend(pr.m.id, text, pr.m.images, pr.m.files) else Agent.regenerate(pr.m.id, text)
                 }
             )
         }
@@ -690,8 +754,8 @@ private fun TopBar(
 /** 角色快速切换：只改 Cfg.personaId，系统提示每轮重算，所以下一句就生效 */
 @Composable
 private fun PersonaPanel(onClose: () -> Unit, onManage: () -> Unit) {
-    CardBox {
-        SectionTitle(stringResource(R.string.cs_persona_title), stringResource(R.string.cs_persona_sub))
+    SheetShell {
+        SheetHead(stringResource(R.string.cs_persona_title), onClose)
         ChoiceRow(stringResource(R.string.cs_default_persona), stringResource(R.string.cs_persona_none), Cfg.personaId.isBlank()) { Agent.setPersona("") }
         Personas.list.forEach { p ->
             ChoiceRow(
@@ -886,7 +950,7 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
     } else {
         Box(
             Modifier
-                .size(34.dp)
+                .size(36.dp)
                 .background(if (canSend) AccentBlue else SurfaceMuted, CircleShape)
                 .tap(enabled = canSend) { onSend() },
             contentAlignment = Alignment.Center
@@ -899,6 +963,57 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
         }
     }
 } //发送键
+
+/** 工具执行中的占位卡：模型一返回调用就出现并转圈，执行完由正常结果行接管 */
+@Composable
+private fun RunningCard(rt: RunningTool) {
+    val summary = remember(rt.seq) { argSummary(rt.args) }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(SurfaceWhite, RoundedCornerShape(12.dp))
+            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ToolIcon(rt.name, AccentBlue, side = 15.dp)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                (if (rt.fromSub) stringResource(R.string.cs_tool_sub) else "") + Tools.label(rt.name),
+                fontSize = 11.sp,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (summary.isNotEmpty()) {
+                Text(
+                    summary,
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        CircularProgressIndicator(
+            modifier = Modifier.size(14.dp),
+            strokeWidth = 1.8.dp,
+            color = AccentBlue
+        )
+    }
+} //执行中卡片
+
+/** 参数摘要：挑一个最能说明在干嘛的字段压成一行 */
+private fun argSummary(raw: String): String {
+    val o = runCatching { JSONObject(raw) }.getOrNull() ?: return raw.replace("\n", " ").take(80)
+    for (k in arrayOf("path", "command", "query", "name", "task", "url", "pattern", "from", "text", "action")) {
+        val v = o.optString(k)
+        if (v.isNotBlank()) return v.replace("\n", " ").take(80)
+    }
+    return raw.replace("\n", " ").take(80)
+} //参数摘要
 
 /** 数字缩写：12,345 显示成 12.3k，1,234,567 显示成 1.2M */
 private fun fmtNum(v: Long): String = when {
@@ -1001,14 +1116,36 @@ private fun InputBar(
     onOpenMode: () -> Unit,
     onChange: (String) -> Unit,
     images: List<String>,
+    files: List<String>,
     onOpenConfig: () -> Unit,
     onOpenAttach: () -> Unit,
     onOpenModel: () -> Unit,
     onExpand: () -> Unit,
     onRemoveImage: (String) -> Unit,
+    onRemoveFile: (String) -> Unit,
     onSend: () -> Unit
 ) {
     val ctx = LocalContext.current
+    //长按输入框直接开语音识别：450ms 内抬手就交给文本框正常放光标，按住不放才算长按
+    val latestInput by rememberUpdatedState(input)
+    val longPressVoice = Modifier.pointerInput(ctx) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            var held = true
+            withTimeoutOrNull(450L) {
+                waitForUpOrCancellation(PointerEventPass.Initial)
+                held = false
+            }
+            if (!held) return@awaitEachGesture
+            Voice.toggle(ctx) { t -> onChange((latestInput + t).trim()) }
+            //这次长按剩下的事件全吃掉，免得文本框同时弹出文字选择菜单
+            while (true) {
+                val e = awaitPointerEvent(PointerEventPass.Initial)
+                e.changes.forEach { it.consume() }
+                if (e.changes.none { it.pressed }) break
+            }
+        }
+    }
     //悬浮模式：只把输入框本体拎出来浮着，外层不铺任何背景，留着 BgGray 底
     val floating = Cfg.floatInput
     val outer = Modifier
@@ -1064,6 +1201,19 @@ private fun InputBar(
                     color = if (Voice.listening) DangerRed else TextSecondary
                 )
             }
+            //全屏输入入口：新逻辑下超 700 字才冒出来；关掉新逻辑就常驻在语音右边
+            if (!Cfg.fullInputNew || input.length >= 700) {
+                Spacer(Modifier.width(6.dp))
+                BarChip(active = false, flatActive = AccentBlueSoft, onTap = onExpand) {
+                    IcExpand(TextSecondary, side = 12.dp, stroke = 1.5.dp)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        stringResource(R.string.cs_fullscreen_entry),
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
             Spacer(Modifier.weight(1f))
             if (input.isNotEmpty()) {
                 Text(stringResource(R.string.cs_chars_unit, input.length), fontSize = 10.sp, color = TextSecondary)
@@ -1074,6 +1224,11 @@ private fun InputBar(
             //选中就是缩略图，右上角 × 直接删
             ImgThumbs(images = images, size = 56.dp, onRemove = onRemoveImage)
         }
+        if (files.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            //文件同样挂着一条，× 摘掉
+            FileChips(files = files, onRemove = onRemoveFile)
+        }
         if (Voice.error.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
             Text(Voice.error, fontSize = 10.sp, color = DangerRed)
@@ -1082,7 +1237,7 @@ private fun InputBar(
         //输入容器与发送键都从 44dp 起算，单行时严格等高；多行时发送键贴底
         //悬浮模式：输入框和发送键各自带投影浮起来，周围仍是页面底色，不再铺整块白卡
         val floatShadow = if (floating) Modifier.shadow(12.dp, RoundedCornerShape(14.dp)) else Modifier
-        val canSend = !Agent.busy && (input.isNotBlank() || images.isNotEmpty())
+        val canSend = !Agent.busy && (input.isNotBlank() || images.isNotEmpty() || files.isNotEmpty())
         //输入框和纸飞机键同一个白卡：小圈内嵌右侧，不再单独立 66dp 大按钮
         Row(
             Modifier
@@ -1091,7 +1246,7 @@ private fun InputBar(
                 .then(floatShadow)
                 .background(SurfaceWhite, RoundedCornerShape(14.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
-                .padding(start = 12.dp, end = 6.dp, top = 9.dp, bottom = 6.dp),
+                .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f)) {
@@ -1112,7 +1267,7 @@ private fun InputBar(
                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = TextPrimary),
                             maxLines = 5,
                             cursorBrush = SolidColor(AccentBlue),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().then(longPressVoice)
                         )
                     }
                     Spacer(Modifier.height(2.dp))
@@ -1122,7 +1277,7 @@ private fun InputBar(
                             Modifier
                                 .background(SurfaceMuted, RoundedCornerShape(8.dp))
                                 .tap { onOpenModel() }
-                                .padding(start = 7.dp, end = 6.dp, top = 3.dp, bottom = 3.dp),
+                                .padding(start = 7.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -1147,7 +1302,7 @@ private fun InputBar(
                                     RoundedCornerShape(8.dp)
                                 )
                                 .tap { onOpenMode() }
-                                .padding(start = 7.dp, end = 5.dp, top = 3.dp, bottom = 3.dp),
+                                .padding(start = 7.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -1165,9 +1320,9 @@ private fun InputBar(
                             )
                         }
                         Spacer(Modifier.weight(1f))
-                        //配置 / 附件 / 全屏全在底部这一排，左边模型右边三个图标
+                        //配置 / 附件两个图标：触点 32dp 等距，图标统一 18dp（全屏入口挪到上面语音右侧）
                         Box(
-                            Modifier.size(30.dp).tap { onOpenConfig() },
+                            Modifier.size(32.dp).tap { onOpenConfig() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -1178,20 +1333,16 @@ private fun InputBar(
                             )
                         }
                         Box(
-                            Modifier.size(30.dp).tap { onOpenAttach() },
+                            Modifier.size(32.dp).tap { onOpenAttach() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Filled.Add,
                                 contentDescription = stringResource(R.string.cs_attach),
                                 tint = TextSecondary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Box(
-                            Modifier.size(30.dp).tap { onExpand() },
-                            contentAlignment = Alignment.Center
-                        ) { IcExpand(TextSecondary, side = 16.dp, stroke = 1.5.dp) }
                     }
                 }
             Spacer(Modifier.width(6.dp))
@@ -1201,13 +1352,36 @@ private fun InputBar(
     }
 } //输入区：图片 / 文件 / 语音 / 发送
 
+/** 粘贴超长文本：自动转存成文件并直接挂成待发送附件，输入框里不留任何文字 */
+private fun pasteGuard(old: String, v: String, onFile: (String) -> Unit): String {
+    val limit = Cfg.pasteLimit.coerceAtLeast(200)
+    if (!Cfg.pasteToFile) return v
+    if (v.length - old.length < limit) return v
+    //这次多出来的那一段 = 去掉公共前缀与公共后缀后夹在中间的部分（粘贴就是这种形状）
+    var p = 0
+    val max = minOf(old.length, v.length)
+    while (p < max && old[p] == v[p]) p++
+    var s = 0
+    while (s < max - p && old[old.length - 1 - s] == v[v.length - 1 - s]) s++
+    val ins = v.substring(p, v.length - s)
+    if (ins.length < limit) return v
+    val path = Pastes.save(ins) ?: return v
+    //挂成附件后它就长期保留：两分钟 TTL 会赶在用户点发送之前把文件删掉
+    Pastes.keep(path)
+    Pastes.purge()
+    onFile(path)
+    return v.substring(0, p) + v.substring(v.length - s)
+} //粘贴转存
+
 /** 全屏输入：长文 / 多行代码不用在小框里挤，顶部工具条 + 整屏编辑区 + 底部发送 */
 @Composable
 private fun FullInputDialog(
     value: String,
     onChange: (String) -> Unit,
     images: List<String>,
+    files: List<String>,
     onRemoveImage: (String) -> Unit,
+    onRemoveFile: (String) -> Unit,
     canSend: Boolean,
     onClose: () -> Unit,
     onSend: () -> Unit
@@ -1257,6 +1431,12 @@ private fun FullInputDialog(
                 //全屏输入同样铺缩略图，多了横向滑
                 Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
                     ImgThumbs(images = images, size = 64.dp, onRemove = onRemoveImage)
+                }
+            }
+            if (files.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+                    FileChips(files = files, onRemove = onRemoveFile)
                 }
             }
             Box(
@@ -1371,6 +1551,11 @@ private fun MessageItem(
                     if (m.images.isNotEmpty()) {
                         //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑；长图点开看全图
                         ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp, onOpen = { ImgView.open(it) })
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    if (m.files.isNotEmpty()) {
+                        //附件文件同样挂在气泡里，看得见自己带了什么
+                        FileChips(files = m.files)
                         Spacer(Modifier.height(6.dp))
                     }
                     Text(m.content, fontSize = 13.sp, color = TextPrimary)
@@ -1524,10 +1709,10 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    toolGlyph(LocalContext.current, m.toolName),
-                    fontSize = 11.sp,
-                    color = if (m.isError) DangerRed else AccentBlue
+                ToolIcon(
+                    m.toolName,
+                    if (m.isError) DangerRed else AccentBlue,
+                    side = 13.dp
                 )
             }
             Spacer(Modifier.width(7.dp))
@@ -1555,16 +1740,6 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
         }
     }
 } //工具结果：点开看详情弹窗
-
-/** 工具类型单字标记，省得再造一堆矢量图 */
-private fun toolGlyph(ctx: Context, name: String?): String = when (name) {
-    Tools.READ -> ctx.getString(R.string.cs_op_read)
-    Tools.WRITE -> ctx.getString(R.string.cs_op_write)
-    Tools.MAKE_DIR -> ctx.getString(R.string.cs_op_create)
-    Tools.DELETE -> ctx.getString(R.string.cs_op_delete)
-    Tools.WEB_SEARCH -> ctx.getString(R.string.cs_op_search)
-    else -> ctx.getString(R.string.cs_op_shell)
-}
 
 /** 从历史里的 assistant.tool_calls 反查本次调用的参数 */
 private fun argsOf(m: ChatMsg): String? {

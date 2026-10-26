@@ -49,6 +49,7 @@ import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DarkColors
 import b.ai.ui.theme.SurfaceWhite
+import b.ai.ui.theme.TintGradient
 
 /** 玻璃卡片：半透白底 + 光随指动的柔光 + 顶部高光边；开关关掉就走原来那张白卡 */
 @Composable
@@ -236,6 +237,21 @@ fun Modifier.pageBg(): Modifier = drawBehind {
                 y += step
             }
         }
+    }
+    //色系带的渐变（冰川 / 春野）：很淡地铺一层，只影响氛围，不抢前景文字
+    val tg = TintGradient
+    if (tg != null) {
+        drawRect(
+            Brush.linearGradient(
+                listOf(
+                    tg[0].copy(alpha = if (DarkColors) 0.10f else 0.22f),
+                    Color.Transparent,
+                    tg[1].copy(alpha = if (DarkColors) 0.10f else 0.22f)
+                ),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height)
+            )
+        )
     }
     //自定义背景图：按 cover 裁切铺满，上面压一层淡遮罩，保证前景文字还看得清
     val wp = Wallpaper.get(Cfg.bgImg, Cfg.bgBlur)

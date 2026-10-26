@@ -72,6 +72,7 @@ import b.ai.agent.Agent
 import b.ai.agent.Tools
 import android.app.Activity
 import b.ai.core.Avatar
+import b.ai.core.Audio
 import b.ai.core.Backup
 import b.ai.core.Cfg
 import b.ai.core.Lang
@@ -103,6 +104,8 @@ import b.ai.net.Update
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft
@@ -122,10 +125,22 @@ private val SettingsTabs = listOf(
     FloatTab(R.string.se_001) { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_002) { c -> Icon(Icons.Filled.Email, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_003) { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_005) { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
-) //设置分类：模型 / 对话 / 外观 / 统计 / 扩展 / 关于（权限已并入对话；索引按标签匹配，改顺序不用动索引）
+) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于（权限已并入对话，语音并入模型；索引按标签匹配）
+
+/** 色系主题名字，索引与 theme 的 ThemeTint 一一对应 */
+private val TINT_NAMES = listOf(
+    R.string.se_tint_0,
+    R.string.se_tint_1,
+    R.string.se_tint_2,
+    R.string.se_tint_3,
+    R.string.se_tint_4,
+    R.string.se_tint_5,
+    R.string.se_tint_6,
+    R.string.se_tint_7
+)
 
 /** 设置项索引：搜索只查这张表，命中后直接跳到对应 tab；tab 写标签而不是数字，避免换顺序时错位 */
 private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes: Int = 0, val hintRaw: String = "")
@@ -135,6 +150,9 @@ private val SettingIndex = listOf(
     SettingEntry(R.string.se_009, R.string.se_001, R.string.se_010),
     SettingEntry(R.string.se_011, R.string.se_001, R.string.se_012),
     SettingEntry(R.string.se_013, R.string.se_001, R.string.se_014),
+    SettingEntry(R.string.se_v_in_t, R.string.se_001, R.string.se_v_in_d),
+    SettingEntry(R.string.se_v_out_t, R.string.se_001, R.string.se_v_out_d),
+    SettingEntry(R.string.se_124, R.string.se_001, R.string.se_125),
     SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016),
     SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018),
     SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020),
@@ -196,6 +214,12 @@ fun SettingsScreen(
         stats = withContext(Dispatchers.IO) { Agent.stats() }
     }
 
+    //页面层：底栏的玻璃就采样这一层（底色先垫一发，缺内容的地方不至于透成黑）
+    val pageBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -209,7 +233,7 @@ fun SettingsScreen(
             .pageBg()
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -345,8 +369,7 @@ fun SettingsScreen(
                             0 -> ModelTab()
                             1 -> ChatTab(stats)
                             2 -> UiTab(onOpenPet)
-                            3 -> StatTab()
-                            4 -> ExtTab(
+                            3 -> ExtTab(
                                 onEdit = { draft = it },
                                 onEditPersona = { personaDraft = it },
                                 onEditMcp = { mcpDraft = it },
@@ -354,6 +377,7 @@ fun SettingsScreen(
                                 onNewTrigger = { triggerDraft = true },
                                 onEditPack = { packDraft = it }
                             )
+                            4 -> StatTab()
                             5 -> AboutTab(onOpenFeedback)
                             else -> UiTab(onOpenPet)
                         }
@@ -365,7 +389,8 @@ fun SettingsScreen(
             tabs = SettingsTabs,
             selected = tab,
             onSelect = { tab = it },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp)
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+            backdrop = pageBackdrop
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
@@ -522,7 +547,114 @@ private fun ModelTab() {
             color = TextSecondary
         )
     }
-} //模型分类
+
+    //语音：识别（音频转文字）与合成（文字转音频）各自可选系统能力或自填的模型接口，跟模型配置同一页
+    val ctx = LocalContext.current
+    val sysLabel = stringResource(R.string.se_v_mode_sys)
+    val apiLabel = stringResource(R.string.se_v_mode_api)
+    val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_v_in_t), stringResource(R.string.se_v_in_d))
+    CardBox {
+        SelectField(
+            stringResource(R.string.se_v_mode),
+            modeLabel(Cfg.asrMode),
+            listOf("sys", "api"),
+            optionLabel = { modeLabel(it) },
+            isSelected = { Cfg.asrMode == it },
+            onSelect = { Cfg.asrMode = it }
+        )
+        if (Cfg.asrMode == "api") {
+            Field(
+                label = stringResource(R.string.se_v_base),
+                value = Cfg.asrBase,
+                onValueChange = { Cfg.asrBase = it },
+                placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+            )
+            Field(
+                label = stringResource(R.string.se_v_key),
+                value = Cfg.asrKey,
+                onValueChange = { Cfg.asrKey = it },
+                placeholder = stringResource(R.string.se_v_key_ph),
+                secret = true
+            )
+            Field(
+                label = stringResource(R.string.se_v_model),
+                value = Cfg.asrModel,
+                onValueChange = { Cfg.asrModel = it },
+                placeholder = "whisper-1"
+            )
+        }
+        Field(
+            label = stringResource(R.string.se_v_lang),
+            value = Cfg.asrLang,
+            onValueChange = { Cfg.asrLang = it },
+            placeholder = "zh-CN"
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_v_out_t), stringResource(R.string.se_v_out_d))
+    CardBox {
+        CapSwitch(
+            stringResource(R.string.se_124),
+            if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
+            Cfg.speakReplies
+        ) { on ->
+            Cfg.speakReplies = on
+            //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
+            if (on) Speak.say(ctx.getString(R.string.se_127), force = true) else Speak.stop()
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.se_128), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        SelectField(
+            stringResource(R.string.se_v_mode),
+            modeLabel(Cfg.ttsMode),
+            listOf("sys", "api"),
+            optionLabel = { modeLabel(it) },
+            isSelected = { Cfg.ttsMode == it },
+            onSelect = { Cfg.ttsMode = it }
+        )
+        if (Cfg.ttsMode == "api") {
+            Field(
+                label = stringResource(R.string.se_v_base),
+                value = Cfg.ttsBase,
+                onValueChange = { Cfg.ttsBase = it },
+                placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+            )
+            Field(
+                label = stringResource(R.string.se_v_key),
+                value = Cfg.ttsKey,
+                onValueChange = { Cfg.ttsKey = it },
+                placeholder = stringResource(R.string.se_v_key_ph),
+                secret = true
+            )
+            Field(
+                label = stringResource(R.string.se_v_model),
+                value = Cfg.ttsModel,
+                onValueChange = { Cfg.ttsModel = it },
+                placeholder = "tts-1"
+            )
+            Field(
+                label = stringResource(R.string.se_v_voice),
+                value = Cfg.ttsVoice,
+                onValueChange = { Cfg.ttsVoice = it },
+                placeholder = "alloy"
+            )
+            Spacer(Modifier.height(10.dp))
+            GhostButton(stringResource(R.string.se_v_play), modifier = Modifier.height(38.dp)) {
+                Speak.say(ctx.getString(R.string.se_127), force = true)
+            }
+            if (Audio.error.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(Audio.error, fontSize = 10.sp, color = DangerRed)
+            }
+        }
+    }
+} //模型分类（含语音识别与语音合成）
 
 @Composable
 private fun ChatTab(stats: Pair<Int, Int>) {
@@ -700,27 +832,6 @@ private fun ChatTab(stats: Pair<Int, Int>) {
             if (Cfg.showMeta) stringResource(R.string.se_120) else stringResource(R.string.se_121),
             Cfg.showMeta
         ) { Cfg.showMeta = it }
-    }
-
-    Spacer(Modifier.height(14.dp))
-    val ctx2 = LocalContext.current
-    SectionTitle(stringResource(R.string.se_122), stringResource(R.string.se_123))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_124),
-            if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
-            Cfg.speakReplies
-        ) { on ->
-            Cfg.speakReplies = on
-            //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
-            if (on) Speak.say(ctx2.getString(R.string.se_127), force = true) else Speak.stop()
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            stringResource(R.string.se_128),
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
     }
 
     Spacer(Modifier.height(14.dp))
@@ -1099,48 +1210,6 @@ private fun UiTab(onOpenPet: () -> Unit) {
         )
     }
     Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
-    CardBox {
-        ChoiceRow(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
-            Cfg.avatarOn = !Cfg.avatarOn
-        }
-        ChoiceRow(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
-            Cfg.bubbleCapsule = !Cfg.bubbleCapsule
-        }
-        ChoiceRow(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
-            Cfg.waifuMode = !Cfg.waifuMode
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-    //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
-    PetEntryRow(onOpenPet)
-    Spacer(Modifier.height(10.dp))
-    AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
-        Avatar.forget(Cfg.avatarUser)
-        Cfg.avatarUser = p
-    }
-    Spacer(Modifier.height(14.dp))
-    AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
-        Avatar.forget(Cfg.avatarAi)
-        Cfg.avatarAi = p
-        //清空就等于放弃自定义，回落到跟角色卡
-        Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
-    }
-    Spacer(Modifier.height(16.dp))
-    CardBox {
-        ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
-            Cfg.avatarAiMode = "persona"
-        }
-        ChoiceRow(
-            stringResource(R.string.se_183),
-            if (Cfg.avatarAi.isEmpty()) stringResource(R.string.se_184) else stringResource(R.string.se_186),
-            Cfg.avatarAiMode == "custom"
-        ) {
-            if (Cfg.avatarAi.isNotBlank()) Cfg.avatarAiMode = "custom"
-        }
-    }
-
-    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_030), stringResource(R.string.se_185))
     CardBox {
         SelectField(
@@ -1174,6 +1243,19 @@ private fun UiTab(onOpenPet: () -> Unit) {
     }
 
     Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_tint_t), stringResource(R.string.se_tint_d))
+    CardBox {
+        SelectField(
+            stringResource(R.string.se_tint_t),
+            stringResource(TINT_NAMES[Cfg.themeTint.coerceIn(0, TINT_NAMES.lastIndex)]),
+            TINT_NAMES.indices.toList(),
+            optionLabel = { stringResource(TINT_NAMES[it]) },
+            isSelected = { Cfg.themeTint == it },
+            onSelect = { Cfg.themeTint = it }
+        )
+    }
+
+    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_032), stringResource(R.string.se_193))
     CardBox {
         SelectField(
@@ -1187,38 +1269,6 @@ private fun UiTab(onOpenPet: () -> Unit) {
         )
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.se_font_cur, (Cfg.fontScale * 100).toInt()), fontSize = 11.sp, color = TextSecondary)
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_196),
-            stringResource(R.string.se_197),
-            Cfg.floatInput
-        ) { Cfg.floatInput = it }
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_glass_card),
-            stringResource(R.string.se_glass_card_d),
-            Cfg.glassCard
-        ) { Cfg.glassCard = it }
-        Spacer(Modifier.height(10.dp))
-        CapSwitch(
-            stringResource(R.string.se_tactile),
-            stringResource(R.string.se_tactile_d),
-            Cfg.tactileBtn
-        ) { Cfg.tactileBtn = it }
-        Spacer(Modifier.height(10.dp))
-        CapSwitch(
-            stringResource(R.string.se_glass_bar),
-            stringResource(R.string.se_glass_bar_d),
-            Cfg.glassBar
-        ) { Cfg.glassBar = it }
     }
 
     Spacer(Modifier.height(14.dp))
@@ -1245,6 +1295,129 @@ private fun UiTab(onOpenPet: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         //背景图：从相册选一张铺满页面，模糊度单独一条滑杆
         BgImagePick()
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
+    CardBox {
+        CapSwitch(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
+            Cfg.avatarOn = it
+        }
+        Spacer(Modifier.height(8.dp))
+        CapSwitch(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
+            Cfg.bubbleCapsule = it
+        }
+        Spacer(Modifier.height(8.dp))
+        CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
+            Cfg.waifuMode = it
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
+        Avatar.forget(Cfg.avatarUser)
+        Cfg.avatarUser = p
+    }
+    Spacer(Modifier.height(14.dp))
+    AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
+        Avatar.forget(Cfg.avatarAi)
+        Cfg.avatarAi = p
+        //清空就等于放弃自定义，回落到跟角色卡
+        Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
+    }
+    Spacer(Modifier.height(16.dp))
+    CardBox {
+        ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
+            Cfg.avatarAiMode = "persona"
+        }
+        ChoiceRow(
+            stringResource(R.string.se_183),
+            if (Cfg.avatarAi.isEmpty()) stringResource(R.string.se_184) else stringResource(R.string.se_186),
+            Cfg.avatarAiMode == "custom"
+        ) {
+            if (Cfg.avatarAi.isNotBlank()) Cfg.avatarAiMode = "custom"
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
+    PetEntryRow(onOpenPet)
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
+    CardBox {
+        CapSwitch(
+            stringResource(R.string.se_196),
+            stringResource(R.string.se_197),
+            Cfg.floatInput
+        ) { Cfg.floatInput = it }
+        Spacer(Modifier.height(10.dp))
+        //新逻辑：超 700 字才出现全屏入口；关掉就让它一直挂在语音右边
+        CapSwitch(
+            stringResource(R.string.se_fullin_t),
+            stringResource(R.string.se_fullin_d),
+            Cfg.fullInputNew
+        ) { Cfg.fullInputNew = it }
+        Spacer(Modifier.height(10.dp))
+        //粘贴超长文本自动转文件：默认开，阈值滑杆 500 起、500 一档
+        CapSwitch(
+            stringResource(R.string.se_paste_t),
+            stringResource(R.string.se_paste_d),
+            Cfg.pasteToFile
+        ) { Cfg.pasteToFile = it }
+        if (Cfg.pasteToFile) {
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.se_paste_limit), fontSize = 14.sp, color = TextPrimary)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.se_paste_limit_v, Cfg.pasteLimit),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+            androidx.compose.material3.Slider(
+                value = Cfg.pasteLimit.toFloat(),
+                onValueChange = { Cfg.pasteLimit = (it / 500f).toInt() * 500 },
+                valueRange = 500f..20000f,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(stringResource(R.string.se_paste_limit_d), fontSize = 10.sp, color = TextSecondary)
+        }
+    }
+
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
+    CardBox {
+        CapSwitch(
+            stringResource(R.string.se_glass_card),
+            stringResource(R.string.se_glass_card_d),
+            Cfg.glassCard
+        ) { Cfg.glassCard = it }
+        Spacer(Modifier.height(10.dp))
+        CapSwitch(
+            stringResource(R.string.se_tactile),
+            stringResource(R.string.se_tactile_d),
+            Cfg.tactileBtn
+        ) { Cfg.tactileBtn = it }
+        Spacer(Modifier.height(10.dp))
+        CapSwitch(
+            stringResource(R.string.se_glass_bar),
+            stringResource(R.string.se_glass_bar_d),
+            Cfg.glassBar
+        ) { Cfg.glassBar = it }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.se_glass_blur), fontSize = 14.sp, color = TextPrimary)
+            Spacer(Modifier.weight(1f))
+            Text(stringResource(R.string.se_glass_blur_v, Cfg.glassBlur), fontSize = 11.sp, color = TextSecondary)
+        }
+        //模糊强度 0-20dp：0 只留折射，越大越糊；底栏与底部面板共用这个值
+        androidx.compose.material3.Slider(
+            value = Cfg.glassBlur.toFloat(),
+            onValueChange = { Cfg.glassBlur = it.toInt() },
+            valueRange = 0f..20f,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
     }
 
     Spacer(Modifier.height(14.dp))

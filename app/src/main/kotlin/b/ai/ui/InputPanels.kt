@@ -25,6 +25,10 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.SolidColor
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,6 +68,7 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
+import b.ai.net.LlmClient
 import b.ai.core.Effort
 import b.ai.core.Profiles
 import b.ai.core.Providers
@@ -78,7 +83,15 @@ import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import b.ai.ui.theme.DangerRed
 import b.ai.R
+import b.ai.ui.theme.DarkColors
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.Shadow
 import kotlinx.coroutines.isActive
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.layout.Layout
@@ -91,18 +104,41 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Animatable
 import kotlin.math.roundToInt
 
-/** 输入区上方的内联面板外壳：白卡 + 阴影，高度封顶可滚动，不再是全屏弹窗 */
+/** 输入区上方的内联面板外壳：白卡 + 阴影，高度封顶可滚动；玻璃开关打开时改成真 backdrop 模糊 */
 @Composable
-private fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp)
-            .padding(bottom = 6.dp)
-            .shadow(10.dp, RoundedCornerShape(16.dp))
-            .background(SurfaceWhite, RoundedCornerShape(16.dp))
-            .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-    ) {
+internal fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    val bd = LocalPageBackdrop.current
+    val glass = Cfg.glassCard && bd != null
+    val outer = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 12.dp)
+        .padding(bottom = 6.dp)
+        .then(
+            if (glass) {
+                Modifier.drawBackdrop(
+                    backdrop = bd!!,
+                    shape = { shape },
+                    effects = {
+                        padding = maxOf(padding, 40.dp.toPx())
+                        vibrancy()
+                        //模糊强度可在设置里调，0 就是只折射不糊
+                        if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                        lens(24.dp.toPx(), 24.dp.toPx())
+                    },
+                    highlight = { Highlight.Default.copy(alpha = 0.75f) },
+                    shadow = {
+                        Shadow.Default.copy(radius = 10.dp, alpha = if (DarkColors) 0.20f else 0.10f)
+                    },
+                    onDrawSurface = {
+                        drawRect(SurfaceWhite.copy(alpha = if (DarkColors) 0.12f else 0.50f))
+                    }
+                )
+            } else {
+                Modifier.shadow(10.dp, shape).background(SurfaceWhite, shape).border(1.dp, BorderGray, shape)
+            }
+        )
+    Column(outer) {
         Column(
             Modifier
                 .heightIn(max = 210.dp)
@@ -114,7 +150,7 @@ private fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
 } //内联面板外壳
 
 @Composable
-private fun SheetHead(title: String, onClose: () -> Unit) {
+internal fun SheetHead(title: String, onClose: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
         Spacer(Modifier.weight(1f))
@@ -263,14 +299,24 @@ internal fun CfgPanel(onClose: () -> Unit) {
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    p.label,
-                    fontSize = 12.sp,
-                    color = if (sel) AccentBlue else TextPrimary,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                if (sel) Text("✓", fontSize = 12.sp, color = AccentBlue)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        p.label,
+                        fontSize = 12.sp,
+                        color = if (sel) AccentBlue else TextPrimary,
+                        maxLines = 1
+                    )
+                    //带上这条配置当前用的模型，点进去前就知道是什么
+                    Text(
+                        p.model.ifBlank { stringResource(R.string.ip_no_model) },
+                        fontSize = 10.sp,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                }
+                if (sel) {
+                    Text("✓", fontSize = 12.sp, color = AccentBlue)
+                }
             }
         }
         Spacer(Modifier.height(6.dp))
@@ -349,71 +395,142 @@ internal fun CfgPanel(onClose: () -> Unit) {
     }
 } //本轮配置面板
 
-/** 模型面板：输入区左下角 chip 打开，选本轮模型，或直接进设置页改配置 */
+/** 模型面板：输入区左下角 chip 打开；先列配置，点进去只列设置里勾过的模型 */
 @Composable
 internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
+    //非空 = 已经进了某条配置的模型列表，值是配置 id
+    var sub by remember { mutableStateOf<String?>(null) }
+    val one = sub?.let { id -> Profiles.list.firstOrNull { it.id == id } }
+    //返回键在二级卡片里先退回配置列表
+    BackHandler(enabled = sub != null) { sub = null }
     SheetShell {
-        SheetHead(stringResource(R.string.ip_model), onClose)
-        if (Profiles.list.isEmpty()) {
-            Text(stringResource(R.string.ip_no_profile), fontSize = 10.sp, color = TextSecondary)
-            Spacer(Modifier.height(6.dp))
-        }
-        Profiles.list.forEach { p ->
-            val sel = p.id == Cfg.profileId
+        if (one == null) {
+            SheetHead(stringResource(R.string.ip_model), onClose)
+            if (Profiles.list.isEmpty()) {
+                Text(stringResource(R.string.ip_no_profile), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(6.dp))
+            }
+            Profiles.list.forEach { p ->
+                val sel = p.id == Cfg.profileId
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                        .tap {
+                            //切走前先把当前表单值写回旧配置，改了一半的输入不丢
+                            Profiles.capture()
+                            Profiles.select(p.id)
+                            //有勾过的模型就进二级卡片挑，没有就收起来等去设置里选
+                            if (Cfg.profileModels.isEmpty()) onClose() else sub = p.id
+                        }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    //厂商图标：按 base_url 域名自动抓官网 favicon，抓不到退首字母徽章
+                    BrandIcon(
+                        id = p.providerId,
+                        baseUrl = p.baseUrl,
+                        name = Providers.byId(p.providerId).name
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            p.label,
+                            fontSize = 12.sp,
+                            color = if (sel) AccentBlue else TextPrimary,
+                            maxLines = 1
+                        )
+                        Text(
+                            p.model.ifBlank { stringResource(R.string.ip_no_model) },
+                            fontSize = 10.sp,
+                            color = TextSecondary,
+                            maxLines = 1
+                        )
+                    }
+                    Text("›", fontSize = 12.sp, color = AccentBlue)
+                }
+            }
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 4.dp)
-                    .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
-                    .tap {
-                        //切走前先把当前表单值写回旧配置，改了一半的输入不丢
-                        Profiles.capture()
-                        Profiles.select(p.id)
-                        onClose()
-                    }
+                    .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                    .tap { onOpenSettings() }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                //厂商图标：按 base_url 域名自动抓官网 favicon，抓不到退首字母徽章
-                BrandIcon(
-                    id = p.providerId,
-                    baseUrl = p.baseUrl,
-                    name = Providers.byId(p.providerId).name
+                Text(stringResource(R.string.ip_profile), fontSize = 12.sp, color = AccentBlue)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.ip_profile_sub), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.weight(1f))
+                Text("›", fontSize = 14.sp, color = AccentBlue)
+            }
+        } else {
+            //二级卡片：只列这条配置在设置里勾过的模型，不联网也没有搜索
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "‹",
+                    fontSize = 20.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.tap { sub = null }.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        p.label,
-                        fontSize = 12.sp,
-                        color = if (sel) AccentBlue else TextPrimary,
-                        maxLines = 1
-                    )
-                    Text(
-                        p.model.ifBlank { stringResource(R.string.ip_no_model) },
-                        fontSize = 10.sp,
-                        color = TextSecondary,
-                        maxLines = 1
-                    )
+                Text(
+                    one.label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    maxLines = 1
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            if (one.models.isEmpty()) {
+                Text(stringResource(R.string.ms_multi_empty), fontSize = 11.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                        .tap { onOpenSettings() }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.ms_multi_go), fontSize = 12.sp, color = AccentBlue)
+                    Spacer(Modifier.weight(1f))
+                    Text("›", fontSize = 14.sp, color = AccentBlue)
                 }
-                if (sel) Text("✓", fontSize = 12.sp, color = AccentBlue)
+            } else {
+                one.models.forEach { m ->
+                    val sel = m == Cfg.model && one.id == Cfg.profileId
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 4.dp)
+                            .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                            .tap {
+                                Profiles.select(one.id)
+                                Cfg.model = m
+                                Profiles.capture()
+                                onClose()
+                            }
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            m,
+                            fontSize = 12.sp,
+                            color = if (sel) AccentBlue else TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (sel) Text("✓", fontSize = 12.sp, color = AccentBlue)
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(stringResource(R.string.ms_multi_hint), fontSize = 10.sp, color = TextSecondary)
             }
         }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(AccentBlueSoft, RoundedCornerShape(10.dp))
-                .tap { onOpenSettings() }
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(stringResource(R.string.ip_profile), fontSize = 12.sp, color = AccentBlue)
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.ip_profile_sub), fontSize = 10.sp, color = TextSecondary)
-            Spacer(Modifier.weight(1f))
-            Text("›", fontSize = 14.sp, color = AccentBlue)
-        }
     }
-} //模型面板：本轮模型 + 配置入口
+} //模型面板：配置 → 已勾选模型
 
 //档位文案：低 / 中 / 高
 private val SoftLevels = intArrayOf(R.string.ip_lv_low, R.string.ip_lv_mid, R.string.ip_lv_high)
@@ -623,4 +740,118 @@ private fun DrawScope.drawCharge(ratio: Float, burning: Boolean, deep: Color, co
         size = Size(coreRight - coreLeft, cellH),
         cornerRadius = pill
     )
-} //画充能条
+}
+
+/** 模型吸附卡片：配置的模型列表直接从底部弹上来，点一条就切本轮模型 */
+@Composable
+private fun ModelPickSheet(
+    label: String,
+    loading: Boolean,
+    models: List<String>,
+    current: String,
+    err: String?,
+    onPick: (String) -> Unit,
+    onRetry: () -> Unit,
+    onClose: () -> Unit
+) {
+    var q by remember { mutableStateOf("") }
+    //中转站动辄几百条模型，给个简单的本地搜索
+    val kw = q.trim()
+    val shown = if (kw.isEmpty()) models else models.filter { it.contains(kw, ignoreCase = true) }
+    BottomSheetCard(onDismiss = onClose) {
+        //顶部把手
+        Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.width(36.dp).height(4.dp).background(BorderGray, CircleShape))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    label.ifBlank { stringResource(R.string.ip_model) },
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    maxLines = 1
+                )
+                Text(
+                    if (loading) stringResource(R.string.ms_fetching) else stringResource(R.string.ms_pulled, models.size),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Text(
+                stringResource(R.string.ms_fetch),
+                fontSize = 11.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { onRetry() }.padding(horizontal = 6.dp, vertical = 4.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        //搜索只过滤本地已拉到的列表，不发请求
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("⌕", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.weight(1f)) {
+                if (q.isEmpty()) {
+                    Text(stringResource(R.string.ms_search), fontSize = 12.sp, color = TextSecondary)
+                }
+                BasicTextField(
+                    value = q,
+                    onValueChange = { q = it },
+                    textStyle = TextStyle(fontSize = 12.sp, color = TextPrimary),
+                    singleLine = true,
+                    cursorBrush = SolidColor(AccentBlue),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (q.isNotEmpty()) {
+                Text(
+                    "✕",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.tap { q = "" }.padding(start = 6.dp)
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        if (loading) {
+            Box(
+                Modifier.fillMaxWidth().padding(vertical = 44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(stringResource(R.string.ms_fetching), fontSize = 13.sp, color = TextSecondary)
+            }
+        } else {
+            if (err != null) {
+                Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
+            }
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                shown.forEach { m ->
+                    val sel = m == current
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (sel) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+                            .tap { onPick(m) }
+                            .padding(horizontal = 12.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            m,
+                            fontSize = 15.sp,
+                            color = if (sel) AccentBlue else TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (sel) Text("✓", fontSize = 13.sp, color = AccentBlue)
+                    }
+                }
+            }
+        }
+    }
+} //模型吸附卡片

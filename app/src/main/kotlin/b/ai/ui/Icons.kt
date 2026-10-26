@@ -2,6 +2,11 @@ package b.ai.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -10,6 +15,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import b.ai.agent.Tools
 
 /** 自绘加号，不引图标库 */
 @Composable
@@ -530,7 +536,6 @@ fun IcCopy(color: Color, side: Dp = 13.dp, stroke: Dp = 1.5.dp) {
         )
     }
 } //矢量复制
-
 /** 自绘对勾，用在自绘复选框里 */
 @Composable
 fun IcTick(color: Color, side: Dp = 10.dp, stroke: Dp = 1.7.dp) {
@@ -539,4 +544,17 @@ fun IcTick(color: Color, side: Dp = 10.dp, stroke: Dp = 1.7.dp) {
         drawLine(color, Offset(size.width * 0.16f, size.height * 0.54f), Offset(size.width * 0.42f, size.height * 0.8f), w, StrokeCap.Round)
         drawLine(color, Offset(size.width * 0.42f, size.height * 0.8f), Offset(size.width * 0.86f, size.height * 0.22f), w, StrokeCap.Round)
     }
-} //矢量对勾
+} //自绘对勾
+
+/** 工具调用图标：读 / 写 / 建目录 / 删 / 搜索 / 执行都取图标库里现成的，不再画单字标 */
+@Composable
+fun ToolIcon(name: String?, color: Color, side: Dp = 13.dp) {
+    when (name) {
+        Tools.READ -> IcFile(color, side = side)
+        Tools.WRITE -> Icon(Icons.Filled.Create, null, tint = color, modifier = Modifier.size(side))
+        Tools.MAKE_DIR -> Icon(Icons.Filled.Add, null, tint = color, modifier = Modifier.size(side))
+        Tools.DELETE -> Icon(Icons.Filled.Delete, null, tint = color, modifier = Modifier.size(side))
+        Tools.WEB_SEARCH -> IcSearch(color, side = side)
+        else -> IcCode(color, side = side)
+    }
+} //工具调用图标

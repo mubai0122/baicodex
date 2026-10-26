@@ -31,6 +31,8 @@ fun BaiTheme(content: @Composable () -> Unit) {
         else -> isSystemInDarkTheme()
     }
     DarkColors = dark
+    //色系同样要在取色前写进去（BgGray / AccentBlue 等 getter 直接读它）
+    ThemeTint = Cfg.themeTint
     val scheme = if (dark) {
         darkColorScheme(
             primary = AccentBlue,

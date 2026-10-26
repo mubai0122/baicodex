@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import b.ai.ui.theme.DarkColors
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -44,10 +45,11 @@ fun BackdropHost(
 ) {
     val backdrop = rememberLayerBackdrop()
     val slot = remember { CardSlot() }
-    val radius by animateDpAsState(
-        targetValue = if (active) 24.dp else 0.dp,
-        animationSpec = tween(220),
-        label = "backdropBlur"
+    //模糊半径固定、只用 alpha 淡入：半径每帧变会让 RenderEffect 每帧重建，全屏尺寸下直接卡住
+    val fade by animateFloatAsState(
+        targetValue = if (active) 1f else 0f,
+        animationSpec = tween(180),
+        label = "backdropFade"
     )
     val scrimAlpha by animateFloatAsState(
         targetValue = if (active && scrim) 1f else 0f,
@@ -58,14 +60,15 @@ fun BackdropHost(
     Box(Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) { content() }
 
-        if (radius > 0.dp) {
+        if (fade > 0.01f) {
             Box(
                 Modifier
                     .fillMaxSize()
+                    .graphicsLayer { alpha = fade }
                     .drawBackdrop(
                         backdrop = backdrop,
                         shape = { RectangleShape },
-                        effects = { blur(radius.toPx()) }
+                        effects = { blur(18.dp.toPx()) }
                     )
             )
         }

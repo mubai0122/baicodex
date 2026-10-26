@@ -4,9 +4,41 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 
 /** 当前是否深色：由 BaiTheme 按「跟随系统 / 浅色 / 深色」写进来，下面所有颜色 getter 跟着变 */
 internal var DarkColors by mutableStateOf(false)
+
+/** 当前色系：同样由 BaiTheme 写进来（0 默认蓝，1 冰川，2 春野，3 紫罗兰，4 珊瑚，5 石墨，6 玫红，7 青柠） */
+internal var ThemeTint by mutableStateOf(0)
+
+/** 一套色系：浅色强调 / 深色强调 / 渐变起止（0 表示这套是纯色，不铺渐变） */
+private data class Tint(
+    val light: Long,
+    val dark: Long,
+    val g1: Long = 0L,
+    val g2: Long = 0L
+)
+
+private val Tints = listOf(
+    Tint(0xFF2F6BFF, 0xFF7AA2FF),
+    Tint(0xFF3E9AA8, 0xFF83D6E2, 0xFF8FE0DE, 0xFFF6C6DA),
+    Tint(0xFF5AA34C, 0xFF9BD98A, 0xFFA8E5A0, 0xFFF0DE86),
+    Tint(0xFF7A5AF8, 0xFFB4A2FF),
+    Tint(0xFFE07A3C, 0xFFFFB27A),
+    Tint(0xFF5B6672, 0xFF9EAAB8),
+    Tint(0xFFD9558C, 0xFFFF9EC0),
+    Tint(0xFF2FA37B, 0xFF7FDDBB)
+)
+
+private val tint: Tint get() = Tints[ThemeTint.coerceIn(0, Tints.lastIndex)]
+
+/** 当前色系的渐变两端；纯色色系返回 null */
+val TintGradient: List<Color>?
+    get() {
+        val t = tint
+        return if (t.g1 == 0L) null else listOf(Color(t.g1), Color(t.g2))
+}
 
 //浅色
 private val LBg = Color(0xFFF4F5F7)
@@ -38,14 +70,16 @@ private val DWarn = Color(0xFFE3AE55)
 private val DWarnSoft = Color(0xFF352B12)
 private val DOk = Color(0xFF6FC894)
 
-val BgGray: Color get() = if (DarkColors) DBg else LBg
+val BgGray: Color
+    get() = if (DarkColors) lerp(DBg, Color(tint.dark), 0.05f) else lerp(LBg, Color(tint.light), 0.04f)
 val SurfaceWhite: Color get() = if (DarkColors) DSurface else LSurface
 val SurfaceMuted: Color get() = if (DarkColors) DSurfaceMuted else LSurfaceMuted
 val BorderGray: Color get() = if (DarkColors) DBorder else LBorder
 val TextPrimary: Color get() = if (DarkColors) DText else LText
 val TextSecondary: Color get() = if (DarkColors) DTextSub else LTextSub
-val AccentBlue: Color get() = if (DarkColors) DAccent else LAccent
-val AccentBlueSoft: Color get() = if (DarkColors) DAccentSoft else LAccentSoft
+val AccentBlue: Color get() = if (DarkColors) Color(tint.dark) else Color(tint.light)
+val AccentBlueSoft: Color
+    get() = if (DarkColors) lerp(DBg, Color(tint.dark), 0.22f) else lerp(LSurface, Color(tint.light), 0.12f)
 val DangerRed: Color get() = if (DarkColors) DDanger else LDanger
 val DangerRedSoft: Color get() = if (DarkColors) DDangerSoft else LDangerSoft
 val WarnAmber: Color get() = if (DarkColors) DWarn else LWarn

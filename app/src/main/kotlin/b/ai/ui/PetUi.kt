@@ -93,6 +93,38 @@ fun PetIntroDialog(onClose: () -> Unit, onOpen: () -> Unit = {}) {
     }
 } //桌宠引导
 
+/** 1.7.0 的引导：只讲全新的模型配置，看过写 petModelTip 永不再弹 */
+@Composable
+fun ModelIntroDialog(onClose: () -> Unit) {
+    ScrimCard(onDismiss = onClose) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(
+                painterResource(R.drawable.whale),
+                contentDescription = null,
+                modifier = Modifier.size(76.dp)
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                stringResource(R.string.model_intro_t),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.model_intro_body),
+                fontSize = 12.sp,
+                color = TextSecondary,
+                lineHeight = 18.sp
+            )
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                PrimaryButton(stringResource(R.string.model_intro_ok)) { onClose() }
+            }
+        }
+    }
+} //新模型配置引导
+
 /** 桌宠配置版本号：Cfg 是普通字段不是 Compose State，改配置后靠它触发重组 */
 val petVer = mutableStateOf(0)
 

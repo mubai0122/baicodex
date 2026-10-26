@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 /** 本地库：会话 + 记录 + 独立用量账 */
-class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 12) {
+class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 13) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS session(" +
@@ -21,7 +21,7 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 12
                 "tool_calls TEXT," +
                 "tool_call_id TEXT,tool_name TEXT,error INTEGER NOT NULL DEFAULT 0," +
                 "images TEXT,meta TEXT,parent_id INTEGER," +
-                "starred INTEGER NOT NULL DEFAULT 0," +
+                "starred INTEGER NOT NULL DEFAULT 0,files TEXT," +
                 "created_at INTEGER NOT NULL)"
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_session ON message(session_id,_id)")
@@ -145,6 +145,10 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 12
                         "session_id TEXT,created_at INTEGER NOT NULL)"
                 )
             }
+        }
+        //v12→v13：消息补附件文件列，存 JSON 数组形式的本地路径
+        if (oldVersion < 13) {
+            runCatching { db.execSQL("ALTER TABLE message ADD COLUMN files TEXT") }
         }
     } //版本迁移
 
