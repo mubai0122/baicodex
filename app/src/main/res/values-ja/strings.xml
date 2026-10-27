@@ -1376,4 +1376,15 @@
     <string name="se_v_voice">音色</string>
     <string name="se_v_tip">API は OpenAI 互換プロトコル：認識 POST /audio/transcriptions、合成 POST /audio/speech</string>
     <string name="se_v_play">試聴</string>
+    <string name="fb_att">添付ファイル</string>
+    <string name="fb_att_img">画像を追加</string>
+    <string name="fb_att_log">ログを追加</string>
+    <string name="fb_att_tip">画像は1枚5MBまで・最大3枚、ログは1件1MBまで（txt / log / json / md）</string>
+    <string name="fb_att_img_big">この画像は5MBを超えています。小さい画像を選んでください</string>
+    <string name="fb_att_log_big">ログが1MBを超えています。削ってから送ってください</string>
+    <string name="fb_att_log_bad">ログは txt / log / json / md のみ対応です</string>
+    <string name="fb_att_img_max">画像は最大3枚です</string>
+    <string name="fb_att_read_fail">ファイルを読み込めませんでした。別のファイルを試してください</string>
+    <string name="fb_att_open">開く</string>
+    <string name="fb_att_open_fail">このファイルを開けるアプリがありません</string>
 </resources>

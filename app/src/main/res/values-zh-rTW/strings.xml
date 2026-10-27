@@ -1377,4 +1377,15 @@
     <string name="se_v_voice">音色</string>
     <string name="se_v_tip">介面依 OpenAI 相容協定：辨識 POST /audio/transcriptions，合成 POST /audio/speech</string>
     <string name="se_v_play">試聽</string>
+    <string name="fb_att">附件</string>
+    <string name="fb_att_img">加圖片</string>
+    <string name="fb_att_log">加日誌</string>
+    <string name="fb_att_tip">圖片單張 5MB 內、最多 3 張；日誌 1 份、1MB 內，支援 txt / log / json / md</string>
+    <string name="fb_att_img_big">這張圖片超過 5MB，換一張小一點的</string>
+    <string name="fb_att_log_big">日誌超過 1MB，先裁剪再傳</string>
+    <string name="fb_att_log_bad">日誌只支援 txt / log / json / md</string>
+    <string name="fb_att_img_max">圖片最多 3 張</string>
+    <string name="fb_att_read_fail">讀取檔案失敗，換一個試試</string>
+    <string name="fb_att_open">開啟</string>
+    <string name="fb_att_open_fail">沒有能開啟這個檔案的應用程式</string>
 </resources>

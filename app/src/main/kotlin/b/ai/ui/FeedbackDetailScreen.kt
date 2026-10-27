@@ -1,5 +1,9 @@
 package b.ai.ui
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +31,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
@@ -38,6 +44,7 @@ import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.OkGreen
+import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -58,6 +65,7 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var tip by remember { mutableStateOf("") }
     var ok by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     BackHandler(enabled = !busy) { onBack() }
     //每次 reload 拉一次详情；留言或评价成功后 +1 刷新状态
@@ -133,6 +141,35 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(it.content, fontSize = 13.sp, color = TextPrimary, lineHeight = 20.sp)
+                //附件：点一下交给外部应用打开，图片直接看，日志用文本查看器
+                if (it.files.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    it.files.forEach { f ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                                .tap { openFile(ctx, f.url) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (f.type == Feedback.TYPE_IMAGE) "🖼" else "📄", fontSize = 14.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    f.name,
+                                    fontSize = 11.sp,
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(fmtSize(f.size), fontSize = 10.sp, color = TextSecondary)
+                            }
+                            Text(stringResource(R.string.fb_att_open), fontSize = 10.sp, color = AccentBlue)
+                        }
+                    }
+                }
             }
             //留言线程：我发在右边，开发者发在左边
             if (msgs.isNotEmpty()) {
@@ -298,3 +335,15 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
         }
     } //反馈详情
 } //反馈详情页
+
+/** 附件体积文案：不足 1MB 用 KB */
+private fun fmtSize(n: Long): String =
+    if (n >= 1024 * 1024) String.format("%.1f MB", n / 1048576.0) else "${maxOf(1L, n / 1024)} KB"
+
+/** 外部打开附件地址；没有能处理的应用就提示一句 */
+private fun openFile(ctx: Context, url: String) {
+    val i = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { ctx.startActivity(i) }.onFailure {
+        Toast.makeText(ctx, ctx.getString(R.string.fb_att_open_fail), Toast.LENGTH_SHORT).show()
+    }
+} //打开附件

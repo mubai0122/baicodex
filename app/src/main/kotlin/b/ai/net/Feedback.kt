@@ -23,6 +23,18 @@ object Feedback {
     const val DONE = 2
     const val CLOSED = 3
 
+    /** 附件类型：图片与日志，和服务器 attachments 里的 t 字段一致 */
+    const val TYPE_IMAGE = "image"
+    const val TYPE_LOG = "log"
+
+    /** 上传用附件：图片 type=image（≤5MB，最多 3 张）、日志 type=log（≤1MB，1 份），bytes 已在内存 */
+    data class Attach(val type: String, val name: String, val mime: String, val bytes: ByteArray) {
+        val size: Long get() = bytes.size.toLong()
+    }
+
+    /** 服务端返回的附件：url 已是完整可读地址 */
+    data class FileInfo(val type: String, val name: String, val size: Long, val url: String)
+
     /** 一条反馈在列表里的样子；content 只有详情里才有 */
     data class Item(
         val id: Int,
@@ -38,23 +50,30 @@ object Feedback {
         val rating: Int,
         val ratingText: String,
         val canReply: Boolean,
-        val canRate: Boolean
+        val canRate: Boolean,
+        val files: List<FileInfo> = emptyList()
     )
 
     /** 一条留言：role = user（我）或 admin（开发者） */
     data class Msg(val role: String, val content: String, val createdAt: String)
 
     /** 同步提交，调用方自己切 IO 线程；成功返回记录 id，并把设备凭据存下来 */
-    fun submit(category: String, content: String, contact: String): Int {
-        val body = JSONObject()
-            .put("deviceCode", Usage.deviceCode())
-            .put("category", category)
-            .put("content", content.trim())
-            .put("appVersion", Update.clientVersion())
-            .put("android", Build.VERSION.RELEASE ?: "")
-            .put("model", Build.MODEL ?: "")
-            .put("contact", contact.trim())
-        val json = call(SUBMIT, body)
+    fun submit(category: String, content: String, contact: String, atts: List<Attach> = emptyList()): Int {
+        val fields = linkedMapOf(
+            "deviceCode" to Usage.deviceCode(),
+            "category" to category,
+            "content" to content.trim(),
+            "appVersion" to Update.clientVersion(),
+            "android" to (Build.VERSION.RELEASE ?: ""),
+            "model" to (Build.MODEL ?: ""),
+            "contact" to contact.trim()
+        )
+        //没附件还是走原来的 JSON，带附件才上 multipart
+        val json = if (atts.isEmpty()) {
+            call(SUBMIT, JSONObject().also { o -> fields.forEach { (k, v) -> o.put(k, v) } })
+        } else {
+            parsed(postMultipart(SUBMIT, fields, atts))
+        }
         val data = json.optJSONObject("data")
         val token = data?.optString("token").orEmpty()
         if (token.isNotBlank()) Cfg.fbToken = token
@@ -113,17 +132,31 @@ object Feedback {
         rating = if (o.isNull("rating")) 0 else o.optInt("rating"),
         ratingText = o.optString("ratingText"),
         canReply = o.optBoolean("canReply"),
-        canRate = o.optBoolean("canRate")
+        canRate = o.optBoolean("canRate"),
+        files = run {
+            val arr = o.optJSONArray("files") ?: return@run emptyList()
+            (0 until arr.length()).map { i ->
+                val f = arr.getJSONObject(i)
+                FileInfo(
+                    type = f.optString("type"),
+                    name = f.optString("name"),
+                    size = f.optLong("size"),
+                    url = BASE + f.optString("url")
+                )
+            }
+        }
     ) //解析一条记录
 
-    /** POST 一个 JSON，code != 200 就把服务端 msg 抛出去 */
-    private fun call(url: String, body: JSONObject): JSONObject {
-        val text = post(url, body.toString())
+    /** 解析回包，code != 200 就把服务端 msg 抛出去 */
+    private fun parsed(text: String): JSONObject {
         val json = runCatching { JSONObject(text) }.getOrNull() ?: error("返回格式异常")
         val code = json.optInt("code")
         if (code != 200) error(json.optString("msg", "请求失败"))
         return json
-    } //统一请求
+    } //解析回包
+
+    /** POST 一个 JSON */
+    private fun call(url: String, body: JSONObject): JSONObject = parsed(post(url, body.toString()))
 
     private fun post(url: String, payload: String): String {
         val c = URL(url).openConnection() as HttpURLConnection
@@ -143,4 +176,39 @@ object Feedback {
             c.disconnect()
         }
     } //POST JSON
+
+    /** 带附件时走 multipart：字段当普通 part，附件统一挂在 files[] 上，边写边发不占双份内存 */
+    private fun postMultipart(url: String, fields: Map<String, String>, files: List<Attach>): String {
+        val boundary = "----bai" + System.currentTimeMillis().toString(16)
+        val c = URL(url).openConnection() as HttpURLConnection
+        c.connectTimeout = 10000
+        c.readTimeout = 120000
+        c.requestMethod = "POST"
+        c.doOutput = true
+        c.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        c.setChunkedStreamingMode(64 * 1024)
+        return try {
+            c.outputStream.use { os ->
+                fun w(s: String) = os.write(s.toByteArray(Charsets.UTF_8))
+                fields.forEach { (k, v) ->
+                    w("--$boundary\r\nContent-Disposition: form-data; name=\"$k\"\r\n\r\n$v\r\n")
+                }
+                files.forEach { f ->
+                    val name = f.name.replace("\"", "").ifBlank { "file" }
+                    w("--$boundary\r\nContent-Disposition: form-data; name=\"files[]\"; filename=\"$name\"\r\n")
+                    w("Content-Type: ${f.mime}\r\n\r\n")
+                    os.write(f.bytes)
+                    w("\r\n")
+                }
+                w("--$boundary--\r\n")
+            }
+            val http = c.responseCode
+            val text = (if (http in 200..299) c.inputStream else c.errorStream)
+                ?.bufferedReader()?.use { it.readText() } ?: ""
+            if (text.isBlank()) error("HTTP $http")
+            text
+        } finally {
+            c.disconnect()
+        }
+    } //POST multipart
 } //用户反馈
