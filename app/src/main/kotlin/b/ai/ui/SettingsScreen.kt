@@ -1597,7 +1597,7 @@ private fun ExtTab(
         }
     }
     Spacer(Modifier.height(14.dp))
-    SectionTitle("A2A", "和外部 A2A 智能体互通：能当客户端去调别人，也能开服务端被别人调")
+    SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
     CardBox {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.padding(end = 8.dp)) {

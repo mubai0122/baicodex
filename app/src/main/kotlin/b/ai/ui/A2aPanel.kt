@@ -97,7 +97,7 @@ fun A2aPanel(onClose: () -> Unit) {
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "A2A 1.0，和 Operit 那套实现互通。两个方向：本机当客户端去调别人，或者本机当服务端被别人调。",
+                "A2A 1.0 接口。两个方向：本机当客户端调用其他节点，本机当服务端接收任务。",
                 fontSize = 10.sp, color = TextSecondary
             )
 
@@ -174,7 +174,7 @@ fun A2aPanel(onClose: () -> Unit) {
             Text("对端（本机当客户端）", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             if (nodes.isEmpty()) {
                 Text(
-                    "还没加对端。下面填一条就能调别人的 A2A 智能体。",
+                    "还没加节点。下面填一条地址就能调用其他 A2A 节点。",
                     fontSize = 11.sp, color = TextSecondary, modifier = Modifier.padding(vertical = 6.dp)
                 )
             } else {
@@ -196,7 +196,7 @@ fun A2aPanel(onClose: () -> Unit) {
                     )
                 }
             }
-            Field("对端名字", name, { name = it }, "例如：Operit")
+            Field("对端名字", name, { name = it }, "例如：家里电脑")
             Field("对端地址", url, { url = it }, "http://192.168.1.20:8080")
             Field("对端 token（没有就留空）", nodeToken, { nodeToken = it }, "可留空")
             Spacer(Modifier.height(8.dp))

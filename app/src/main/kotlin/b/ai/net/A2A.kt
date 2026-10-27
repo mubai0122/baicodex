@@ -12,7 +12,7 @@ data class A2aRes(val ok: Boolean, val text: String, val json: JSONObject? = nul
 /**
  * A2A 1.0 客户端。方法名、角色、任务状态都按 A2A 1.0 的 proto 枚举写法
  * （SendMessage / GetTask / ListTasks / CancelTask、ROLE_USER / ROLE_AGENT、TASK_STATE_*），
- * 与 Operit 那套实现互通。流式（SendStreamingMessage）不支持，一律用 SendMessage + 轮询 GetTask。
+ * 按 A2A 1.0 协议实现。流式（SendStreamingMessage）不支持，一律用 SendMessage + 轮询 GetTask。
  */
 object A2A {
     const val CARD_PATH = "/.well-known/agent-card.json"

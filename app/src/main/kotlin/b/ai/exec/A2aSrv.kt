@@ -25,7 +25,7 @@ import java.util.UUID
 
 /**
  * A2A 1.0 服务端：一个极简 HTTP 监听 + JSON-RPC。
- * 开了之后别的 A2A client（Operit 之类）把任务派进本机，任务本体交给一个分智能体跑完回传。
+ * 开了之后外部 A2A 客户端把任务派进本机，任务本体交给一个分智能体跑完回传。
  * 只支持 SendMessage / GetTask / ListTasks / CancelTask，不提供流式（SendStreamingMessage 直接拒绝）。
  *
  * 安全默认：外部请求一律不弹确认框。工具只有在 `Cfg.policy(工具名) == "allow"` 时才放行，

@@ -15,7 +15,7 @@ import java.io.File
  * 索引写在工作区根目录的 workspace.json（相对路径 / 大小 / 时间 / 忽略规则），模型与 UI 共用。
  */
 object Workspace {
-    /** 索引文件名，放在工作区根目录，和 Operit 的做法一致 */
+    /** 索引文件名，放在工作区根目录 */
     const val INDEX = "workspace.json"
 
     private const val MAX_FILES = 2000
