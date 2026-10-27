@@ -936,16 +936,24 @@ private fun BarChip(
     }
 } //输入区小胶囊
 
-/** 发送键：开了质感按钮走 3D 圆钮，否则还是原来那颗扁圆 */
+/** 发送键：忙的时候变身红色终止键（2×2 四方块图标，点一下 Agent.stop()），闲时才是发送 */
 @Composable
 private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
+    if (Agent.busy) {
+        Box(
+            Modifier
+                .size(36.dp)
+                .background(DangerRed, CircleShape)
+                .tap { Agent.stop() },
+            contentAlignment = Alignment.Center
+        ) {
+            IcStop4(Color.White, side = 13.dp)
+        }
+        return
+    }
     if (Cfg.tactileBtn) {
         TactileCircle(active = canSend, enabled = canSend, onClick = onSend) {
-            if (Agent.busy) {
-                Text("…", fontSize = 14.sp, color = TextSecondary)
-            } else {
-                IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
-            }
+            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
         }
     } else {
         Box(
@@ -955,33 +963,38 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
                 .tap(enabled = canSend) { onSend() },
             contentAlignment = Alignment.Center
         ) {
-            if (Agent.busy) {
-                Text("…", fontSize = 14.sp, color = TextSecondary)
-            } else {
-                IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
-            }
+            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
         }
     }
-} //发送键
+} //发送键 / 终止键
 
-/** 工具执行中的占位卡：模型一返回调用就出现并转圈，执行完由正常结果行接管 */
+/** 工具执行中的占位卡：宽度、圆角、缩进与执行完的结果行完全一致，只是右侧挂个转圈 */
 @Composable
 private fun RunningCard(rt: RunningTool) {
     val summary = remember(rt.seq) { argSummary(rt.args) }
     Row(
         Modifier
             .fillMaxWidth()
-            .background(SurfaceWhite, RoundedCornerShape(12.dp))
-            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(start = if (Cfg.avatarOn) 34.dp else 0.dp)
+            .background(SurfaceWhite, bubbleShape(12.dp))
+            .border(1.dp, BorderGray, bubbleShape(12.dp))
+            .padding(horizontal = bubblePadH(10.dp), vertical = bubblePadV(10.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        ToolIcon(rt.name, AccentBlue, side = 15.dp)
-        Spacer(Modifier.width(8.dp))
+        Box(
+            Modifier
+                .size(22.dp)
+                .background(AccentBlueSoft, RoundedCornerShape(7.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            ToolIcon(rt.name, AccentBlue, side = 13.dp)
+        }
+        Spacer(Modifier.width(7.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 (if (rt.fromSub) stringResource(R.string.cs_tool_sub) else "") + Tools.label(rt.name),
-                fontSize = 11.sp,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 color = TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

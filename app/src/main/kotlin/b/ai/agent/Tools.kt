@@ -1,17 +1,24 @@
 package b.ai.agent
 
+import b.ai.core.A2aNode
+import b.ai.core.A2aNodes
 import b.ai.core.Apk
 import b.ai.core.AgentMode
 import b.ai.core.Cfg
 import b.ai.core.Dsl
+import b.ai.core.Js
 import b.ai.core.Mcp
 import b.ai.core.Memory
 import b.ai.core.Route
+import b.ai.core.Schedules
 import b.ai.core.Search
 import b.ai.core.Secret
 import b.ai.core.SkillFn
 import b.ai.core.SkillPacks
+import b.ai.App
+import b.ai.core.Flows
 import b.ai.core.WorkMode
+import b.ai.exec.Alarms
 import b.ai.exec.FileOps
 import b.ai.exec.Linux
 import b.ai.exec.Root
@@ -19,14 +26,20 @@ import b.ai.exec.Router
 import b.ai.exec.Shell
 import b.ai.exec.Shiz
 import b.ai.exec.Workspace
+import b.ai.net.A2A as A2aClient
+import b.ai.net.A2aRes
 import b.ai.net.Bing
 import b.ai.net.GoogleCse
 import b.ai.net.Rail
 import b.ai.net.Tavily
 import org.json.JSONArray
 import org.json.JSONObject
+import android.util.Log
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 data class ToolOutcome(val ok: Boolean, val text: String, val route: Route)
 
@@ -41,6 +54,21 @@ object Tools {
     const val WEB_SEARCH = "web_search"
     const val RAIL = "rail_query"
     const val MEMORY = "memory_save"
+    /** 记忆检索：记忆条目多时模型拿不全，靠它按关键词回查 */
+    const val MEMORY_READ = "memory_search"
+    /** SSH：拆成一整组专用工具（连接 / 列目录 / 读 / 写 / 提权 / 执行 / 下载 / 上传），模型不用再拿 exec 拼 ssh 命令 */
+    const val SSH_CONNECT = "ssh_connect"
+    const val SSH_LS = "ssh_ls"
+    const val SSH_READ = "ssh_read"
+    const val SSH_WRITE = "ssh_write"
+    const val SSH_SUDO = "ssh_sudo"
+    const val SSH_EXEC = "ssh_exec"
+    const val SSH_GET = "ssh_get"
+    const val SSH_PUT = "ssh_put"
+    /** SSH 全家桶：只在装了内置 Ubuntu 后下发 */
+    private val SSH_ALL = listOf(SSH_CONNECT, SSH_LS, SSH_READ, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_GET, SSH_PUT)
+    /** JS：QuickJS 里跑脚本，脚本能用 bai.call 调别的工具，也能 registerTool 注册新工具 */
+    const val JS = "js"
     const val ASK = "ask_user"
     /** 取某个技能的完整用法（README），技能函数由技能包动态注册 */
     const val SKILL_READ = "skill_read"
@@ -68,6 +96,12 @@ object Tools {
     const val SCREEN = "screen"
     /** 分智能体：一次派多条只读子任务并行跑，主智能体只收结论 */
     const val SUB = "subagent_run"
+    /** 工作流：多步顺序跑（每步一个分智能体），能存盘、能定时、失败可重试或跳过 */
+    const val FLOW_RUN = "flow_run"
+    const val FLOW_SAVE = "flow_save"
+    const val FLOW_LIST = "flow_list"
+    /** A2A：和别的 A2A 智能体对话（A2A 1.0），本机也能当服务端 */
+    const val A2A = "a2a"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -75,19 +109,30 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, ASK, SCREEN))
-            l.addAll(listOf(LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB))
-            if (Linux.installed()) l.add(LINUX)
+            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, ASK, SCREEN))
+            l.addAll(
+                listOf(
+                    LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB, JS,
+                    FLOW_RUN, FLOW_SAVE, FLOW_LIST, A2A
+                )
+            )
+            if (Linux.installed()) {
+                l.add(LINUX)
+                l.addAll(SSH_ALL)
+            }
             if (Search.selected != null) l.add(WEB_SEARCH)
             l.add(SKILL_READ)
             SkillPacks.funcs.forEach { if (it.name !in l) l.add(it.name) }
+            Js.tools.forEach { if (it.name !in l) l.add(it.name) }
             l.addAll(Mcp.tools.map { it.full })
             return l
         }
 
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
     private val PLAN_OFF = setOf(
-        WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI
+        WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
+        FLOW_RUN, FLOW_SAVE, A2A,
+        SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT
     )
 
     /** 极简模式只留这五个：文件四件套 + exec_shell */
@@ -119,6 +164,7 @@ object Tools {
         WEB_SEARCH -> "联网搜索"
         RAIL -> "火车票查询"
         MEMORY -> "记住这件事"
+        MEMORY_READ -> "搜记忆"
         ASK -> "向用户提问"
         SKILL_READ -> "查技能用法"
         SCREEN -> "操作屏幕"
@@ -134,7 +180,21 @@ object Tools {
         APKTOOL -> "看安装包"
         BROWSE -> "浏览网页"
         SUB -> "分智能体"
-        else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" } ?: mcpLabel(name)
+        FLOW_RUN -> "跑工作流"
+        FLOW_SAVE -> "保存工作流"
+        FLOW_LIST -> "列工作流"
+        A2A -> "A2A 对话"
+        SSH_CONNECT -> "SSH 连服务器"
+        SSH_LS -> "SSH 列目录"
+        SSH_READ -> "SSH 读文件"
+        SSH_WRITE -> "SSH 写文件"
+        SSH_SUDO -> "SSH 提权执行"
+        SSH_EXEC -> "SSH 执行命令"
+        SSH_GET -> "SSH 下载"
+        SSH_PUT -> "SSH 上传"
+        JS -> "JS 脚本"
+        else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" }
+            ?: if (Js.has(name)) "JS·$name" else mcpLabel(name)
     }
 
     /** MCP 能力的显示名：MCP·服务名·能力名，找不到缓存就原样返回 */
@@ -146,7 +206,10 @@ object Tools {
 
     /** 高危标记：删除与任意命令执行；MCP 里凡是能跑命令的也按高危算 */
     fun isHighRisk(name: String): Boolean {
-        if (name == DELETE || name == SHELL || name == LINUX) return true
+        if (name == DELETE || name == SHELL || name == LINUX || name == JS) return true
+        //SSH 里只有会改远端或跑任意命令的算高危，ls / read / get 是只读，不必每次弹确认
+        if (name == SSH_SUDO || name == SSH_EXEC || name == SSH_WRITE || name == SSH_PUT) return true
+        if (Js.has(name)) return true
         if (!name.startsWith(MCP)) return false
         val t = Mcp.findTool(name) ?: return true
         val n = t.name.lowercase()
@@ -167,6 +230,13 @@ object Tools {
     } //工具结果治理：超预算直接截止，只保留头部
 
     private fun str(desc: String) = JSONObject().put("type", "string").put("description", desc)
+
+    /** 组一份参数表：properties 手给，required 显式列（SSH 那组每个工具的必填项都不一样） */
+    private fun toolIn(props: JSONObject, vararg required: String): JSONObject {
+        val arr = JSONArray()
+        required.forEach { arr.put(it) }
+        return JSONObject().put("type", "object").put("properties", props).put("required", arr)
+    } //组参数表
 
     private fun params(vararg props: Pair<String, JSONObject>): JSONObject {
         val properties = JSONObject()
@@ -290,6 +360,139 @@ object Tools {
                     .put("properties", JSONObject().put("questions", JSONObject().put("type", "array")
                         .put("description", "要问的问题，1-6 个").put("items", qItem)))
                     .put("required", JSONArray().put("questions"))
+            )
+        )
+        //永久记忆：按关键词回查
+        arr.put(
+            fn(
+                MEMORY_READ,
+                "在永久记忆里按关键词检索，返回命中的记忆条目（带 id）与总条数。记忆条数多时不一定全在提示里，" +
+                    "遇到像是以前告诉过你的事（地址、密码、偏好、结论）但当前上下文没有，先用它查一次，别直接问用户、也别猜。" +
+                    "查询用短关键词效果最好，可以空格分隔多个词。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("query", str("关键词，空格分隔多个，例如「服务器 密码」"))
+                        .put("limit", JSONObject().put("type", "integer").put("description", "最多返回几条，默认 20，上限 50"))
+                ).put("required", JSONArray().put("query"))
+            )
+        )
+        //JS：QuickJS 脚本，能调工具也能注册工具，能力等于任意代码执行，归高危
+        arr.put(
+            fn(
+                JS,
+                "在内置 QuickJS 里执行一段 JS（ES2023，没有 Node 的文件系统 / 网络模块）。脚本里可用：" +
+                    "console.log / print 输出、bai.call(工具名, 参数对象) 同步调用任意工具并拿到它的输出（形如 \"OK\\n...\"）、" +
+                    "registerTool({name, description, parameters, run}) 注册新工具。适合循环、JSON 变换、批量拼命令这类 shell 写起来别扭的活。",
+                params(
+                    "script" to str("要执行的 JS 源码"),
+                    "timeout" to JSONObject().put("type", "integer")
+                        .put("description", "超时毫秒，默认 15000，最多 300000")
+                )
+            )
+        )
+        //SSH：拆成一整组专用工具，模型不用再拿 exec 拼 ssh 命令；远端路径一律由工具侧做单引号转义
+        arr.put(
+            fn(
+                SSH_CONNECT,
+                "连服务器（只需配一次）：保存 host / user / pass / port 并当场自检。内置 Ubuntu 缺 openssh-client 会自动补装，" +
+                    "不需要重装环境。换服务器或改密码时再调一次。",
+                toolIn(
+                    JSONObject()
+                        .put("host", str("服务器地址或域名，例如 1.2.3.4"))
+                        .put("port", JSONObject().put("type", "integer").put("description", "端口，默认 22"))
+                        .put("user", str("登录用户名"))
+                        .put("pass", str("登录密码")),
+                    "host", "user", "pass"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_LS,
+                "列出服务器上的目录：默认长格式（含隐藏文件、权限、大小）。想看多层结构就把 depth 设 2~4。" +
+                    "远端路径由工具自己加引号，不用你手动转义。",
+                toolIn(
+                    JSONObject()
+                        .put("path", str("远端目录，例如 /www/wwwroot"))
+                        .put("depth", JSONObject().put("type", "integer").put("description", "递归层数，默认 1 只列本层")),
+                    "path"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_READ,
+                "读服务器上的文本文件（单次上限 4MB）。大文件或二进制改用 ssh_get 下载。",
+                toolIn(
+                    JSONObject()
+                        .put("path", str("远端文件路径"))
+                        .put("max_lines", JSONObject().put("type", "integer").put("description", "只返回前 N 行，0（默认）＝全文")),
+                    "path"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_WRITE,
+                "把整段文本写到服务器上的文件（父目录自动创建，已存在则覆盖）。",
+                toolIn(
+                    JSONObject()
+                        .put("path", str("远端文件路径"))
+                        .put("content", str("要写入的完整文本，可以传空字符串建空文件")),
+                    "path", "content"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_SUDO,
+                "以 root（sudo）身份在服务器上执行一条命令：改 nginx / systemctl / apt / 写 /etc 这类系统位置都用它，" +
+                    "不要用 ssh_exec 自己拼 sudo。密码由工具喂给 sudo -S，不用也不许写进命令里（写了会泄露到远端 ps）。",
+                toolIn(
+                    JSONObject()
+                        .put("command", str("要执行的命令，例如 systemctl restart nginx 或 nginx -t"))
+                        .put("timeout", JSONObject().put("type", "integer").put("description", "超时秒数，默认 180")),
+                    "command"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_EXEC,
+                "以登录用户在服务器上执行一条命令，只用于没有专用工具的场景（看进程、看磁盘、跑脚本）。" +
+                    "列目录用 ssh_ls、读文件用 ssh_read、写文件用 ssh_write、要 root 用 ssh_sudo、下载上传用 ssh_get / ssh_put。" +
+                    "命令原样交给远端 sh，路径自己加引号。",
+                toolIn(
+                    JSONObject()
+                        .put("command", str("远端命令，例如 df -h 或 ps aux | head -20"))
+                        .put("timeout", JSONObject().put("type", "integer").put("description", "超时秒数，默认 180")),
+                    "command"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_GET,
+                "从服务器下载文件到本机（本机就是这台手机，local 要给手机上的绝对路径）。",
+                toolIn(
+                    JSONObject()
+                        .put("path", str("服务器上的文件路径"))
+                        .put("local", str("本机绝对路径，例如 /sdcard/baicode/dl/x.tar.gz")),
+                    "path", "local"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                SSH_PUT,
+                "把本机文件上传到服务器（远端父目录自动创建）。",
+                toolIn(
+                    JSONObject()
+                        .put("local", str("本机绝对路径"))
+                        .put("path", str("服务器上的目标路径")),
+                    "local", "path"
+                )
             )
         )
         //屏幕操作：无障碍侧控制，动作合进一个工具，按 action 取参数
@@ -508,6 +711,89 @@ object Tools {
                 ).put("required", JSONArray().put("tasks"))
             )
         )
+        //工作流：多步串起来，能存盘、能定时、失败有退路
+        val stepItem = JSONObject().put("type", "object")
+            .put(
+                "properties", JSONObject()
+                    .put("title", str("这一步的名字，2-8 字，报告里用它分节"))
+                    .put("task", str("交给分智能体的完整指令：做什么、在哪做、要什么格式的结果。每步独立，拿不到上一步的结论"))
+                    .put("retry", JSONObject().put("type", "integer").put("description", "失败后重试几次，默认 1，最多 3"))
+                    .put("on_fail", str("stop / skip：重试用完还失败时，是停住整条流还是跳过继续，默认 stop"))
+            )
+            .put("required", JSONArray().put("task"))
+        val stepsProp = JSONObject().put("type", "array").put("items", stepItem)
+            .put("description", "步骤列表，按顺序执行，最多 12 步")
+        arr.put(
+            fn(
+                FLOW_RUN,
+                "跑一条工作流：多个步骤按顺序执行，每一步交给一个分智能体做完再进下一步。" +
+                    "适合「先查、再改、再验证」这种有先后的活；互相独立的活直接用 subagent_run 并行更快。" +
+                    "给 flow_id 就跑已保存的流；也可以直接给 name + steps 现跑一次（不存盘）。" +
+                    "每步失败会按 retry 重试，重试用完按 on_fail 停住或跳过。",
+                toolIn(
+                    JSONObject()
+                        .put("flow_id", str("已保存工作流的 id（先用 flow_list 查）"))
+                        .put("name", str("临时工作流的名字，不存盘时用"))
+                        .put("steps", stepsProp)
+                        .put(
+                            "rounds",
+                            JSONObject().put("type", "integer")
+                                .put("description", "每一步最多几轮工具调用，默认 6，上限 8")
+                        )
+                )
+            )
+        )
+        arr.put(
+            fn(
+                FLOW_SAVE,
+                "把一组步骤保存成工作流，以后能一键跑或定时跑。带上 at 就同时登记定时（到点自动执行）。" +
+                    "传 id 就是覆盖已有的那条。",
+                toolIn(
+                    JSONObject()
+                        .put("id", str("要覆盖的工作流 id，留空表示新建"))
+                        .put("name", str("工作流名字，2-12 字"))
+                        .put("steps", stepsProp)
+                        .put("at", str("定时时间，格式 2026-01-01 08:30 或 08:30（今天这个点）；不填就不绑定定时"))
+                        .put("daily", JSONObject().put("type", "boolean").put("description", "true 表示每天同一时间跑"))
+                        .put(
+                            "auto",
+                            JSONObject().put("type", "boolean")
+                                .put("description", "到点是否自动执行，默认 true；false 就只发通知提醒")
+                        )
+                        .put("on", JSONObject().put("type", "boolean").put("description", "开关，默认 true")),
+                    "name", "steps"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                FLOW_LIST,
+                "列出已保存的工作流：id、名字、步骤数、定时、上次跑的结果。要跑或要改之前先调它拿 id。",
+                JSONObject().put("type", "object").put("properties", JSONObject())
+            )
+        )
+        //A2A：把一部分活派给外部智能体；本机也能当服务端被别的 agent 调用
+        arr.put(
+            fn(
+                A2A,
+                "和别的 A2A 智能体（A2A 1.0）对话。action：\n" +
+                    "- nodes：列本机保存过哪些对端（先调它拿名字）\n" +
+                    "- card：看对端的 AgentCard（名字、能力、技能、接口地址）\n" +
+                    "- send：把一条任务派给对端，等它出结果\n" +
+                    "- get / cancel：用任务 id 查进度 / 让对端取消\n" +
+                    "- tasks：列对端最近的任务\n" +
+                    "node 可以是保存过的名字或 id，也可以直接写 http(s):// 地址。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("nodes / card / send / get / cancel / tasks"))
+                        .put("node", str("对端：保存过的名字或 id，或直接写 http(s)://地址"))
+                        .put("text", str("send 时派过去的任务内容，写清楚要什么结果"))
+                        .put("task", str("get / cancel 用的任务 id"))
+                        .put("context", str("tasks 时按上下文筛选，可空")),
+                    "action"
+                )
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -528,16 +814,27 @@ object Tools {
                 )
             )
         }
+        //JS 脚本注册的工具：schema 由脚本自己给，原样透传
+        Js.tools.forEach { d ->
+            val p = runCatching { JSONObject(d.parameters) }.getOrElse { JSONObject() }
+            arr.put(fn(d.name, "[JS] " + d.description, p))
+        }
         //MCP 能力：schema 是服务端给的 parameters 原文，原样透传给模型
         Mcp.tools.forEach { t ->
             val p = runCatching { JSONObject(t.schema) }.getOrElse { JSONObject() }
             arr.put(fn(t.full, "[MCP·" + t.server + "] " + t.desc, p))
         }
-        //按当前模式裁掉不可用的工具：模型看不到定义就不会去试
+        //按当前模式裁掉不可用的工具：模型看不到定义就不会去试；顺便按名字去重，OpenAI 侧重名直接 400
         val out = JSONArray()
+        val seen = HashSet<String>()
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
             val n = o.optJSONObject("function")?.optString("name").orEmpty()
+            if (n.isEmpty()) continue
+            if (!seen.add(n)) {
+                Log.w("Tools", "工具定义重名，已丢弃后一条：$n")
+                continue
+            }
             if (allowed(n)) out.put(o)
         }
         return out
@@ -553,6 +850,7 @@ object Tools {
         WEB_SEARCH -> search(args).governed()
         RAIL -> rail(args).governed()
         MEMORY -> memorySave(args).governed()
+        MEMORY_READ -> memorySearch(args).governed()
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
         SCREEN -> screen(args).governed()
@@ -577,10 +875,159 @@ object Tools {
         SKILL_READ -> skillRead(args.optString("name")).governed()
         //subagent_run 由主循环并行调度（要拿 Agent.status 报进度），走到这里说明调用链不对
         SUB -> ToolOutcome(false, "subagent_run 需要主循环调度，不能在后台单独执行", Route.SANDBOX)
+        //flow_run 同理：要报进度、要能被停止键打断
+        FLOW_RUN -> ToolOutcome(false, "flow_run 需要主循环调度，不能在后台单独执行", Route.SANDBOX)
+        FLOW_SAVE -> flowSave(args)
+        FLOW_LIST -> flowList()
+        A2A -> a2a(args).governed()
+        SSH_CONNECT, SSH_LS, SSH_READ, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_GET, SSH_PUT ->
+            sshTool(name, args).governed()
+        JS -> jsRun(args).governed()
         else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
+            ?: jsTool(name, args)
             ?: mcpCall(name, args).governed()
     } //执行单个工具
+    /** JS 脚本：跑在 cpp/js/qjs.cpp 的 QuickJS 里，脚本里的 bai.call 回到这里调别的工具 */
+    private fun jsRun(args: JSONObject): ToolOutcome {
+        val code = args.optString("script")
+        if (code.isBlank()) return ToolOutcome(false, "js 需要 script 参数", Route.SANDBOX)
+        val ms = args.optInt("timeout", 15_000).coerceIn(1_000, 300_000)
+        val r = Js.run(code, ms)
+        return ToolOutcome(r.first, r.second, Route.SANDBOX)
+    } //跑 JS 脚本
+    /** JS 注册的工具：没有就返回 null，让后面的技能包 / MCP 继续找 */
+    private fun jsTool(name: String, args: JSONObject): ToolOutcome? {
+        if (!Js.has(name)) return null
+        val r = Js.call(name, args)
+        return ToolOutcome(r.first, r.second, Route.SANDBOX)
+    } //跑 JS 注册的工具
 
+    /** flow_save：存一条工作流，顺手登记定时（时间不合法就不绑定时，步骤照样存） */
+    private fun flowSave(args: JSONObject): ToolOutcome {
+        val steps = Flows.stepsFrom(args.optJSONArray("steps"))
+        if (steps.isEmpty()) return ToolOutcome(false, "flow_save 需要至少一个带 task 的步骤", Route.SANDBOX)
+        val daily = args.optBoolean("daily", false)
+        val at = parseAt(args.optString("at"), daily)
+        val name = args.optString("name").trim().ifBlank { "工作流" }
+        val auto = args.optBoolean("auto", true)
+        val off = args.optString("id").trim()
+        val old = if (off.isNotBlank()) Flows.byId(off) else null
+        val f = if (old != null) {
+            val merged = old.copy(
+                name = name, steps = steps, auto = auto,
+                at = if (at > 0L) at else old.at,
+                daily = if (at > 0L) daily else old.daily,
+                on = args.optBoolean("on", true)
+            )
+            Flows.update(merged)
+            merged
+        } else {
+            Flows.add(name, steps, at, daily, auto)
+        }
+        if (f.at > 0L) Alarms.scheduleFlow(App.self, f) else Alarms.cancelFlow(App.self, f.id)
+        val sb = StringBuilder()
+        sb.append("已保存工作流「").append(f.name).append("」（id=").append(f.id).append("），共 ")
+        sb.append(f.steps.size).append(" 步")
+        if (f.at > 0L) {
+            sb.append("，").append(if (f.daily) "每天 " else "").append(Alarms.fmt(f.at))
+            sb.append(if (f.auto) " 自动执行" else " 只提醒")
+        } else {
+            sb.append("，未绑定定时")
+        }
+        sb.append("。要马上跑就调 flow_run 带上这个 id。")
+        return ToolOutcome(true, sb.toString(), Route.SANDBOX)
+    } //保存工作流
+    /** flow_list：把工作流摆出来，id 和上次结果都带上 */
+    private fun flowList(): ToolOutcome {
+        val list = Flows.list
+        if (list.isEmpty()) return ToolOutcome(true, "还没有保存过工作流。可以用 flow_save 建一条。", Route.SANDBOX)
+        val sb = StringBuilder("共 ").append(list.size).append(" 条工作流：\n")
+        list.forEach { f ->
+            sb.append("\n- ").append(f.name).append("（id=").append(f.id).append("）")
+            sb.append("，").append(f.steps.size).append(" 步")
+            if (f.at > 0L) {
+                sb.append("，").append(if (f.daily) "每天 " else "单次 ").append(Alarms.fmt(f.at))
+                if (!f.on) sb.append("（已关）")
+            } else {
+                sb.append("，未绑定定时")
+            }
+            if (f.lastAt > 0L) {
+                sb.append("\n  上次 ").append(Alarms.fmt(f.lastAt)).append(if (f.lastOk) " 成功" else " 失败")
+                if (f.lastNote.isNotBlank()) sb.append("：").append(f.lastNote.replace("\n", " ").take(60))
+            }
+            sb.append("\n  步骤：").append(f.steps.joinToString(" → ") { it.title.take(10) })
+        }
+        return ToolOutcome(true, sb.toString(), Route.SANDBOX)
+    } //列工作流
+    /** a2a：本机保存的对端列表 + 5 种动作；对端找不到时允许直接写地址临时用 */
+    private fun a2a(args: JSONObject): ToolOutcome {
+        val act = args.optString("action").lowercase().trim().ifBlank { "nodes" }
+        if (act == "nodes") {
+            val all = A2aNodes.list
+            if (all.isEmpty()) {
+                return ToolOutcome(
+                    true,
+                    "还没有保存过 A2A 对端。设置 → 扩展 → A2A 里加一条，或者直接在 node 里写 http(s):// 地址。",
+                    Route.SANDBOX
+                )
+            }
+            val sb = StringBuilder("共 ").append(all.size).append(" 个对端：\n")
+            all.forEach {
+                sb.append("- ").append(it.name).append("  ").append(it.url)
+                if (it.token.isNotBlank()) sb.append("（带 token）")
+                sb.append('\n')
+            }
+            return ToolOutcome(true, sb.toString().trim(), Route.SANDBOX)
+        }
+        val node = a2aNode(args.optString("node"))
+            ?: return ToolOutcome(
+                false,
+                "找不到对端「" + args.optString("node") + "」。先调 action=nodes 看已保存的，或直接写 http(s):// 地址。",
+                Route.SANDBOX
+            )
+        val r: A2aRes = when (act) {
+            "card" -> A2aClient.card(node)
+            "send" -> A2aClient.send(node, args.optString("text"))
+            "get" -> A2aClient.getTask(node, args.optString("task"))
+            "cancel" -> A2aClient.cancelTask(node, args.optString("task"))
+            "tasks" -> A2aClient.listTasks(node, args.optString("context"))
+            else -> A2aRes(false, "不认识的 action：" + act)
+        }
+        return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+    } //A2A 调用
+    private fun a2aNode(key: String): A2aNode? {
+        val k = key.trim()
+        if (k.isEmpty()) return null
+        A2aNodes.find(k)?.let { return it }
+        if (!k.startsWith("http://") && !k.startsWith("https://")) return null
+        return A2aNode(id = "", name = k, url = A2aNodes.norm(k))
+    } //对端解析
+    /** 定时时间解析：认 yyyy-MM-dd HH:mm、yyyy/MM/dd HH:mm、HH:mm（按今天算）；过期时间每天的顺延，单次的返 0 */
+    private fun parseAt(raw: String, daily: Boolean): Long {
+        val s = raw.trim()
+        if (s.isEmpty()) return 0L
+        val now = System.currentTimeMillis()
+        var at = 0L
+        for (pat in listOf("yyyy-MM-dd HH:mm", "yyyy/MM/dd HH:mm", "HH:mm")) {
+            val f = SimpleDateFormat(pat, Locale.CHINA)
+            f.isLenient = false
+            val d = runCatching { f.parse(s) }.getOrNull() ?: continue
+            at = d.time
+            if (pat == "HH:mm") {
+                val src = Calendar.getInstance().apply { time = d }
+                val c = Calendar.getInstance()
+                c.set(Calendar.HOUR_OF_DAY, src.get(Calendar.HOUR_OF_DAY))
+                c.set(Calendar.MINUTE, src.get(Calendar.MINUTE))
+                c.set(Calendar.SECOND, 0)
+                c.set(Calendar.MILLISECOND, 0)
+                at = c.timeInMillis
+            }
+            break
+        }
+        if (at <= 0L) return 0L
+        if (at > now) return at
+        return if (daily) Schedules.rollForward(at, true, now) else 0L
+    } //定时时间解析
     /** skill_read：返回技能用法，正文按需给，不进系统提示 */
     private fun skillRead(key: String): ToolOutcome {
         val p = SkillPacks.pack(key) ?: return ToolOutcome(false, "没有这个技能：$key", Route.SANDBOX)
@@ -673,6 +1120,68 @@ object Tools {
         return if (ok) ToolOutcome(true, "已记住：$t", Route.SANDBOX)
         else ToolOutcome(true, "这条已经记过了：$t", Route.SANDBOX)
     } //存记忆
+
+    /** 按关键词查永久记忆：记忆可能几百条，模型看不到全部，缺细节时自己回查 */
+    private fun memorySearch(args: JSONObject): ToolOutcome {
+        val q = args.optString("query").trim()
+        if (q.isEmpty()) return ToolOutcome(false, "memory_search 需要 query 参数", Route.SANDBOX)
+        val total = Memory.rows.size
+        if (total == 0) return ToolOutcome(true, "永久记忆是空的，没有可查的内容。", Route.SANDBOX)
+        val limit = args.optInt("limit", 20)
+        val hit = Memory.search(q, limit)
+        if (hit.isEmpty()) {
+            return ToolOutcome(
+                true,
+                "没有匹配「$q」的记忆（共 $total 条）。换个说法或拆成更短的关键词再试；确实没记过就说明该问用户了。",
+                Route.SANDBOX
+            )
+        }
+        val sb = StringBuilder("命中 ${hit.size} 条（共 $total 条记忆，按相关度排序）：\n")
+        hit.forEach { sb.append("[id=").append(it.id).append("] ").append(it.text).append('\n') }
+        return ToolOutcome(true, sb.toString().trimEnd(), Route.SANDBOX)
+    } //搜记忆
+
+    /** SSH 专用工具分发：每个动作一个独立工具名，远端路径转义全在 Ssh 里做 */
+    private fun sshTool(name: String, args: JSONObject): ToolOutcome {
+        fun need(v: String, what: String): ToolOutcome? =
+            if (v.isBlank()) ToolOutcome(false, "$name 需要 $what 参数", Route.SANDBOX) else null
+        fun out(r: b.ai.exec.ShellResult) =
+            ToolOutcome(r.ok, r.out.ifBlank { if (r.ok) "完成" else "失败（退出码 ${r.code}）" }, Route.SANDBOX)
+        val path = args.optString("path").trim()
+        val local = args.optString("local").trim()
+        val cmd = args.optString("command")
+        val timeout = args.optInt("timeout", 180).coerceIn(10, 1800) * 1000L
+        return when (name) {
+            SSH_CONNECT -> {
+                val host = args.optString("host").trim()
+                val user = args.optString("user").trim()
+                val pass = args.optString("pass")
+                when {
+                    host.isBlank() -> ToolOutcome(false, "ssh_connect 需要 host", Route.SANDBOX)
+                    user.isBlank() -> ToolOutcome(false, "ssh_connect 需要 user", Route.SANDBOX)
+                    pass.isBlank() -> ToolOutcome(false, "ssh_connect 需要 pass", Route.SANDBOX)
+                    else -> {
+                        val r = b.ai.exec.Ssh.save(host, args.optInt("port", 22), user, pass)
+                        out(r.copy(out = if (r.ok) "连接已保存并验证通过：$user@$host\n" + r.out else r.out))
+                    }
+                }
+            }
+            SSH_LS -> need(path, "path") ?: out(b.ai.exec.Ssh.ls(path, args.optInt("depth", 1)))
+            SSH_READ -> need(path, "path") ?: out(b.ai.exec.Ssh.read(path, args.optInt("max_lines", 0)))
+            SSH_WRITE -> need(path, "path") ?: run {
+                if (!args.has("content")) {
+                    ToolOutcome(false, "ssh_write 需要 content（写空文件就传空字符串）", Route.SANDBOX)
+                } else {
+                    out(b.ai.exec.Ssh.write(path, args.optString("content")))
+                }
+            }
+            SSH_SUDO -> need(cmd, "command") ?: out(b.ai.exec.Ssh.sudo(cmd, timeout))
+            SSH_EXEC -> need(cmd, "command") ?: out(b.ai.exec.Ssh.exec(cmd, timeout))
+            SSH_GET -> need(path, "path") ?: need(local, "local") ?: out(b.ai.exec.Ssh.pull(path, local))
+            SSH_PUT -> need(local, "local") ?: need(path, "path") ?: out(b.ai.exec.Ssh.push(local, path))
+            else -> ToolOutcome(false, "未知 SSH 工具：$name", Route.SANDBOX)
+        }
+    } //ssh 分发
 
     /** MCP 能力调用：能力不在缓存 / 服务被删或停用都如实报错，不能静默当没这工具 */
     private fun mcpCall(full: String, args: JSONObject): ToolOutcome {

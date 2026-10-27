@@ -74,13 +74,11 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
-/** 侧边栏：搜索 + 会话列表 + 底部按钮栏（新对话 / 收藏 / 记忆 / 导出 / 设置） */
+/** 侧边栏：搜索 + 会话列表 + 底部按钮栏（新对话 / 设置）；收藏、导出、记忆都收进设置页了 */
 @Composable
 fun DrawerPanel(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenStars: () -> Unit,
-    onOpenMemory: () -> Unit,
     onClose: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -100,7 +98,6 @@ fun DrawerPanel(
     var toast by remember { mutableStateOf("") }
     //非空 = 多选模式：长按任意会话进来，集合里就是被选中的会话 id
     var sel by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val scope = rememberCoroutineScope()
 
     //搜索命中在 IO 线程算，主线程只做过滤渲染
     LaunchedEffect(q) {
@@ -124,7 +121,7 @@ fun DrawerPanel(
 
     Box(
         Modifier
-            .width(302.dp)
+            .width(DrawerWidth)
             .fillMaxHeight()
             .background(BgGray)
             .onGloballyPositioned {
@@ -266,22 +263,7 @@ fun DrawerPanel(
                         toast = ""
                         onNewChat()
                     }
-                    //收藏夹由根弹窗层渲染：抽屉里挂弹窗会被画到抽屉下层且 scrim 拦点击，直接死锁
-                    DrawerAction(stringResource(R.string.dw_stars), Modifier.weight(1f)) {
-                        toast = ""
-                        onOpenStars()
-                    }
-                    //记忆同样由根弹窗层渲染，理由同上
-                    DrawerAction(stringResource(R.string.dw_memory), Modifier.weight(1f)) {
-                        toast = ""
-                        onOpenMemory()
-                    }
-                    DrawerAction(stringResource(R.string.dw_export), Modifier.weight(1f)) {
-                        scope.launch {
-                            val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
-                            toast = if (p == null) ctx.getString(R.string.dw_none) else ctx.getString(R.string.dw_exported, p)
-                        }
-                    }
+                    //收藏 / 导出 / 记忆都挪到设置的「对话」「模型」页了，抽屉只剩这两个高频入口
                     DrawerAction(stringResource(R.string.dw_settings), Modifier.weight(1f)) {
                         toast = ""
                         onOpenSettings()

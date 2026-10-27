@@ -1388,4 +1388,5 @@
     <string name="fb_att_read_fail">讀取檔案失敗，換一個試試</string>
     <string name="fb_att_open">開啟</string>
     <string name="fb_att_open_fail">沒有能開啟這個檔案的應用程式</string>
+    <string name="tos_changed">服務協議有變更，需要先重新閱讀並同意</string>
 </resources>

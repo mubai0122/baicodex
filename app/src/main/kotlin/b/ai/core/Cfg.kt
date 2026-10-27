@@ -81,6 +81,12 @@ object Cfg {
         mem("max_tokens", 0).value = p.getInt("max_tokens", 0)
         //界面语言：空串 = 跟随系统
         mem("lang", "").value = p.getString("lang", "")!!
+        //公告已读 id 与 SSH 连接信息：以前只写不读，重启就回到默认值
+        mem("ann_seen", "").value = p.getString("ann_seen", "")!!
+        mem("ssh_host", "").value = p.getString("ssh_host", "")!!
+        mem("ssh_port", 22).value = p.getInt("ssh_port", 22)
+        mem("ssh_user", "").value = p.getString("ssh_user", "")!!
+        mem("ssh_pass", "").value = p.getString("ssh_pass", "")!!
         mem("max_mode", false).value = p.getBoolean("max_mode", false)
         mem("ctx_total", 128000).value = p.getInt("ctx_total", 128000)
         mem("ctx_pct", 70).value = p.getInt("ctx_pct", 70)
@@ -159,6 +165,14 @@ object Cfg {
         mem("pet_dbl_bal", true).value = p.getBoolean("pet_dbl_bal", true)
         mem("pet_sound", true).value = p.getBoolean("pet_sound", true)
         mem("pet_sound_vol", 70).value = p.getInt("pet_sound_vol", 70)
+        //悬浮聊天窗：开关 / 宽高 / 字号 / 整窗透明度 / 位置（-1 = 还没摆过）
+        mem("fc_on", false).value = p.getBoolean("fc_on", false)
+        mem("fc_w", 300).value = p.getInt("fc_w", 300)
+        mem("fc_h", 430).value = p.getInt("fc_h", 430)
+        mem("fc_font", 13).value = p.getInt("fc_font", 13)
+        mem("fc_alpha", 100).value = p.getInt("fc_alpha", 100)
+        mem("fc_x", -1).value = p.getInt("fc_x", -1)
+        mem("fc_y", -1).value = p.getInt("fc_y", -1)
     } //读盘并预热状态
 
     private fun put(k: String, v: Any?) {
@@ -188,6 +202,24 @@ object Cfg {
     var joinSeen: Int
         get() = mem("join_seen", 0).value
         set(v) { mem("join_seen", 0).value = v; put("join_seen", v) }
+    /** 公告已读过的 id：always=false 的公告同一 id 只弹一次 */
+    var annSeen: String
+        get() = mem("ann_seen", "").value
+        set(v) { mem("ann_seen", "").value = v; put("ann_seen", v) }
+
+    /** SSH 服务器：主机 / 端口 / 用户名 / 密码；密码只落本机偏好，运行时会写到 rootfs 的 600 文件里 */
+    var sshHost: String
+        get() = mem("ssh_host", "").value
+        set(v) { mem("ssh_host", "").value = v; put("ssh_host", v) }
+    var sshPort: Int
+        get() = mem("ssh_port", 22).value
+        set(v) { mem("ssh_port", 22).value = v; put("ssh_port", v) }
+    var sshUser: String
+        get() = mem("ssh_user", "").value
+        set(v) { mem("ssh_user", "").value = v; put("ssh_user", v) }
+    var sshPass: String
+        get() = mem("ssh_pass", "").value
+        set(v) { mem("ssh_pass", "").value = v; put("ssh_pass", v) }
 
     /** 点过「立即加入」并成功跳出 QQ：下次卡片把「以后永不提醒」换成「我已加入，下次不再提示」 */
     var joinJoined: Boolean
@@ -580,6 +612,45 @@ object Cfg {
         set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
 
     /** 桌宠总开关：默认开，装完就有一只待在应用里 */
+    /**悬浮聊天窗：显示开关 /宽 /高 /字号 /整窗透明度 /位置 */
+    var fcOn: Boolean
+        get() = mem("fc_on", false).value
+        set(v) { mem("fc_on", false).value = v; put("fc_on", v) }
+
+    var fcW: Int
+        get() = mem("fc_w", 300).value
+        set(v) { mem("fc_w", 300).value = v; put("fc_w", v) }
+
+    var fcH: Int
+        get() = mem("fc_h", 430).value
+        set(v) { mem("fc_h", 430).value = v; put("fc_h", v) }
+
+    var fcFont: Int
+        get() = mem("fc_font", 13).value
+        set(v) { mem("fc_font", 13).value = v; put("fc_font", v) }
+
+    var fcAlpha: Int
+        get() = mem("fc_alpha", 100).value
+        set(v) { mem("fc_alpha", 100).value = v; put("fc_alpha", v) }
+
+    var fcX: Int
+        get() = mem("fc_x", -1).value
+        set(v) { mem("fc_x", -1).value = v; put("fc_x", v) }
+
+    var fcY: Int
+        get() = mem("fc_y", -1).value
+        set(v) { mem("fc_y", -1).value = v; put("fc_y", v) }
+    /** A2A 服务端：开关 / 监听端口 / 访问 token（留空 = 不校验，只建议在可信局域网开） */
+    var a2aOn: Boolean
+        get() = mem("a2a_on", false).value
+        set(v) { mem("a2a_on", false).value = v; put("a2a_on", v) }
+    var a2aPort: Int
+        get() = mem("a2a_port", 8720).value
+        set(v) { mem("a2a_port", 8720).value = v; put("a2a_port", v) }
+    var a2aToken: String
+        get() = mem("a2a_token", "").value
+        set(v) { mem("a2a_token", "").value = v; put("a2a_token", v) }
+
     var petOn: Boolean
         get() = mem("pet_on", true).value
         set(v) { mem("pet_on", true).value = v; put("pet_on", v) }

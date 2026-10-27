@@ -12,6 +12,8 @@ import b.ai.R
 import java.io.File
 import b.ai.core.ChatMsg
 import b.ai.core.Env
+import b.ai.core.Flow
+import b.ai.core.Flows
 import b.ai.core.Memory
 import b.ai.core.MsgMeta
 import b.ai.core.Perms
@@ -673,6 +675,27 @@ object Agent {
                         appendToolMsg(c, text, Route.SANDBOX, false)
                         return@forEachIndexed
                     }
+                    //工作流：按步骤顺序跑，每步一个分智能体，失败按每步策略重试或跳过
+                    if (c.name == Tools.FLOW_RUN) {
+                        val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+                        val flow = flowOf(qa)
+                        if (flow == null) {
+                            appendToolMsg(c, "没有可执行的工作流：要么给 flow_id，要么给 name + steps。", Route.SANDBOX, true)
+                            return@forEachIndexed
+                        }
+                        status = "工作流「" + flow.name + "」开始，共 " + flow.steps.size + " 步"
+                        busySince = System.currentTimeMillis()
+                        val out = FlowRunner.run(
+                            flow,
+                            onStatus = { s -> status = s },
+                            confirm = { n, a, id -> confirmFromSub(n, a, id) }
+                        )
+                        if (flow.id.isNotBlank()) Flows.mark(flow.id, out.ok, out.text)
+                        status = host.getString(R.string.ag_think_again)
+                        busySince = System.currentTimeMillis()
+                        appendToolMsg(c, out.text, Route.SANDBOX, !out.ok)
+                        return@forEachIndexed
+                    }
                     //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
                     if (!Tools.allowed(c.name)) {
                         appendToolMsg(
@@ -724,6 +747,19 @@ object Agent {
         }
     } //模型 → 工具 → 回传 的主循环
 
+    /** 工具参数 → 一条工作流：给了 flow_id 就取库里的，否则用 name + steps 现拼一条不存盘的 */
+    private fun flowOf(args: JSONObject): Flow? {
+        val id = args.optString("flow_id").trim()
+        if (id.isNotBlank()) return Flows.byId(id)
+        val steps = Flows.stepsFrom(args.optJSONArray("steps"))
+        if (steps.isEmpty()) return null
+        return Flow(
+            id = "",
+            name = args.optString("name").trim().ifBlank { "临时工作流" },
+            steps = steps,
+            rounds = args.optInt("rounds", SubAgents.DEFAULT_ROUNDS)
+        )
+    } //工作流参数解析
     /** 把 subagent_run 的 tasks 解析成任务列表，兼容「对象数组」和「纯字符串数组」两种写法 */
     private fun subTasks(args: JSONObject): List<SubTask> {
         val arr = args.optJSONArray("tasks") ?: return emptyList()
@@ -957,6 +993,7 @@ object Agent {
             append("工具：").append(tools).append("。解压、安装、逆向等一律用 exec_shell 拼命令完成；")
             append("车次、时刻、余票一律用 rail_query 查（action=tickets 余票 / transfer 中转 / route 经停），不要凭记忆编车次；")
             append("值得长期记住的偏好或结论用 memory_save 存下来，不要只在回答里提醒自己；")
+            append("记忆条数多时提示里不一定列全，遇到像是以前告诉过你的事（地址、密码、偏好、结论）而上下文里没有，先用 memory_search 查一遍再开口，别猜也别急着问用户；")
             append("信息不够就先用 ask_user 问清（每题 2-4 个选项，用户还能自己填），别猜着往下做；")
             if (Tools.allowed(Tools.SCREEN)) {
                 append("操作屏幕要多步时，第一步先调 screen action=start 让顶部胶囊常驻（text 写一句在做什么），全部做完最后调 screen action=quiet 收起，中间每步不用管胶囊；")

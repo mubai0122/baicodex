@@ -223,6 +223,33 @@ object Linux {
         "vim", "nano", "tmux", "ca-certificates"
     )
 
+    /** SSH 依赖：openssh-client 不是镜像自带，只在「装依赖」时才装，没装过的机器要单独补 */
+    fun hasSsh(): Boolean = installed() &&
+        File(rootfs, "usr/bin/ssh").isFile && File(rootfs, "usr/bin/scp").isFile
+    /** 补装 openssh-client：不用重装环境，apt 里加一个包；update 失败也继续试，装不装得上最后看 hasSsh */
+    fun installSsh(onLog: (String) -> Unit): Boolean {
+        if (!installed()) {
+            onLog("先装 Ubuntu 环境，再补 openssh-client")
+            return false
+        }
+        if (hasSsh()) {
+            onLog("openssh-client 已经在了")
+            return true
+        }
+        onLog("apt-get update…")
+        val u = run("export DEBIAN_FRONTEND=noninteractive; apt-get update -y", 900_000L)
+        if (!u.ok) onLog("update 返回 ${u.code}：${u.out.takeLast(400)}")
+        onLog("apt-get install -y --no-install-recommends openssh-client…")
+        val r = run(
+            "export DEBIAN_FRONTEND=noninteractive; " +
+                "apt-get install -y --no-install-recommends openssh-client",
+            900_000L
+        )
+        onLog(r.out.takeLast(800))
+        val ok = hasSsh()
+        onLog(if (ok) "openssh-client 装好了" else "openssh-client 没装上（退出码 ${r.code}）：查网络后重试")
+        return ok
+    } //补装 ssh
     /** 依赖就位判断：挑两个最能代表用途的二进制，比 apt 查询快也稳 */
     fun depsInstalled(): Boolean = installed() &&
         File(rootfs, "usr/bin/python3").isFile &&
@@ -238,7 +265,8 @@ object Linux {
         "make" to File(rootfs, "usr/bin/make").isFile,
         "node" to File(rootfs, "usr/bin/node").isFile,
         "java" to File(rootfs, "usr/lib/jvm").isDirectory,
-        "gradle" to File(rootfs, "usr/bin/gradle").isFile
+        "gradle" to File(rootfs, "usr/bin/gradle").isFile,
+        "ssh" to File(rootfs, "usr/bin/ssh").isFile
     )
 
     /** 一键装依赖：apt update + install 一整套，日志边跑边回 */

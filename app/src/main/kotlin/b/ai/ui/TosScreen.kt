@@ -41,14 +41,38 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** 用户协议：正文放 assets/tos，中文一份、英文一份，日法繁沿用英文版 */
+/** 用户协议：正文与版本号都由服务端下发，拉不到就退回内置 assets（中文一份、英文一份，其余语言吃英文） */
 object Tos {
-    /** 协议版本号：改正文就 +1，老用户会重新看到同意页 */
-    const val VERSION = 1
+    /** 拉取失败时的兜底版本号：内置 assets 的正文按这个号算 */
+    const val LOCAL_VERSION = 1
 
-    /** 按当前界面语言挑正文：中文（简/繁）走 zh，其余走 en */
+    /** 服务端协议缓存：启动时按当前语言拉一次，换语言后重新拉 */
+    var doc: b.ai.net.TosDoc.Doc? = null
+
+    /** 当前该用哪个语言拿正文：繁简共用 zh，日法各一档，其余 en */
+    fun langKey(): String {
+        val t = Cfg.lang.ifBlank { b.ai.core.Lang.systemTag() }
+        return when {
+            t.startsWith("zh") -> "zh"
+            t.startsWith("ja") -> "ja"
+            t.startsWith("fr") -> "fr"
+            else -> "en"
+        }
+    } //界面语言映射成协议语言
+
+    /** 需要用户同意的版本号：服务端说了算，本地已同意的版本必须不小于它 */
+    fun version(): Int = doc?.version ?: LOCAL_VERSION
+
+    /** 按当前语言拉一次；拉不到就保留旧的缓存，正文继续走兜底 */
+    fun loadRemote() {
+        doc = b.ai.net.TosDoc.fetch(langKey()) ?: doc
+    } //拉服务端协议
+
+    /** 按当前界面语言挑正文：服务端正文语言对得上就用，否则读 assets */
     fun load(): String = runCatching {
-        val name = if (Cfg.lang.startsWith("zh")) "tos/zh.txt" else "tos/en.txt"
+        val d = doc
+        if (d != null && d.lang == langKey() && d.body.isNotBlank()) return@runCatching d.body
+        val name = if (langKey() == "zh") "tos/zh.txt" else "tos/en.txt"
         b.ai.App.self.assets.open(name).bufferedReader().use { it.readText() }
     }.getOrDefault("") //读协议正文
 } //用户协议
@@ -61,8 +85,12 @@ fun TosBody(
     modifier: Modifier = Modifier
 ) {
     var text by remember { mutableStateOf("") }
-    LaunchedEffect(Unit) {
-        text = withContext(Dispatchers.IO) { Tos.load() }
+    //语言变了要重新按新语言拉一次，服务端只回一种语言
+    LaunchedEffect(Cfg.lang) {
+        text = withContext(Dispatchers.IO) {
+            if (Tos.doc?.lang != Tos.langKey()) Tos.loadRemote()
+            Tos.load()
+        }
     }
     val loading = stringResource(R.string.tos_loading)
     Column(modifier) {
@@ -100,7 +128,7 @@ fun TosBody(
 
 /** 已激活用户升级后单独补一次协议：全屏，没有返回，勾选才能进主界面 */
 @Composable
-fun TosScreen(onAgree: () -> Unit) {
+fun TosScreen(changed: Boolean = false, onAgree: () -> Unit) {
     var checked by remember { mutableStateOf(false) }
     Column(
         Modifier
@@ -117,10 +145,20 @@ fun TosScreen(onAgree: () -> Unit) {
             color = TextPrimary
         )
         Text(
-            stringResource(R.string.tos_ver, Tos.VERSION),
+            stringResource(R.string.tos_ver, Tos.version()),
             fontSize = 11.sp,
             color = TextSecondary
         )
+        //协议版本变了才提示，首次同意不用吓人
+        if (changed) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.tos_changed),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AccentBlue
+            )
+        }
         Spacer(Modifier.height(12.dp))
         TosBody(checked, { checked = it }, Modifier.weight(1f))
         Spacer(Modifier.height(14.dp))

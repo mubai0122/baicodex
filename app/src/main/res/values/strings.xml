@@ -1388,4 +1388,5 @@
     <string name="fb_att_read_fail">读取文件失败，换一个试试</string>
     <string name="fb_att_open">打开</string>
     <string name="fb_att_open_fail">没有能打开这个文件的应用</string>
+    <string name="tos_changed">服务协议有变更，需要先重新阅读并同意</string>
 </resources>

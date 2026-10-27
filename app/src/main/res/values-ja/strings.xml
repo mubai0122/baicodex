@@ -1387,4 +1387,5 @@
     <string name="fb_att_read_fail">ファイルを読み込めませんでした。別のファイルを試してください</string>
     <string name="fb_att_open">開く</string>
     <string name="fb_att_open_fail">このファイルを開けるアプリがありません</string>
+    <string name="tos_changed">利用規約が変更されました。再度ご確認のうえ同意してください。</string>
 </resources>
