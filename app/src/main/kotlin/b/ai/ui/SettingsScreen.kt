@@ -84,6 +84,9 @@ import b.ai.core.Perms
 import b.ai.core.Persona
 import b.ai.core.Personas
 import b.ai.core.Profiles
+import b.ai.core.A2aNodes
+import b.ai.core.Flows
+import b.ai.exec.A2aSrv
 import b.ai.core.Schedules
 import b.ai.core.Triggers
 import b.ai.core.Search
@@ -96,7 +99,10 @@ import b.ai.core.Wallpaper
 import b.ai.core.WorkMode
 import b.ai.exec.Shiz
 import b.ai.exec.Alarms
+import b.ai.exec.FChat
 import b.ai.exec.Linux
+import b.ai.exec.Pet
+import b.ai.exec.PetGrant
 import b.ai.exec.Router
 import b.ai.exec.Toolchain
 import b.ai.exec.Workspace
@@ -192,6 +198,8 @@ fun SettingsScreen(
     initialTab: Int = 0,
     onOpenFeedback: () -> Unit = {},
     onOpenPet: () -> Unit = {},
+    onOpenStars: () -> Unit = {},
+    onOpenMemory: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -204,6 +212,8 @@ fun SettingsScreen(
     //技能包详情：就地改 README / skill.json / 模板，填它声明出来的密钥
     var packDraft by remember { mutableStateOf<SkillPack?>(null) }
     var taskDraft by remember { mutableStateOf(false) }
+    var flowDraft by remember { mutableStateOf(false) }
+    var a2aDraft by remember { mutableStateOf(false) }
     //通知触发规则面板：跟定时任务同一套弹窗挂载方式
     var triggerDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
@@ -366,14 +376,16 @@ fun SettingsScreen(
                     )
                     else -> CompositionLocalProvider(LocalPicker provides { t, l -> pick = t to l }) {
                         when (tab) {
-                            0 -> ModelTab()
-                            1 -> ChatTab(stats)
+                            0 -> ModelTab(onOpenMemory)
+                            1 -> ChatTab(stats, onOpenStars)
                             2 -> UiTab(onOpenPet)
                             3 -> ExtTab(
                                 onEdit = { draft = it },
                                 onEditPersona = { personaDraft = it },
                                 onEditMcp = { mcpDraft = it },
                                 onNewTask = { taskDraft = true },
+                                onNewFlow = { flowDraft = true },
+                                onOpenA2a = { a2aDraft = true },
                                 onNewTrigger = { triggerDraft = true },
                                 onEditPack = { packDraft = it }
                             )
@@ -394,7 +406,7 @@ fun SettingsScreen(
         )
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open) {
         //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
         PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
@@ -441,6 +453,8 @@ fun SettingsScreen(
             )
         }
         if (taskDraft) TaskDialog(onClose = { taskDraft = false })
+        if (flowDraft) FlowSheet(onClose = { flowDraft = false })
+        if (a2aDraft) A2aPanel(onClose = { a2aDraft = false })
         if (triggerDraft) TriggerDialog(onClose = { triggerDraft = false })
         pick?.let { (t, l) -> PickSheet(t, l) { pick = null } }
         if (WsPurge.open) WsPurgeDialog { WsPurge.open = false }
@@ -448,7 +462,7 @@ fun SettingsScreen(
 } //设置界面
 
 @Composable
-private fun ModelTab() {
+private fun ModelTab(onOpenMemory: () -> Unit) {
     SectionTitle(stringResource(R.string.se_007), stringResource(R.string.se_064))
     ProfileList()
 
@@ -654,10 +668,18 @@ private fun ModelTab() {
             }
         }
     }
+    //记忆：长期记忆的查看与手动增删，跟模型能力放同一页
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("记忆", "跨会话长期记忆：模型会自己读写，也可以在这里手动增删改")
+    CardBox {
+        LinkRow("记忆条目", "查看 / 编辑", onClick = onOpenMemory)
+    }
 } //模型分类（含语音识别与语音合成）
 
 @Composable
-private fun ChatTab(stats: Pair<Int, Int>) {
+private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
+    val appCtx = LocalContext.current
+    val appScope = rememberCoroutineScope()
     SectionTitle(stringResource(R.string.se_090), stringResource(R.string.se_091))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -850,6 +872,23 @@ private fun ChatTab(stats: Pair<Int, Int>) {
         }
     }
 
+    //会话与导出：原来在抽屉底部，收进「对话」页
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("会话与导出", "收藏夹、以及把当前会话导成 Markdown")
+    CardBox {
+        LinkRow("收藏夹", "查看收藏的会话", onClick = onOpenStars)
+        Spacer(Modifier.height(8.dp))
+        GhostButton(stringResource(R.string.dw_export), modifier = Modifier.height(38.dp)) {
+            appScope.launch {
+                val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
+                android.widget.Toast.makeText(
+                    appCtx,
+                    if (p == null) appCtx.getString(R.string.dw_none) else appCtx.getString(R.string.dw_exported, p),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
     WsSection()
@@ -1441,6 +1480,30 @@ private fun UiTab(onOpenPet: () -> Unit) {
     }
 
     Spacer(Modifier.height(14.dp))
+    //悬浮聊天窗：常驻其他应用上层的简约聊天，回复按 Markdown 渲染
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("悬浮聊天窗", "在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调")
+    CardBox {
+        val fctx = LocalContext.current
+        CapSwitch(
+            "显示悬浮聊天窗",
+            if (Cfg.fcOn) "已显示：拖标题栏换位置，点右上角 × 收起" else "关着：打开后在别的应用上层也能直接聊",
+            Cfg.fcOn
+        ) { on ->
+            if (!on) {
+                Cfg.fcOn = false
+                FChat.hide()
+            } else if (Pet.canShow(fctx)) {
+                Cfg.fcOn = true
+                FChat.show(fctx)
+            } else {
+                //没悬浮窗权限：开关不落地，先送去系统设置授权
+                Cfg.fcOn = false
+                PetGrant.openOverlaySetting(fctx)
+            }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_037), stringResource(R.string.se2_back_sub))
     CardBox {
         CapSwitch(
@@ -1457,6 +1520,8 @@ private fun ExtTab(
     onEditPersona: (Persona) -> Unit,
     onEditMcp: (McpServer) -> Unit,
     onNewTask: () -> Unit,
+    onNewFlow: () -> Unit,
+    onOpenA2a: () -> Unit,
     onNewTrigger: () -> Unit,
     onEditPack: (SkillPack) -> Unit
 ) {
@@ -1497,6 +1562,70 @@ private fun ExtTab(
         }
     }
 
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("工作流", "多步按顺序跑，每步一个分智能体；可定时、失败可重试或跳过")
+    CardBox {
+        val flows = Flows.list
+        val enabled = flows.count { it.on }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.padding(end = 8.dp)) {
+                Icon(
+                    Icons.Filled.List,
+                    contentDescription = null,
+                    tint = AccentBlue,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "共 " + flows.size + " 条，启用 " + enabled + " 条",
+                    fontSize = 13.sp,
+                    color = TextPrimary
+                )
+                Text(
+                    if (flows.isEmpty()) "写好几步存下来，就能一键跑或按点跑"
+                    else flows.take(2).joinToString("；") { f ->
+                        f.name + "（" + f.steps.size + " 步" +
+                            (if (f.at > 0L) " · " + Alarms.fmt(f.at) else "") + "）"
+                    },
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 2
+                )
+            }
+            GhostButton("管理工作流") { onNewFlow() }
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("A2A", "和外部 A2A 智能体互通：能当客户端去调别人，也能开服务端被别人调")
+    CardBox {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.padding(end = 8.dp)) {
+                Icon(
+                    Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = AccentBlue,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
+                    fontSize = 13.sp,
+                    color = TextPrimary
+                )
+                Text(
+                    if (A2aNodes.list.isEmpty()) "还没加对端"
+                    else "对端 " + A2aNodes.list.size + " 个：" +
+                        A2aNodes.list.take(2).joinToString("；") { it.name },
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 1
+                )
+            }
+            GhostButton("打开 A2A") { onOpenA2a() }
+        }
+    }
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.ntg_title), stringResource(R.string.ntg_sub))
     CardBox {

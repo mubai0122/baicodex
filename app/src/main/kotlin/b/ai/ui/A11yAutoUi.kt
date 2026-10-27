@@ -69,7 +69,7 @@ fun A11yAutoDialog(onClose: () -> Unit) {
     var ch by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        ch = withContext(Dispatchers.IO) { AutoA11y.channel(ctx) }
+        ch = withContext(Dispatchers.IO) { AutoA11y.channels(ctx).firstOrNull() }
     }
     LaunchedEffect(phase) {
         if (phase != 1) return@LaunchedEffect

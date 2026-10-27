@@ -97,6 +97,12 @@ object SubAgents {
         }.awaitAll()
         render(outs)
     } //并行调度
+    /** 工作流用：单跑一个子智能体，轮次夹在范围内，跑挂了由调用方决定重试还是停下 */
+    suspend fun runOne(
+        t: SubTask,
+        rounds: Int,
+        confirm: suspend (name: String, args: JSONObject, callId: String) -> Boolean
+    ): SubOut = one(t, rounds.coerceIn(1, MAX_ROUNDS), defs(), confirm) //单步执行
 
     /** 单个分智能体的「模型 → 工具 → 回传」循环 */
     private suspend fun one(

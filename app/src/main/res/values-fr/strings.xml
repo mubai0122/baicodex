@@ -1387,4 +1387,5 @@
     <string name="fb_att_read_fail">Impossible de lire le fichier, essayez-en un autre</string>
     <string name="fb_att_open">Ouvrir</string>
     <string name="fb_att_open_fail">Aucune application ne peut ouvrir ce fichier</string>
+    <string name="tos_changed">Les conditions d\'utilisation ont changé. Merci de les relire et de les accepter.</string>
 </resources>

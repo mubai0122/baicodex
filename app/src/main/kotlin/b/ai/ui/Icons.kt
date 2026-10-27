@@ -109,6 +109,28 @@ fun IcSend(color: Color, side: Dp = 17.dp) {
         drawPath(p, color)
     }
 } //矢量纸飞机
+/** 终止图标：2×2 四个圆角小方块拼成一个方块，忙的时候替换发送键 */
+@Composable
+fun IcStop4(color: Color, side: Dp = 13.dp) {
+    Canvas(Modifier.size(side)) {
+        val s = size.minDimension
+        val gap = s * 0.14f
+        val cell = (s - gap) / 2f
+        val r = androidx.compose.ui.geometry.CornerRadius(cell * 0.22f)
+        for (row in 0..1) {
+            for (col in 0..1) {
+                val x = col * (cell + gap)
+                val y = row * (cell + gap)
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(x, y),
+                    size = androidx.compose.ui.geometry.Size(cell, cell),
+                    cornerRadius = r
+                )
+            }
+        }
+    }
+} //四方块终止图标
 
 /** 自绘思考灯泡（实心圆 + 底座），用于思考过程标记 */
 @Composable
@@ -555,6 +577,9 @@ fun ToolIcon(name: String?, color: Color, side: Dp = 13.dp) {
         Tools.MAKE_DIR -> Icon(Icons.Filled.Add, null, tint = color, modifier = Modifier.size(side))
         Tools.DELETE -> Icon(Icons.Filled.Delete, null, tint = color, modifier = Modifier.size(side))
         Tools.WEB_SEARCH -> IcSearch(color, side = side)
+        Tools.SSH_LS -> IcFile(color, side = side)
+        Tools.SSH_READ -> IcFile(color, side = side)
+        Tools.SSH_GET -> IcFile(color, side = side)
         else -> IcCode(color, side = side)
     }
 } //工具调用图标

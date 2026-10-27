@@ -230,7 +230,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     step++
                 } else {
                     //同意协议才进应用，并把同意状态上报一次
-                    Cfg.tosAgreed = Tos.VERSION
+                    Cfg.tosAgreed = Tos.version()
                     Cfg.onboarded = true
                     Consent.reportIfNeeded()
                     onDone()

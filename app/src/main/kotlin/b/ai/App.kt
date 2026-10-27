@@ -7,6 +7,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Process
 import b.ai.core.Cfg
+import b.ai.core.Js
 import b.ai.core.Backup
 import b.ai.core.Brands
 import b.ai.core.Providers
@@ -15,12 +16,14 @@ import b.ai.core.Mcp
 import b.ai.core.Memory
 import b.ai.core.Personas
 import b.ai.core.Profiles
+import b.ai.core.Flows
 import b.ai.core.Schedules
 import b.ai.core.Skills
 import b.ai.core.Triggers
 import b.ai.core.SkillPacks
 import b.ai.core.Repo
 import b.ai.core.WorkMode
+import b.ai.exec.A2aSrv
 import b.ai.exec.Alarms
 import b.ai.exec.Root
 import b.ai.exec.Router
@@ -54,6 +57,8 @@ class App : Application() {
         b.ai.exec.Capsule.attachApp(this)
         //桌宠的兜底宿主：没有无障碍时靠悬浮窗权限显示
         b.ai.exec.Pet.attachApp(this)
+        //悬浮聊天窗的宿主：WindowManager 里挂 ComposeView，靠 applicationContext 活着
+        b.ai.exec.FChat.attach(this)
         Paths.ensure()
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
@@ -75,8 +80,14 @@ class App : Application() {
         Skills.init(this)
         //技能包清单：外部目录 + 旧 skills.json，启动时扫一遍并 lint 所有模板
         runCatching { SkillPacks.reload(this) }
+        //JS 技能：把脚本目录里的 *.js 跑一遍，脚本里 registerTool 的工具就此下发
+        runCatching { Js.loadScripts() }
         Personas.init(this)
         Schedules.init(this)
+        Flows.init(this)
+        b.ai.core.A2aNodes.init(this)
+        // A2A 服务端：上次开着就恢复监听；端口被占就失败，不崩
+        if (Cfg.a2aOn) runCatching { A2aSrv.start(Cfg.a2aPort) }
         Triggers.init(this)
         Mcp.init(this)
         Repo.init(this)
