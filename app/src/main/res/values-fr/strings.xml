@@ -1376,4 +1376,15 @@
     <string name="se_v_voice">Voix</string>
     <string name="se_v_tip">L\x27API suit le protocole compatible OpenAI : POST /audio/transcriptions pour transcrire, POST /audio/speech pour synthetiser</string>
     <string name="se_v_play">Ecouter</string>
+    <string name="fb_att">Pièces jointes</string>
+    <string name="fb_att_img">Ajouter une image</string>
+    <string name="fb_att_log">Ajouter un journal</string>
+    <string name="fb_att_tip">Images : 3 max, 5 Mo chacune. Journal : 1 fichier, 1 Mo max (txt / log / json / md)</string>
+    <string name="fb_att_img_big">Cette image dépasse 5 Mo, choisissez-en une plus légère</string>
+    <string name="fb_att_log_big">Le journal dépasse 1 Mo, veuillez le réduire</string>
+    <string name="fb_att_log_bad">Journaux acceptés : txt / log / json / md</string>
+    <string name="fb_att_img_max">3 images maximum</string>
+    <string name="fb_att_read_fail">Impossible de lire le fichier, essayez-en un autre</string>
+    <string name="fb_att_open">Ouvrir</string>
+    <string name="fb_att_open_fail">Aucune application ne peut ouvrir ce fichier</string>
 </resources>

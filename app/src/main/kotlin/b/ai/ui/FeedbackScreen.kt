@@ -1,6 +1,13 @@
 package b.ai.ui
 
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,14 +29,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
@@ -63,9 +76,61 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
     var ok by remember { mutableStateOf(false) }
     var mine by remember { mutableStateOf<List<Feedback.Item>>(emptyList()) }
     var reload by remember { mutableStateOf(0) }
+    var atts by remember { mutableStateOf<List<Feedback.Attach>>(emptyList()) }
+    var attErr by remember { mutableStateOf("") }
     //邮箱必填：格式不对就不让提交
     val emailOk = EMAIL_RE.matches(contact.trim())
+    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val mBigImg = stringResource(R.string.fb_att_img_big)
+    val mBigLog = stringResource(R.string.fb_att_log_big)
+    val mBadExt = stringResource(R.string.fb_att_log_bad)
+    val mReadFail = stringResource(R.string.fb_att_read_fail)
+    val mImgMax = stringResource(R.string.fb_att_img_max)
+    val msgOf: (AttErr) -> String = { e ->
+        when (e) {
+            AttErr.BIG_IMAGE -> mBigImg
+            AttErr.BIG_LOG -> mBigLog
+            AttErr.BAD_EXT -> mBadExt
+            AttErr.IMG_MAX -> mImgMax
+            AttErr.READ_FAIL -> mReadFail
+        }
+    }
+    //选图片：系统相册多选，单张 5MB 内、最多 3 张
+    val pickImg = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                val res = withContext(Dispatchers.IO) { uris.map { readAttach(ctx, it, Feedback.TYPE_IMAGE) } }
+                var list = atts
+                var e: AttErr? = null
+                res.forEach { (a, err) ->
+                    if (err != null) {
+                        e = err
+                    } else if (a != null) {
+                        if (list.count { it.type == Feedback.TYPE_IMAGE } >= 3) e = AttErr.IMG_MAX else list = list + a
+                    }
+                }
+                atts = list
+                attErr = e?.let(msgOf).orEmpty()
+            }
+        }
+    }
+    //选日志：文件管理器里挑一个文本文件，再选会替换旧的
+    val pickLog = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val (a, err) = withContext(Dispatchers.IO) { readAttach(ctx, uri, Feedback.TYPE_LOG) }
+                if (a != null) {
+                    atts = atts.filterNot { it.type == Feedback.TYPE_LOG } + a
+                    attErr = ""
+                } else {
+                    attErr = err?.let(msgOf).orEmpty()
+                }
+            }
+        }
+    }
+    val imgCount = atts.count { it.type == Feedback.TYPE_IMAGE }
+    val logCount = atts.count { it.type == Feedback.TYPE_LOG }
     BackHandler(enabled = !busy) { onBack() }
     //进页面拉一次我的反馈，提交成功后 reload+1 再拉一次
     LaunchedEffect(reload) {
@@ -151,6 +216,70 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(10.dp))
+                //附件：图片最多 3 张、单张 5MB；日志 1 份、1MB
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.fb_att), fontSize = 12.sp, color = TextSecondary)
+                    Spacer(Modifier.weight(1f))
+                    AttBtn(stringResource(R.string.fb_att_img), imgCount < 3) { pickImg.launch("image/*") }
+                    Spacer(Modifier.width(8.dp))
+                    AttBtn(stringResource(R.string.fb_att_log), logCount < 1) { pickLog.launch("*/*") }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.fb_att_tip),
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    lineHeight = 15.sp
+                )
+                if (attErr.isNotBlank()) {
+                    Text(attErr, fontSize = 10.sp, color = DangerRed, modifier = Modifier.padding(top = 4.dp))
+                }
+                atts.forEach { a ->
+                    key(a.name, a.size) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 6.dp)
+                                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (a.type == Feedback.TYPE_IMAGE) {
+                                val bmp = remember(a.name, a.size) { smallBitmap(a.bytes, 240) }
+                                if (bmp != null) {
+                                    Image(
+                                        bmp.asImageBitmap(),
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    a.name,
+                                    fontSize = 11.sp,
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(sizeText(a.size), fontSize = 10.sp, color = TextSecondary)
+                            }
+                            Text(
+                                "×",
+                                fontSize = 16.sp,
+                                color = TextSecondary,
+                                modifier = Modifier
+                                    .tap { if (!busy) atts = atts - a }
+                                    .padding(horizontal = 8.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
                 Text(stringResource(R.string.fb_note), fontSize = 10.sp, color = TextSecondary)
             }
             if (tip.isNotBlank()) {
@@ -171,12 +300,14 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
                 tip = ""
                 scope.launch {
                     val r = withContext(Dispatchers.IO) {
-                        runCatching { Feedback.submit(cat, content, contact) }
+                        runCatching { Feedback.submit(cat, content, contact, atts) }
                     }
                     busy = false
                     r.onSuccess {
                         content = ""
                         contact = ""
+                        atts = emptyList()
+                        attErr = ""
                         ok = true
                         tip = b.ai.App.self.getString(R.string.fb_ok)
                         reload++
@@ -288,3 +419,76 @@ private fun CatChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 7.dp)
     )
 } //分类胶囊
+
+/** 附件小按钮：不可用了就变灰且不响应 */
+@Composable
+private fun AttBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        fontSize = 11.sp,
+        color = if (enabled) AccentBlue else TextSecondary,
+        modifier = Modifier
+            .background(if (enabled) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(9.dp))
+            .tap { if (enabled) onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    )
+} //附件按钮
+
+/** 附件不合格的原因，界面翻成对应文案 */
+private enum class AttErr { BIG_IMAGE, BIG_LOG, BAD_EXT, IMG_MAX, READ_FAIL }
+
+/** 日志只认这四种文本后缀，和服务器白名单一致 */
+private val LOG_EXT = listOf(".txt", ".log", ".json", ".md")
+
+/** 从 uri 读成附件：先按元数据挡大小，再读进内存复查；返回 (附件, 错误) */
+private fun readAttach(ctx: Context, uri: Uri, type: String): Pair<Feedback.Attach?, AttErr?> {
+    val cr = ctx.contentResolver
+    var name = uri.lastPathSegment?.substringAfterLast('/').orEmpty()
+    var size = 0L
+    runCatching {
+        cr.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+            if (c.moveToFirst()) {
+                val ni = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val si = c.getColumnIndex(OpenableColumns.SIZE)
+                if (ni >= 0) c.getString(ni)?.let { name = it }
+                if (si >= 0 && !c.isNull(si)) size = c.getLong(si)
+            }
+        }
+    }
+    if (name.isBlank()) name = "file"
+    val mime = cr.getType(uri).orEmpty()
+    val limit = if (type == Feedback.TYPE_IMAGE) 5L * 1024 * 1024 else 1024L * 1024
+    if (size > limit) {
+        return null to if (type == Feedback.TYPE_IMAGE) AttErr.BIG_IMAGE else AttErr.BIG_LOG
+    }
+    if (type == Feedback.TYPE_LOG) {
+        val low = name.lowercase()
+        if (LOG_EXT.none { low.endsWith(it) }) return null to AttErr.BAD_EXT
+    } else if (mime.isNotEmpty() && !mime.startsWith("image/")) {
+        return null to AttErr.READ_FAIL
+    }
+    val bytes = runCatching { cr.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        ?: return null to AttErr.READ_FAIL
+    if (bytes.size.toLong() > limit) {
+        return null to if (type == Feedback.TYPE_IMAGE) AttErr.BIG_IMAGE else AttErr.BIG_LOG
+    }
+    return Feedback.Attach(type, name, if (mime.isNotEmpty()) mime else "application/octet-stream", bytes) to null
+} //读附件
+
+/** 附件体积文案：不足 1MB 用 KB */
+private fun sizeText(n: Long): String =
+    if (n >= 1024 * 1024) String.format("%.1f MB", n / 1048576.0) else "${maxOf(1L, n / 1024)} KB"
+
+/** 图片缩略图：先读边长算采样率，避免 5MB 大图直接解码把内存打满 */
+private fun smallBitmap(bytes: ByteArray, maxSide: Int): android.graphics.Bitmap? {
+    val opt = BitmapFactory.Options()
+    opt.inJustDecodeBounds = true
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opt)
+    var sample = 1
+    while (opt.outWidth / sample > maxSide || opt.outHeight / sample > maxSide) {
+        sample *= 2
+    }
+    val real = BitmapFactory.Options()
+    real.inSampleSize = sample
+    return runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size, real) }.getOrNull()
+} //缩略图

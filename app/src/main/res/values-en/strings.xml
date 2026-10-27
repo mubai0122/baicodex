@@ -1377,4 +1377,15 @@
     <string name="se_v_voice">Voice</string>
     <string name="se_v_tip">The API follows the OpenAI-compatible protocol: POST /audio/transcriptions to transcribe, POST /audio/speech to synthesize</string>
     <string name="se_v_play">Preview</string>
+    <string name="fb_att">Attachments</string>
+    <string name="fb_att_img">Add image</string>
+    <string name="fb_att_log">Add log</string>
+    <string name="fb_att_tip">Images: up to 3, 5 MB each. Log: 1 file, up to 1 MB (txt / log / json / md)</string>
+    <string name="fb_att_img_big">This image is over 5 MB, pick a smaller one</string>
+    <string name="fb_att_log_big">The log is over 1 MB, trim it first</string>
+    <string name="fb_att_log_bad">Logs must be txt / log / json / md</string>
+    <string name="fb_att_img_max">Up to 3 images</string>
+    <string name="fb_att_read_fail">Could not read the file, try another one</string>
+    <string name="fb_att_open">Open</string>
+    <string name="fb_att_open_fail">No app can open this file</string>
 </resources>
