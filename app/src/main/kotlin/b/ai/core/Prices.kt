@@ -51,8 +51,8 @@ object Prices {
     /** 某模型的专属价；没配过返回 null */
     fun get(model: String): Price? = cache.value[model]
 
-    /** 生效价：单独配过用它的，否则回落全局三项 */
-    fun of(model: String): Price = get(model) ?: Price(Cfg.priceIn, Cfg.priceOut, Cfg.priceCache)
+    /** 生效价：只认这个模型自己配的价，没配过就是全 0（不计价），不再有全局默认价 */
+    fun of(model: String): Price = get(model) ?: Price()
 
     /** 有任意模型配过专属价 */
     val anyCustom: Boolean get() = cache.value.values.any { it.on }

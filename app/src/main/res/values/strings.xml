@@ -373,7 +373,7 @@
     <string name="st_less">少</string>
     <string name="st_more">多</string>
     <string name="st_models">模型分类</string>
-    <string name="st_models_d">按模型累计 token，百分比是该模型占总量</string>
+    <string name="st_models_d">按模型累计 token 与花费；点右侧「单独配价」给这个模型设输入 / 输出 / 缓存单价</string>
     <string name="st_empty">还没有用量记录，聊几句再来</string>
     <string name="st_month">月活跃</string>
     <string name="st_month_d">近 6 个月每月有记录的天数</string>

@@ -44,7 +44,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.Cfg
 import b.ai.core.DayUse
 import b.ai.core.ModelUse
 import b.ai.core.Price
@@ -86,10 +85,6 @@ fun StatTab() {
     var fromKey by remember { mutableStateOf("") }
     var toKey by remember { mutableStateOf("") }
     var pick by remember { mutableStateOf<DayUse?>(null) }
-    //价格编辑态：三项都存成字符串，边输边算，失焦或改完就落盘重算
-    var pIn by remember { mutableStateOf(if (Cfg.priceIn > 0f) Cfg.priceIn.toString() else "") }
-    var pOut by remember { mutableStateOf(if (Cfg.priceOut > 0f) Cfg.priceOut.toString() else "") }
-    var pCache by remember { mutableStateOf(if (Cfg.priceCache > 0f) Cfg.priceCache.toString() else "") }
     //图表形态：0 = 柱状，1 = 折线
     var chartMode by remember { mutableIntStateOf(0) }
     //正在配价的模型名 + 三个输入框的草稿
@@ -101,9 +96,6 @@ fun StatTab() {
 
     //只进页时扫一次库；切范围只是从已聚合好的天里截，不重复查库
     fun reload() {
-        Cfg.priceIn = pIn.toFloatOrNull() ?: 0f
-        Cfg.priceOut = pOut.toFloatOrNull() ?: 0f
-        Cfg.priceCache = pCache.toFloatOrNull() ?: 0f
         snap = Stat.load()
     }
 
@@ -127,7 +119,14 @@ fun StatTab() {
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(tk(snap.total), fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                //大数字后面直接跟「/ 花费」，费用跟 token 同一条基线，不再缩成小字
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(tk(snap.total), fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    if (snap.priceOn) {
+                        Text(" / ", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                        Text(money(snap.totalCost), fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = AccentBlue)
+                    }
+                }
                 Text(stringResource(R.string.st_total_tok), fontSize = 10.sp, color = TextSecondary)
             }
             Column(horizontalAlignment = Alignment.End) {
@@ -149,35 +148,11 @@ fun StatTab() {
                 color = TextSecondary
             )
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (snap.priceOn) stringResource(R.string.st_cost_total, money(snap.totalCost))
-            else stringResource(R.string.st_cost_off),
-            fontSize = 10.sp,
-            color = TextPrimary
-        )
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.st_price), stringResource(R.string.st_price_d))
-    CardBox {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PriceField(pIn, stringResource(R.string.st_price_in), Modifier.weight(1f)) {
-                pIn = it
-                reload()
-            }
-            PriceField(pOut, stringResource(R.string.st_price_out), Modifier.weight(1f)) {
-                pOut = it
-                reload()
-            }
-            PriceField(pCache, stringResource(R.string.st_price_cache), Modifier.weight(1f)) {
-                pCache = it
-                reload()
-            }
+        //没配过任何模型价格时给一句提示，配过就不占地方
+        if (!snap.priceOn) {
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.st_cost_off), fontSize = 10.sp, color = TextSecondary)
         }
-        Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.st_price_scope), fontSize = 9.sp, color = TextSecondary)
-        Text(stringResource(R.string.st_price_note), fontSize = 9.sp, color = TextSecondary)
     }
 
     Spacer(Modifier.height(14.dp))
@@ -319,34 +294,35 @@ fun StatTab() {
                             )
                     )
                 }
-                //第二行：这个模型花了多少钱 + 单独配价的入口
+                Spacer(Modifier.height(6.dp))
+                //第二行：这个模型花了多少钱 + 单独配价的入口（纯文字，不做胶囊贴在条形上）
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         if (m.cost > 0.0) stringResource(R.string.st_cost_of, money(m.cost))
                         else stringResource(R.string.st_cost_none),
-                        fontSize = 9.sp,
-                        color = TextSecondary
+                        fontSize = 10.sp,
+                        color = if (m.cost > 0.0) TextPrimary else TextSecondary
                     )
                     Spacer(Modifier.weight(1f))
                     Text(
-                        stringResource(R.string.st_model_price),
-                        fontSize = 9.sp,
+                        (if (editing == m.name) "▴ " else "▾ ") + stringResource(R.string.st_model_price),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
                         color = AccentBlue,
                         modifier = Modifier
-                            .background(SurfaceMuted, RoundedCornerShape(7.dp))
                             .tap {
                                 editing = if (editing == m.name) {
                                     null
                                 } else {
-                                    //开的时候把现有价填进去：单独配过就是它自己那份，没有就带出全局默认
-                                    val p = Prices.get(m.name) ?: Price.now()
+                                    //开的时候带出这个模型自己的价，没配过就是空
+                                    val p = Prices.get(m.name) ?: Price()
                                     eIn = if (p.inP > 0f) p.inP.toString() else ""
                                     eOut = if (p.outP > 0f) p.outP.toString() else ""
                                     eCache = if (p.cacheP > 0f) p.cacheP.toString() else ""
                                     m.name
                                 }
                             }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(start = 12.dp, top = 6.dp, bottom = 6.dp)
                     )
                 }
                 if (editing == m.name) {
@@ -358,9 +334,13 @@ fun StatTab() {
                         PriceField(eOut, stringResource(R.string.st_price_out), Modifier.weight(1f)) { eOut = it }
                         PriceField(eCache, stringResource(R.string.st_price_cache), Modifier.weight(1f)) { eCache = it }
                     }
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GhostButton(stringResource(R.string.st_price_clear), modifier = Modifier.weight(1f)) {
+                        //两个按钮统一 46dp：通用组件 GhostButton 是 42、PrimaryButton 是 46，并排会一高一矮
+                        GhostButton(
+                            stringResource(R.string.st_price_clear),
+                            modifier = Modifier.weight(1f).height(46.dp)
+                        ) {
                             Prices.remove(m.name)
                             editing = null
                             scope.launch { withContext(Dispatchers.IO) { snap = Stat.load() } }
