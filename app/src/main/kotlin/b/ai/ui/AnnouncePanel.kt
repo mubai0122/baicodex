@@ -93,7 +93,7 @@ fun AnnounceDialog(item: Announce.Item, onClose: () -> Unit) {
                 .heightIn(max = 320.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(horizontal = 12.dp, vertical = 10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Column {
                 item.body.split("\n").forEachIndexed { i, ln ->

@@ -91,7 +91,7 @@ fun StarSheet(onClose: () -> Unit, onOpen: (String) -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 430.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(glassScrollState()),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             list.forEach { hit ->

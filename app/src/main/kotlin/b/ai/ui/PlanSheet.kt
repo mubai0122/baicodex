@@ -66,7 +66,7 @@ fun PlanSheet(req: PlanReq) {
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(horizontal = 11.dp, vertical = 9.dp)
         ) {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScroll(glassScrollState())) {
                 MdText(req.text, size = 12.5.sp)
             }
         }

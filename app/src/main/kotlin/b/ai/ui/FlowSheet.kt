@@ -88,7 +88,7 @@ fun FlowSheet(onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 430.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 "多步按顺序跑，每步交给一个分智能体做完再进下一步。每步独立，拿不到上一步的结论，所以指令要写全。",

@@ -101,7 +101,7 @@ internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
         Spacer(Modifier.height(4.dp))
         Text(stringResource(R.string.ch_skill_sub), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(10.dp))
-        Column(Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 380.dp).verticalScroll(glassScrollState())) {
             val ctx = LocalContext.current
             val pfx = ctx.getString(R.string.ip_skill_pre)
             Skills.list.forEach { s ->
@@ -149,7 +149,7 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text(stringResource(R.string.ch_model), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        Column(Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 220.dp).verticalScroll(glassScrollState())) {
             Profiles.list.forEach { p ->
                 val sel = p.id == Cfg.profileId
                 Row(

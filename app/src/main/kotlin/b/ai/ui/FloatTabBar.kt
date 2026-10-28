@@ -4,7 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +15,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -20,9 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
@@ -54,7 +63,10 @@ import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DarkColors
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 /** 底栏的一格：自绘图标 + 文案 */
 data class FloatTab(val labelRes: Int, val icon: @Composable (Color) -> Unit)
@@ -84,24 +96,33 @@ fun FloatTabBar(
     val tabsBackdrop = rememberLayerBackdrop()
     val bd = backdrop
     val combined = if (bd == null) null else rememberCombinedBackdrop(bd, tabsBackdrop)
-    //玻璃容器底色：参考项目取 surfaceContainer 的 40% 半透，太实会压掉模糊，太透又压不住字
-    val containerColor = if (DarkColors) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.50f)
-
+    //玻璃容器底色：白底越透越像玻璃，0.50 在浅色页面上会看着发白，压到 0.40
+    val containerColor = if (DarkColors) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.40f)
+    val glassOn = Cfg.glassBar && bd != null
+    //降档用的极淡白：只提亮一点，不发白
+    val thin = if (DarkColors) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.16f)
+    //底栏只看"有没有整屏弹窗"：滑动中也必须是真玻璃，一降档整条栏就白一下再变回来
+    val soft = glassOn && !GlassPerf.dialog
     //选中变化时胶囊弹到目标位置，阻尼 0.75 收尾不抖
     LaunchedEffect(selected) { offset.animateTo(selected.toFloat(), spring(0.75f, 400f)) }
+    //按下就鼓、松手就落：响应要快，别等拖动阈值
+    var pressedIdx by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(pressedIdx) {
+        if (pressedIdx >= 0) press.animateTo(1f, spring(0.65f, 1200f))
+        else press.animateTo(0f, spring(0.75f, 500f))
+    }
 
     fun indexAt(x: Float): Int =
         if (tabPx <= 0f) 0 else ((x - padPx) / tabPx).toInt().coerceIn(0, tabs.lastIndex)
 
-    Box(modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        //兜底底层：采样层还没画好的一两帧不至于白成一块，先垫页面底色
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(if (DarkColors) Color(0xFF1B1F26) else BgGray, CircleShape)
-        )
+    //整条底栏离屏幕底再抬 18dp：别贴着导航条，视觉上才是悬浮的
+    val gap = 18.dp
+    //根容器固定 104dp：栏本体只占底部 64dp，上方空出来的高度就是水滴按压时长大的余量
+    Box(modifier.fillMaxWidth().height(104.dp)) {
+        //这里不垫任何底色：底栏区域要透出页面背景，垫一块 BgGray 就是「没内容也填白」的来源
         //真玻璃：照参考项目的顺序——投影 -> 采样页面 -> 提饱和 -> 模糊 -> 边缘折射 -> 高光边 -> 底色
-        val glassMod = if (Cfg.glassBar && bd != null) {
+        //折射参数必须是常量：跟着 press.value 每帧变，等于每帧重建一个 RuntimeShader，点了就卡
+        val glassMod = if (soft) {
             Modifier.drawBackdrop(
                 backdrop = bd,
                 shape = { CircleShape },
@@ -116,7 +137,7 @@ fun FloatTabBar(
                     Shadow.Default.copy(radius = 10.dp, alpha = if (DarkColors) 0.20f else 0.10f)
                 },
                 layerBlock = {
-                    //按住时整条 bar 微微长大，跟参考项目的 pressProgress 一个效果
+                    //按住时整条 bar 微微长大：scale 是图层变换，不会重建 effect
                     val w = size.width.coerceAtLeast(1f)
                     val s = 1f + (16.dp.toPx() / w) * press.value
                     scaleX = s
@@ -125,16 +146,20 @@ fun FloatTabBar(
                 onDrawSurface = { drawRect(containerColor) }
             )
         } else {
-            Modifier.background(SolidColor(SurfaceWhite), CircleShape)
+            Modifier.background(SolidColor(if (glassOn) thin else SurfaceWhite), CircleShape)
         }
+        //栏本体只画底：投影与描边，图标行稍后压在水滴上面，z 顺序才对
         Box(
             Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = gap)
                 .fillMaxWidth()
+                .padding(horizontal = 20.dp)
                 .height(64.dp)
                 .onGloballyPositioned { totalPx = it.size.width.toFloat() }
                 //玻璃模式的投影与描边由 drawBackdrop 自己画，再叠 Compose 那套会多一圈脏边
                 .then(
-                    if (Cfg.glassBar && bd != null) Modifier
+                    if (soft) Modifier
                     else Modifier
                         .shadow(
                             16.dp, CircleShape,
@@ -144,10 +169,68 @@ fun FloatTabBar(
                         .border(1.dp, BorderGray, CircleShape)
                 )
                 .then(glassMod)
+        ) {}
+        //选中胶囊：宽高跟着 press 真实长大（不靠缩放，才不会被图层边界裁掉），
+        //底边始终落在栏本体中线上左右对称，长出来上下各一半，跟参考项目的水滴一致
+        if (tabPx > 0f) {
+            val p = press.value
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    //x：20dp 栏体留白 + 4dp 内边距，再往左让 7dp；y：静止时底边距栏底 1dp，按下向下均分
+                    .offset {
+                        val dy = with(density) { (12.dp * p - 19.dp).toPx() }
+                        IntOffset((17.dp.toPx() + offset.value * tabPx).roundToInt(), dy.roundToInt())
+                    }
+                    .requiredWidth(tabDp + 14.dp + 8.dp * p)
+                    .requiredHeight(62.dp + 24.dp * p)
+                    .then(
+                        if (Cfg.glassBar && combined != null && soft) {
+                            Modifier.drawBackdrop(
+                                backdrop = combined,
+                                shape = { CircleShape },
+                                effects = {
+                                    //折射参数固定：跟着 press.value 每帧变会每帧重建 RuntimeShader
+                                    lens(
+                                        refractionHeight = 10.dp.toPx(),
+                                        refractionAmount = 14.dp.toPx(),
+                                        depthEffect = true,
+                                        chromaticAberration = 0.5f
+                                    )
+                                },
+                                highlight = { Highlight.Default.copy(alpha = 0.35f + 0.45f * p) },
+                                //按下时的厚度感用固定内阴影，不再每帧改半径
+                                innerShadow = {
+                                    InnerShadow.Default.copy(radius = 8.dp, alpha = 0.55f)
+                                },
+                                onDrawSurface = {
+                                    drawRect(
+                                        color = if (DarkColors) Color.White.copy(alpha = 0.10f)
+                                        else Color.Black.copy(alpha = 0.10f),
+                                        alpha = 1f - p
+                                    )
+                                    drawRect(Color.Black.copy(alpha = 0.03f * p))
+                                }
+                            )
+                        } else {
+                            //降档：跟玻璃同色系的极淡底，不发白
+                            Modifier.clip(CircleShape).background(if (glassOn) thin else AccentBlueSoft)
+                        }
+                    )
+            )
+        }
+        //图标行压在水滴上面：点击与横向拖动都在这一层收
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = gap)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .height(64.dp)
                 .pointerInput(tabs.size, tabPx) {
                     detectHorizontalDragGestures(
-                        onDragStart = { p ->
-                            dragFrom = p.x
+                        onDragStart = { pt ->
+                            dragFrom = pt.x
                             dragSum = 0f
                             //按下就鼓起来，像按住一颗水袋
                             scope.launch { press.animateTo(1f, spring(0.7f, 900f)) }
@@ -178,67 +261,11 @@ fun FloatTabBar(
                     )
                 }
         ) {
-            //选中胶囊：也是真玻璃（页面层 + tab 层合并采样），按住时放大并加色散
-            if (tabPx > 0f) {
-                Box(Modifier.padding(4.dp)) {
-                    val pill = if (Cfg.glassBar && combined != null) {
-                        Modifier
-                            //左右各外扩 7dp 再回退半个，胶囊比格子宽一点；上移 4dp 让它高出栏面一截
-                            .graphicsLayer {
-                                translationX = offset.value * tabPx - 7.dp.toPx()
-                                translationY = -4.dp.toPx()
-                            }
-                            .width(tabDp + 14.dp)
-                            .height(62.dp)
-                            .drawBackdrop(
-                                backdrop = combined,
-                                shape = { CircleShape },
-                                effects = {
-                                    val p = press.value
-                                    lens(
-                                        refractionHeight = 10.dp.toPx() * p,
-                                        refractionAmount = 14.dp.toPx() * p,
-                                        depthEffect = true,
-                                        chromaticAberration = 0.5f
-                                    )
-                                },
-                                highlight = { Highlight.Default.copy(alpha = press.value) },
-                                //按下去时内缩一圈阴影，玻璃才有厚度感
-                                innerShadow = {
-                                    InnerShadow.Default.copy(radius = 8.dp * press.value, alpha = press.value)
-                                },
-                                layerBlock = {
-                                    //竖直方向鼓得比水平多，跟参考项目 pressedScale 78/56 的观感一致
-                                    scaleX = 1f + 0.06f * press.value
-                                    scaleY = 1f + 0.35f * press.value
-                                },
-                                onDrawSurface = {
-                                    val p = press.value
-                                    drawRect(
-                                        color = if (DarkColors) Color.White.copy(alpha = 0.10f)
-                                        else Color.Black.copy(alpha = 0.10f),
-                                        alpha = 1f - p
-                                    )
-                                    drawRect(Color.Black.copy(alpha = 0.03f * p))
-                                }
-                            )
-                    } else {
-                        Modifier
-                            .graphicsLayer {
-                                translationX = offset.value * tabPx - 7.dp.toPx()
-                                translationY = -4.dp.toPx()
-                            }
-                            .width(tabDp + 14.dp)
-                            .height(62.dp)
-                            .clip(CircleShape)
-                            .background(AccentBlueSoft)
-                    }
-                    Box(pill)
-                }
+            TabRow(tabs, selected, Modifier.fillMaxWidth().padding(4.dp), onSelect) { i, down ->
+                pressedIdx = if (down) i else -1
             }
-            TabRow(tabs, selected, Modifier.fillMaxWidth().padding(4.dp), onSelect)
             //不可见的一份内容，专门录给胶囊玻璃当采样源（否则胶囊里看不到图标被折射）
-            if (Cfg.glassBar && combined != null) {
+            if (Cfg.glassBar && combined != null && soft) {
                 TabRow(
                     tabs,
                     selected,
@@ -249,19 +276,28 @@ fun FloatTabBar(
         }
     }
 } //悬浮胶囊底栏
-
 /** 底栏的一排图标 + 文案；玻璃模式会多画一份透明的用来录制采样层 */
 @Composable
-private fun TabRow(tabs: List<FloatTab>, selected: Int, modifier: Modifier, onSelect: (Int) -> Unit) {
+private fun TabRow(
+    tabs: List<FloatTab>,
+    selected: Int,
+    modifier: Modifier,
+    onSelect: (Int) -> Unit,
+    onPress: (Int, Boolean) -> Unit = { _, _ -> }
+) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         tabs.forEachIndexed { i, tab ->
             val on = i == selected
             val c = if (on) AccentBlue else TextSecondary
+            //按下/抬起用 InteractionSource 读，不额外握手势检测器，不会和父层横向拖动抢事件
+            val src = remember { MutableInteractionSource() }
+            val pressed by src.collectIsPressedAsState()
+            LaunchedEffect(pressed) { onPress(i, pressed) }
             Column(
                 Modifier
                     .weight(1f)
                     .height(56.dp)
-                    .tap { onSelect(i) },
+                    .clickable(interactionSource = src, indication = null) { onSelect(i) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -271,4 +307,4 @@ private fun TabRow(tabs: List<FloatTab>, selected: Int, modifier: Modifier, onSe
             }
         }
     }
-} //图标行
+} //一排 tab

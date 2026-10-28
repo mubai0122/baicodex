@@ -34,9 +34,12 @@ import b.ai.core.Cfg
 import b.ai.core.Lang
 import b.ai.core.Perms
 import b.ai.exec.Alarms
+import b.ai.net.Auth
 import b.ai.net.Consent
 import b.ai.net.Isuse
 import b.ai.net.Update
+import b.ai.ui.AccDialogs
+import b.ai.ui.AccUi
 import b.ai.ui.AnnounceDialog
 import b.ai.ui.AskSheet
 import b.ai.ui.A11yAuto
@@ -62,6 +65,7 @@ import b.ai.ui.SettingsScreen
 import b.ai.ui.MemorySheet
 import b.ai.ui.MigrateGate
 import b.ai.ui.PlanSheet
+import b.ai.ui.PluginMarket
 import b.ai.ui.StarSheet
 import b.ai.ui.Rate
 import b.ai.ui.StarDialog
@@ -106,14 +110,30 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val tf = android.os.SystemClock.uptimeMillis()
         readTaskPrompt(intent)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         )
         setContent {
-            BaiTheme { Root() }
+            BaiTheme {
+                Root()
+                android.util.Log.w("Boot", "composition done +" + (android.os.SystemClock.uptimeMillis() - tf) + "ms")
+            }
         }
+        val vto = window.decorView.viewTreeObserver
+        vto.addOnDrawListener(object : android.view.ViewTreeObserver.OnDrawListener {
+            //只记第一帧：OnDrawListener 每帧都会回调，这里若没摘干净就是每帧一条日志（实测 368 条）
+            private var done = false
+            override fun onDraw() {
+                if (done) return
+                done = true
+                android.util.Log.w("Boot", "first frame drawn +" + (android.os.SystemClock.uptimeMillis() - tf) + "ms")
+                //派发中直接 remove 不生效，挪到下一帧之前再摘
+                window.decorView.post { runCatching { vto.removeOnDrawListener(this) } }
+            }
+        })
     } //入口：透明状态栏/导航条 + 浅色主题
 
     //每次回到前台补一次无障碍：系统常把它掐掉，Shizuku 在的话直接写回 secure 设置
@@ -152,19 +172,13 @@ private fun Root() {
         MigrateGate { gateOpen = false }
         return
     }
-    //协议版本在服务端：启动先按当前界面语言拉一次，拉不到就用内置 assets 正文 + 本地版本兜底
-    var tosReady by remember { mutableStateOf(false) }
+    //协议版本先按本地兜底版本判：服务端版本在后台刷新，网络绝不许挡首帧
+    var needTos by remember { mutableStateOf(Cfg.tosAgreed < Tos.version()) }
+    //后台刷一次远端版本：刷到比本地已同意版本更高，再补弹一次（只会弹一次，同意后版本就对齐了）
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { Tos.loadRemote() }
-        tosReady = true
+        if (Cfg.tosAgreed < Tos.version()) needTos = true
     }
-    //拉取期间只铺底色，避免先闪一帧主界面再被协议页盖住
-    if (!tosReady) {
-        Box(Modifier.fillMaxSize().background(BgGray))
-        return
-    }
-    //本地已同意的版本必须不小于服务端版本；服务端降版本不打扰老用户，同意状态上报一次
-    var needTos by remember { mutableStateOf(Cfg.tosAgreed < Tos.version()) }
     if (needTos) {
         TosScreen(changed = Cfg.tosAgreed > 0) {
             Cfg.tosAgreed = Tos.version()
@@ -237,7 +251,7 @@ private fun Root() {
     LaunchedEffect(Cfg.onboarded) {
         if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
     }
-    val active = halted || joinOpen || Rate.ask || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null || ann != null ||
+    val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null || ann != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
     //抽屉一开始动（targetValue 变 Open）就起模糊，不等抽屉动画跑完，视觉上才是跟手
@@ -302,6 +316,14 @@ private fun Root() {
                     screen = "settings"
                     drawerCtl.close()
                 },
+                onOpenPlugins = {
+                    screen = "plugins"
+                    drawerCtl.close()
+                },
+                onOpenAccount = {
+                    drawerCtl.close()
+                    AccUi.open(if (Auth.logged) "edit" else "login")
+                },
                 onClose = { drawerCtl.close() }
             )
         }
@@ -330,6 +352,7 @@ private fun Root() {
                                 onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
                             )
                             "fb_detail" -> FeedbackDetailScreen(fbId) { screen = "feedback" }
+                            "plugins" -> PluginMarket(onBack = { screen = "chat" })
                             else -> ChatScreen(
                                 onOpenDrawer = { drawerCtl.open() },
                                 onOpenSettings = { t ->
@@ -353,6 +376,8 @@ private fun Root() {
                         q != null -> AskSheet(q)
                         pl != null -> PlanSheet(pl)
                         p != null -> ToolConfirmDialog(p)
+                        //账号卡：抽屉与插件广场都只改 AccUi.mode，卡片统一挂在这一层
+                        AccUi.mode.isNotEmpty() -> AccDialogs()
                         petPerm -> PetPermAsk(
                             onClose = { petPerm = false },
                             onGrant = {

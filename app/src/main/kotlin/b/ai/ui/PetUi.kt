@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -141,15 +142,32 @@ private fun PetInAppBody(modifier: Modifier = Modifier) {
     if (!Cfg.petOn || Cfg.petGlobal) return
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val t = rememberInfiniteTransition(label = "petFloat")
     val ms = if (Cfg.petFloatMs < 400) 400 else Cfg.petFloatMs
     val amp = -(Cfg.petFloatAmp.toFloat() * 3f)
-    val dy by t.animateFloat(
-        initialValue = 0f,
-        targetValue = if (Cfg.petFloat) amp else 0f,
-        animationSpec = infiniteRepeatable(tween(ms, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "petDy"
-    )
+    //桌宠浮动不用 rememberInfiniteTransition：它跟着屏幕刷新率每帧写一次状态，
+    //实测一只飘着的桌宠能让整页每秒重绘 160 帧（把桌宠关掉，5 秒内是 0 帧），
+    //玻璃卡片和底栏就跟着每帧重算一遍。这里按 30fps 节流、位置取整到像素，帧数砍到三分之一，看着一样顺
+    var dy by remember { mutableStateOf(0f) }
+    LaunchedEffect(Cfg.petFloat, ms, amp) {
+        if (!Cfg.petFloat || amp == 0f) {
+            dy = 0f
+            return@LaunchedEffect
+        }
+        var last = 0L
+        while (true) {
+            withFrameNanos { now ->
+                //30fps 就够：漂浮是慢动作，每两帧算一次肉眼看不出差别
+                if (now - last >= 33_000_000L) {
+                    last = now
+                    val k = ((now / 1_000_000L) % (ms * 2L)) / ms.toFloat()
+                    val tri = if (k <= 1f) k else 2f - k
+                    //两头慢中间快的缓动，跟原来 FastOutSlowIn 的观感接近
+                    val e = tri * tri * (3f - 2f * tri)
+                    dy = Math.round(amp * e).toFloat()
+                }
+            }
+        }
+    }
     var say by remember { mutableStateOf("") }
     val jy = remember { Animatable(0f) }
 

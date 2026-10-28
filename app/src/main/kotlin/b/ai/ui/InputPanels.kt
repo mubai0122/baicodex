@@ -109,7 +109,7 @@ import kotlin.math.roundToInt
 internal fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     val bd = LocalPageBackdrop.current
-    val glass = Cfg.glassCard && bd != null
+    val glass = Cfg.glassCard && bd != null && GlassPerf.heavy
     val outer = Modifier
         .fillMaxWidth()
         .padding(horizontal = 12.dp)
@@ -142,7 +142,7 @@ internal fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
         Column(
             Modifier
                 .heightIn(max = 210.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
                 .padding(12.dp),
             content = content
         )
@@ -850,7 +850,7 @@ private fun ModelPickSheet(
             if (err != null) {
                 Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
             }
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxWidth().verticalScroll(glassScrollState())) {
                 shown.forEach { m ->
                     val sel = m == current
                     Row(

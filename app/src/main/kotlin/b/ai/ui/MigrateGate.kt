@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
+import b.ai.core.Cfg
 import b.ai.core.Repo
 import b.ai.exec.Workspace
 import b.ai.ui.theme.AccentBlue
@@ -60,6 +61,8 @@ import kotlin.system.exitProcess
 @Composable
 fun MigrateGate(onReady: () -> Unit) {
     val ctx = LocalContext.current
+    //上次已经确认没有旧版工作区：直接放行，不扫盘、不白等一帧
+    if (Cfg.migClean) { onReady(); return }
     val scope = rememberCoroutineScope()
     var olds by remember { mutableStateOf<List<File>?>(null) } //null = 还在探测旧目录
     var running by remember { mutableStateOf(false) }
@@ -72,7 +75,11 @@ fun MigrateGate(onReady: () -> Unit) {
             runCatching { Workspace.legacyDirs() }.getOrDefault(emptyList())
         }
         olds = found
-        if (found.isEmpty()) onReady()
+        //扫完确认干净就记一笔：下次启动直接放行，不再扫盘白等一帧
+        if (found.isEmpty()) {
+            Cfg.migClean = true
+            onReady()
+        }
     } //探测旧目录：一个都没有就直接放行
     BackHandler { quits(ctx) } //门的整个生命周期都吞返回键，返回键等于退出
 
@@ -132,7 +139,7 @@ fun MigrateGate(onReady: () -> Unit) {
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
         ) {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScroll(glassScrollState())) {
                 Text(
                     stringResource(R.string.mig_mg_total, list.size),
                     fontSize = 11.sp,
@@ -186,7 +193,7 @@ private fun MigratePage(
         Modifier
             .fillMaxSize()
             .background(BgGray)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(glassScrollState())
             .padding(20.dp)
     ) {
         Spacer(Modifier.height(36.dp))

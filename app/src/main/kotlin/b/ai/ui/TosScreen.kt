@@ -100,7 +100,7 @@ fun TosBody(
                 .fillMaxWidth()
                 .liquidBg(RoundedCornerShape(14.dp), tint = SurfaceMuted)
                 .padding(14.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 if (text.isBlank()) loading else text,

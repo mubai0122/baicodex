@@ -11,6 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -20,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -76,25 +84,35 @@ fun DrawerHost(
     content: @Composable () -> Unit
 ) {
     val widthPx = with(LocalDensity.current) { width.toPx() }
+    //只订阅"开/关"这个布尔，不订阅进度值：以前在组合期读 ctl.progress，
+    //抽屉每移一帧就重组整个 DrawerHost，连 content() 里的整页都跟着重组一遍，必然掉帧
+    val open by produceState(initialValue = ctl.active, ctl) {
+        snapshotFlow { ctl.active }.distinctUntilChanged().collect { value = it }
+    }
+    //面板等抽屉真开过一次再组合：冷启动首帧不该为一屏看不见的会话列表买单（它还要读会话库）
+    var live by remember { mutableStateOf(false) }
+    LaunchedEffect(open) { if (open) live = true }
     Box(Modifier.fillMaxSize()) {
         content()
-        val p = ctl.progress
-        if (p > 0.001f) {
+        if (open) {
             //动画走到一半也会在场，于是点一下就立刻反向收（这就是打断）
             Box(Modifier.fillMaxSize().tap { ctl.close() })
         }
-        Box(
-            Modifier
-                .align(Alignment.CenterStart)
-                .width(width)
-                .fillMaxHeight()
-                .offset { IntOffset(((p - 1f) * widthPx).roundToInt(), 0) }
-                .then(
-                    if (gestures) Modifier.pointerInput(widthPx) { dragToClose(ctl, widthPx) } else Modifier
-                )
-        ) { panel() }
+        if (live) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .width(width)
+                    .fillMaxHeight()
+                    //进度在布局阶段读：只让这一层重新摆位置，不触发任何重组
+                    .offset { IntOffset(((ctl.anim.value - 1f) * widthPx).roundToInt(), 0) }
+                    .then(
+                        if (gestures) Modifier.pointerInput(widthPx) { dragToClose(ctl, widthPx) } else Modifier
+                    )
+            ) { panel() }
+        }
         //关闭态才铺左边缘热区：往外拖直接跟手拉开
-        if (gestures && p < 0.001f) {
+        if (gestures && !open) {
             Box(
                 Modifier
                     .align(Alignment.CenterStart)

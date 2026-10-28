@@ -169,6 +169,8 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
     //页面层：底栏的玻璃就采样这一层
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
+        //采样层必须含真背景：只垫纯色的话，底栏玻璃在没内容的地方采到的就是一块灰白
+        drawPageBg()
         drawContent()
     }
     //卡片玻璃的采样源：纯背景一层，不含卡片自己，否则卡片会采到上一帧的自己
@@ -192,7 +194,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
         //纯背景一层，卡片玻璃只采它
         Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
         ProvideCardBackdrop(cardBackdrop) {
-        Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
+        Column(Modifier.fillMaxSize().glassPageLayer(pageBackdrop)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -274,7 +276,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(glassScrollState())
                     .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp)
             ) {
                 when {
@@ -365,7 +367,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
             tabs = PetTabs,
             selected = tab,
             onSelect = { tab = it },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+            modifier = Modifier.align(Alignment.BottomCenter),
             backdrop = pageBackdrop
         )
     }

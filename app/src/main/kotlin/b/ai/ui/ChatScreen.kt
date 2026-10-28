@@ -171,6 +171,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var sumNote by remember { mutableStateOf(false) }
     var promptReq by remember { mutableStateOf<PromptReq?>(null) }
     var wsPanel by remember { mutableStateOf(false) }
+    //上下文用量小卡片：原来挂在 material DropdownMenu 里（自带不透明底），改成走根弹窗层才有一致的玻璃
+    var ctxOpen by remember { mutableStateOf(false) }
     var attachPanel by remember { mutableStateOf(false) }
     var cfgPanel by remember { mutableStateOf(false) }
     var modePanel by remember { mutableStateOf(false) }
@@ -184,7 +186,12 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
-    val pageBackdrop = rememberLayerBackdrop { drawContent() }
+    val pageBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        //采样层必须含真背景：只垫纯色的话，玻璃在没内容的地方采到的就是一块灰白
+        drawPageBg()
+        drawContent()
+    }
     //卡片玻璃的采样源：纯背景一层，不能含消息卡自己，否则采到上一帧的自己
     val cardBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
@@ -237,19 +244,20 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var petIntro by remember { mutableStateOf(!Cfg.petModelTip) }
     //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
     val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
+     //只在消息列表变了才重算上下文占用，免得输入框每敲一个字都扫一遍全量消息；顶栏和小卡片共用
+     val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
     //外层 Box 只为了给「应用内桌宠」一个右下角锚点
     Box(Modifier.fillMaxSize()) {
     //纯背景一层，卡片玻璃只采它
     Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     ProvideCardBackdrop(cardBackdrop) {
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).layerBackdrop(pageBackdrop)) {
-        //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
-        val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
-        TopBar(
-            onOpenDrawer,
-            onOpenWorkspace = { wsPanel = true },
-            onPersona = { personaPanel = !personaPanel },
+Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glassPageLayer(pageBackdrop)) {
+         TopBar(
+             onOpenDrawer,
+             onOpenWorkspace = { wsPanel = true },
+             onPersona = { personaPanel = !personaPanel },
+             onOpenCtx = { ctxOpen = true },
             ctxTok = cst[0],
             ctxFreshCount = cst[1],
             ctxFreshTok = cst[2]
@@ -524,7 +532,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
 
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
-        detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
+        detail != null || menuFor != null || promptReq != null || wsPanel || ctxOpen || fullInput || modePanel ||
             sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
@@ -580,6 +588,9 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                 }
             )
             wsPanel -> WorkspaceDialog { wsPanel = false }
+            ctxOpen -> ScrimCard(onDismiss = { ctxOpen = false }) {
+                CtxCard(cst[0], Cfg.ctxTokenBudget, cst[1], cst[2])
+            }
             d != null -> ToolDetailDialog(d) { detail = null }
             sm != null -> SummaryMenuDialog(
                 onRegen = {
@@ -663,11 +674,11 @@ private fun TopBar(
     onOpenDrawer: () -> Unit,
     onOpenWorkspace: () -> Unit,
     onPersona: () -> Unit,
+    onOpenCtx: () -> Unit,
     ctxTok: Int,
     ctxFreshCount: Int,
     ctxFreshTok: Int
 ) {
-    var ctxOpen by remember { mutableStateOf(false) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -727,17 +738,8 @@ private fun TopBar(
             )
         }
         Spacer(Modifier.width(8.dp))
-        //上下文占用环：占加号左边那个位置，点开是用量小卡片
-        Box {
-            CtxRing(tokens = ctxTok, budget = Cfg.ctxTokenBudget) { ctxOpen = true }
-            DropdownMenu(
-                expanded = ctxOpen,
-                onDismissRequest = { ctxOpen = false },
-                offset = DpOffset(0.dp, 2.dp)
-            ) {
-                CtxCard(ctxTok, Cfg.ctxTokenBudget, ctxFreshCount, ctxFreshTok)
-            }
-        }
+        //上下文占用环：占加号左边那个位置，点开是用量小卡片（走根弹窗层，跟其它弹窗同一套玻璃）
+        CtxRing(tokens = ctxTok, budget = Cfg.ctxTokenBudget) { onOpenCtx() }
         Spacer(Modifier.width(8.dp))
         //右上角两个动作：新建会话（加号）、工作区绑定（代码尖括号）
         Box(
@@ -1719,7 +1721,7 @@ private fun ThinkBlock(m: ChatMsg) {
             if (open) m.reasoning else m.reasoning.replace("\n", " ").take(90) + "…",
             fontSize = 11.sp,
             color = TextSecondary,
-            modifier = if (open) Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState()) else Modifier
+            modifier = if (open) Modifier.heightIn(max = 240.dp).verticalScroll(glassScrollState()) else Modifier
         )
     }
 } //思考过程：默认一行，点开看全文
@@ -1815,7 +1817,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                     .heightIn(max = 160.dp)
                     .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .padding(10.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(glassScrollState())
             ) {
                 Text(
                     prettyJson(args),
@@ -1834,7 +1836,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 .heightIn(max = 300.dp)
                 .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 if (m.content.isBlank()) stringResource(R.string.cs_no_output) else m.content,
@@ -1982,7 +1984,7 @@ private fun MsgMenuDialog(
                 .heightIn(max = 96.dp)
                 .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(9.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 if (m.content.isBlank()) stringResource(R.string.cs_no_content) else m.content,
@@ -2069,7 +2071,7 @@ private fun PromptDialog(
                 onValueChange = { text = it },
                 textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = TextPrimary),
                 cursorBrush = SolidColor(AccentBlue),
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+                modifier = Modifier.fillMaxWidth().verticalScroll(glassScrollState())
             )
         }
         Spacer(Modifier.height(12.dp))

@@ -106,7 +106,7 @@ fun PackDialog(pack: SkillPack, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 430.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Column {
                 //函数清单：参数列出来，改模板后保存前先 lint

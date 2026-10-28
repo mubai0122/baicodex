@@ -131,7 +131,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 18.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(glassScrollState())
     ) {
         Spacer(Modifier.height(28.dp))
         Text("Baicodex", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)

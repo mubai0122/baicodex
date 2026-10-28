@@ -105,7 +105,7 @@ fun SessionSheet(onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 400.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(glassScrollState())
             ) {
                 if (list.isEmpty()) {
                     Text(stringResource(R.string.ss_empty), fontSize = 12.sp, color = TextSecondary)

@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -51,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -204,6 +208,7 @@ fun SettingsScreen(
 ) {
     val ctx = LocalContext.current
     //统计要读 SQLite，放 IO 线程，避免进设置页时卡主线程
+    android.util.Log.w("Boot", "settings enter")
     var stats by remember { mutableStateOf(0 to 0) }
     var tab by remember { mutableStateOf(initialTab) }
     var draft by remember { mutableStateOf<Skill?>(null) }
@@ -220,6 +225,14 @@ fun SettingsScreen(
     var fq by remember { mutableStateOf("") }
     //下拉选择面板的当前内容：非空时挂到根弹窗层，和其它弹窗互斥
     var pick by remember { mutableStateOf<Pair<String, List<PickItem>>?>(null) }
+    //切分类：新内容第一帧先走平价玻璃再错峰升级（同帧建几十个离屏节点会顶出 200ms 长帧），并回到顶部
+    //进页面这一次也按「刚换过内容」算：首帧先平涂，别在进页面那一帧同时建一堆离屏节点
+    remember { GlassPerf.switched(); Unit }
+    val scroll = glassLazyListState()
+    LaunchedEffect(tab) {
+        GlassPerf.switched()
+        scroll.scrollToItem(0)
+    }
     LaunchedEffect(Agent.messages.size, Agent.sessionId) {
         stats = withContext(Dispatchers.IO) { Agent.stats() }
     }
@@ -227,6 +240,8 @@ fun SettingsScreen(
     //页面层：底栏的玻璃就采样这一层（底色先垫一发，缺内容的地方不至于透成黑）
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
+        //采样层必须含真背景：只垫纯色的话，底栏玻璃在没内容的地方采到的就是一块灰白
+        drawPageBg()
         drawContent()
     }
     //卡片玻璃只采纯背景那一层：不能采 pageBackdrop，卡片自己也在里面，采到的会是上一帧的自己
@@ -250,7 +265,7 @@ fun SettingsScreen(
         //背景单开一层给卡片取样；内容再套一层吃系统栏内边距
         Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
         Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-        Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
+        Column(Modifier.fillMaxSize().glassPageLayer(pageBackdrop)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -325,11 +340,14 @@ fun SettingsScreen(
                 }
             }
 
-            Column(
+            //内容区：懒加载。原来是 Column + verticalScroll，切一次分类就把整个分类的几十张卡片和上百个文本
+            //一起组合、一起排版，实测顶出 109~197ms 长帧；换成 LazyColumn 后只组合看得见的那几张卡
+            CompositionLocalProvider(LocalPicker provides { t, l -> pick = t to l }) {
+            LazyColumn(
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp),
+                state = scroll
             ) {
                 when {
                     find && fq.isNotBlank() -> {
@@ -340,20 +358,22 @@ fun SettingsScreen(
                                 (if (it.hintRes != 0) ctx.getString(it.hintRes) else it.hintRaw).contains(key, true)
                         }
                         if (hits.isEmpty()) {
-                            Text(
-                                "没有匹配的设置项：$key",
-                                fontSize = 12.sp,
-                                color = TextSecondary,
-                                modifier = Modifier.padding(vertical = 10.dp)
-                            )
+                            item {
+                                Text(
+                                    "没有匹配的设置项：$key",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(vertical = 10.dp)
+                                )
+                            }
                         } else {
-                            hits.forEach { e ->
+                            items(hits) { e ->
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
                                         .liquidBg(RoundedCornerShape(12.dp))
-                                        .tap { tab = tabIndex(e.tabRes); find = false; fq = "" }
+                                        .tap { GlassPerf.switched(); tab = tabIndex(e.tabRes); find = false; fq = "" }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -375,40 +395,41 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    find -> Text(
-                        stringResource(R.string.se_063),
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-                    else -> CompositionLocalProvider(LocalPicker provides { t, l -> pick = t to l }) {
-                        when (tab) {
-                            0 -> ModelTab(onOpenMemory)
-                            1 -> ChatTab(stats, onOpenStars)
-                            2 -> UiTab(onOpenPet)
-                            3 -> ExtTab(
-                                onEdit = { draft = it },
-                                onEditPersona = { personaDraft = it },
-                                onEditMcp = { mcpDraft = it },
-                                onNewTask = { taskDraft = true },
-                                onNewFlow = { flowDraft = true },
-                                onOpenA2a = { a2aDraft = true },
-                                onNewTrigger = { triggerDraft = true },
-                                onEditPack = { packDraft = it }
-                            )
-                            4 -> StatTab()
-                            5 -> AboutTab(onOpenFeedback)
-                            else -> UiTab(onOpenPet)
-                        }
+                    find -> item {
+                        Text(
+                            stringResource(R.string.se_063),
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(vertical = 10.dp)
+                        )
+                    }
+                    else -> when (tab) {
+                        0 -> modelTab(onOpenMemory)
+                        1 -> item { ChatTab(stats, onOpenStars) }
+                        2 -> uiTab(onOpenPet)
+                        3 -> extTab(
+                            onEdit = { draft = it },
+                            onEditPersona = { personaDraft = it },
+                            onEditMcp = { mcpDraft = it },
+                            onNewTask = { taskDraft = true },
+                            onNewFlow = { flowDraft = true },
+                            onOpenA2a = { a2aDraft = true },
+                            onNewTrigger = { triggerDraft = true },
+                            onEditPack = { packDraft = it }
+                        )
+                        4 -> item { StatTab() }
+                        5 -> item { AboutTab(onOpenFeedback) }
+                        else -> uiTab(onOpenPet)
                     }
             }
-        }
-    }
+                }
+            }
+            }
         FloatTabBar(
             tabs = SettingsTabs,
             selected = tab,
-            onSelect = { tab = it },
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
+            onSelect = { GlassPerf.switched(); tab = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
             backdrop = pageBackdrop
         )
     }
@@ -470,218 +491,232 @@ fun SettingsScreen(
     }
 } //设置界面
 
-@Composable
-private fun ModelTab(onOpenMemory: () -> Unit) {
-    SectionTitle(stringResource(R.string.se_007), stringResource(R.string.se_064))
-    ProfileList()
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_009))
-    CardBox { ModelSetupPanel() }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_011), stringResource(R.string.se_065))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_066),
-            if (Cfg.modelVision) stringResource(R.string.se_067) else stringResource(R.string.se_068),
-            Cfg.modelVision
-        ) { Cfg.modelVision = it; Profiles.capture() }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_069),
-            if (Cfg.modelToolCall) stringResource(R.string.se_070)
-            else stringResource(R.string.se_071),
-            Cfg.modelToolCall
-        ) { Cfg.modelToolCall = it; Profiles.capture() }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_072),
-            if (Cfg.modelReasoning) stringResource(R.string.se_073) else stringResource(R.string.se_074),
-            Cfg.modelReasoning
-        ) { Cfg.modelReasoning = it; Profiles.capture() }
+//模型分类：拆成一个个 item，LazyColumn 只组合看得见的那几张卡
+private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
+    item {
+        SectionTitle(stringResource(R.string.se_007), stringResource(R.string.se_064))
+        ProfileList()
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
-    CardBox {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.se_076), fontSize = 14.sp, color = TextPrimary)
-                Text(
-                    if (Cfg.think) stringResource(R.string.se_077) else stringResource(R.string.se_078),
-                    fontSize = 11.sp,
-                    color = TextSecondary
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_009))
+        CardBox { ModelSetupPanel() }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_011), stringResource(R.string.se_065))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_066),
+                if (Cfg.modelVision) stringResource(R.string.se_067) else stringResource(R.string.se_068),
+                Cfg.modelVision
+            ) { Cfg.modelVision = it; Profiles.capture() }
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(
+                stringResource(R.string.se_069),
+                if (Cfg.modelToolCall) stringResource(R.string.se_070)
+                else stringResource(R.string.se_071),
+                Cfg.modelToolCall
+            ) { Cfg.modelToolCall = it; Profiles.capture() }
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(
+                stringResource(R.string.se_072),
+                if (Cfg.modelReasoning) stringResource(R.string.se_073) else stringResource(R.string.se_074),
+                Cfg.modelReasoning
+            ) { Cfg.modelReasoning = it; Profiles.capture() }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
+        CardBox {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.se_076), fontSize = 14.sp, color = TextPrimary)
+                    Text(
+                        if (Cfg.think) stringResource(R.string.se_077) else stringResource(R.string.se_078),
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+                Switch(
+                    checked = Cfg.think,
+                    onCheckedChange = { Cfg.think = it },
+                    colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
                 )
             }
-            Switch(
-                checked = Cfg.think,
-                onCheckedChange = { Cfg.think = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        SelectField(
-            stringResource(R.string.se_079),
-            Cfg.thinkEffort,
-            listOf("low", "medium", "high"),
-            optionLabel = { it },
-            isSelected = { Cfg.thinkEffort == it },
-            onSelect = { Cfg.thinkEffort = it }
-        )
-        Spacer(Modifier.height(10.dp))
-        CapSwitch(
-            stringResource(R.string.se_080),
-            if (Cfg.maxMode) stringResource(R.string.se_081) else stringResource(R.string.se_082),
-            Cfg.maxMode
-        ) { Cfg.maxMode = it }
-        Spacer(Modifier.height(8.dp))
-        SelectField(
-            stringResource(R.string.se_083),
-            if (Cfg.temperature < 0f) stringResource(R.string.se_084) else Cfg.temperature.toString(),
-            listOf(-1f, 0f, 0.3f, 0.7f, 1f, 1.3f),
-            optionLabel = { if (it < 0f) stringResource(R.string.se_084) else it.toString() },
-            isSelected = { kotlin.math.abs(Cfg.temperature - it) < 0.01f },
-            onSelect = { Cfg.temperature = it }
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            stringResource(R.string.se_085),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
-        Spacer(Modifier.height(10.dp))
-        Text(stringResource(R.string.se_086), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Field(
-            label = stringResource(R.string.se_087),
-            value = Cfg.extraParams,
-            onValueChange = { Cfg.extraParams = it },
-            placeholder = """{"enable_thinking":true}""",
-            secret = false,
-            singleLine = false,
-            minLines = 2
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            stringResource(R.string.se_088) +
-                stringResource(R.string.se_089),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
-    }
-
-    //语音：识别（音频转文字）与合成（文字转音频）各自可选系统能力或自填的模型接口，跟模型配置同一页
-    val ctx = LocalContext.current
-    val sysLabel = stringResource(R.string.se_v_mode_sys)
-    val apiLabel = stringResource(R.string.se_v_mode_api)
-    val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_v_in_t), stringResource(R.string.se_v_in_d))
-    CardBox {
-        SelectField(
-            stringResource(R.string.se_v_mode),
-            modeLabel(Cfg.asrMode),
-            listOf("sys", "api"),
-            optionLabel = { modeLabel(it) },
-            isSelected = { Cfg.asrMode == it },
-            onSelect = { Cfg.asrMode = it }
-        )
-        if (Cfg.asrMode == "api") {
-            Field(
-                label = stringResource(R.string.se_v_base),
-                value = Cfg.asrBase,
-                onValueChange = { Cfg.asrBase = it },
-                placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
-            )
-            Field(
-                label = stringResource(R.string.se_v_key),
-                value = Cfg.asrKey,
-                onValueChange = { Cfg.asrKey = it },
-                placeholder = stringResource(R.string.se_v_key_ph),
-                secret = true
-            )
-            Field(
-                label = stringResource(R.string.se_v_model),
-                value = Cfg.asrModel,
-                onValueChange = { Cfg.asrModel = it },
-                placeholder = "whisper-1"
-            )
-        }
-        Field(
-            label = stringResource(R.string.se_v_lang),
-            value = Cfg.asrLang,
-            onValueChange = { Cfg.asrLang = it },
-            placeholder = "zh-CN"
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_v_out_t), stringResource(R.string.se_v_out_d))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_124),
-            if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
-            Cfg.speakReplies
-        ) { on ->
-            Cfg.speakReplies = on
-            //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
-            if (on) Speak.say(ctx.getString(R.string.se_127), force = true) else Speak.stop()
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_128), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(10.dp))
-        SelectField(
-            stringResource(R.string.se_v_mode),
-            modeLabel(Cfg.ttsMode),
-            listOf("sys", "api"),
-            optionLabel = { modeLabel(it) },
-            isSelected = { Cfg.ttsMode == it },
-            onSelect = { Cfg.ttsMode = it }
-        )
-        if (Cfg.ttsMode == "api") {
-            Field(
-                label = stringResource(R.string.se_v_base),
-                value = Cfg.ttsBase,
-                onValueChange = { Cfg.ttsBase = it },
-                placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
-            )
-            Field(
-                label = stringResource(R.string.se_v_key),
-                value = Cfg.ttsKey,
-                onValueChange = { Cfg.ttsKey = it },
-                placeholder = stringResource(R.string.se_v_key_ph),
-                secret = true
-            )
-            Field(
-                label = stringResource(R.string.se_v_model),
-                value = Cfg.ttsModel,
-                onValueChange = { Cfg.ttsModel = it },
-                placeholder = "tts-1"
-            )
-            Field(
-                label = stringResource(R.string.se_v_voice),
-                value = Cfg.ttsVoice,
-                onValueChange = { Cfg.ttsVoice = it },
-                placeholder = "alloy"
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                stringResource(R.string.se_079),
+                Cfg.thinkEffort,
+                listOf("low", "medium", "high"),
+                optionLabel = { it },
+                isSelected = { Cfg.thinkEffort == it },
+                onSelect = { Cfg.thinkEffort = it }
             )
             Spacer(Modifier.height(10.dp))
-            GhostButton(stringResource(R.string.se_v_play), modifier = Modifier.height(38.dp)) {
-                Speak.say(ctx.getString(R.string.se_127), force = true)
+            CapSwitch(
+                stringResource(R.string.se_080),
+                if (Cfg.maxMode) stringResource(R.string.se_081) else stringResource(R.string.se_082),
+                Cfg.maxMode
+            ) { Cfg.maxMode = it }
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                stringResource(R.string.se_083),
+                if (Cfg.temperature < 0f) stringResource(R.string.se_084) else Cfg.temperature.toString(),
+                listOf(-1f, 0f, 0.3f, 0.7f, 1f, 1.3f),
+                optionLabel = { if (it < 0f) stringResource(R.string.se_084) else it.toString() },
+                isSelected = { kotlin.math.abs(Cfg.temperature - it) < 0.01f },
+                onSelect = { Cfg.temperature = it }
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.se_085),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.se_086), fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            Field(
+                label = stringResource(R.string.se_087),
+                value = Cfg.extraParams,
+                onValueChange = { Cfg.extraParams = it },
+                placeholder = """{"enable_thinking":true}""",
+                secret = false,
+                singleLine = false,
+                minLines = 2
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.se_088) +
+                    stringResource(R.string.se_089),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+    }
+    item {
+        //语音识别：可以走系统能力，也可以自填模型接口
+        val ctx = LocalContext.current
+        val sysLabel = stringResource(R.string.se_v_mode_sys)
+        val apiLabel = stringResource(R.string.se_v_mode_api)
+        val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_v_in_t), stringResource(R.string.se_v_in_d))
+        CardBox {
+            SelectField(
+                stringResource(R.string.se_v_mode),
+                modeLabel(Cfg.asrMode),
+                listOf("sys", "api"),
+                optionLabel = { modeLabel(it) },
+                isSelected = { Cfg.asrMode == it },
+                onSelect = { Cfg.asrMode = it }
+            )
+            if (Cfg.asrMode == "api") {
+                Field(
+                    label = stringResource(R.string.se_v_base),
+                    value = Cfg.asrBase,
+                    onValueChange = { Cfg.asrBase = it },
+                    placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+                )
+                Field(
+                    label = stringResource(R.string.se_v_key),
+                    value = Cfg.asrKey,
+                    onValueChange = { Cfg.asrKey = it },
+                    placeholder = stringResource(R.string.se_v_key_ph),
+                    secret = true
+                )
+                Field(
+                    label = stringResource(R.string.se_v_model),
+                    value = Cfg.asrModel,
+                    onValueChange = { Cfg.asrModel = it },
+                    placeholder = "whisper-1"
+                )
             }
-            if (Audio.error.isNotBlank()) {
-                Spacer(Modifier.height(6.dp))
-                Text(Audio.error, fontSize = 10.sp, color = DangerRed)
+            Field(
+                label = stringResource(R.string.se_v_lang),
+                value = Cfg.asrLang,
+                onValueChange = { Cfg.asrLang = it },
+                placeholder = "zh-CN"
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
+        }
+    }
+    item {
+        //语音合成：跟识别一样两套来源
+        val ctx = LocalContext.current
+        val sysLabel = stringResource(R.string.se_v_mode_sys)
+        val apiLabel = stringResource(R.string.se_v_mode_api)
+        val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_v_out_t), stringResource(R.string.se_v_out_d))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_124),
+                if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
+                Cfg.speakReplies
+            ) { on ->
+                Cfg.speakReplies = on
+                //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
+                if (on) Speak.say(ctx.getString(R.string.se_127), force = true) else Speak.stop()
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.se_128), fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.height(10.dp))
+            SelectField(
+                stringResource(R.string.se_v_mode),
+                modeLabel(Cfg.ttsMode),
+                listOf("sys", "api"),
+                optionLabel = { modeLabel(it) },
+                isSelected = { Cfg.ttsMode == it },
+                onSelect = { Cfg.ttsMode = it }
+            )
+            if (Cfg.ttsMode == "api") {
+                Field(
+                    label = stringResource(R.string.se_v_base),
+                    value = Cfg.ttsBase,
+                    onValueChange = { Cfg.ttsBase = it },
+                    placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+                )
+                Field(
+                    label = stringResource(R.string.se_v_key),
+                    value = Cfg.ttsKey,
+                    onValueChange = { Cfg.ttsKey = it },
+                    placeholder = stringResource(R.string.se_v_key_ph),
+                    secret = true
+                )
+                Field(
+                    label = stringResource(R.string.se_v_model),
+                    value = Cfg.ttsModel,
+                    onValueChange = { Cfg.ttsModel = it },
+                    placeholder = "tts-1"
+                )
+                Field(
+                    label = stringResource(R.string.se_v_voice),
+                    value = Cfg.ttsVoice,
+                    onValueChange = { Cfg.ttsVoice = it },
+                    placeholder = "alloy"
+                )
+                Spacer(Modifier.height(10.dp))
+                GhostButton(stringResource(R.string.se_v_play), modifier = Modifier.height(38.dp)) {
+                    Speak.say(ctx.getString(R.string.se_127), force = true)
+                }
+                if (Audio.error.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(Audio.error, fontSize = 10.sp, color = DangerRed)
+                }
             }
         }
     }
-    //记忆：长期记忆的查看与手动增删，跟模型能力放同一页
-    Spacer(Modifier.height(14.dp))
-    SectionTitle("记忆", "跨会话长期记忆：模型会自己读写，也可以在这里手动增删改")
-    CardBox {
-        LinkRow("记忆条目", "查看 / 编辑", onClick = onOpenMemory)
+    item {
+        //记忆：长期记忆的查看与手动增删
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("记忆", "跨会话长期记忆：模型会自己读写，也可以在这里手动增删改")
+        CardBox {
+            LinkRow("记忆条目", "查看 / 编辑", onClick = onOpenMemory)
+        }
     }
 } //模型分类（含语音识别与语音合成）
 
@@ -1234,297 +1269,317 @@ private fun PermTab() {
 //字号档位：存的是倍率，1f = 跟随系统
 private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f, R.string.se_165 to 1.15f, R.string.se_166 to 1.3f)
 
-@Composable
-private fun UiTab(onOpenPet: () -> Unit) {
-    //切语言：存完配置要重建 Activity，界面才会真的换语言
-    val act = LocalContext.current as? Activity
-    val pickLang: (String) -> Unit = { code ->
-        if (Cfg.lang != code) {
-            Cfg.lang = code
-            act?.recreate()
+//外观分类：一张卡一个 item，视口外的卡不组合
+private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
+    item {
+        //切语言：存完配置要重建 Activity，界面才会真的换语言
+        val act = LocalContext.current as? Activity
+        val pickLang: (String) -> Unit = { code ->
+            if (Cfg.lang != code) {
+                Cfg.lang = code
+                act?.recreate()
+            }
+        }
+        SectionTitle(stringResource(R.string.se_167), stringResource(R.string.se_168))
+        CardBox {
+            val langs = Lang.options
+            SelectField(
+                stringResource(R.string.se_167),
+                langs.firstOrNull { it.first == Cfg.lang }?.second ?: stringResource(R.string.se_187),
+                langs.map { it.first },
+                optionLabel = { code -> langs.first { it.first == code }.second },
+                isSelected = { Cfg.lang == it },
+                onSelect = { pickLang(it) }
+            )
         }
     }
-
-    SectionTitle(stringResource(R.string.se_167), stringResource(R.string.se_168))
-    CardBox {
-        val langs = Lang.options
-        SelectField(
-            stringResource(R.string.se_167),
-            langs.firstOrNull { it.first == Cfg.lang }?.second ?: stringResource(R.string.se_187),
-            langs.map { it.first },
-            optionLabel = { code -> langs.first { it.first == code }.second },
-            isSelected = { Cfg.lang == it },
-            onSelect = { pickLang(it) }
-        )
-    }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_030), stringResource(R.string.se_185))
-    CardBox {
-        SelectField(
-            stringResource(R.string.se_030),
-            when (Cfg.darkTheme) {
-                1 -> stringResource(R.string.se_188)
-                2 -> stringResource(R.string.se_189)
-                else -> stringResource(R.string.se_187)
-            },
-            listOf(0, 1, 2),
-            optionLabel = {
-                when (it) {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_030), stringResource(R.string.se_185))
+        CardBox {
+            SelectField(
+                stringResource(R.string.se_030),
+                when (Cfg.darkTheme) {
                     1 -> stringResource(R.string.se_188)
                     2 -> stringResource(R.string.se_189)
                     else -> stringResource(R.string.se_187)
-                }
-            },
-            isSelected = { Cfg.darkTheme == it },
-            onSelect = { Cfg.darkTheme = it }
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            when (Cfg.darkTheme) {
-                1 -> stringResource(R.string.se_190)
-                2 -> stringResource(R.string.se_191)
-                else -> stringResource(R.string.se_192)
-            },
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
+                },
+                listOf(0, 1, 2),
+                optionLabel = {
+                    when (it) {
+                        1 -> stringResource(R.string.se_188)
+                        2 -> stringResource(R.string.se_189)
+                        else -> stringResource(R.string.se_187)
+                    }
+                },
+                isSelected = { Cfg.darkTheme == it },
+                onSelect = { Cfg.darkTheme = it }
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                when (Cfg.darkTheme) {
+                    1 -> stringResource(R.string.se_190)
+                    2 -> stringResource(R.string.se_191)
+                    else -> stringResource(R.string.se_192)
+                },
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
+        }
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_tint_t), stringResource(R.string.se_tint_d))
-    CardBox {
-        SelectField(
-            stringResource(R.string.se_tint_t),
-            stringResource(TINT_NAMES[Cfg.themeTint.coerceIn(0, TINT_NAMES.lastIndex)]),
-            TINT_NAMES.indices.toList(),
-            optionLabel = { stringResource(TINT_NAMES[it]) },
-            isSelected = { Cfg.themeTint == it },
-            onSelect = { Cfg.themeTint = it }
-        )
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_tint_t), stringResource(R.string.se_tint_d))
+        CardBox {
+            SelectField(
+                stringResource(R.string.se_tint_t),
+                stringResource(TINT_NAMES[Cfg.themeTint.coerceIn(0, TINT_NAMES.lastIndex)]),
+                TINT_NAMES.indices.toList(),
+                optionLabel = { stringResource(TINT_NAMES[it]) },
+                isSelected = { Cfg.themeTint == it },
+                onSelect = { Cfg.themeTint = it }
+            )
+        }
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_032), stringResource(R.string.se_193))
-    CardBox {
-        SelectField(
-            stringResource(R.string.se_032),
-            FontPresets.firstOrNull { kotlin.math.abs(Cfg.fontScale - it.second) < 0.01f }?.let { stringResource(it.first) }
-                ?: stringResource(R.string.se_164),
-            FontPresets.map { it.second },
-            optionLabel = { v -> stringResource(FontPresets.first { it.second == v }.first) },
-            isSelected = { kotlin.math.abs(Cfg.fontScale - it) < 0.01f },
-            onSelect = { Cfg.fontScale = it }
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(stringResource(R.string.se_font_cur, (Cfg.fontScale * 100).toInt()), fontSize = 11.sp, color = TextSecondary)
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_032), stringResource(R.string.se_193))
+        CardBox {
+            SelectField(
+                stringResource(R.string.se_032),
+                FontPresets.firstOrNull { kotlin.math.abs(Cfg.fontScale - it.second) < 0.01f }?.let { stringResource(it.first) }
+                    ?: stringResource(R.string.se_164),
+                FontPresets.map { it.second },
+                optionLabel = { v -> stringResource(FontPresets.first { it.second == v }.first) },
+                isSelected = { kotlin.math.abs(Cfg.fontScale - it) < 0.01f },
+                onSelect = { Cfg.fontScale = it }
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.se_font_cur, (Cfg.fontScale * 100).toInt()), fontSize = 11.sp, color = TextSecondary)
+        }
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_bg), stringResource(R.string.se_bg_d))
-    CardBox {
-        SelectField(
-            stringResource(R.string.se_bg),
-            when (Cfg.bgStyle) {
-                1 -> stringResource(R.string.se_bg_grad)
-                2 -> stringResource(R.string.se_bg_dots)
-                else -> stringResource(R.string.se_bg_plain)
-            },
-            listOf(0, 1, 2),
-            optionLabel = {
-                when (it) {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_bg), stringResource(R.string.se_bg_d))
+        CardBox {
+            SelectField(
+                stringResource(R.string.se_bg),
+                when (Cfg.bgStyle) {
                     1 -> stringResource(R.string.se_bg_grad)
                     2 -> stringResource(R.string.se_bg_dots)
                     else -> stringResource(R.string.se_bg_plain)
-                }
-            },
-            isSelected = { Cfg.bgStyle == it },
-            onSelect = { Cfg.bgStyle = it }
-        )
-        Spacer(Modifier.height(10.dp))
-        //背景图：从相册选一张铺满页面，模糊度单独一条滑杆
-        BgImagePick()
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
-    CardBox {
-        CapSwitch(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
-            Cfg.avatarOn = it
-        }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
-            Cfg.bubbleCapsule = it
-        }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
-            Cfg.waifuMode = it
+                },
+                listOf(0, 1, 2),
+                optionLabel = {
+                    when (it) {
+                        1 -> stringResource(R.string.se_bg_grad)
+                        2 -> stringResource(R.string.se_bg_dots)
+                        else -> stringResource(R.string.se_bg_plain)
+                    }
+                },
+                isSelected = { Cfg.bgStyle == it },
+                onSelect = { Cfg.bgStyle = it }
+            )
+            Spacer(Modifier.height(10.dp))
+            //背景图：从相册选一张铺满页面，模糊度单独一条滑杆
+            BgImagePick()
         }
     }
-    Spacer(Modifier.height(10.dp))
-    AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
-        Avatar.forget(Cfg.avatarUser)
-        Cfg.avatarUser = p
-    }
-    Spacer(Modifier.height(14.dp))
-    AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
-        Avatar.forget(Cfg.avatarAi)
-        Cfg.avatarAi = p
-        //清空就等于放弃自定义，回落到跟角色卡
-        Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
-    }
-    Spacer(Modifier.height(16.dp))
-    CardBox {
-        ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
-            Cfg.avatarAiMode = "persona"
-        }
-        ChoiceRow(
-            stringResource(R.string.se_183),
-            if (Cfg.avatarAi.isEmpty()) stringResource(R.string.se_184) else stringResource(R.string.se_186),
-            Cfg.avatarAiMode == "custom"
-        ) {
-            if (Cfg.avatarAi.isNotBlank()) Cfg.avatarAiMode = "custom"
-        }
-    }
-    Spacer(Modifier.height(10.dp))
-    //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
-    PetEntryRow(onOpenPet)
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_196),
-            stringResource(R.string.se_197),
-            Cfg.floatInput
-        ) { Cfg.floatInput = it }
-        Spacer(Modifier.height(10.dp))
-        //新逻辑：超 700 字才出现全屏入口；关掉就让它一直挂在语音右边
-        CapSwitch(
-            stringResource(R.string.se_fullin_t),
-            stringResource(R.string.se_fullin_d),
-            Cfg.fullInputNew
-        ) { Cfg.fullInputNew = it }
-        Spacer(Modifier.height(10.dp))
-        //粘贴超长文本自动转文件：默认开，阈值滑杆 500 起、500 一档
-        CapSwitch(
-            stringResource(R.string.se_paste_t),
-            stringResource(R.string.se_paste_d),
-            Cfg.pasteToFile
-        ) { Cfg.pasteToFile = it }
-        if (Cfg.pasteToFile) {
-            Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.se_paste_limit), fontSize = 14.sp, color = TextPrimary)
-                Spacer(Modifier.weight(1f))
-                Text(
-                    stringResource(R.string.se_paste_limit_v, Cfg.pasteLimit),
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
+        CardBox {
+            CapSwitch(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
+                Cfg.avatarOn = it
             }
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
+                Cfg.bubbleCapsule = it
+            }
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
+                Cfg.waifuMode = it
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(10.dp))
+        AvatarPick(stringResource(R.string.se_177), stringResource(R.string.se_178), Cfg.avatarUser) { p ->
+            Avatar.forget(Cfg.avatarUser)
+            Cfg.avatarUser = p
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        AvatarPick(stringResource(R.string.se_179), stringResource(R.string.se_180), Avatar.aiPath()) { p ->
+            Avatar.forget(Cfg.avatarAi)
+            Cfg.avatarAi = p
+            //清空就等于放弃自定义，回落到跟角色卡
+            Cfg.avatarAiMode = if (p.isEmpty()) "persona" else "custom"
+        }
+    }
+    item {
+        Spacer(Modifier.height(16.dp))
+        CardBox {
+            ChoiceRow(stringResource(R.string.se_181), stringResource(R.string.se_182), Cfg.avatarAiMode != "custom") {
+                Cfg.avatarAiMode = "persona"
+            }
+            ChoiceRow(
+                stringResource(R.string.se_183),
+                if (Cfg.avatarAi.isEmpty()) stringResource(R.string.se_184) else stringResource(R.string.se_186),
+                Cfg.avatarAiMode == "custom"
+            ) {
+                if (Cfg.avatarAi.isNotBlank()) Cfg.avatarAiMode = "custom"
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(10.dp))
+        //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
+        PetEntryRow(onOpenPet)
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_196),
+                stringResource(R.string.se_197),
+                Cfg.floatInput
+            ) { Cfg.floatInput = it }
+            Spacer(Modifier.height(10.dp))
+            //新逻辑：超 700 字才出现全屏入口；关掉就让它一直挂在语音右边
+            CapSwitch(
+                stringResource(R.string.se_fullin_t),
+                stringResource(R.string.se_fullin_d),
+                Cfg.fullInputNew
+            ) { Cfg.fullInputNew = it }
+            Spacer(Modifier.height(10.dp))
+            //粘贴超长文本自动转文件：默认开，阈值滑杆 500 起、500 一档
+            CapSwitch(
+                stringResource(R.string.se_paste_t),
+                stringResource(R.string.se_paste_d),
+                Cfg.pasteToFile
+            ) { Cfg.pasteToFile = it }
+            if (Cfg.pasteToFile) {
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.se_paste_limit), fontSize = 14.sp, color = TextPrimary)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.se_paste_limit_v, Cfg.pasteLimit),
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+                androidx.compose.material3.Slider(
+                    value = Cfg.pasteLimit.toFloat(),
+                    onValueChange = { Cfg.pasteLimit = (it / 500f).toInt() * 500 },
+                    valueRange = 500f..20000f,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(stringResource(R.string.se_paste_limit_d), fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_glass_card),
+                stringResource(R.string.se_glass_card_d),
+                Cfg.glassCard
+            ) { Cfg.glassCard = it }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                stringResource(R.string.se_tactile),
+                stringResource(R.string.se_tactile_d),
+                Cfg.tactileBtn
+            ) { Cfg.tactileBtn = it }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                stringResource(R.string.se_glass_bar),
+                stringResource(R.string.se_glass_bar_d),
+                Cfg.glassBar
+            ) { Cfg.glassBar = it }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.se_glass_blur), fontSize = 14.sp, color = TextPrimary)
+                Spacer(Modifier.weight(1f))
+                Text(stringResource(R.string.se_glass_blur_v, Cfg.glassBlur), fontSize = 11.sp, color = TextSecondary)
+            }
+            //模糊强度 0-20dp：0 只留折射，越大越糊；底栏与底部面板共用这个值
             androidx.compose.material3.Slider(
-                value = Cfg.pasteLimit.toFloat(),
-                onValueChange = { Cfg.pasteLimit = (it / 500f).toInt() * 500 },
-                valueRange = 500f..20000f,
+                value = Cfg.glassBlur.toFloat(),
+                onValueChange = { Cfg.glassBlur = it.toInt() },
+                valueRange = 0f..20f,
                 modifier = Modifier.fillMaxWidth()
             )
-            Text(stringResource(R.string.se_paste_limit_d), fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
         }
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se_glass_card),
-            stringResource(R.string.se_glass_card_d),
-            Cfg.glassCard
-        ) { Cfg.glassCard = it }
-        Spacer(Modifier.height(10.dp))
-        CapSwitch(
-            stringResource(R.string.se_tactile),
-            stringResource(R.string.se_tactile_d),
-            Cfg.tactileBtn
-        ) { Cfg.tactileBtn = it }
-        Spacer(Modifier.height(10.dp))
-        CapSwitch(
-            stringResource(R.string.se_glass_bar),
-            stringResource(R.string.se_glass_bar_d),
-            Cfg.glassBar
-        ) { Cfg.glassBar = it }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.se_glass_blur), fontSize = 14.sp, color = TextPrimary)
-            Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.se_glass_blur_v, Cfg.glassBlur), fontSize = 11.sp, color = TextSecondary)
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
+        CardBox {
+            Field(
+                label = stringResource(R.string.se_199),
+                value = Cfg.hintText,
+                onValueChange = { Cfg.hintText = it },
+                placeholder = stringResource(R.string.se_200),
+                singleLine = false,
+                minLines = 3
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (Cfg.hintText.isBlank()) stringResource(R.string.se2_hint_none)
+                else stringResource(R.string.se2_hint_n, Cfg.hintText.lines().count { it.isNotBlank() }),
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
         }
-        //模糊强度 0-20dp：0 只留折射，越大越糊；底栏与底部面板共用这个值
-        androidx.compose.material3.Slider(
-            value = Cfg.glassBlur.toFloat(),
-            onValueChange = { Cfg.glassBlur = it.toInt() },
-            valueRange = 0f..20f,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
-    CardBox {
-        Field(
-            label = stringResource(R.string.se_199),
-            value = Cfg.hintText,
-            onValueChange = { Cfg.hintText = it },
-            placeholder = stringResource(R.string.se_200),
-            singleLine = false,
-            minLines = 3
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (Cfg.hintText.isBlank()) stringResource(R.string.se2_hint_none)
-            else stringResource(R.string.se2_hint_n, Cfg.hintText.lines().count { it.isNotBlank() }),
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
-    }
-
-    Spacer(Modifier.height(14.dp))
-    //悬浮聊天窗：常驻其他应用上层的简约聊天，回复按 Markdown 渲染
-    Spacer(Modifier.height(14.dp))
-    SectionTitle("悬浮聊天窗", "在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调")
-    CardBox {
-        val fctx = LocalContext.current
-        CapSwitch(
-            "显示悬浮聊天窗",
-            if (Cfg.fcOn) "已显示：拖标题栏换位置，点右上角 × 收起" else "关着：打开后在别的应用上层也能直接聊",
-            Cfg.fcOn
-        ) { on ->
-            if (!on) {
-                Cfg.fcOn = false
-                FChat.hide()
-            } else if (Pet.canShow(fctx)) {
-                Cfg.fcOn = true
-                FChat.show(fctx)
-            } else {
-                //没悬浮窗权限：开关不落地，先送去系统设置授权
-                Cfg.fcOn = false
-                PetGrant.openOverlaySetting(fctx)
+    item {
+        Spacer(Modifier.height(14.dp))
+        //悬浮聊天窗：常驻其他应用上层的简约聊天，回复按 Markdown 渲染
+        SectionTitle("悬浮聊天窗", "在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调")
+        CardBox {
+            val fctx = LocalContext.current
+            CapSwitch(
+                "显示悬浮聊天窗",
+                if (Cfg.fcOn) "已显示：拖标题栏换位置，点右上角 × 收起" else "关着：打开后在别的应用上层也能直接聊",
+                Cfg.fcOn
+            ) { on ->
+                if (!on) {
+                    Cfg.fcOn = false
+                    FChat.hide()
+                } else if (Pet.canShow(fctx)) {
+                    Cfg.fcOn = true
+                    FChat.show(fctx)
+                } else {
+                    //没悬浮窗权限：开关不落地，先送去系统设置授权
+                    Cfg.fcOn = false
+                    PetGrant.openOverlaySetting(fctx)
+                }
             }
         }
     }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_037), stringResource(R.string.se2_back_sub))
-    CardBox {
-        CapSwitch(
-            stringResource(R.string.se2_back_title),
-            stringResource(R.string.se2_back_desc),
-            Cfg.predictiveBack
-        ) { Cfg.predictiveBack = it }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_037), stringResource(R.string.se2_back_sub))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se2_back_title),
+                stringResource(R.string.se2_back_desc),
+                Cfg.predictiveBack
+            ) { Cfg.predictiveBack = it }
+        }
     }
 } //外观分类：字号 / 输入框 / 手势
 
-@Composable
-private fun ExtTab(
+//扩展分类：一张卡一个 item，没滚到的卡不组合（工具权限那张卡最重，几十个下拉）
+private fun LazyListScope.extTab(
     onEdit: (Skill) -> Unit,
     onEditPersona: (Persona) -> Unit,
     onEditMcp: (McpServer) -> Unit,
@@ -1534,307 +1589,322 @@ private fun ExtTab(
     onNewTrigger: () -> Unit,
     onEditPack: (SkillPack) -> Unit
 ) {
-    val ctx = LocalContext.current
-    //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
-    SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
-    CardBox {
-        val tasks = Schedules.list
-        val on = tasks.count { it.on }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.padding(end = 8.dp)) {
-                Icon(
-                    Icons.Filled.DateRange,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (tasks.isEmpty()) stringResource(R.string.se2_task_none) else stringResource(R.string.se2_task_n, tasks.size, on),
-                    fontSize = 13.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    if (tasks.isEmpty()) stringResource(R.string.se2_task_hint)
-                    else tasks.filter { it.on }.take(2)
-                        .joinToString("；") { "${if (it.daily) "每天 " else ""}${Alarms.fmt(it.at)} ${it.prompt.replace("\n", " ").take(16)}" }
-                        .ifBlank { ctx.getString(R.string.se2_task_off) },
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    maxLines = 2
-                )
-            }
-            GhostButton(stringResource(R.string.se2_manage)) { onNewTask() }
-        }
+    item {
+        //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
+        SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle("工作流", "多步按顺序跑，每步一个分智能体；可定时、失败可重试或跳过")
-    CardBox {
-        val flows = Flows.list
-        val enabled = flows.count { it.on }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.padding(end = 8.dp)) {
-                Icon(
-                    Icons.Filled.List,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "共 " + flows.size + " 条，启用 " + enabled + " 条",
-                    fontSize = 13.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    if (flows.isEmpty()) "写好几步存下来，就能一键跑或按点跑"
-                    else flows.take(2).joinToString("；") { f ->
-                        f.name + "（" + f.steps.size + " 步" +
-                            (if (f.at > 0L) " · " + Alarms.fmt(f.at) else "") + "）"
-                    },
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    maxLines = 2
-                )
-            }
-            GhostButton("管理工作流") { onNewFlow() }
-        }
-    }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
-    CardBox {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.padding(end = 8.dp)) {
-                Icon(
-                    Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
-                    fontSize = 13.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    if (A2aNodes.list.isEmpty()) "还没加对端"
-                    else "对端 " + A2aNodes.list.size + " 个：" +
-                        A2aNodes.list.take(2).joinToString("；") { it.name },
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    maxLines = 1
-                )
-            }
-            GhostButton("打开 A2A") { onOpenA2a() }
-        }
-    }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.ntg_title), stringResource(R.string.ntg_sub))
-    CardBox {
-        val rules = Triggers.list
-        val on = rules.count { it.on }
-        val any = stringResource(R.string.ntg_any)
-        val all = stringResource(R.string.ntg_allkw)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.padding(end = 8.dp)) {
-                Icon(
-                    Icons.Filled.Email,
-                    contentDescription = null,
-                    tint = AccentBlue,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (rules.isEmpty()) stringResource(R.string.ntg_none)
-                    else stringResource(R.string.ntg_count, rules.size, on),
-                    fontSize = 13.sp,
-                    color = TextPrimary
-                )
-                Text(
-                    if (rules.isEmpty()) stringResource(R.string.ntg_hint)
-                    else rules.filter { it.on }.take(2)
-                        .joinToString("；") { t -> t.app.ifBlank { any } + " · " + t.keyword.ifBlank { all } }
-                        .ifBlank { stringResource(R.string.ntg_offall) },
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    maxLines = 2
-                )
-            }
-            GhostButton(stringResource(R.string.ntg_manage)) { onNewTrigger() }
-        }
-    }
-
-    Spacer(Modifier.height(14.dp))
-    LinuxSection()
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_046), stringResource(R.string.se2_search_sub))
-    CardBox {
-        val providers = Search.providers
-        val sel = Cfg.searchProvider
-        if (providers.isEmpty()) {
-            Text(stringResource(R.string.se2_search_empty), fontSize = 13.sp, color = TextPrimary)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(R.string.se2_search_empty2),
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
-        } else {
-            SelectField(
-                stringResource(R.string.se_046),
-                providers.firstOrNull { it.id == sel }?.label ?: stringResource(R.string.se2_search_off),
-                listOf("") + providers.map { it.id },
-                optionLabel = { id -> providers.firstOrNull { it.id == id }?.label ?: stringResource(R.string.se2_search_off) },
-                isSelected = { sel == it },
-                onSelect = { Cfg.searchProvider = it }
-            )
-            val cur = Search.selected
-            if (cur != null) {
-                Spacer(Modifier.height(8.dp))
-                if (cur.fields.isEmpty()) {
-                    Text(stringResource(R.string.se2_search_needless, cur.label), fontSize = 12.sp, color = OkGreen)
-                } else {
-                    cur.fields.forEach { f ->
-                        Field(
-                            label = "${cur.label} ${f.label}",
-                            value = Cfg.searchCfg(cur.id, f.id),
-                            onValueChange = { Cfg.setSearchCfg(cur.id, f.id, it) },
-                            placeholder = f.hint,
-                            secret = f.id == "key"
-                        )
-                    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
+        CardBox {
+            val ctx = LocalContext.current
+            val tasks = Schedules.list
+            val on = tasks.count { it.on }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        Icons.Filled.DateRange,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
-                Spacer(Modifier.height(6.dp))
-                Text(cur.hint, fontSize = 10.sp, color = TextSecondary)
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (tasks.isEmpty()) stringResource(R.string.se2_task_none) else stringResource(R.string.se2_task_n, tasks.size, on),
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (tasks.isEmpty()) stringResource(R.string.se2_task_hint)
+                        else tasks.filter { it.on }.take(2)
+                            .joinToString("；") { "${if (it.daily) "每天 " else ""}${Alarms.fmt(it.at)} ${it.prompt.replace("\n", " ").take(16)}" }
+                            .ifBlank { ctx.getString(R.string.se2_task_off) },
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 2
+                    )
+                }
+                GhostButton(stringResource(R.string.se2_manage)) { onNewTask() }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("工作流", "多步按顺序跑，每步一个分智能体；可定时、失败可重试或跳过")
+        CardBox {
+            val flows = Flows.list
+            val enabled = flows.count { it.on }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        Icons.Filled.List,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "共 " + flows.size + " 条，启用 " + enabled + " 条",
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (flows.isEmpty()) "写好几步存下来，就能一键跑或按点跑"
+                        else flows.take(2).joinToString("；") { f ->
+                            f.name + "（" + f.steps.size + " 步" +
+                                (if (f.at > 0L) " · " + Alarms.fmt(f.at) else "") + "）"
+                        },
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 2
+                    )
+                }
+                GhostButton("管理工作流") { onNewFlow() }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
+        CardBox {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (A2aNodes.list.isEmpty()) "还没加对端"
+                        else "对端 " + A2aNodes.list.size + " 个：" +
+                            A2aNodes.list.take(2).joinToString("；") { it.name },
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                }
+                GhostButton("打开 A2A") { onOpenA2a() }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.ntg_title), stringResource(R.string.ntg_sub))
+        CardBox {
+            val rules = Triggers.list
+            val on = rules.count { it.on }
+            val any = stringResource(R.string.ntg_any)
+            val all = stringResource(R.string.ntg_allkw)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        Icons.Filled.Email,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (rules.isEmpty()) stringResource(R.string.ntg_none)
+                        else stringResource(R.string.ntg_count, rules.size, on),
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (rules.isEmpty()) stringResource(R.string.ntg_hint)
+                        else rules.filter { it.on }.take(2)
+                            .joinToString("；") { t -> t.app.ifBlank { any } + " · " + t.keyword.ifBlank { all } }
+                            .ifBlank { stringResource(R.string.ntg_offall) },
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 2
+                    )
+                }
+                GhostButton(stringResource(R.string.ntg_manage)) { onNewTrigger() }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        LinuxSection()
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_046), stringResource(R.string.se2_search_sub))
+        CardBox {
+            val providers = Search.providers
+            val sel = Cfg.searchProvider
+            if (providers.isEmpty()) {
+                Text(stringResource(R.string.se2_search_empty), fontSize = 13.sp, color = TextPrimary)
                 Spacer(Modifier.height(4.dp))
-                val miss = Search.missing()
                 Text(
-                    if (miss == null) stringResource(R.string.se2_search_ok)
-                    else stringResource(R.string.se2_search_miss, miss.label),
+                    stringResource(R.string.se2_search_empty2),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            } else {
+                SelectField(
+                    stringResource(R.string.se_046),
+                    providers.firstOrNull { it.id == sel }?.label ?: stringResource(R.string.se2_search_off),
+                    listOf("") + providers.map { it.id },
+                    optionLabel = { id -> providers.firstOrNull { it.id == id }?.label ?: stringResource(R.string.se2_search_off) },
+                    isSelected = { sel == it },
+                    onSelect = { Cfg.searchProvider = it }
+                )
+                val cur = Search.selected
+                if (cur != null) {
+                    Spacer(Modifier.height(8.dp))
+                    if (cur.fields.isEmpty()) {
+                        Text(stringResource(R.string.se2_search_needless, cur.label), fontSize = 12.sp, color = OkGreen)
+                    } else {
+                        cur.fields.forEach { f ->
+                            Field(
+                                label = "${cur.label} ${f.label}",
+                                value = Cfg.searchCfg(cur.id, f.id),
+                                onValueChange = { Cfg.setSearchCfg(cur.id, f.id, it) },
+                                placeholder = f.hint,
+                                secret = f.id == "key"
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(cur.hint, fontSize = 10.sp, color = TextSecondary)
+                    Spacer(Modifier.height(4.dp))
+                    val miss = Search.missing()
+                    Text(
+                        if (miss == null) stringResource(R.string.se2_search_ok)
+                        else stringResource(R.string.se2_search_miss, miss.label),
+                        fontSize = 10.sp,
+                        color = if (miss == null) OkGreen else DangerRed
+                    )
+                }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        McpSection(onEdit = onEditMcp)
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_047), stringResource(R.string.se2_persona_sub))
+        CardBox {
+            ChoiceRow(stringResource(R.string.se2_persona_none), stringResource(R.string.se2_persona_none_sub), Cfg.personaId.isBlank()) { Agent.setPersona("") }
+            Personas.list.forEach { p ->
+                PersonaRow(
+                    p = p,
+                    selected = Cfg.personaId == p.id,
+                    onSelect = { Agent.setPersona(p.id) },
+                    onEdit = { onEditPersona(p) }
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            GhostButton(stringResource(R.string.se2_persona_add), modifier = Modifier.height(38.dp)) {
+                onEditPersona(Persona(id = "", name = ""))
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_048), stringResource(R.string.se2_prompt_sub))
+        CardBox {
+            Field(
+                label = stringResource(R.string.se2_prompt_label),
+                value = Cfg.systemPrompt,
+                onValueChange = { Cfg.systemPrompt = it },
+                placeholder = stringResource(R.string.se_226),
+                secret = false,
+                singleLine = false,
+                minLines = 3
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (Cfg.systemPrompt.isBlank()) stringResource(R.string.se_227)
+                else stringResource(R.string.se2_prompt_len, Cfg.systemPrompt.length),
+                fontSize = 10.sp,
+                color = if (Cfg.systemPrompt.isBlank()) TextSecondary else OkGreen
+            )
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_049), stringResource(R.string.se_229))
+        CardBox {
+            val list = Skills.list
+            if (list.isEmpty()) {
+                Text(stringResource(R.string.se_230), fontSize = 13.sp, color = TextPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.se_231) +
+                        stringResource(R.string.se_232),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            } else {
+                list.forEach { s ->
+                    SkillRow(s, onEdit = { onEdit(s) })
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GhostButton(stringResource(R.string.se_233), modifier = Modifier.height(38.dp)) {
+                    onEdit(Skill("", "", "", "", true))
+                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(R.string.se2_skill_enabled, Skills.enabled.size, list.size),
                     fontSize = 10.sp,
-                    color = if (miss == null) OkGreen else DangerRed
+                    color = TextSecondary
                 )
             }
         }
     }
-
-    Spacer(Modifier.height(14.dp))
-    McpSection(onEdit = onEditMcp)
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_047), stringResource(R.string.se2_persona_sub))
-    CardBox {
-        ChoiceRow(stringResource(R.string.se2_persona_none), stringResource(R.string.se2_persona_none_sub), Cfg.personaId.isBlank()) { Agent.setPersona("") }
-        Personas.list.forEach { p ->
-            PersonaRow(
-                p = p,
-                selected = Cfg.personaId == p.id,
-                onSelect = { Agent.setPersona(p.id) },
-                onEdit = { onEditPersona(p) }
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        GhostButton(stringResource(R.string.se2_persona_add), modifier = Modifier.height(38.dp)) {
-            onEditPersona(Persona(id = "", name = ""))
-        }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.skp_t), stringResource(R.string.skp_d))
+        SkillPackBox(onEdit = onEditPack)
     }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_048), stringResource(R.string.se2_prompt_sub))
-    CardBox {
-        Field(
-            label = stringResource(R.string.se2_prompt_label),
-            value = Cfg.systemPrompt,
-            onValueChange = { Cfg.systemPrompt = it },
-            placeholder = stringResource(R.string.se_226),
-            secret = false,
-            singleLine = false,
-            minLines = 3
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            if (Cfg.systemPrompt.isBlank()) stringResource(R.string.se_227)
-            else stringResource(R.string.se2_prompt_len, Cfg.systemPrompt.length),
-            fontSize = 10.sp,
-            color = if (Cfg.systemPrompt.isBlank()) TextSecondary else OkGreen
-        )
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_049), stringResource(R.string.se_229))
-    CardBox {
-        val list = Skills.list
-        if (list.isEmpty()) {
-            Text(stringResource(R.string.se_230), fontSize = 13.sp, color = TextPrimary)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(R.string.se_231) +
-                    stringResource(R.string.se_232),
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
-        } else {
-            list.forEach { s ->
-                SkillRow(s, onEdit = { onEdit(s) })
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.se_233), modifier = Modifier.height(38.dp)) {
-                onEdit(Skill("", "", "", "", true))
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                stringResource(R.string.se2_skill_enabled, Skills.enabled.size, list.size),
-                fontSize = 10.sp,
-                color = TextSecondary
-            )
-        }
-    }
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.skp_t), stringResource(R.string.skp_d))
-    SkillPackBox(onEdit = onEditPack)
-
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
-    CardBox {
-        Tools.all.forEach { tool ->
-            val pol = Cfg.policy(tool)
-            SelectField(
-                Tools.label(tool),
-                when (pol) {
-                    "allow" -> stringResource(R.string.se_239)
-                    "deny" -> stringResource(R.string.se_240)
-                    else -> stringResource(R.string.se_238)
-                },
-                listOf("ask", "allow", "deny"),
-                desc = if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
-                else stringResource(R.string.se2_risk_normal, tool),
-                optionLabel = {
-                    when (it) {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
+        CardBox {
+            Tools.all.forEach { tool ->
+                val pol = Cfg.policy(tool)
+                SelectField(
+                    Tools.label(tool),
+                    when (pol) {
                         "allow" -> stringResource(R.string.se_239)
                         "deny" -> stringResource(R.string.se_240)
                         else -> stringResource(R.string.se_238)
-                    }
-                },
-                isSelected = { pol == it },
-                onSelect = { Cfg.setPolicy(tool, it) }
-            )
+                    },
+                    listOf("ask", "allow", "deny"),
+                    desc = if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
+                    else stringResource(R.string.se2_risk_normal, tool),
+                    optionLabel = {
+                        when (it) {
+                            "allow" -> stringResource(R.string.se_239)
+                            "deny" -> stringResource(R.string.se_240)
+                            else -> stringResource(R.string.se_238)
+                        }
+                    },
+                    isSelected = { pol == it },
+                    onSelect = { Cfg.setPolicy(tool, it) }
+                )
+            }
         }
     }
-
 } //扩展分类：功能专区 + 技能专区 + 工具权限
-
 /** 技能包：外部目录里有哪些包、哪些函数校验没过；改完包点重新扫描 */
 @Composable
 private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
@@ -2268,7 +2338,7 @@ private fun McpDialog(
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
         )
-        Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
             Field(stringResource(R.string.mcp_name), name, { name = it }, placeholder = stringResource(R.string.mcp_name_ph))
             Field(stringResource(R.string.mcp_url), url, { url = it }, placeholder = stringResource(R.string.mcp_url_ph))
             Spacer(Modifier.height(10.dp))
@@ -2423,7 +2493,7 @@ private fun SkillDialog(
             color = TextPrimary
         )
         Spacer(Modifier.height(4.dp))
-        Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
             Field(stringResource(R.string.se_258), name, { name = it }, placeholder = stringResource(R.string.se_259))
             Field(stringResource(R.string.se_260), desc, { desc = it }, placeholder = stringResource(R.string.se_261))
             Field(
@@ -2549,7 +2619,7 @@ private fun PersonaDialog(
             color = TextSecondary
         )
         Spacer(Modifier.height(6.dp))
-        Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+        Column(Modifier.heightIn(max = 400.dp).verticalScroll(glassScrollState())) {
             //头像走图片：选一张落私有目录，聊天里 AI 头像选「跟角色卡」时就用它
             AvatarPick(
                 stringResource(R.string.se_271),

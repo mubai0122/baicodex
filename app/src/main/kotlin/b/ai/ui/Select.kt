@@ -100,7 +100,7 @@ internal fun PickSheet(title: String, items: List<PickItem>, onClose: () -> Unit
         Column(
             Modifier
                 .heightIn(max = 380.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             items.forEach { o ->
                 Row(

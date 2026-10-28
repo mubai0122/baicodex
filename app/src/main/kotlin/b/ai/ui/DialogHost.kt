@@ -125,7 +125,8 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
                     scaleY = scale
                 }
                 .shadow(26.dp, CardShape)
-                .liquidBg(CardShape, veil = 0.62f)
+                //veil 压到 0.42：真玻璃自己有模糊与高光，乳白再厚就糊成一块白板
+                .liquidBg(CardShape, veil = 0.42f, always = true)
                 .border(1.dp, BorderGray, CardShape)
                 .padding(18.dp),
             content = content
@@ -166,7 +167,7 @@ fun BottomSheetCard(onDismiss: (() -> Unit)? = null, content: @Composable Column
                     translationY = (1f - t) * 80.dp.toPx()
                 }
                 .shadow(26.dp, SheetShape)
-                .liquidBg(SheetShape, veil = 0.62f)
+                .liquidBg(SheetShape, veil = 0.42f, always = true)
                 .border(1.dp, BorderGray, SheetShape)
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 16.dp),
@@ -211,7 +212,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 .heightIn(max = 300.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 argPreview(ctx, name, p.args),
@@ -297,7 +298,7 @@ fun PermNoticeDialog(
                 .heightIn(max = 200.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Column {
                 missing.forEach { p ->
@@ -362,7 +363,7 @@ fun SimpleDialog(title: String, body: String, onClose: () -> Unit) {
                 .heightIn(max = 360.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) { Text(body, fontSize = 12.sp, color = TextPrimary) }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
