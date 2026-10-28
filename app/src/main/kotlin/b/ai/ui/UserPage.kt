@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
@@ -23,8 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
+import b.ai.core.Cfg
 import b.ai.net.Auth
 import b.ai.net.Plugins
 import b.ai.ui.theme.AccentBlue
@@ -47,16 +51,21 @@ import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 作者公开主页：头像昵称、简介官网、四项统计、TA 上架的插件；点插件名回广场搜它 */
+/** 作者公开主页：头像昵称、简介官网、六项统计（粉丝 / 关注可点开列表）、关注按钮、TA 上架的插件 */
 @Composable
 fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var user by remember { mutableStateOf<Auth.User?>(null) }
     var items by remember { mutableStateOf<List<Plugins.Item>>(emptyList()) }
     var err by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
+    var busy by remember { mutableStateOf(false) }
+    //非空就是打开了关注 / 粉丝列表：true 粉丝，false 关注的人
+    var listFor by remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(uname) {
         loading = true
@@ -69,6 +78,24 @@ fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
         }.onFailure { err = it.message?.take(80).orEmpty() }
     }
     BackHandler { onBack() }
+
+    //关注 / 取关：没登录先拉登录卡，成功后只改本地这一份资料，不整页重拉
+    fun onFollow() {
+        val u = user ?: return
+        if (!Auth.logged) {
+            AccUi.open("login")
+            return
+        }
+        if (busy || u.uid <= 0) return
+        busy = true
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { Auth.follow(u.uid) } }
+            busy = false
+            r.onSuccess { (now, fans, follows) ->
+                user = u.copy(followed = now, followers = fans, following = follows)
+            }.onFailure { err = it.message?.take(80).orEmpty() }
+        }
+    }
 
     //卡片玻璃的采样源：纯背景一层，不含卡片自己
     val cardBackdrop = rememberLayerBackdrop {
@@ -134,6 +161,21 @@ fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
                                     )
                                 }
                             }
+                            //自己的主页不出现关注按钮
+                            if (u.uid > 0 && u.uid != Cfg.accUid) {
+                                Text(
+                                    stringResource(if (u.followed) R.string.acc_followed else R.string.acc_follow),
+                                    fontSize = 12.sp,
+                                    color = if (u.followed) TextSecondary else AccentBlue,
+                                    modifier = Modifier
+                                        .liquidBg(
+                                            RoundedCornerShape(10.dp),
+                                            tint = if (u.followed) SurfaceMuted else AccentBlueSoft
+                                        )
+                                        .tap(enabled = !busy) { onFollow() }
+                                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                                )
+                            }
                         }
                         if (u.bio.isNotBlank()) {
                             Spacer(Modifier.height(8.dp))
@@ -163,8 +205,22 @@ fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Stat(stringResource(R.string.acc_stat_plugins), u.plugins.toString())
                             Stat(stringResource(R.string.acc_stat_dl), u.downloads.toString())
+                            Stat(stringResource(R.string.acc_stat_views), u.views.toString())
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Stat(stringResource(R.string.acc_stat_like), u.likes.toString())
                             Stat(stringResource(R.string.acc_stat_fav), u.favs.toString())
+                            Stat(
+                                stringResource(R.string.acc_stat_fans),
+                                u.followers.toString(),
+                                onClick = { listFor = true }
+                            )
+                            Stat(
+                                stringResource(R.string.acc_stat_following),
+                                u.following.toString(),
+                                onClick = { listFor = false }
+                            )
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -207,9 +263,10 @@ fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
                             }
                             Spacer(Modifier.height(4.dp))
                             Row {
+                                val vw = stringResource(R.string.acc_stat_views)
                                 Text(
                                     stringResource(R.string.plg_downloads, it.downloads) +
-                                        "　♥" + it.likes + "　★" + it.favs,
+                                        "　♥" + it.likes + "　★" + it.favs + "　" + vw + " " + it.views,
                                     fontSize = 10.sp,
                                     color = TextSecondary
                                 )
@@ -221,14 +278,152 @@ fun UserPage(uname: String, onBack: () -> Unit, onPick: (String) -> Unit) {
             }
         }
     }
+    //关注 / 粉丝列表挂在根弹窗层：本页是整页子页面，自己开一层，别和广场那层抢
+    HostInOverlay(active = listFor != null) {
+        val fans = listFor
+        val uid = user?.uid ?: 0
+        if (fans != null && uid > 0) {
+            FollowSheet(uid = uid, fans = fans, onClose = { listFor = null })
+        }
+    }
 } //作者主页
 
-/** 主页里的一个统计块：上面数字下面标题 */
+/** 关注 / 粉丝列表卡：每行一个头像昵称，右边直接关注或取关 */
 @Composable
-private fun Stat(label: String, value: String) {
+private fun FollowSheet(uid: Int, fans: Boolean, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var list by remember { mutableStateOf<List<Auth.User>>(emptyList()) }
+    var total by remember { mutableIntStateOf(0) }
+    var page by remember { mutableIntStateOf(1) }
+    var loading by remember { mutableStateOf(true) }
+    var more by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf("") }
+    var acting by remember { mutableIntStateOf(0) }
+
+    fun fetch(p: Int) {
+        loading = true
+        err = ""
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { Auth.follows(uid, fans, p) } }
+            loading = false
+            r.onSuccess { (l, t) ->
+                list = if (p == 1) l else list + l
+                total = t
+                page = p
+                more = list.size < t
+            }.onFailure { err = it.message?.take(80).orEmpty() }
+        }
+    }
+
+    //关注 / 取关：只改这一行，列表顺序和总数由服务端说了算，不整卡重拉
+    fun toggle(x: Auth.User) {
+        if (!Auth.logged) {
+            AccUi.open("login")
+            return
+        }
+        if (acting != 0) return
+        acting = x.uid
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { Auth.follow(x.uid) } }
+            acting = 0
+            r.onSuccess { (now, _, _) ->
+                list = list.map { y -> if (y.uid == x.uid) y.copy(followed = now) else y }
+            }.onFailure { err = it.message?.take(80).orEmpty() }
+        }
+    }
+
+    LaunchedEffect(uid, fans) { fetch(1) }
+
+    BottomSheetCard(onDismiss = onClose) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(if (fans) R.string.acc_stat_fans else R.string.acc_stat_following),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(total.toString(), fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.weight(1f))
+            Text(
+                stringResource(R.string.acc_close),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.tap { onClose() }
+            )
+        }
+        if (err.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(err, fontSize = 11.sp, color = DangerRed)
+        }
+        Box(Modifier.fillMaxWidth().heightIn(max = 320.dp).verticalScroll(glassScrollState())) {
+            Column {
+                if (list.isEmpty()) {
+                    Text(
+                        if (loading) stringResource(R.string.plg_loading) else stringResource(R.string.acc_follow_empty),
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(vertical = 10.dp)
+                    )
+                }
+                list.forEach { x ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AccFace(x.uid, x.avatar, 30.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                x.nick.ifBlank { x.uname },
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                "@" + x.uname + "　" + stringResource(R.string.acc_stat_fans) + " " + x.followers,
+                                fontSize = 10.sp,
+                                color = TextSecondary
+                            )
+                        }
+                        if (x.uid > 0 && x.uid != Cfg.accUid) {
+                            Text(
+                                stringResource(if (x.followed) R.string.acc_followed else R.string.acc_follow),
+                                fontSize = 11.sp,
+                                color = if (x.followed) TextSecondary else AccentBlue,
+                                modifier = Modifier
+                                    .liquidBg(
+                                        RoundedCornerShape(9.dp),
+                                        tint = if (x.followed) SurfaceMuted else AccentBlueSoft
+                                    )
+                                    .tap(enabled = acting == 0) { toggle(x) }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+                if (more && !loading) {
+                    Text(
+                        stringResource(R.string.plg_load_more),
+                        fontSize = 12.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .tap { fetch(page + 1) }
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
+        }
+    }
+} //关注粉丝列表卡
+
+/** 主页里的一个统计块：上面数字下面标题；传了 onClick 就是可点的入口 */
+@Composable
+private fun Stat(label: String, value: String, onClick: (() -> Unit)? = null) {
     Box(
         Modifier
-            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+            .liquidBg(RoundedCornerShape(10.dp), tint = if (onClick == null) SurfaceMuted else AccentBlueSoft)
+            .then(if (onClick == null) Modifier else Modifier.tap { onClick() })
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

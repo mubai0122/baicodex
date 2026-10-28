@@ -27,8 +27,12 @@ object Auth {
         val site: String = "",
         val plugins: Int = 0,
         val downloads: Long = 0,
+        val views: Long = 0,
         val likes: Int = 0,
         val favs: Int = 0,
+        val followers: Int = 0,
+        val following: Int = 0,
+        val followed: Boolean = false,
         val createdAt: String = ""
     )
 
@@ -125,15 +129,34 @@ object Auth {
         return u
     } //我的资料
 
-    /** 看别人的主页：返回（对方资料, TA 的已上架插件） */
-    fun profile(uname: String): Pair<User, List<Plugins.Item>> {
-        val data = parsed(post(JSONObject().put("act", "profile").put("uname", uname.trim())))
-            .optJSONObject("data") ?: error("返回格式异常")
+    /** 看别人的主页：返回（对方资料, TA 的已上架插件）；uname 优先，没有就按 uid 找 */
+    fun profile(uname: String = "", uid: Int = 0): Pair<User, List<Plugins.Item>> {
+        val body = JSONObject().put("act", "profile")
+        if (uname.isNotBlank()) body.put("uname", uname.trim()) else body.put("uid", uid)
+        val data = parsed(post(body)).optJSONObject("data") ?: error("返回格式异常")
         val u = user(data.optJSONObject("user") ?: error("返回格式异常"))
         val arr = data.optJSONArray("items")
         val items = if (arr == null) emptyList() else (0 until arr.length()).map { Plugins.item(arr.getJSONObject(it)) }
         return u to items
     } //公开主页
+
+    /** 关注 / 取关来回切：返回（现在关注没, TA 的粉丝数, TA 的关注数） */
+    fun follow(uid: Int): Triple<Boolean, Int, Int> {
+        val d = parsed(post(JSONObject().put("act", "follow").put("uid", uid))).optJSONObject("data")
+            ?: error("返回格式异常")
+        return Triple(d.optBoolean("followed"), d.optInt("followers"), d.optInt("following"))
+    } //关注切换
+
+    /** 关注列表：uid 传 0 就是看自己的，fans 为真取粉丝列表 */
+    fun follows(uid: Int = 0, fans: Boolean = false, page: Int = 1): Pair<List<User>, Int> {
+        val body = JSONObject()
+            .put("act", if (fans) "followers" else "following")
+            .put("page", page)
+        if (uid > 0) body.put("uid", uid)
+        val data = parsed(post(body)).optJSONObject("data") ?: error("返回格式异常")
+        val arr = data.optJSONArray("items") ?: return emptyList<User>() to 0
+        return (0 until arr.length()).map { user(arr.getJSONObject(it)) } to data.optInt("total")
+    } //关注与粉丝列表
 
     /** 改昵称 / 简介 / 个人主页地址，只传要改的 */
     fun save(nick: String? = null, bio: String? = null, site: String? = null): User {
@@ -257,8 +280,12 @@ object Auth {
         site = o.optString("site"),
         plugins = o.optInt("plugins"),
         downloads = o.optLong("downloads"),
+        views = o.optLong("views"),
         likes = o.optInt("likes"),
         favs = o.optInt("favs"),
+        followers = o.optInt("followers"),
+        following = o.optInt("following"),
+        followed = o.optBoolean("followed"),
         createdAt = o.optString("createdAt")
     ) //解析用户
 } //账号接口

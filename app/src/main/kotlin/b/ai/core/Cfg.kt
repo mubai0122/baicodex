@@ -258,6 +258,11 @@ object Cfg {
         get() = mem("pl_email", "").value
         set(v) { mem("pl_email", "").value = v; put("pl_email", v) }
 
+    /** 从广场装过的插件：JSON 存 id→(目录名, 版本)，给「检测更新」认本地哪一份对应哪个插件 */
+    var plgInstalled: String
+        get() = mem("plg_installed", "").value
+        set(v) { mem("plg_installed", "").value = v; put("plg_installed", v) }
+
     /** 账号：登录后服务器发的会话 token，空串 = 没登录 */
     var accToken: String
         get() = mem("acc_token", "").value

@@ -1,6 +1,7 @@
 package b.ai.ui
 
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -66,7 +67,10 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /** 底栏三格：广场 / 上传 / 我的，和设置页共用同一套悬浮胶囊底栏 */
 private val PlTabs = listOf(
@@ -117,9 +121,23 @@ fun PluginMarket(onBack: () -> Unit) {
     var favs by remember { mutableStateOf<List<Plugins.Item>>(emptyList()) }
     var mineLoaded by remember { mutableStateOf(false) }
     var favLoaded by remember { mutableStateOf(false) }
+    //编辑某个作品的资料：非空就弹编辑卡（只改文字，不动包）
+    var editFor by remember { mutableStateOf<Plugins.Item?>(null) }
+    //给某个作品发新版本：非空就弹更新卡（换包 + 版本号 + 更新说明）
+    var nvFor by remember { mutableStateOf<Plugins.Item?>(null) }
+    //详情卡：detVer 是要展开的那条版本，空串就是普通详情
+    var detFor by remember { mutableStateOf<Plugins.Item?>(null) }
+    var detVer by remember { mutableStateOf("") }
+    //已装插件清单：本地装过的全列出来，顺带对一下服务器最新版本（空串＝查不到）
+    var inst by remember { mutableStateOf<List<Pair<PluginInstall.Mark, String>>>(emptyList()) }
+    var instLoaded by remember { mutableStateOf(false) }
+    var instBusy by remember { mutableStateOf(false) }
+    var instTip by remember { mutableStateOf("") }
     //读 Cfg 的登录态：它是 Compose 状态，登录 / 登出会自动重组
     val logged = Auth.logged
-    BackHandler(enabled = !busy && cmtFor == null) { if (userFor.isNotBlank()) userFor = "" else onBack() }
+    BackHandler(enabled = !busy && cmtFor == null && editFor == null && nvFor == null && detFor == null) {
+        if (userFor.isNotBlank()) userFor = "" else onBack()
+    }
 
     fun loadMine() {
         scope.launch {
@@ -141,7 +159,138 @@ fun PluginMarket(onBack: () -> Unit) {
         }
     }
 
-    //切 tab 统一走这里：进「我的」时按当前登录态拉一次自己的东西
+    //编辑资料：只弹编辑卡，不动版本也不换包
+    fun openEdit(it: Plugins.Item) {
+        if (busy) return
+        tip = ""
+        editFor = it
+    }
+
+    //更新：单独一张卡，选新目录、填版本号与更新说明，服务端写一条版本历史
+    fun openNewVer(it: Plugins.Item) {
+        if (busy) return
+        tip = ""
+        nvFor = it
+    }
+
+    //详情：ver 不为空时展开那一条版本记录
+    fun openDetail(it: Plugins.Item, ver: String = "") {
+        if (busy) return
+        detVer = ver
+        detFor = it
+    }
+
+    //编辑保存成功：把本地这条的两个字段换掉，省一次整页重拉
+    fun onEdited(id: Int, n: String, d: String, t: String, a: String, at: String) {
+        fun patch(x: Plugins.Item) = if (x.id == id) x.copy(name = n, descr = d, tags = t, author = a, editedAt = at) else x
+        mine = mine.map { patch(it) }
+        favs = favs.map { patch(it) }
+        items = items.map { patch(it) }
+    }
+
+    //删自己的作品：服务端连包一起清，本地把已装记录也去掉
+    fun onDel(p: Plugins.Item) {
+        if (busy) return
+        busy = true
+        tip = ""
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { Plugins.del(p.id) } }
+            busy = false
+            r.onSuccess {
+                ok = true
+                tip = ctx.getString(R.string.plg_del_ok)
+                mine = mine.filter { x -> x.id != p.id }
+                inst = inst.filter { x -> x.first.id != p.id }
+                PluginInstall.markDrop(p.id)
+            }.onFailure {
+                ok = false
+                tip = ctx.getString(R.string.plg_fail, it.message?.take(80).orEmpty())
+            }
+        }
+    }
+
+    //已装插件清单：本地记录全列出来，顺手问一次服务器最新版本（0 就只列表不比对）
+    fun loadInst() {
+        if (instBusy) return
+        instBusy = true
+        instTip = ""
+        scope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching {
+                    val root = Paths.skillRoot()
+                    val ms = PluginInstall.marks().filter { File(root, it.dir).isDirectory }
+                    if (ms.isEmpty()) return@runCatching emptyList<Pair<PluginInstall.Mark, String>>()
+                    val vers = runCatching { Plugins.vers(ms.map { it.id }) }.getOrDefault(emptyMap())
+                    ms.map { m -> m to (vers[m.id] ?: "") }
+                }
+            }
+            instBusy = false
+            r.onSuccess { list ->
+                inst = list
+                instLoaded = true
+                instTip = if (list.isEmpty()) ctx.getString(R.string.plg_inst_empty) else ""
+            }.onFailure {
+                instLoaded = true
+                instTip = ctx.getString(R.string.plg_fail, it.message?.take(80).orEmpty())
+            }
+        }
+    }
+
+    //卸载已装插件：删目录 + 清记录 + 重扫技能包
+    fun onUninstall(m: PluginInstall.Mark) {
+        if (busy) return
+        busy = true
+        tip = ""
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { runCatching { PluginInstall.remove(ctx, m.id, m.dir) } }
+            busy = false
+            r.onSuccess { res ->
+                ok = res.ok
+                tip = if (res.ok) ctx.getString(R.string.plg_inst_off_ok) else ctx.getString(R.string.plg_fail, res.msg)
+                if (res.ok) inst = inst.filter { x -> x.first.id != m.id }
+            }.onFailure {
+                ok = false
+                tip = ctx.getString(R.string.plg_fail, it.message?.take(80).orEmpty())
+            }
+        }
+    }
+
+    //一键更新某个已装插件：下新包 → 覆盖安装（旧目录让位，失败了回滚）
+    fun applyUpd(m: PluginInstall.Mark, newVer: String) {
+        if (busy) return
+        busy = true
+        dlId = m.id
+        dlPct = 0
+        tip = ""
+        scope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching {
+                    val zip = Plugins.download(m.id, tempZip(m.id)) { p ->
+                        scope.launch(Dispatchers.Main) { dlPct = p }
+                    }
+                    val res = PluginInstall.install(ctx, zip, m.name, m.id, newVer, m.dir)
+                    runCatching { zip.delete() }
+                    res
+                }
+            }
+            busy = false
+            dlId = 0
+            r.onSuccess { res ->
+                ok = res.ok
+                tip = if (res.ok) ctx.getString(R.string.plg_upd_ok, newVer)
+                else ctx.getString(R.string.plg_fail, res.msg)
+                if (res.ok) {
+                    inst = inst.map { if (it.first.id == m.id) m.copy(ver = newVer) to newVer else it }
+                    PluginNote.done(ctx.getString(R.string.plg_title), ctx.getString(R.string.plg_upd_ok, newVer))
+                }
+            }.onFailure {
+                ok = false
+                tip = ctx.getString(R.string.plg_fail, it.message?.take(80).orEmpty())
+            }
+        }
+    }
+
+//切 tab 统一走这里：进「我的」时按当前登录态拉一次自己的东西
     fun goTab(i: Int) {
         if (busy) return
         tab = i
@@ -150,6 +299,7 @@ fun PluginMarket(onBack: () -> Unit) {
         if (i == 2 && logged) {
             if (!mineLoaded) loadMine()
             if (!favLoaded) loadFavs()
+            if (!instLoaded) loadInst()
         }
     }
 
@@ -169,26 +319,35 @@ fun PluginMarket(onBack: () -> Unit) {
     LaunchedEffect(AccUi.stamp, logged) {
         mine = emptyList()
         favs = emptyList()
+        inst = emptyList()
         mineLoaded = false
         favLoaded = false
+        instLoaded = false
+        instTip = ""
+        editFor = null
+        nvFor = null
+        detFor = null
         if (author.isBlank()) author = Cfg.accNick
         if (logged) {
             loadMine()
             loadFavs()
+            loadInst()
         }
         reload++
     }
 
-    //选压缩包：任何文件都能选，落地前按体积与 zip 头自己判
-    val pickZip = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    //选技能目录：用户只挑目录，压包与校验都在本地做，上传通道不变
+    val pickZip = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
             zipErr = ""
-            val r = withContext(Dispatchers.IO) { copyZip(ctx, uri) }
-            r.onSuccess { f ->
+            zipFile = null
+            zipName = ""
+            val r = withContext(Dispatchers.IO) { runCatching { zipDir(ctx, uri) } }
+            r.onSuccess { (f, dirName) ->
                 zipFile = f
                 zipName = f.name
-                if (name.isBlank()) name = f.name.substringBeforeLast('.').take(64)
+                if (name.isBlank()) name = dirName.take(64)
             }.onFailure {
                 zipFile = null
                 zipName = ""
@@ -349,6 +508,7 @@ fun PluginMarket(onBack: () -> Unit) {
                                 onFav = { onFav(it) },
                                 onCmt = { cmtFor = it },
                                 onAuthor = { userFor = it },
+                                onOpen = { openDetail(it) },
                                 onDownload = { it ->
                                     if (busy) return@MarketTab
                                     busy = true
@@ -361,7 +521,7 @@ fun PluginMarket(onBack: () -> Unit) {
                                                 val zip = Plugins.download(it.id, tempZip(it.id)) { p ->
                                                     scope.launch(Dispatchers.Main) { dlPct = p }
                                                 }
-                                                val res = PluginInstall.install(ctx, zip, it.name)
+                                                val res = PluginInstall.install(ctx, zip, it.name, it.id, it.ver)
                                                 runCatching { zip.delete() }
                                                 res
                                             }
@@ -404,19 +564,19 @@ fun PluginMarket(onBack: () -> Unit) {
                                 onAuthor = { author = it },
                                 zipName = zipName,
                                 zipErr = zipErr,
-                                onPick = { if (!busy) pickZip.launch("*/*") },
+                                onPick = { if (!busy) pickZip.launch(null) },
                                 upPct = upPct,
                                 busy = busy,
                                 onSubmit = {
                                     val f = zipFile
-                                    if (f == null || busy) return@UploadTab
+                                    if (busy || f == null) return@UploadTab
                                     busy = true
                                     upPct = 0
                                     tip = ""
                                     scope.launch {
                                         val r = withContext(Dispatchers.IO) {
                                             runCatching {
-                                                Plugins.upload(
+                                                val (id, st) = Plugins.upload(
                                                     name = name,
                                                     descr = descr,
                                                     ver = ver,
@@ -424,16 +584,16 @@ fun PluginMarket(onBack: () -> Unit) {
                                                     author = author,
                                                     zip = f
                                                 ) { p -> scope.launch(Dispatchers.Main) { upPct = p } }
+                                                //开关打开时服务端直接给 status 1，别再说「等审核」误导作者
+                                                if (st == 1) ctx.getString(R.string.plg_submit_live, id)
+                                                else ctx.getString(R.string.plg_submit_ok, id)
                                             }
                                         }
                                         busy = false
-                                        r.onSuccess { id ->
+                                        r.onSuccess { msg ->
                                             ok = true
-                                            tip = ctx.getString(R.string.plg_submit_ok, id)
-                                            PluginNote.done(
-                                                ctx.getString(R.string.plg_title),
-                                                ctx.getString(R.string.plg_submit_ok, id)
-                                            )
+                                            tip = msg
+                                            PluginNote.done(ctx.getString(R.string.plg_title), msg)
                                             zipFile = null
                                             zipName = ""
                                             upPct = 0
@@ -453,11 +613,18 @@ fun PluginMarket(onBack: () -> Unit) {
                                 favs = favs,
                                 mineLoaded = mineLoaded,
                                 favLoaded = favLoaded,
-                                onRefresh = {
-                                    tip = ""
-                                    loadMine()
-                                    loadFavs()
-                                },
+                                onEditItem = { openEdit(it) },
+                                onNewVerItem = { openNewVer(it) },
+                                onDelItem = { onDel(it) },
+                                onOpenVer = { p, v -> openDetail(p, v) },
+                                inst = inst,
+                                instTip = instTip,
+                                instBusy = instBusy,
+                                onReloadInst = { loadInst() },
+                                onApplyUpd = { m, v -> applyUpd(m, v) },
+                                onUninstall = { m -> onUninstall(m) },
+                                dlId = dlId,
+                                dlPct = dlPct,
                                 onLike = { onLike(it) },
                                 onFav = { onFav(it) },
                                 onCmt = { cmtFor = it },
@@ -478,14 +645,49 @@ fun PluginMarket(onBack: () -> Unit) {
             )
         }
     }
-    //评论卡挂在根弹窗层；账号卡统一由 MainActivity 的根弹窗层渲染，这里不再挂
-    HostInOverlay(active = cmtFor != null) {
-        cmtFor?.let { p ->
-            CommentSheet(
-                p = p,
+    //弹窗都挂在根弹窗层，一次只挂一张：详情 > 更新 > 编辑 > 评论
+    HostInOverlay(active = cmtFor != null || editFor != null || nvFor != null || detFor != null) {
+        val det = detFor
+        val nv = nvFor
+        val ed = editFor
+        val cp = cmtFor
+        when {
+            det != null -> DetailSheet(
+                p = det,
+                focusVer = detVer,
+                onClose = { detFor = null; detVer = "" }
+            )
+            nv != null -> NewVerSheet(
+                p = nv,
+                onClose = { nvFor = null },
+                onDone = { ver, changes, size, st ->
+                    nvFor = null
+                    ok = true
+                    tip = ctx.getString(if (st == 1) R.string.plg_newver_live else R.string.plg_newver_ok)
+                    //本地先插一条，列表马上就能看到；下次拉 mine 会被服务端数据覆盖
+                    val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+                    val one = Plugins.Ver(ver, changes, size, now)
+                    mine = mine.map { x ->
+                        if (x.id != nv.id) x
+                        else x.copy(ver = ver, size = size, status = st, state = "", note = "", vers = listOf(one) + x.vers)
+                    }
+                }
+            )
+            ed != null -> EditSheet(
+                p = ed,
+                onClose = { editFor = null },
+                onSaved = { n, d, t, a, at ->
+                    editFor = null
+                    ok = true
+                    tip = ctx.getString(R.string.plg_edit_ok)
+                    onEdited(ed.id, n, d, t, a, at)
+                }
+            )
+            cp != null -> CommentSheet(
+                p = cp,
                 onClose = { cmtFor = null },
                 onCount = { n ->
-                    items = items.map { x -> if (x.id == p.id) x.copy(cmts = n) else x }
+                    items = items.map { x -> if (x.id == cp.id) x.copy(cmts = n) else x }
                 }
             )
         }
@@ -510,6 +712,7 @@ private fun MarketTab(
     onFav: (Plugins.Item) -> Unit,
     onCmt: (Plugins.Item) -> Unit,
     onAuthor: (String) -> Unit,
+    onOpen: (Plugins.Item) -> Unit,
     onDownload: (Plugins.Item) -> Unit
 ) {
     Column {
@@ -555,7 +758,8 @@ private fun MarketTab(
                 onLike = { onLike(it) },
                 onFav = { onFav(it) },
                 onCmt = { onCmt(it) },
-                onAuthor = { onAuthor(it.authorUname) }
+                onAuthor = { onAuthor(it.authorUname) },
+                onOpen = { onOpen(it) }
             )
         }
         if (items.size < total) {
@@ -578,9 +782,10 @@ private fun PluginCard(
     onLike: () -> Unit,
     onFav: () -> Unit,
     onCmt: () -> Unit,
-    onAuthor: () -> Unit
+    onAuthor: () -> Unit,
+    onOpen: () -> Unit
 ) {
-    CardBox {
+    CardBox(modifier = Modifier.tap { onOpen() }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 it.name,
@@ -642,6 +847,12 @@ private fun PluginCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             Social(if (it.liked) "♥" else "♡", it.likes, it.liked, onLike)
             Social(if (it.faved) "★" else "☆", it.favs, it.faved, onFav)
+            Text(
+                stringResource(R.string.acc_stat_views) + " " + it.views,
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(vertical = 2.dp)
+            )
             Text(
                 stringResource(R.string.acc_cmt) + " " + it.cmts,
                 fontSize = 11.sp,
@@ -934,12 +1145,26 @@ private fun MineTab(
     favs: List<Plugins.Item>,
     mineLoaded: Boolean,
     favLoaded: Boolean,
-    onRefresh: () -> Unit,
+    onEditItem: (Plugins.Item) -> Unit,
+    onNewVerItem: (Plugins.Item) -> Unit,
+    onDelItem: (Plugins.Item) -> Unit,
+    onOpenVer: (Plugins.Item, String) -> Unit,
+    inst: List<Pair<PluginInstall.Mark, String>>,
+    instTip: String,
+    instBusy: Boolean,
+    onReloadInst: () -> Unit,
+    onApplyUpd: (PluginInstall.Mark, String) -> Unit,
+    onUninstall: (PluginInstall.Mark) -> Unit,
+    dlId: Int,
+    dlPct: Int,
     onLike: (Plugins.Item) -> Unit,
     onFav: (Plugins.Item) -> Unit,
     onCmt: (Plugins.Item) -> Unit,
     onAuthor: (String) -> Unit
 ) {
+    //点过一次删除 / 卸载的条目：先说确认，避免手滑
+    var delFor by remember { mutableIntStateOf(0) }
+    var offFor by remember { mutableIntStateOf(0) }
     Column {
         Spacer(Modifier.height(6.dp))
         if (!logged) {
@@ -1001,18 +1226,6 @@ private fun MineTab(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
             }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    stringResource(R.string.plg_refresh),
-                    fontSize = 12.sp,
-                    color = AccentBlue,
-                    modifier = Modifier
-                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
-                        .tap { onRefresh() }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                )
-            }
         }
         //我上传的
         Spacer(Modifier.height(4.dp))
@@ -1049,9 +1262,179 @@ private fun MineTab(
                         }
                     )
                 }
+                //作者自己最想看的四个数：下载 / 浏览 / 赞 / 收
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.plg_mine_stat, it.downloads, it.views, it.likes, it.favs),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+                if (it.editedAt.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        stringResource(R.string.plg_edited_at, it.editedAt.take(16)),
+                        fontSize = 9.sp,
+                        color = TextSecondary
+                    )
+                }
                 if (it.note.isNotBlank()) {
                     Spacer(Modifier.height(4.dp))
                     Text(stringResource(R.string.plg_note_reason, it.note), fontSize = 10.sp, color = DangerRed)
+                }
+                //版本历史：一行一个版本，点哪行进详情就看哪一版
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.plg_ver_hist), fontSize = 11.sp, color = TextPrimary)
+                Spacer(Modifier.height(4.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (it.vers.isEmpty()) {
+                        Text(stringResource(R.string.plg_ver_empty), fontSize = 10.sp, color = TextSecondary)
+                    } else {
+                        it.vers.take(5).forEach { v -> VerRow(v, false) { onOpenVer(it, v.ver) } }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        stringResource(R.string.plg_mine_edit),
+                        fontSize = 11.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                            .tap { delFor = 0; onEditItem(it) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    Text(
+                        stringResource(R.string.plg_mine_newver),
+                        fontSize = 11.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                            .tap { delFor = 0; onNewVerItem(it) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                    if (delFor == it.id) {
+                        Text(
+                            stringResource(R.string.plg_mine_del_c),
+                            fontSize = 11.sp,
+                            color = DangerRed,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { delFor = 0; onDelItem(it) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                        Text(
+                            stringResource(R.string.plg_upd_cancel),
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { delFor = 0 }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.plg_mine_del),
+                            fontSize = 11.sp,
+                            color = DangerRed,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { delFor = it.id }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+        //已装插件：全部列成清单，每行可更新 / 卸载
+        Spacer(Modifier.height(4.dp))
+        SectionTitle(stringResource(R.string.plg_upd_title), stringResource(R.string.plg_upd_sub))
+        CardBox {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    instTip.ifBlank { stringResource(R.string.plg_upd_sub) },
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    lineHeight = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (instBusy) stringResource(R.string.plg_loading) else stringResource(R.string.plg_upd_check),
+                    fontSize = 11.sp,
+                    color = if (instBusy) TextSecondary else AccentBlue,
+                    modifier = Modifier
+                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                        .tap(enabled = !instBusy) { onReloadInst() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+            inst.forEach { pair ->
+                val m = pair.first
+                val latest = pair.second
+                val hasNew = latest.isNotBlank() && latest != m.ver
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            m.name.ifBlank { m.dir },
+                            fontSize = 12.sp,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            if (latest.isBlank()) stringResource(R.string.plg_inst_local, m.ver)
+                            else stringResource(R.string.plg_inst_ver, m.ver, latest),
+                            fontSize = 10.sp,
+                            color = if (hasNew) AccentBlue else TextSecondary
+                        )
+                        Text(m.dir, fontSize = 9.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    if (hasNew) {
+                        Text(
+                            if (dlId == m.id) stringResource(R.string.plg_upd_doing, dlPct)
+                            else stringResource(R.string.plg_upd_apply),
+                            fontSize = 11.sp,
+                            color = if (dlId == m.id) TextSecondary else AccentBlue,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                                .tap(enabled = dlId == 0) { onApplyUpd(m, latest) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    if (offFor == m.id) {
+                        Text(
+                            stringResource(R.string.plg_inst_off_c),
+                            fontSize = 11.sp,
+                            color = DangerRed,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { offFor = 0; onUninstall(m) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.plg_upd_cancel),
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { offFor = 0 }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.plg_inst_off),
+                            fontSize = 11.sp,
+                            color = DangerRed,
+                            modifier = Modifier
+                                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                .tap { offFor = m.id }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1071,11 +1454,301 @@ private fun MineTab(
                 onLike = { onLike(it) },
                 onFav = { onFav(it) },
                 onCmt = { onCmt(it) },
-                onAuthor = { onAuthor(it.authorUname) }
+                onAuthor = { onAuthor(it.authorUname) },
+                onOpen = { onOpenVer(it, "") }
             )
         }
     }
 } //我的
+
+/** 版本历史一行：版本号 · 时间 · 体积，点开就是这一版的详情 */
+@Composable
+private fun VerRow(v: Plugins.Ver, focus: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .liquidBg(RoundedCornerShape(9.dp), tint = if (focus) AccentBlueSoft else SurfaceMuted)
+            .tap { onClick() }
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                v.ver.ifBlank { "—" },
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (focus) AccentBlue else TextPrimary
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(v.createdAt.take(16), fontSize = 9.sp, color = TextSecondary)
+            Spacer(Modifier.weight(1f))
+            Text(sizeText(v.size), fontSize = 9.sp, color = TextSecondary)
+        }
+        if (v.changes.isNotBlank()) {
+            Spacer(Modifier.height(2.dp))
+            Text(v.changes, fontSize = 10.sp, color = TextSecondary, lineHeight = 15.sp)
+        }
+    }
+} //版本历史一行
+
+/** 编辑资料卡：只改名称 / 说明 / 标签 / 作者，版本与包都不动 */
+@Composable
+private fun EditSheet(
+    p: Plugins.Item,
+    onClose: () -> Unit,
+    onSaved: (String, String, String, String, String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var name by remember { mutableStateOf(p.name) }
+    var descr by remember { mutableStateOf(p.descr) }
+    var tags by remember { mutableStateOf(p.tags) }
+    var author by remember { mutableStateOf(p.author.ifBlank { Cfg.accNick }) }
+    var busy by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf("") }
+
+    BottomSheetCard(onDismiss = { if (!busy) onClose() }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.plg_edit_title, p.name),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.acc_close),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.tap { if (!busy) onClose() }
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.plg_edit_hint2), fontSize = 10.sp, color = TextSecondary, lineHeight = 15.sp)
+        Box(Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(glassScrollState())) {
+            Column {
+                Field(label = stringResource(R.string.plg_name), value = name, onValueChange = { name = it.take(64) })
+                Field(
+                    label = stringResource(R.string.plg_descr),
+                    value = descr,
+                    onValueChange = { descr = it.take(500) },
+                    singleLine = false,
+                    minLines = 3
+                )
+                Field(label = stringResource(R.string.plg_tags), value = tags, onValueChange = { tags = it.take(128) })
+                Field(label = stringResource(R.string.plg_author), value = author, onValueChange = { author = it.take(64) })
+                if (err.isNotBlank()) {
+                    Text(err, fontSize = 11.sp, color = DangerRed, lineHeight = 16.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        PrimaryButton(
+            text = if (busy) stringResource(R.string.plg_loading) else stringResource(R.string.plg_save),
+            enabled = !busy && name.trim().length >= 2 && descr.trim().length >= 10
+        ) {
+            busy = true
+            err = ""
+            scope.launch {
+                val r = withContext(Dispatchers.IO) { runCatching { Plugins.edit(p.id, name, descr, tags, author) } }
+                busy = false
+                r.onSuccess { at -> onSaved(name.trim(), descr.trim(), tags.trim(), author.trim(), at) }
+                    .onFailure { err = it.message?.take(80).orEmpty() }
+            }
+        }
+    }
+} //编辑资料卡
+
+/** 发新版本卡：选新目录 + 版本号 + 更新说明，换包后要重新过审 */
+@Composable
+private fun NewVerSheet(
+    p: Plugins.Item,
+    onClose: () -> Unit,
+    onDone: (String, String, Long, Int) -> Unit
+) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var ver by remember { mutableStateOf("") }
+    var changes by remember { mutableStateOf("") }
+    var zip by remember { mutableStateOf<File?>(null) }
+    var zipName by remember { mutableStateOf("") }
+    var zipErr by remember { mutableStateOf("") }
+    var pct by remember { mutableIntStateOf(0) }
+    var busy by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf("") }
+
+    //选目录：同上传一样本地压包 + 结构校验，选完顺手把旧版本号填进输入框
+    val pick = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            zipErr = ""
+            zip = null
+            zipName = ""
+            val r = withContext(Dispatchers.IO) { runCatching { zipDir(ctx, uri) } }
+            r.onSuccess { (f, _) ->
+                zip = f
+                zipName = f.name
+                if (ver.isBlank()) ver = p.ver
+            }.onFailure {
+                zip = null
+                zipName = ""
+                zipErr = it.message?.take(80).orEmpty()
+            }
+        }
+    }
+
+    BottomSheetCard(onDismiss = { if (!busy) onClose() }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.plg_newver_title),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stringResource(R.string.acc_close),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.tap { if (!busy) onClose() }
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.plg_newver_hint, p.ver),
+            fontSize = 10.sp,
+            color = TextSecondary,
+            lineHeight = 15.sp
+        )
+        Box(Modifier.fillMaxWidth().heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (zipName.isBlank()) stringResource(R.string.plg_no_zip) else zipName,
+                        fontSize = 12.sp,
+                        color = if (zipName.isBlank()) TextSecondary else TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.plg_pick_zip),
+                        fontSize = 11.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                            .tap(enabled = !busy) { pick.launch(null) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+                if (zipErr.isNotBlank()) {
+                    Text(zipErr, fontSize = 10.sp, color = DangerRed, modifier = Modifier.padding(top = 4.dp))
+                }
+                Field(label = stringResource(R.string.plg_ver), value = ver, onValueChange = { ver = it.take(24) })
+                Field(
+                    label = stringResource(R.string.plg_changes),
+                    value = changes,
+                    onValueChange = { changes = it.take(500) },
+                    singleLine = false,
+                    minLines = 3,
+                    placeholder = stringResource(R.string.plg_changes_ph)
+                )
+                if (err.isNotBlank()) {
+                    Text(err, fontSize = 11.sp, color = DangerRed, lineHeight = 16.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        PrimaryButton(
+            text = if (busy) stringResource(R.string.plg_submitting, pct) else stringResource(R.string.plg_newver_submit),
+            enabled = !busy && ver.isNotBlank() && zip != null
+        ) {
+            val f = zip ?: return@PrimaryButton
+            busy = true
+            pct = 0
+            err = ""
+            scope.launch {
+                val r = withContext(Dispatchers.IO) {
+                    runCatching { Plugins.newver(p.id, ver, changes, f) { q -> scope.launch(Dispatchers.Main) { pct = q } } }
+                }
+                busy = false
+                r.onSuccess { t -> onDone(t.ver.ifBlank { ver.trim() }, changes.trim(), t.size, t.status) }
+                    .onFailure { err = it.message?.take(80).orEmpty() }
+            }
+        }
+    }
+} //发新版本卡
+
+/** 详情卡：插件信息 + 版本历史，focusVer 那条高亮（从版本行点进来时） */
+@Composable
+private fun DetailSheet(p: Plugins.Item, focusVer: String, onClose: () -> Unit) {
+    BottomSheetCard(onDismiss = onClose) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                p.name,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (p.ver.isNotBlank()) {
+                Spacer(Modifier.width(6.dp))
+                Text(p.ver, fontSize = 10.sp, color = AccentBlue)
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                stringResource(R.string.acc_close),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.tap { onClose() }
+            )
+        }
+        Box(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(glassScrollState())) {
+            Column {
+                if (p.descr.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(p.descr, fontSize = 12.sp, color = TextSecondary, lineHeight = 18.sp)
+                }
+                Spacer(Modifier.height(6.dp))
+                val who = p.authorNick.ifBlank { p.author }
+                val meta = stringResource(R.string.plg_downloads, p.downloads) + "　" + sizeText(p.size) +
+                    "　" + stringResource(R.string.acc_stat_views) + " " + p.views
+                Text(meta, fontSize = 10.sp, color = TextSecondary)
+                if (who.isNotBlank()) {
+                    Text(who, fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(top = 2.dp))
+                }
+                if (p.editedAt.isNotBlank()) {
+                    Text(
+                        stringResource(R.string.plg_edited_at, p.editedAt.take(16)),
+                        fontSize = 9.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                val tagList = p.tags.split(',', '，', ' ').map { t -> t.trim() }.filter { t -> t.isNotEmpty() }
+                if (tagList.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { tagList.take(6).forEach { t -> Tag(t) } }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.plg_ver_hist), fontSize = 12.sp, color = TextPrimary)
+                Spacer(Modifier.height(6.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (p.vers.isEmpty()) {
+                        Text(stringResource(R.string.plg_ver_empty), fontSize = 10.sp, color = TextSecondary)
+                    } else {
+                        p.vers.forEach { v -> VerRow(v, focusVer.isNotBlank() && v.ver == focusVer) {} }
+                    }
+                }
+            }
+        }
+    }
+} //插件详情卡
 
 /** 排序小胶囊 */
 @Composable
@@ -1100,38 +1773,90 @@ private fun sizeText(bytes: Long): String {
 /** 下载落点：临时目录下按 id 命名，装完就删 */
 private fun tempZip(id: Int): File = File(Paths.dir("plugin_tmp"), "dl-$id.zip")
 
-/**
- * 把选中的 zip 拷到临时目录：先按文件头确认是 zip、按体积卡 8MB，再落盘。
- * 兜底挡掉把 apk / 图片改名成 zip 的情况。
- */
-private fun copyZip(ctx: android.content.Context, uri: Uri): kotlin.Result<File> = runCatching {
-    var size = -1L
+/** 一个包最多这么多条目、目录原始体积上限，和服务端、解压端对齐 */
+private const val ENTRY_MAX = 2000
+private const val RAW_MAX = 64L * 1024 * 1024
+
+/** 把选中的目录打成 zip：递归列子项按相对路径入包，条目数 / 原始体积 / 压完体积三道都卡 */
+private fun zipDir(ctx: android.content.Context, tree: Uri): Pair<File, String> {
+    val res = ctx.contentResolver
+    //持久授权尽力拿：拿不到不影响马上要做的压包
     runCatching {
-        ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
-            val i = c.getColumnIndex(OpenableColumns.SIZE)
-            if (i >= 0 && c.moveToFirst()) size = c.getLong(i)
+        res.takePersistableUriPermission(tree, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val rootId = DocumentsContract.getTreeDocumentId(tree)
+    val root = DocumentsContract.buildDocumentUriUsingTree(tree, rootId)
+    var rootName = "plugin"
+    runCatching {
+        res.query(root, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) rootName = c.getString(0)
         }
     }
-    if (size > Plugins.ZIP_MAX) error("压缩包不能超过 8MB")
-    val head = ByteArray(4)
-    ctx.contentResolver.openInputStream(uri)?.use { it.read(head) }
-    if (!(head[0] == 0x50.toByte() && head[1] == 0x4B.toByte())) error("这不是 zip 压缩包")
-    val dst = File(Paths.dir("plugin_tmp"), "up-" + System.currentTimeMillis().toString(36) + ".zip")
-    var total = 0L
-    ctx.contentResolver.openInputStream(uri)?.use { ins ->
-        dst.outputStream().use { out ->
-            val buf = ByteArray(64 * 1024)
-            while (true) {
-                val n = ins.read(buf)
-                if (n <= 0) break
-                total += n
-                if (total > Plugins.ZIP_MAX) {
-                    dst.delete()
-                    error("压缩包不能超过 8MB")
+    val files = ArrayList<Pair<String, Uri>>()
+    val seen = HashSet<String>()
+    //递归列目录：跳过隐藏文件与怪名字，目录名进 prefix
+    fun walk(dir: Uri, prefix: String) {
+        val kids = DocumentsContract.buildChildDocumentsUriUsingTree(dir, DocumentsContract.getDocumentId(dir))
+        val c = res.query(
+            kids,
+            arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE
+            ),
+            null,
+            null,
+            null
+        ) ?: error("这个目录读不了，换一个试试")
+        c.use {
+            while (it.moveToNext()) {
+                val id = it.getString(0) ?: continue
+                val nm = it.getString(1) ?: continue
+                if (nm.isBlank() || nm.startsWith(".") || nm.contains('/')) continue
+                val child = DocumentsContract.buildDocumentUriUsingTree(tree, id)
+                val path = prefix + nm
+                if (it.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR) {
+                    walk(child, path + "/")
+                } else {
+                    if (files.size >= ENTRY_MAX) error("文件太多了，一个包最多 $ENTRY_MAX 个")
+                    if (seen.add(path)) files.add(path to child)
                 }
-                out.write(buf, 0, n)
             }
         }
-    } ?: error("这个文件读不了")
-    dst
-} //选包落临时文件
+    }
+    walk(root, "")
+    if (files.isEmpty()) error("这个目录是空的")
+    //和安装时同一条规则：包根目录要有 skill.json 或 SKILL.md
+    if (files.none { p -> p.first == "skill.json" || p.first == "SKILL.md" }) {
+        error("目录里要有 skill.json 或 SKILL.md")
+    }
+    val dst = File(Paths.dir("plugin_tmp"), "up-" + System.currentTimeMillis().toString(36) + ".zip")
+    var raw = 0L
+    try {
+        ZipOutputStream(BufferedOutputStream(dst.outputStream())).use { zos ->
+            files.forEach { (path, u) ->
+                val ins = res.openInputStream(u) ?: error("读不了 " + path)
+                ins.use { i ->
+                    zos.putNextEntry(ZipEntry(path))
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = i.read(buf)
+                        if (n <= 0) break
+                        raw += n
+                        if (raw > RAW_MAX) error("目录太大，处理上限 64MB")
+                        zos.write(buf, 0, n)
+                    }
+                    zos.closeEntry()
+                }
+            }
+        }
+    } catch (e: Throwable) {
+        dst.delete()
+        throw e
+    }
+    if (dst.length() > Plugins.ZIP_MAX) {
+        dst.delete()
+        error("压完还超过 8MB，去掉大文件再传")
+    }
+    return dst to rootName
+} //选目录压包
