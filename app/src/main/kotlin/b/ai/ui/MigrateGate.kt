@@ -129,7 +129,7 @@ fun MigrateGate(onReady: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 160.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
         ) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -164,7 +164,7 @@ fun MigrateGate(onReady: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap { start() }
                     .padding(vertical = 11.dp)
             )
@@ -204,7 +204,7 @@ private fun MigratePage(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 120.dp, max = 420.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
         ) {
             Column {

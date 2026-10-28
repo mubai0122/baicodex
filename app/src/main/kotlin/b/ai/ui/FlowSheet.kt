@@ -78,7 +78,7 @@ fun FlowSheet(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             )
@@ -141,7 +141,7 @@ fun FlowSheet(onClose: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         val valid = steps.filter { it.task.isNotBlank() }
                         val at = if (time.isBlank()) 0L else flowParseAt(date, time, daily)
@@ -234,7 +234,7 @@ private fun StepCard(
         Modifier
             .fillMaxWidth()
             .padding(top = 6.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -285,7 +285,7 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .tap { onEdit() }
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
@@ -331,7 +331,7 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
                 fontSize = 11.sp,
                 color = if (running) TextSecondary else AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .tap(enabled = !running) {
                         running = true
                         FlowRunner.launchManual(f) { out ->

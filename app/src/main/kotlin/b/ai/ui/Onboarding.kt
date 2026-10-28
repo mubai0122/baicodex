@@ -134,7 +134,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             .verticalScroll(rememberScrollState())
     ) {
         Spacer(Modifier.height(28.dp))
-        Text("BaiAgent", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Baicodex", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
         Text(stringResource(R.string.ob_sub), fontSize = 12.sp, color = TextSecondary)
         Spacer(Modifier.height(20.dp))
         Text(
@@ -197,7 +197,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     Box(
                         Modifier
                             .size(15.dp)
-                            .background(if (Cfg.noRate) AccentBlue else SurfaceMuted, RoundedCornerShape(5.dp)),
+                            .liquidBg(RoundedCornerShape(5.dp), tint = if (Cfg.noRate) AccentBlue else SurfaceMuted),
                         contentAlignment = Alignment.Center
                     ) { if (Cfg.noRate) IcTick(Color.White, 9.dp) }
                     Spacer(Modifier.width(8.dp))

@@ -81,7 +81,7 @@ fun TaskDialog(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             )
@@ -134,7 +134,7 @@ fun TaskDialog(onClose: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         val at = parseAt(date, time, daily)
                         if (prompt.isBlank()) {
@@ -180,7 +180,7 @@ private fun PermRow(label: String, ok: Boolean, action: String, onClick: () -> U
                 fontSize = 10.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .tap { onClick() }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             )
@@ -195,7 +195,7 @@ private fun TaskRow(t: Task, exact: Boolean) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

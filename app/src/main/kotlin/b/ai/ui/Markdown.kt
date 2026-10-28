@@ -200,7 +200,7 @@ private fun CodeBlock(b: MdBlock.Code) {
             Spacer(Modifier.weight(1f))
             Box(
                 Modifier
-                    .background(SurfaceWhite, RoundedCornerShape(6.dp))
+                    .liquidBg(RoundedCornerShape(6.dp))
                     .tap {
                         mdCopy(ctx, b.code)
                         done = true

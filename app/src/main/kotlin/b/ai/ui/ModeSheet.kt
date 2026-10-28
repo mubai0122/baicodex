@@ -50,10 +50,8 @@ internal fun ModeSheet(onClose: () -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
-                        .background(
-                            if (on) b.ai.ui.theme.AccentBlueSoft else SurfaceMuted,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .liquidBg(RoundedCornerShape(12.dp)
+                        , tint = if (on) b.ai.ui.theme.AccentBlueSoft else SurfaceMuted)
                         .tap {
                             Cfg.agentMode = m
                             onClose()

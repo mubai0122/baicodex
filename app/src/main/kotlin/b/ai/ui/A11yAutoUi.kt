@@ -119,7 +119,7 @@ fun A11yAutoDialog(onClose: () -> Unit) {
                     Box(
                         Modifier.size(18.dp)
                             .clip(RoundedCornerShape(5.dp))
-                            .background(if (autoRun) AccentBlue else AccentBlueSoft),
+                            .liquidBg(RoundedCornerShape(5.dp), tint = if (autoRun) AccentBlue else AccentBlueSoft),
                         contentAlignment = Alignment.Center
                     ) {
                         if (autoRun) {

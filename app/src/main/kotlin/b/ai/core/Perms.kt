@@ -14,14 +14,25 @@ import android.provider.Settings
 
 /** 运行期权限：进应用一次性申请，缺权限时工具调用直接拒绝 */
 object Perms {
-    private fun storage(): List<String> = if (Build.VERSION.SDK_INT >= 33) listOf(
-        Manifest.permission.READ_MEDIA_IMAGES,
-        Manifest.permission.READ_MEDIA_VIDEO,
-        Manifest.permission.READ_MEDIA_AUDIO
-    ) else listOf(
+    /** 存储类权限：全盘访问开了以后这两个都不用再要 */
+    private val STORAGE = setOf(
         Manifest.permission.READ_EXTERNAL_STORAGE,
         Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
+
+    //WRITE_EXTERNAL_STORAGE 在清单里限到 29：targetSdk≥30 时系统根本不会授予它，申请也永远是 DENIED
+    private fun storage(): List<String> = when {
+        Build.VERSION.SDK_INT >= 33 -> listOf(
+            Manifest.permission.READ_MEDIA_IMAGES,
+            Manifest.permission.READ_MEDIA_VIDEO,
+            Manifest.permission.READ_MEDIA_AUDIO
+        )
+        Build.VERSION.SDK_INT >= 30 -> listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        else -> listOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+    }
 
     /** 需要动态申请的权限清单（按系统版本裁剪，未定义的高版本权限不请求） */
     fun runtime(): List<String> {
@@ -35,8 +46,14 @@ object Perms {
     fun granted(c: Context, p: String): Boolean =
         c.checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
 
-    /** 还没授予的权限；空表示都齐了 */
-    fun missing(c: Context): List<String> = runtime().filterNot { granted(c, it) }
+    /** 还没授予的权限；空表示都齐了。Android 11+ 开了全盘访问就不再纠结存储类权限 */
+    fun missing(c: Context): List<String> {
+        //只在 30+ 才认这个豁免：Android 10 及以下 allFiles() 恒为 true，那会儿 WRITE 是真的要
+        val manager = Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()
+        return runtime().filterNot { p ->
+            granted(c, p) || (manager && p in STORAGE)
+        }
+    }
 
     fun ok(c: Context): Boolean = missing(c).isEmpty()
 

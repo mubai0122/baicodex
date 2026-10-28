@@ -150,9 +150,9 @@ fun A11yPermCard(desc: String) {
             } else {
                 Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 StepLine(1, "点下面「去开启无障碍」，跳到系统的无障碍页面")
-                StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+                StepLine(2, "点「已下载的服务」→「Baicodex 屏幕操作」")
                 StepLine(3, "打开开关，弹窗里选「允许」")
-                StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+                StepLine(4, "开关是灰的：设置 → 应用 → Baicodex → 右上角 ⋮ → 允许受限设置，再回来开")
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -201,9 +201,9 @@ fun A11yPermDialog(onClose: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
-        StepLine(2, "点「已下载的服务」→「BaiAgent 屏幕操作」")
+        StepLine(2, "点「已下载的服务」→「Baicodex 屏幕操作」")
         StepLine(3, "打开开关，弹窗里选「允许」")
-        StepLine(4, "开关是灰的：设置 → 应用 → BaiAgent → 右上角 ⋮ → 允许受限设置，再回来开")
+        StepLine(4, "开关是灰的：设置 → 应用 → Baicodex → 右上角 ⋮ → 允许受限设置，再回来开")
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             GhostButton("知道了") { onClose() }

@@ -98,7 +98,7 @@ fun TosBody(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(14.dp))
+                .liquidBg(RoundedCornerShape(14.dp), tint = SurfaceMuted)
                 .padding(14.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -117,7 +117,7 @@ fun TosBody(
             Box(
                 Modifier
                     .size(18.dp)
-                    .background(if (checked) AccentBlue else SurfaceMuted, RoundedCornerShape(5.dp)),
+                    .liquidBg(RoundedCornerShape(5.dp), tint = if (checked) AccentBlue else SurfaceMuted),
                 contentAlignment = Alignment.Center
             ) { if (checked) IcTick(Color.White, 11.dp) }
             Spacer(Modifier.width(9.dp))

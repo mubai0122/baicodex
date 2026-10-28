@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
 import b.ai.net.Feedback
 import b.ai.ui.theme.AccentBlue
@@ -139,10 +142,19 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
         }
     }
 
+    //卡片玻璃的采样源：纯背景一层，不含卡片自己，否则卡片会采到上一帧的自己
+    val cardBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
+
+    ProvideCardBackdrop(cardBackdrop) {
+    Box(Modifier.fillMaxSize()) {
+        //纯背景一层，卡片玻璃只采它
+        Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgGray)
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         //顶栏：返回 + 标题
@@ -154,7 +166,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
         ) {
             Row(
                 Modifier
-                    .background(SurfaceWhite, RoundedCornerShape(9.dp))
+                    .liquidBg(RoundedCornerShape(9.dp))
                     .tap { if (!busy) onBack() }
                     .padding(8.dp)
             ) {
@@ -240,7 +252,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
                             Modifier
                                 .fillMaxWidth()
                                 .padding(top = 6.dp)
-                                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -335,6 +347,8 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
             Spacer(Modifier.height(24.dp))
         }
     } //反馈页
+    } //兜底容器
+    } //玻璃作用域
 } //意见反馈
 
 /** 我的反馈一行：编号 + 状态 + 最近一条消息摘要 */
@@ -348,7 +362,7 @@ private fun MineRow(it: Feedback.Item, onClick: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(SurfaceWhite, RoundedCornerShape(14.dp))
+            .liquidBg(RoundedCornerShape(14.dp))
             .tap { onClick() }
             .padding(14.dp)
     ) {
@@ -414,7 +428,7 @@ private fun CatChip(label: String, selected: Boolean, onClick: () -> Unit) {
         fontSize = 12.sp,
         color = if (selected) AccentBlue else TextSecondary,
         modifier = Modifier
-            .background(if (selected) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = if (selected) AccentBlueSoft else SurfaceMuted)
             .tap { onClick() }
             .padding(horizontal = 12.dp, vertical = 7.dp)
     )
@@ -428,7 +442,7 @@ private fun AttBtn(label: String, enabled: Boolean, onClick: () -> Unit) {
         fontSize = 11.sp,
         color = if (enabled) AccentBlue else TextSecondary,
         modifier = Modifier
-            .background(if (enabled) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(9.dp))
+            .liquidBg(RoundedCornerShape(9.dp), tint = if (enabled) AccentBlueSoft else SurfaceMuted)
             .tap { if (enabled) onClick() }
             .padding(horizontal = 10.dp, vertical = 6.dp)
     )

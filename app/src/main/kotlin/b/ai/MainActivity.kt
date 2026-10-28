@@ -70,6 +70,7 @@ import b.ai.ui.Tos
 import b.ai.ui.TosScreen
 import b.ai.ui.UpdateDialog
 import b.ai.ui.UpdateHistoryDialog
+import b.ai.ui.UpdateTipDialog
 import b.ai.ui.UpdateUi
 import b.ai.ui.theme.BaiTheme
 import b.ai.core.Speak
@@ -223,6 +224,7 @@ private fun Root() {
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
+    val updTip = UpdateUi.tip
     val ann = b.ai.ui.AnnounceUi.cur
     //群卡片要等更新卡片关掉：先看完版本更新再邀请进群，避免两张卡片抢同一个槽
     LaunchedEffect(updChecked, upd, updHis) {
@@ -378,6 +380,7 @@ private fun Root() {
                         )
                         upd != null -> UpdateDialog(upd) { UpdateUi.close() }
                         updHis != null -> UpdateHistoryDialog(updHis) { UpdateUi.close() }
+                        updTip != null -> UpdateTipDialog(updTip) { UpdateUi.close() }
                         ann != null -> AnnounceDialog(ann) {
                             //always=true 的公告不记已读，下次进应用还弹
                             if (!ann.always) Cfg.annSeen = ann.id

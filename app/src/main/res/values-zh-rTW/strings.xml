@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BaiAgent</string>
+    <string name="app_name">Baicodex</string>
 
     <!-- 引導流程 -->
     <string name="ob_sub">裝置上的本地 AI Agent</string>
@@ -135,6 +135,9 @@
     <string name="ms_add_sub">複製目前設定再改，適合同廠商加第二個模型</string>
     <string name="ms_add_provider">新增供應商</string>
     <string name="ms_add_provider_sub">選完廠商再填 Key，然後勾選要用的模型</string>
+    <string name="ms_add_model_hint">清單裡沒有？手打模型名稱，逗號分隔可加多個</string>
+    <string name="ms_add_model_tip">多個模型用半角逗號「,」隔開，例如 a,b,c；Enter 或點「新增」直接加進清單</string>
+    <string name="ms_add_ok">新增</string>
     <string name="ms_models_t">模型列表</string>
     <string name="ms_models_sub">勾上要用的模型，聊天頁只在這幾個裡挑</string>
     <string name="ms_models_picked">已選 %1$d 個</string>

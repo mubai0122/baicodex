@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BaiAgent</string>
+    <string name="app_name">Baicodex</string>
 
     <!-- Onboarding -->
     <string name="ob_sub">A local AI agent on your device</string>
@@ -135,6 +135,9 @@
     <string name="ms_add_sub">Copies the current config, handy for a second model from the same provider</string>
     <string name="ms_add_provider">Add provider</string>
     <string name="ms_add_provider_sub">Pick a provider, fill the Key, then tick the models you need</string>
+    <string name="ms_add_model_hint">Not in the list? Type names, comma separated</string>
+    <string name="ms_add_model_tip">Separate multiple models with a comma, e.g. a,b,c; press Enter or Add to insert</string>
+    <string name="ms_add_ok">Add</string>
     <string name="ms_models_t">Model list</string>
     <string name="ms_models_sub">Tick the models you use; chat only offers these</string>
     <string name="ms_models_picked">%1$d selected</string>

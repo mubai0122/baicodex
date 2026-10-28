@@ -71,7 +71,7 @@ fun SessionSheet(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                     .clickable { onClose() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             )
@@ -116,10 +116,8 @@ fun SessionSheet(onClose: () -> Unit) {
                         Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
-                            .background(
-                                if (current) AccentBlueSoft else SurfaceWhite,
-                                RoundedCornerShape(12.dp)
-                            )
+                            .liquidBg(RoundedCornerShape(12.dp)
+                            , tint = if (current) AccentBlueSoft else SurfaceWhite)
                             .border(
                                 1.dp,
                                 if (current) AccentBlue else BorderGray,
@@ -162,7 +160,7 @@ fun SessionSheet(onClose: () -> Unit) {
                                 fontSize = 10.sp,
                                 color = TextSecondary,
                                 modifier = Modifier
-                                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                                     .clickable {
                                         editing = s
                                         draft = s.title

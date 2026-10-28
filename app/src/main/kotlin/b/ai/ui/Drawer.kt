@@ -123,7 +123,7 @@ fun DrawerPanel(
         Modifier
             .width(DrawerWidth)
             .fillMaxHeight()
-            .background(BgGray)
+            .liquidBg(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp), tint = BgGray, veil = 0.45f)
             .onGloballyPositioned {
                 boxTop = it.positionInRoot().y.toInt()
                 boxH = it.size.height
@@ -134,10 +134,10 @@ fun DrawerPanel(
                 Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("BaiAgent", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text("Baicodex", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
                 Box(
-                    Modifier.size(30.dp).background(SurfaceWhite, CircleShape).tap { onClose() },
+                    Modifier.size(30.dp).liquidBg(CircleShape).tap { onClose() },
                     contentAlignment = Alignment.Center
                 ) { IcClose(TextSecondary, side = 13.dp) }
             }
@@ -146,7 +146,7 @@ fun DrawerPanel(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp))
                         .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -175,7 +175,7 @@ fun DrawerPanel(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(AccentBlueSoft, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp), tint = AccentBlueSoft)
                         .border(1.dp, AccentBlue, RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -357,7 +357,7 @@ private fun DrawerAction(
 ) {
     Box(
         modifier
-            .background(if (danger) DangerRedSoft else SurfaceWhite, RoundedCornerShape(9.dp))
+            .liquidBg(RoundedCornerShape(9.dp), tint = if (danger) DangerRedSoft else SurfaceWhite)
             .border(1.dp, if (danger) Color.Transparent else BorderGray, RoundedCornerShape(9.dp))
             .tap(enabled = enabled) { onClick() }
             .padding(vertical = 7.dp),
@@ -409,7 +409,7 @@ private fun SessionItem(
             Box(
                 Modifier
                     .size(15.dp)
-                    .background(if (checked) AccentBlue else Color.Transparent, CircleShape)
+                    .liquidBg(CircleShape, tint = if (checked) AccentBlue else Color.Transparent)
                     .border(1.5.dp, if (checked) AccentBlue else BorderGray, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -480,7 +480,7 @@ private fun SessionMenu(
         modifier
             .widthIn(min = 128.dp, max = 150.dp)
             .shadow(10.dp, RoundedCornerShape(12.dp))
-            .background(SurfaceWhite, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp))
             .tap { }
             .padding(vertical = 3.dp)
     ) {
@@ -502,7 +502,7 @@ private fun SessionMenu(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 9.dp)
-                        .background(SurfaceMuted, RoundedCornerShape(7.dp))
+                        .liquidBg(RoundedCornerShape(7.dp), tint = SurfaceMuted)
                         .padding(horizontal = 7.dp, vertical = 6.dp)
                 )
                 Spacer(Modifier.height(6.dp))
@@ -565,7 +565,7 @@ private fun MenuBtn(label: String, primary: Boolean, modifier: Modifier = Modifi
         color = if (primary) Color.White else TextSecondary,
         textAlign = TextAlign.Center,
         modifier = modifier
-            .background(if (primary) AccentBlue else SurfaceMuted, RoundedCornerShape(7.dp))
+            .liquidBg(RoundedCornerShape(7.dp), tint = if (primary) AccentBlue else SurfaceMuted)
             .tap { onClick() }
             .padding(vertical = 7.dp)
     )

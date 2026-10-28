@@ -64,7 +64,7 @@ fun MemorySheet(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             )
@@ -91,7 +91,7 @@ fun MemorySheet(onClose: () -> Unit) {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                             .padding(10.dp),
                         verticalAlignment = Alignment.Top
                     ) {
@@ -107,7 +107,7 @@ fun MemorySheet(onClose: () -> Unit) {
                             fontSize = 10.sp,
                             color = AccentBlue,
                             modifier = Modifier
-                                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                                 .tap { scope.launch { withContext(Dispatchers.IO) { Memory.delete(r.id) } } }
                                 .padding(horizontal = 8.dp, vertical = 5.dp)
                         )

@@ -53,7 +53,7 @@ private fun PickDot(on: Boolean) {
     Box(
         Modifier
             .size(18.dp)
-            .background(if (on) AccentBlue else SurfaceWhite, CircleShape)
+            .liquidBg(CircleShape, tint = if (on) AccentBlue else SurfaceWhite)
             .border(1.5.dp, if (on) AccentBlue else BorderGray, CircleShape),
         contentAlignment = Alignment.Center
     ) {
@@ -110,7 +110,7 @@ fun AskSheet(req: AskReq) {
             Spacer(Modifier.weight(1f))
             Row(
                 Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .padding(horizontal = 8.dp, vertical = 3.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -130,7 +130,7 @@ fun AskSheet(req: AskReq) {
                     Box(
                         Modifier
                             .size(26.dp)
-                            .background(if (on) AccentBlue else SurfaceMuted, CircleShape)
+                            .liquidBg(CircleShape, tint = if (on) AccentBlue else SurfaceMuted)
                             .border(1.dp, if (on) AccentBlue else BorderGray, CircleShape)
                             .tap { page = k },
                         contentAlignment = Alignment.Center
@@ -163,7 +163,7 @@ fun AskSheet(req: AskReq) {
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
-                        .background(if (on) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp), tint = if (on) AccentBlueSoft else SurfaceMuted)
                         .border(1.dp, if (on) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
                         .tap {
                             if (cur.multi) {
@@ -193,7 +193,7 @@ fun AskSheet(req: AskReq) {
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
-                        .background(if (on) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp), tint = if (on) AccentBlueSoft else SurfaceMuted)
                         .border(1.dp, if (on) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
                         .tap {
                             customOn[page].value = !on
@@ -215,7 +215,7 @@ fun AskSheet(req: AskReq) {
                         Modifier
                             .fillMaxWidth()
                             .padding(top = 6.dp)
-                            .background(SurfaceWhite, RoundedCornerShape(10.dp))
+                            .liquidBg(RoundedCornerShape(10.dp))
                             .border(1.dp, BorderGray, RoundedCornerShape(10.dp))
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {

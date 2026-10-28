@@ -125,7 +125,7 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
                     scaleY = scale
                 }
                 .shadow(26.dp, CardShape)
-                .background(GlassWhite, CardShape)
+                .liquidBg(CardShape, veil = 0.62f)
                 .border(1.dp, BorderGray, CardShape)
                 .padding(18.dp),
             content = content
@@ -166,7 +166,7 @@ fun BottomSheetCard(onDismiss: (() -> Unit)? = null, content: @Composable Column
                     translationY = (1f - t) * 80.dp.toPx()
                 }
                 .shadow(26.dp, SheetShape)
-                .background(GlassWhite, SheetShape)
+                .liquidBg(SheetShape, veil = 0.62f)
                 .border(1.dp, BorderGray, SheetShape)
                 .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 16.dp),
@@ -209,7 +209,7 @@ fun ToolConfirmDialog(p: PendingTool) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 300.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -236,7 +236,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 color = TextSecondary,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { Agent.resolve(false, true) }
                     .padding(vertical = 11.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -258,7 +258,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 color = TextSecondary,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { Agent.resolve(true, true) }
                     .padding(vertical = 11.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -269,7 +269,7 @@ fun ToolConfirmDialog(p: PendingTool) {
                 color = Color.White,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap { Agent.resolve(true, false) }
                     .padding(vertical = 11.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -295,7 +295,7 @@ fun PermNoticeDialog(
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 200.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -321,7 +321,7 @@ fun PermNoticeDialog(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -332,7 +332,7 @@ fun PermNoticeDialog(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
                     .tap { onRetry() }
                     .padding(vertical = 11.dp)
             )
@@ -343,7 +343,7 @@ fun PermNoticeDialog(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap { onSettings() }
                     .padding(vertical = 11.dp)
             )
@@ -360,7 +360,7 @@ fun SimpleDialog(title: String, body: String, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 360.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) { Text(body, fontSize = 12.sp, color = TextPrimary) }
@@ -371,7 +371,7 @@ fun SimpleDialog(title: String, body: String, onClose: () -> Unit) {
                 fontSize = 13.sp,
                 color = TextPrimary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 18.dp, vertical = 9.dp)
             )

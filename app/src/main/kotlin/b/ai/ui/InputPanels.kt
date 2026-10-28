@@ -135,7 +135,7 @@ internal fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
                     }
                 )
             } else {
-                Modifier.shadow(10.dp, shape).background(SurfaceWhite, shape).border(1.dp, BorderGray, shape)
+                Modifier.shadow(10.dp, shape).liquidBg(shape).border(1.dp, BorderGray, shape)
             }
         )
     Column(outer) {
@@ -155,7 +155,7 @@ internal fun SheetHead(title: String, onClose: () -> Unit) {
         Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
         Spacer(Modifier.weight(1f))
         androidx.compose.foundation.layout.Box(
-            Modifier.size(22.dp).background(SurfaceMuted, CircleShape).tap { onClose() },
+            Modifier.size(22.dp).liquidBg(CircleShape, tint = SurfaceMuted).tap { onClose() },
             contentAlignment = Alignment.Center
         ) { IcClose(TextSecondary, side = 10.dp) }
     }
@@ -180,7 +180,7 @@ internal fun AttachPanel(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
                 .tap { onSkill() }
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -200,7 +200,7 @@ private fun AttachRow(label: String, desc: String, onTap: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .tap { onTap() }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -223,7 +223,7 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onInsert(pfx + s.name + "\n" + s.body.take(1200) + "\n\n任务：") }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -256,7 +256,7 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 4.dp)
-                        .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                         .tap { onInsert(ctx.getString(R.string.mcp_use_pre, t.name, t.server) + "\n") }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -290,7 +290,7 @@ internal fun CfgPanel(onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
-                    .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
                     .tap {
                         //切走前先把当前表单值写回旧配置，改了一半的输入不丢
                         Profiles.capture()
@@ -359,7 +359,7 @@ internal fun CfgPanel(onClose: () -> Unit) {
             }
             Row(
                 Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
                     .tap {
                         val at = budgetSteps.indexOf(Cfg.toolBudgetTokens)
                         Cfg.toolBudgetTokens = budgetSteps[(if (at < 0) 0 else at + 1) % budgetSteps.size]
@@ -416,7 +416,7 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 4.dp)
-                        .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
                         .tap {
                             //切走前先把当前表单值写回旧配置，改了一半的输入不丢
                             Profiles.capture()
@@ -454,7 +454,27 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                    .padding(bottom = 4.dp)
+                    .liquidBg(RoundedCornerShape(10.dp))
+                    .tap {
+                        //面板里直接加一条空白配置：存回当前表单再新增，然后进设置把 Key / 模型填完
+                        Profiles.capture()
+                        Profiles.add()
+                        onOpenSettings()
+                    }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.ms_add), fontSize = 12.sp, color = TextPrimary)
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.ms_add_sub), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.weight(1f))
+                Text("+", fontSize = 14.sp, color = AccentBlue)
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
                     .tap { onOpenSettings() }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -489,7 +509,7 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(AccentBlueSoft, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
                         .tap { onOpenSettings() }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -505,7 +525,7 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                         Modifier
                             .fillMaxWidth()
                             .padding(bottom = 4.dp)
-                            .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                            .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
                             .tap {
                                 Profiles.select(one.id)
                                 Cfg.model = m
@@ -790,7 +810,7 @@ private fun ModelPickSheet(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -836,7 +856,7 @@ private fun ModelPickSheet(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .background(if (sel) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+                            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else Color.Transparent)
                             .tap { onPick(m) }
                             .padding(horizontal = 12.dp, vertical = 13.dp),
                         verticalAlignment = Alignment.CenterVertically

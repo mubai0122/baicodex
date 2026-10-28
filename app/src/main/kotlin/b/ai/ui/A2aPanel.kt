@@ -84,7 +84,7 @@ fun A2aPanel(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             )
@@ -107,7 +107,7 @@ fun A2aPanel(onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -207,7 +207,7 @@ fun A2aPanel(onClose: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         if (url.isNotBlank()) {
                             A2aNodes.add(name, url, nodeToken)
@@ -231,7 +231,7 @@ fun A2aPanel(onClose: () -> Unit) {
                     color = TextPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                         .padding(8.dp)
                 )
             }
@@ -251,7 +251,7 @@ private fun NodeRow(n: A2aNode, testing: Boolean, onTest: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -264,7 +264,7 @@ private fun NodeRow(n: A2aNode, testing: Boolean, onTest: () -> Unit) {
             fontSize = 11.sp,
             color = if (testing) TextSecondary else AccentBlue,
             modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                 .tap(enabled = !testing) { onTest() }
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         )

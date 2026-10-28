@@ -57,7 +57,7 @@ internal fun SelectRow(label: String, value: String, desc: String? = null, onCli
         Spacer(Modifier.width(10.dp))
         Row(
             Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                 .padding(start = 9.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

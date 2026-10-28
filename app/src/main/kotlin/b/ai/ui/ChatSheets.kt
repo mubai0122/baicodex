@@ -54,7 +54,7 @@ internal fun AttachSheet(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(AccentBlueSoft, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = AccentBlueSoft)
                 .tap { onSkill() }
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -80,7 +80,7 @@ private fun AttachRow(
         Modifier
             .fillMaxWidth()
             .padding(bottom = 6.dp)
-            .background(SurfaceMuted, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
             .tap { if (onImage != null) onImage() else onFile(label, mime) }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -109,7 +109,7 @@ internal fun SkillSheet(onClose: () -> Unit, onInsert: (String) -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp)
-                        .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                         .tap {
                             onInsert(pfx + s.name + "\n" + s.body.take(1200) + "\n\n任务：")
                         }
@@ -156,7 +156,7 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp)
-                        .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
                         .tap {
                             //切走前先存回旧配置，改了一半的 Key / 模型不会丢
                             Profiles.capture()

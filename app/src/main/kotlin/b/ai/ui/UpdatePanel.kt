@@ -56,10 +56,14 @@ object UpdateUi {
     /** 更新历史弹窗数据；null 表示不显示 */
     var history by mutableStateOf<List<Update.His>?>(null)
 
+    /** 检查结果提示：已是最新 / 更新已关闭 / 检查失败，统一走弹窗，不再在卡片里塞小字 */
+    var tip by mutableStateOf<String?>(null)
+
     /** 全部关掉 */
     fun close() {
         prompt = null
         history = null
+        tip = null
     }
 } //更新弹窗状态
 
@@ -132,7 +136,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 320.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -152,13 +156,13 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .height(6.dp)
-                    .background(SurfaceMuted, RoundedCornerShape(3.dp))
+                    .liquidBg(RoundedCornerShape(3.dp), tint = SurfaceMuted)
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth((if (pct <= 0) 2 else pct) / 100f)
                         .height(6.dp)
-                        .background(AccentBlue, RoundedCornerShape(3.dp))
+                        .liquidBg(RoundedCornerShape(3.dp), tint = AccentBlue)
                 )
             }
             Spacer(Modifier.height(6.dp))
@@ -192,7 +196,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .weight(1f)
-                            .background(AccentBlue, RoundedCornerShape(10.dp))
+                            .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                             .tap { startDownload() }
                             .padding(vertical = 11.dp)
                     )
@@ -205,7 +209,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .background(AccentBlue, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                         .tap { openBrowser(ctx, jump) }
                         .padding(vertical = 11.dp)
                 )
@@ -216,7 +220,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(1f)
-                        .background(AccentBlue, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                         .tap { (ctx as? Activity)?.finishAffinity() }
                         .padding(vertical = 11.dp)
                 )
@@ -243,7 +247,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(if (direct.isBlank() && jump.isBlank()) 1f else 1f)
-                        .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                        .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                         .tap { onClose() }
                         .padding(vertical = 11.dp)
                 )
@@ -273,7 +277,7 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 380.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -310,10 +314,37 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
                 fontSize = 13.sp,
                 color = TextPrimary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 18.dp, vertical = 9.dp)
             )
         }
     }
 } //更新历史弹窗
+
+/** 检查更新的结果提示：已是最新、更新已关、检查失败都用这张卡，不再在设置页留一行小字 */
+@Composable
+fun UpdateTipDialog(body: String, onClose: () -> Unit) {
+    ScrimCard(onDismiss = onClose) {
+        Text(
+            stringResource(R.string.se_054),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(body, fontSize = 13.sp, color = TextPrimary)
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Text(
+                stringResource(R.string.up_close),
+                fontSize = 13.sp,
+                color = TextPrimary,
+                modifier = Modifier
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .tap { onClose() }
+                    .padding(horizontal = 18.dp, vertical = 9.dp)
+            )
+        }
+    }
+} //检查更新提示弹窗

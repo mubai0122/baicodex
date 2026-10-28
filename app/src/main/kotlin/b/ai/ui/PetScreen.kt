@@ -171,6 +171,11 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
         drawRect(BgGray)
         drawContent()
     }
+    //卡片玻璃的采样源：纯背景一层，不含卡片自己，否则卡片会采到上一帧的自己
+    val cardBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
 
     Box(
         Modifier
@@ -184,6 +189,9 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
             .pageBg()
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
+        //纯背景一层，卡片玻璃只采它
+        Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
+        ProvideCardBackdrop(cardBackdrop) {
         Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Row(
                 Modifier
@@ -201,7 +209,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
-                        .background(if (find) AccentBlueSoft else SurfaceWhite, RoundedCornerShape(9.dp))
+                        .liquidBg(RoundedCornerShape(9.dp), tint = if (find) AccentBlueSoft else SurfaceWhite)
                         .tap { find = !find; fq = "" }
                         .padding(8.dp)
                 ) {
@@ -215,7 +223,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Row(
                     Modifier
-                        .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                         .tap { onBack() }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -236,7 +244,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -286,7 +294,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
-                                        .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                                        .liquidBg(RoundedCornerShape(12.dp))
                                         .tap { tab = e.tab; find = false; fq = "" }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -352,6 +360,7 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                 }
             }
         }
+        } //玻璃作用域
         FloatTabBar(
             tabs = PetTabs,
             selected = tab,
@@ -466,7 +475,7 @@ private fun PetLineTab(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceWhite, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp))
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -477,7 +486,7 @@ private fun PetLineTab(
                 fontSize = 11.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .padding(horizontal = 8.dp, vertical = 3.dp)
                     .tap {
                         PetLines.save(lines.filterNot { it == one })

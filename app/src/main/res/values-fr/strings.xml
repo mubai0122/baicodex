@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BaiAgent</string>
+    <string name="app_name">Baicodex</string>
 
     <!-- Première configuration -->
     <string name="ob_sub">Un agent IA local sur votre appareil</string>
@@ -135,6 +135,9 @@
     <string name="ms_add_sub">Copie la config actuelle, pratique pour un 2e modèle du même fournisseur</string>
     <string name="ms_add_provider">Ajouter un fournisseur</string>
     <string name="ms_add_provider_sub">Choisissez un fournisseur, saisissez la cle, puis cochez les modeles voulus</string>
+    <string name="ms_add_model_hint">Pas dans la liste ? Noms separes par des virgules</string>
+    <string name="ms_add_model_tip">Separez les modeles par une virgule, ex. a,b,c ; Entree ou Ajouter pour inserer</string>
+    <string name="ms_add_ok">Ajouter</string>
     <string name="ms_models_t">Liste des modeles</string>
     <string name="ms_models_sub">Cochez les modeles utilises ; le chat ne propose que ceux-la</string>
     <string name="ms_models_picked">%1$d selectionnes</string>

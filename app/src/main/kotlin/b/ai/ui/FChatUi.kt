@@ -70,7 +70,7 @@ fun FChatUi(onClose: () -> Unit) {
     LaunchedEffect(shown.size) { if (shown.isNotEmpty()) list.animateScrollToItem(shown.lastIndex) }
     val fs = Cfg.fcFont.coerceIn(10, 22).sp
 
-    Column(Modifier.fillMaxSize().background(SurfaceWhite, RoundedCornerShape(18.dp))) {
+    Column(Modifier.fillMaxSize().liquidBg(RoundedCornerShape(18.dp))) {
         //标题栏：按住这里拖整窗，别把拖动挂到列表上，否则滚动会被抢
         Row(
             Modifier
@@ -88,9 +88,9 @@ fun FChatUi(onClose: () -> Unit) {
                 .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(7.dp).background(if (Agent.busy) AccentBlue else OkGreen, CircleShape))
+            Box(Modifier.size(7.dp).liquidBg(CircleShape, tint = if (Agent.busy) AccentBlue else OkGreen))
             Spacer(Modifier.width(6.dp))
-            Text("BaiAgent", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text("Baicodex", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             Text(
                 if (tune) "收起" else "调节",
@@ -143,7 +143,7 @@ fun FChatUi(onClose: () -> Unit) {
                                 fontSize = fs,
                                 color = Color.White,
                                 modifier = Modifier
-                                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -161,7 +161,7 @@ fun FChatUi(onClose: () -> Unit) {
             Box(
                 Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 if (draft.isEmpty()) Text("问点什么…", fontSize = 12.sp, color = TextSecondary)

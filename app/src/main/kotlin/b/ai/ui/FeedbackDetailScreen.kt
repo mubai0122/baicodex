@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
 import b.ai.net.Feedback
 import b.ai.ui.theme.AccentBlue
@@ -81,10 +84,19 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
         }
     }
 
+    //卡片玻璃的采样源：纯背景一层，不含卡片自己，否则卡片会采到上一帧的自己
+    val cardBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
+
+    ProvideCardBackdrop(cardBackdrop) {
+    Box(Modifier.fillMaxSize()) {
+        //纯背景一层，卡片玻璃只采它
+        Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     Column(
         Modifier
             .fillMaxSize()
-            .background(BgGray)
             .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
         //顶栏：返回 + 标题
@@ -96,7 +108,7 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
         ) {
             Row(
                 Modifier
-                    .background(SurfaceWhite, RoundedCornerShape(9.dp))
+                    .liquidBg(RoundedCornerShape(9.dp))
                     .tap { if (!busy) onBack() }
                     .padding(8.dp)
             ) {
@@ -149,7 +161,7 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
                             Modifier
                                 .fillMaxWidth()
                                 .padding(top = 6.dp)
-                                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                                 .tap { openFile(ctx, f.url) }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -195,10 +207,8 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
                                 color = TextPrimary,
                                 lineHeight = 19.sp,
                                 modifier = Modifier
-                                    .background(
-                                        if (admin) SurfaceWhite else AccentBlueSoft,
-                                        RoundedCornerShape(12.dp)
-                                    )
+                                    .liquidBg(RoundedCornerShape(12.dp)
+                                    , tint = if (admin) SurfaceWhite else AccentBlueSoft)
                                     .padding(horizontal = 12.dp, vertical = 9.dp)
                             )
                             Spacer(Modifier.height(2.dp))
@@ -334,6 +344,8 @@ fun FeedbackDetailScreen(id: Int, onBack: () -> Unit) {
             Spacer(Modifier.height(24.dp))
         }
     } //反馈详情
+    } //兜底容器
+    } //玻璃作用域
 } //反馈详情页
 
 /** 附件体积文案：不足 1MB 用 KB */
