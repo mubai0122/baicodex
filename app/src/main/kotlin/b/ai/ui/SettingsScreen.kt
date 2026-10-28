@@ -225,6 +225,8 @@ fun SettingsScreen(
     var fq by remember { mutableStateOf("") }
     //下拉选择面板的当前内容：非空时挂到根弹窗层，和其它弹窗互斥
     var pick by remember { mutableStateOf<Pair<String, List<PickItem>>?>(null) }
+    //统计页拆成每个块一个 item 后，各块不能再自己 remember，状态统一提到这里
+    val statUi = remember { StatUi() }
     //切分类：新内容第一帧先走平价玻璃再错峰升级（同帧建几十个离屏节点会顶出 200ms 长帧），并回到顶部
     //进页面这一次也按「刚换过内容」算：首帧先平涂，别在进页面那一帧同时建一堆离屏节点
     remember { GlassPerf.switched(); Unit }
@@ -405,7 +407,7 @@ fun SettingsScreen(
                     }
                     else -> when (tab) {
                         0 -> modelTab(onOpenMemory)
-                        1 -> item { ChatTab(stats, onOpenStars) }
+                        1 -> chatTab(stats, onOpenStars)
                         2 -> uiTab(onOpenPet)
                         3 -> extTab(
                             onEdit = { draft = it },
@@ -417,8 +419,8 @@ fun SettingsScreen(
                             onNewTrigger = { triggerDraft = true },
                             onEditPack = { packDraft = it }
                         )
-                        4 -> item { StatTab() }
-                        5 -> item { AboutTab(onOpenFeedback) }
+                        4 -> statTab(statUi)
+                        5 -> aboutTab(onOpenFeedback)
                         else -> uiTab(onOpenPet)
                     }
             }
@@ -720,10 +722,8 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
     }
 } //模型分类（含语音识别与语音合成）
 
-@Composable
-private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
-    val appCtx = LocalContext.current
-    val appScope = rememberCoroutineScope()
+private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
+    item {
     SectionTitle(stringResource(R.string.se_090), stringResource(R.string.se_091))
     CardBox {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -808,6 +808,9 @@ private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
         )
     }
 
+    }
+
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_017), stringResource(R.string.se_104))
     CardBox {
@@ -884,6 +887,9 @@ private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
         }
     }
 
+    }
+
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_019), stringResource(R.string.se_115))
     CardBox {
@@ -900,6 +906,9 @@ private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
         ) { Cfg.showMeta = it }
     }
 
+    }
+
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
     CardBox {
@@ -916,6 +925,11 @@ private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
         }
     }
 
+    }
+
+    item {
+    val appCtx = LocalContext.current
+    val appScope = rememberCoroutineScope()
     //会话与导出：原来在抽屉底部，收进「对话」页
     Spacer(Modifier.height(14.dp))
     SectionTitle("会话与导出", "收藏夹、以及把当前会话导成 Markdown")
@@ -933,13 +947,16 @@ private fun ChatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
             }
         }
     }
+    }
+
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
     WsSection()
-
-    Spacer(Modifier.height(14.dp))
-    PermTab()
-} //对话分类（含原「权限」分类：工作方式 / 系统权限 / 实验性功能）
+    }
+    item { Spacer(Modifier.height(14.dp)) }
+    permTab()
+} //对话分类（含原「权限」分类：工作方式 / 系统权限 / 实验性功能）；permTab 必须在 item 外面调，item 的 lambda 里 LazyListScope 隐式接收者被挡
 
 /** 工作区信息：数据根下的哈希目录 + 会话绑定的目录，未被任何会话绑定的可以一键删除 */
 @Composable
@@ -1110,15 +1127,17 @@ private fun WsSection() {
     }
 } //工作区信息
 
-@Composable
-private fun PermTab() {
+private fun LazyListScope.permTab() {
+    item {
     SectionTitle(stringResource(R.string.se_025), stringResource(R.string.se_146))
     CardBox {
         WorkMode.entries.forEach { m ->
             ChoiceRow(stringResource(m.labelRes), stringResource(m.descRes), Cfg.workMode == m) { Cfg.workMode = m }
         }
     }
+    }
 
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_027), stringResource(R.string.se_147))
     CardBox {
@@ -1150,7 +1169,9 @@ private fun PermTab() {
         Spacer(Modifier.height(6.dp))
         GhostButton(stringResource(R.string.se_156), modifier = Modifier.height(38.dp)) { Perms.openAllFiles(ctx) }
     }
+    }
 
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle("特殊权限", "按当前模式分档：普通用户要无障碍 + 保活 + 悬浮窗，Root 只要悬浮窗")
     CardBox {
@@ -1160,7 +1181,9 @@ private fun PermTab() {
         Spacer(Modifier.height(12.dp))
         SpecialPermCard(specials.filter { it != Perms.SP_A11Y })
     }
+    }
 
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle("Shizuku", "用 shell / root 身份跑命令时走它；授权前要先在 Shizuku 里启动服务")
     CardBox {
@@ -1224,7 +1247,9 @@ private fun PermTab() {
             Text(note!!, fontSize = 11.sp, color = OkGreen)
         }
     }
+    }
 
+    item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_029))
     CardBox {
@@ -1263,6 +1288,7 @@ private fun PermTab() {
         )
         Spacer(Modifier.height(8.dp))
         GhostButton(stringResource(R.string.se_162), modifier = Modifier.height(38.dp)) { Router.reprobe() }
+    }
     }
 } //权限分类（已并入对话分类，入口不再单独占一个 tab）
 
@@ -1966,8 +1992,9 @@ internal const val SITE_URL = "https://agent.ai.baiccb.cn"
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 / 更新历史 + 官网 / GitHub 链接 */
-@Composable
-private fun AboutTab(onOpenFeedback: () -> Unit) {
+private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
+    //应用信息 +检查更新 +更新历史：状态只活在这一块里，滚出屏幕随 item 一起释放
+    item {
     var latest by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var busyHis by remember { mutableStateOf(false) }
@@ -2054,7 +2081,10 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             }
         }
     }
+    }
 
+    item {
+    val ctx = LocalContext.current
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_252))
     CardBox {
@@ -2065,6 +2095,9 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             openUrl(ctx, GITHUB_URL)
         }
     }
+    }
+
+    item {
     Spacer(Modifier.height(14.dp))
     //反馈入口：单独一张卡，点进去是整页表单（分类 + 内容 + 联系方式）
     CardBox {
@@ -2091,7 +2124,9 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             Text("›", fontSize = 18.sp, color = TextSecondary)
         }
     }
+    }
 
+    item {
     Spacer(Modifier.height(14.dp))
     //评价调研：开关控制要不要接受邀请；下面一条是手动入口，点开就是同款 Star 卡片
     SectionTitle(stringResource(R.string.rate_title), stringResource(R.string.rate_title_d))
@@ -2123,7 +2158,11 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             Text("›", fontSize = 18.sp, color = TextSecondary)
         }
     }
+    }
 
+    item {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_bk), stringResource(R.string.se_bk_d))
     CardBox {
@@ -2175,6 +2214,7 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             Spacer(Modifier.height(6.dp))
             Text(bkTip, fontSize = 11.sp, color = TextSecondary)
         }
+    }
     }
 } //关于分类
 

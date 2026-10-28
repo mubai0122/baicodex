@@ -41,11 +41,21 @@ object PluginInstall {
      * 解压到临时目录 → 找出真正的包根（根或唯一的一层子目录）→ 移到 skillRoot。
      * $hint 是服务端给的插件名，包里没有 id / name 时拿它当目录名。
      */
-    fun install(ctx: Context, zip: File, hint: String): Result {
+    fun install(
+        ctx: Context,
+        zip: File,
+        hint: String,
+        id: Int = 0,
+        ver: String = "",
+        replace: String = ""
+    ): Result {
         val root = Paths.skillRoot()
         val tmp = File(tmpRoot(), "i" + System.currentTimeMillis().toString(36))
         var total = 0L
         var count = 0
+        //更新时旧目录先挪到临时区，新装好了再删；装失败就挪回来，别把用户插件弄丢
+        var aside: File? = null
+        var oldDir: File? = null
         return try {
             tmp.mkdirs()
             ZipInputStream(zip.inputStream().buffered()).use { z ->
@@ -76,22 +86,93 @@ object PluginInstall {
                 }
             }
             val packRoot = packRootOf(tmp) ?: return Result(false, msg = "包里没有 skill.json 或 SKILL.md，不是插件包")
-            val name = freeName(root, safe(dirNameOf(packRoot, hint)))
+            //更新：旧目录先让位，新的装成功再删；两处都失败就整个回滚
+            if (replace.isNotBlank()) {
+                val od = File(root, replace)
+                if (od.isDirectory) {
+                    val bak = File(tmpRoot(), "o" + System.currentTimeMillis().toString(36))
+                    if (!od.renameTo(bak)) {
+                        return Result(false, msg = "旧版本正被占用，先关掉相关会话再更新")
+                    }
+                    oldDir = od
+                    aside = bak
+                }
+            }
+            val name = if (aside != null) replace else freeName(root, safe(dirNameOf(packRoot, hint)))
             val dst = File(root, name)
             if (!packRoot.renameTo(dst)) {
                 //跨文件系统或权限问题时退回复制再删
                 packRoot.copyRecursively(dst, overwrite = true)
                 packRoot.deleteRecursively()
             }
+            aside?.deleteRecursively()
             SkillPacks.reload(ctx)
+            if (id > 0) {
+                markSave(id, name, ver, hint)
+            }
             Result(true, dst, name)
         } catch (t: Throwable) {
+            //装到一半出错：把挪走的旧目录放回去，别让用户丢插件
+            val od = oldDir
+            val bak = aside
+            if (od != null && bak != null && bak.isDirectory && !od.exists()) {
+                runCatching { bak.renameTo(od) }
+            }
             Result(false, msg = t.message?.take(80) ?: "解压失败")
         } finally {
             //临时目录整个清掉，成功时内容已经搬走了
             runCatching { tmp.deleteRecursively() }
         }
     } //安装插件包
+
+    /** 已装记录：插件 id → 本地目录名 + 装的时候那个版本 + 插件名（更新提示要显示名字） */
+    data class Mark(val id: Int, val dir: String, val ver: String, val name: String)
+
+    /** 读已装记录：解析不出来就当没有，不影响其它功能 */
+    fun marks(): List<Mark> {
+        val raw = Cfg.plgInstalled
+        if (raw.isBlank()) return emptyList()
+        val o = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyList()
+        val out = ArrayList<Mark>()
+        o.keys().forEach { k ->
+            val n = k.toIntOrNull() ?: return@forEach
+            val m = o.optJSONObject(k) ?: return@forEach
+            val dir = m.optString("dir")
+            if (dir.isNotBlank()) out.add(Mark(n, dir, m.optString("ver"), m.optString("name")))
+        }
+        return out
+    } //读已装记录
+
+    /** 记一次安装：同一插件只留最新那条 */
+    fun markSave(id: Int, dir: String, ver: String, name: String = "") {
+        if (id <= 0) return
+        val o = runCatching { JSONObject(Cfg.plgInstalled) }.getOrNull() ?: JSONObject()
+        runCatching {
+            o.put(id.toString(), JSONObject().put("dir", dir).put("ver", ver).put("name", name))
+            Cfg.plgInstalled = o.toString()
+        }
+    } //记安装
+
+    /** 删掉某个插件的已装记录（作品被作者删了 / 本地目录没了） */
+    fun markDrop(id: Int) {
+        val o = runCatching { JSONObject(Cfg.plgInstalled) }.getOrNull() ?: return
+        if (!o.has(id.toString())) return
+        o.remove(id.toString())
+        Cfg.plgInstalled = o.toString()
+    } //删安装记录
+
+    /** 卸载：删掉已装目录并清掉已装记录，然后重扫技能包；记录里没目录的按 id 清记录 */
+    fun remove(ctx: Context, id: Int, dir: String): Result {
+        val root = Paths.skillRoot()
+        val d = File(root, dir)
+        //只删 skillRoot 正下方的目录，别让记录里被人塞进 ../ 就删到别处
+        if (dir.isNotBlank() && d.parentFile?.canonicalPath == root.canonicalPath && d.exists()) {
+            if (!d.deleteRecursively()) return Result(false, msg = "删不掉，可能还在被占用")
+        }
+        markDrop(id)
+        SkillPacks.reload(ctx)
+        return Result(true, d, dir)
+    } //卸载插件
 
     /** 真正的包根：临时目录自己算，或者唯一的那层子目录 */
     private fun packRootOf(tmp: File): File? {
