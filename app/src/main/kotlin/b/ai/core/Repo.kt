@@ -557,6 +557,27 @@ object Repo {
         return out
     } //按日聚合
 
+    /**统计用：按日 × 模型聚合，费用要按各模型单价分开算 */
+    fun usageDayModel(): List<RawDayModel> {
+        val out = ArrayList<RawDayModel>()
+        sr().rawQuery(
+            "SELECT strftime('%Y-%m-%d',at/1000,'unixepoch','localtime') d,IFNULL(model,'') m," +
+                "IFNULL(SUM(prompt),0),IFNULL(SUM(MIN(cached,prompt)),0),IFNULL(SUM(completion),0) " +
+                "FROM usage WHERE prompt+completion>0 AND at>0 GROUP BY d,m",
+            null
+        ).use { c ->
+            while (c.moveToNext()) {
+                out.add(
+                    RawDayModel(
+                        c.getString(0) ?: "", c.getString(1) ?: "",
+                        c.getLong(2), c.getLong(3), c.getLong(4)
+                    )
+                )
+            }
+        }
+        return out
+    } //按日 × 模型聚合
+
     /**统计用：按模型聚合，只取前 20 个，避免长尾模型把列表拉长 */
     fun usageModels(): List<Pair<String, Long>> {
         val out = ArrayList<Pair<String, Long>>()

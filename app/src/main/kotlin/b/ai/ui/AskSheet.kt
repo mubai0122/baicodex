@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,8 +76,8 @@ private fun PickDot(on: Boolean) {
 fun AskSheet(req: AskReq) {
     val qs = req.questions
     var page by remember(req) { mutableStateOf(0) }
-    //每题一份作答：选中下标 + 自定义文本 + 自定义是否展开
-    val picked = remember(req) { qs.map { mutableListOf<Int>() } }
+    //每题一份作答：选中下标 + 自定义文本 + 自定义是否展开；下标表必须是快照列表，普通 MutableList 改了不触发重组（点了没反应）
+    val picked = remember(req) { qs.map { mutableStateListOf<Int>() } }
     val custom = remember(req) { qs.map { mutableStateOf("") } }
     val customOn = remember(req) { qs.map { mutableStateOf(false) } }
     val cur = qs.getOrNull(page) ?: return

@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,7 +42,7 @@ import b.ai.R
 
 /** 工作区绑定卡：设置页内联与聊天页弹窗共用一张 */
 @Composable
-internal fun WorkspaceSection() {
+internal fun WorkspaceSection(onBrowse: () -> Unit = {}) {
     var draft by remember { mutableStateOf(Workspace.path()) }
     var files by remember { mutableStateOf(0) }
     var dirs by remember { mutableStateOf(0) }
@@ -110,6 +111,8 @@ internal fun WorkspaceSection() {
             placeholder = "${Paths.base().absolutePath}/xxxx-xxxx-xxxx-xxxx-xxxx-xxxx"
         )
         Spacer(Modifier.height(6.dp))
+        GhostButton(stringResource(R.string.wp_browse), modifier = Modifier.fillMaxWidth()) { onBrowse() }
+        Spacer(Modifier.height(6.dp))
         Workspace.quickPicks().chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { (label, p) ->
@@ -172,32 +175,63 @@ internal fun WorkspaceSection() {
     }
 } //工作区卡：当前工作区、快捷目录、绑定 / 恢复默认 / 重建索引、目录树预览
 
-/** 聊天页右上角 </> 打开的弹窗版 */
+/** 聊天页右上角 </> 打开的弹窗版：同一个卡片里在「绑定卡」和「目录选择器」之间切换 */
 @Composable
 internal fun WorkspaceDialog(onClose: () -> Unit) {
-    ScrimCard(onDismiss = onClose) {
+    var picking by remember { mutableStateOf(false) }
+    //绑定成功后换 key 重建绑定卡，草稿、统计与目录树一起刷新
+    var ver by remember { mutableStateOf(0) }
+    var tip by remember { mutableStateOf("") }
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    ScrimCard(onDismiss = if (picking) null else onClose) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.wp_title), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Spacer(Modifier.weight(1f))
             Text(
-                stringResource(R.string.wp_close),
-                fontSize = 12.sp,
-                color = TextSecondary,
-                modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
-                    .tap { onClose() }
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                stringResource(if (picking) R.string.wp_pick_title else R.string.wp_title),
+                fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary
             )
+            Spacer(Modifier.weight(1f))
+            if (!picking) {
+                Text(
+                    stringResource(R.string.wp_close),
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                        .tap { onClose() }
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
         }
-        Spacer(Modifier.height(4.dp))
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(max = 460.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            WorkspaceSection()
+        Spacer(Modifier.height(6.dp))
+        if (tip.isNotBlank() && !picking) {
+            Text(tip, fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
+        }
+        if (picking) {
+            //选择器里有 LazyColumn，外层不能再套 verticalScroll，否则测高变无限
+            WsPickerBody(
+                start = Workspace.path(),
+                onCancel = { picking = false },
+                onPick = { p ->
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { Workspace.bind(p) }
+                        picking = false
+                        tip = if (ok) ctx.getString(R.string.wp_bound_ok) else ctx.getString(R.string.wp_bind_fail)
+                        ver++
+                    }
+                }
+            )
+        } else {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                key(ver) { WorkspaceSection(onBrowse = { picking = true }) }
+                Spacer(Modifier.height(6.dp))
+            }
         }
     }
 } //工作区弹窗

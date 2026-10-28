@@ -86,6 +86,7 @@ class App : Application() {
         Schedules.init(this)
         Flows.init(this)
         b.ai.core.A2aNodes.init(this)
+        b.ai.core.Prices.init(this)
         // A2A 服务端：上次开着就恢复监听；端口被占就失败，不崩
         if (Cfg.a2aOn) runCatching { A2aSrv.start(Cfg.a2aPort) }
         Triggers.init(this)

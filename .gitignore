@@ -12,6 +12,9 @@ _dsp/
 logs/
 .backup/
 
+#崩溃日志
+crashlogs/
+
 #本机配置与临时构建文件
 local.properties
 .tmp/

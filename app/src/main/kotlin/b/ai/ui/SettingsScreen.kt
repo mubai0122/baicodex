@@ -1526,8 +1526,8 @@ private fun ExtTab(
     onEditPack: (SkillPack) -> Unit
 ) {
     val ctx = LocalContext.current
-    WorkspaceSection()
-
+    //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
+    SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
     CardBox {

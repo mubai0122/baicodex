@@ -1166,9 +1166,9 @@ object Agent {
         val chars = fresh.sumOf { m -> m.content.length + m.toolCalls.sumOf { it.arguments.length } }
         //用量真的回落就复位防抖系数
         if (chars <= Cfg.ctxCharBudget) budgetScale = 1f
-        //双阈值：折算后的字符预算（总上下文 × 百分比），或未压缩条数到线
+        //双阈值：字符预算（总上下文 × 百分比）到线就压；条数只是保险，占用没到四分之一时不许单凭条数压
         val overChars = chars > (Cfg.ctxCharBudget * budgetScale).toInt()
-        val overCount = fresh.size > Cfg.ctxMsgCount
+        val overCount = fresh.size > Cfg.ctxMsgCount && chars * 4 > Cfg.ctxCharBudget
         if (!force && !overChars && !overCount) return false
         var cut = fresh.size - Cfg.ctxKeep.coerceAtLeast(2)
         if (cut <= 0) return false
