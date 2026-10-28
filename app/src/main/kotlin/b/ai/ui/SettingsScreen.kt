@@ -229,7 +229,13 @@ fun SettingsScreen(
         drawRect(BgGray)
         drawContent()
     }
+    //卡片玻璃只采纯背景那一层：不能采 pageBackdrop，卡片自己也在里面，采到的会是上一帧的自己
+    val cardBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
 
+    ProvideCardBackdrop(cardBackdrop) {
     Box(
         Modifier
             .fillMaxSize()
@@ -240,9 +246,10 @@ fun SettingsScreen(
                 scaleY = 1f - 0.05f * backProgress
                 alpha = (1f - 0.55f * backProgress).coerceIn(0f, 1f)
             }
-            .pageBg()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
+        //背景单开一层给卡片取样；内容再套一层吃系统栏内边距
+        Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
+        Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Column(Modifier.fillMaxSize().layerBackdrop(pageBackdrop)) {
             Row(
                 Modifier
@@ -256,7 +263,7 @@ fun SettingsScreen(
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
-                        .background(if (find) AccentBlueSoft else SurfaceWhite, RoundedCornerShape(9.dp))
+                        .liquidBg(RoundedCornerShape(9.dp), tint = if (find) AccentBlueSoft else SurfaceWhite)
                         .tap { find = !find; fq = "" }
                         .padding(8.dp)
                 ) {
@@ -270,7 +277,7 @@ fun SettingsScreen(
                 Spacer(Modifier.width(8.dp))
                 Row(
                     Modifier
-                        .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                         .tap { onBack() }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -291,7 +298,7 @@ fun SettingsScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -345,7 +352,7 @@ fun SettingsScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
-                                        .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                                        .liquidBg(RoundedCornerShape(12.dp))
                                         .tap { tab = tabIndex(e.tabRes); find = false; fq = "" }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -404,6 +411,8 @@ fun SettingsScreen(
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp),
             backdrop = pageBackdrop
         )
+    }
+    }
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
     HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open) {
@@ -1023,7 +1032,7 @@ private fun WsSection() {
                         fontSize = 11.sp,
                         color = TextSecondary,
                         modifier = Modifier
-                            .background(SurfaceWhite, RoundedCornerShape(8.dp))
+                            .liquidBg(RoundedCornerShape(8.dp))
                             .tap { confirm = null }
                             .padding(horizontal = 9.dp, vertical = 5.dp)
                     )
@@ -1854,7 +1863,7 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onEdit(p) }
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
@@ -1890,7 +1899,6 @@ internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 @Composable
 private fun AboutTab(onOpenFeedback: () -> Unit) {
     var latest by remember { mutableStateOf("") }
-    var tip by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var busyHis by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -1908,12 +1916,12 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             Box(
                 Modifier
                     .size(38.dp)
-                    .background(AccentBlueSoft, RoundedCornerShape(11.dp)),
+                    .liquidBg(RoundedCornerShape(11.dp), tint = AccentBlueSoft),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Filled.Info, null, tint = AccentBlue, modifier = Modifier.size(20.dp)) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("BaiAgent", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text("Baicodex", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Text(
                     stringResource(R.string.se_241),
                     fontSize = 11.sp,
@@ -1946,22 +1954,20 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             GhostButton(if (busy) stringResource(R.string.se_245) else stringResource(R.string.se_054), modifier = Modifier.height(38.dp)) {
                 if (busy) return@GhostButton
                 busy = true
-                tip = ""
                 scope.launch {
                     val r = withContext(Dispatchers.IO) { runCatching { Update.check() } }
                     busy = false
                     r.onSuccess { info ->
                         latest = "${info.latestVersion}"
                         when {
-                            //服务端关了更新开关：提示可以忽略，不弹卡片
-                            !info.updateEnabled -> tip = ctx.getString(R.string.se2_upd_off, info.latestVersion)
-                            info.hasUpdate -> {
-                                tip = ctx.getString(R.string.se2_upd_new, info.latestVersion)
-                                UpdateUi.prompt = info
-                            }
-                            else -> tip = ctx.getString(R.string.se2_upd_latest, info.latestVersion)
+                            //服务端关了更新开关
+                            !info.updateEnabled -> UpdateUi.tip = ctx.getString(R.string.se2_upd_off, info.latestVersion)
+                            info.hasUpdate -> UpdateUi.prompt = info
+                            else -> UpdateUi.tip = ctx.getString(R.string.se2_upd_latest, info.latestVersion)
                         }
-                    }.onFailure { tip = ctx.getString(R.string.se2_upd_fail, it.message?.take(80).orEmpty()) }
+                    }.onFailure {
+                        UpdateUi.tip = ctx.getString(R.string.se2_upd_fail, it.message?.take(80).orEmpty())
+                    }
                 }
             }
             GhostButton(if (busyHis) stringResource(R.string.se_133) else stringResource(R.string.se_250), modifier = Modifier.height(38.dp)) {
@@ -1971,13 +1977,11 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
                     val r = withContext(Dispatchers.IO) { runCatching { Update.history() } }
                     busyHis = false
                     r.onSuccess { UpdateUi.history = it }
-                        .onFailure { tip = ctx.getString(R.string.se2_upd_hist_fail, it.message?.take(80).orEmpty()) }
+                        .onFailure {
+                            UpdateUi.tip = ctx.getString(R.string.se2_upd_hist_fail, it.message?.take(80).orEmpty())
+                        }
                 }
             }
-        }
-        if (tip.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(tip, fontSize = 11.sp, color = TextSecondary)
         }
     }
 
@@ -2001,7 +2005,7 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
             Box(
                 Modifier
                     .size(34.dp)
-                    .background(AccentBlueSoft, RoundedCornerShape(10.dp)),
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Filled.Email, null, tint = AccentBlue, modifier = Modifier.size(18.dp)) }
             Spacer(Modifier.width(10.dp))
@@ -2037,7 +2041,7 @@ private fun AboutTab(onOpenFeedback: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .tap { Rate.askManual() }
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -2394,7 +2398,7 @@ private fun SkillRow(s: Skill, onEdit: () -> Unit) {
             fontSize = 11.sp,
             color = AccentBlue,
             modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                 .tap { onEdit() }
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         )
@@ -2453,7 +2457,7 @@ private fun SkillDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -2464,7 +2468,7 @@ private fun SkillDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap { onSave(name, desc, body) }
                     .padding(vertical = 11.dp)
             )
@@ -2478,7 +2482,7 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
         Modifier
             .fillMaxWidth()
             .padding(vertical = 5.dp)
-            .background(if (selected) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceMuted)
             .tap { onSelect() }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -2508,7 +2512,7 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
             fontSize = 11.sp,
             color = TextSecondary,
             modifier = Modifier
-                .background(SurfaceWhite, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp))
                 .tap { onEdit() }
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         )
@@ -2609,7 +2613,7 @@ private fun PersonaDialog(
                         fontSize = 11.sp,
                         color = AccentBlue,
                         modifier = Modifier
-                            .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                             .tap { profileId = "" }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -2645,7 +2649,7 @@ private fun PersonaDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -2656,7 +2660,7 @@ private fun PersonaDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         onSave(
                             persona.copy(
@@ -2685,10 +2689,8 @@ internal fun PolicyChip(label: String, selected: Boolean, onClick: () -> Unit) {
         fontSize = 11.sp,
         color = if (selected) AccentBlue else TextSecondary,
         modifier = Modifier
-            .background(
-                if (selected) AccentBlueSoft else SurfaceMuted,
-                RoundedCornerShape(8.dp)
-            )
+            .liquidBg(RoundedCornerShape(8.dp)
+            , tint = if (selected) AccentBlueSoft else SurfaceMuted)
             .tap { onClick() }
             .padding(horizontal = 8.dp, vertical = 6.dp)
     )
@@ -2734,7 +2736,7 @@ private fun NotiLimitRow() {
             Modifier
                 .width(52.dp)
                 .height(32.dp)
-                .background(SurfaceWhite, RoundedCornerShape(9.dp))
+                .liquidBg(RoundedCornerShape(9.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -2960,7 +2962,7 @@ private fun TerminalBox(
     Column(
         modifier
             .fillMaxWidth()
-            .background(SurfaceWhite, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp))
             .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
     ) {
         Row(
@@ -3021,7 +3023,7 @@ private fun BgImagePick() {
             fontSize = 11.sp,
             color = AccentBlue,
             modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                 .tap { pick.launch("image/*") }
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         )
@@ -3033,7 +3035,7 @@ private fun BgImagePick() {
                 fontSize = 11.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { Cfg.bgImg = "" }
                     .padding(horizontal = 9.dp, vertical = 5.dp)
             )
@@ -3058,7 +3060,7 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(SurfaceWhite, RoundedCornerShape(14.dp))
+            .liquidBg(RoundedCornerShape(14.dp))
             .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3074,7 +3076,7 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
         }
         Box(
             Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                 .tap { onOpenPet() }
                 .padding(7.dp)
         ) {

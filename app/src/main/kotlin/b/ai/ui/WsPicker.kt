@@ -117,7 +117,7 @@ internal fun WsPickerBody(start: String, onCancel: () -> Unit, onPick: (String) 
         Modifier
             .fillMaxWidth()
             .heightIn(max = 250.dp)
-            .background(SurfaceMuted, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
             .padding(4.dp)
     ) {
         LazyColumn(Modifier.fillMaxWidth()) {

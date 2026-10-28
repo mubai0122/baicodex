@@ -70,7 +70,7 @@ fun TriggerDialog(onClose: () -> Unit) {
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             )
@@ -97,7 +97,7 @@ fun TriggerDialog(onClose: () -> Unit) {
                         fontSize = 10.sp,
                         color = AccentBlue,
                         modifier = Modifier
-                            .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                             .tap { Noti.openPerm(ctx) }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -135,7 +135,7 @@ fun TriggerDialog(onClose: () -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         if (prompt.isBlank()) {
                             err = ctx.getString(R.string.ntg_err_prompt)
@@ -181,7 +181,7 @@ private fun TriggerRow(t: NoteTrigger, any: String, all: String, never: String, 
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

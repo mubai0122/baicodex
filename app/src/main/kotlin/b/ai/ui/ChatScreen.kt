@@ -185,6 +185,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
     val pageBackdrop = rememberLayerBackdrop { drawContent() }
+    //卡片玻璃的采样源：纯背景一层，不能含消息卡自己，否则采到上一帧的自己
+    val cardBackdrop = rememberLayerBackdrop {
+        drawRect(BgGray)
+        drawContent()
+    }
     //输入区实测高度，面板浮层贴它上沿
     var inputH by remember { mutableIntStateOf(0) }
     //相册多选：压缩进私有目录，发送时按 base64 内联给模型
@@ -234,8 +239,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
     //外层 Box 只为了给「应用内桌宠」一个右下角锚点
     Box(Modifier.fillMaxSize()) {
+    //纯背景一层，卡片玻璃只采它
+    Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
+    ProvideCardBackdrop(cardBackdrop) {
     //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-    Column(Modifier.fillMaxSize().pageBg().windowInsetsPadding(WindowInsets.safeDrawing).layerBackdrop(pageBackdrop)) {
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).layerBackdrop(pageBackdrop)) {
         //只在消息列表变了才重算，免得输入框每敲一个字都扫一遍全量消息
         val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
         TopBar(
@@ -647,6 +655,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         //应用内桌宠：只在「仅应用内展示」时出现，压在输入区右上，不挡发送键
         PetInApp(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 96.dp))
     }
+    }
 } //聊天界面
 
 @Composable
@@ -668,7 +677,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(34.dp)
-                .background(SurfaceMuted, CircleShape)
+                .liquidBg(CircleShape, tint = SurfaceMuted)
                 .tap { onOpenDrawer() },
             contentAlignment = Alignment.Center
         ) { IcMenu(TextPrimary) }
@@ -689,10 +698,8 @@ private fun TopBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .background(
-                            if (role == null) SurfaceMuted else AccentBlueSoft,
-                            RoundedCornerShape(10.dp)
-                        )
+                        .liquidBg(RoundedCornerShape(10.dp)
+                        , tint = if (role == null) SurfaceMuted else AccentBlueSoft)
                         .tap { onPersona() }
                         .padding(start = 3.dp, end = 7.dp, top = 2.dp, bottom = 2.dp)
                 ) {
@@ -736,7 +743,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(34.dp)
-                .background(SurfaceMuted, CircleShape)
+                .liquidBg(CircleShape, tint = SurfaceMuted)
                 .tap { Agent.newSession() },
             contentAlignment = Alignment.Center
         ) { IcPlus(TextPrimary) }
@@ -744,7 +751,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(34.dp)
-                .background(SurfaceMuted, CircleShape)
+                .liquidBg(CircleShape, tint = SurfaceMuted)
                 .tap { onOpenWorkspace() },
             contentAlignment = Alignment.Center
         ) { IcCode(TextPrimary) }
@@ -921,13 +928,23 @@ private fun BarChip(
     onTap: () -> Unit,
     content: @Composable RowScope.() -> Unit
 ) {
-    //开了质感按钮就换成带厚度的 3D 胶囊，否则维持原来那块扁平面板
-    if (Cfg.tactileBtn) {
+    //开了液态玻璃走玻璃；没开玻璃才轮得到质感按钮，否则 3D 胶囊会把玻璃整个盖掉
+    val glassOn = Cfg.glassCard && (LocalCardBackdrop.current ?: CardBackdropHolder.current) != null
+    if (glassOn) {
+        Row(
+            Modifier
+                .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted, highlightAlpha = 0.85f)
+                .tap { onTap() }
+                .padding(horizontal = 9.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
+    } else if (Cfg.tactileBtn) {
         TactileChip(active = active, accent = accent, onClick = onTap, content = content)
     } else {
         Row(
             Modifier
-                .background(if (active) flatActive else SurfaceMuted, RoundedCornerShape(9.dp))
+                .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted)
                 .tap { onTap() }
                 .padding(horizontal = 9.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -951,6 +968,20 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
         }
         return
     }
+    //玻璃开着就走玻璃，质感的 3D 圆钮只在没玻璃时用
+    val glassOn = Cfg.glassCard && (LocalCardBackdrop.current ?: CardBackdropHolder.current) != null
+    if (glassOn) {
+        Box(
+            Modifier
+                .size(36.dp)
+                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted, highlightAlpha = 0.85f)
+                .tap(enabled = canSend) { onSend() },
+            contentAlignment = Alignment.Center
+        ) {
+            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+        }
+        return
+    }
     if (Cfg.tactileBtn) {
         TactileCircle(active = canSend, enabled = canSend, onClick = onSend) {
             IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
@@ -959,7 +990,7 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
         Box(
             Modifier
                 .size(36.dp)
-                .background(if (canSend) AccentBlue else SurfaceMuted, CircleShape)
+                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted)
                 .tap(enabled = canSend) { onSend() },
             contentAlignment = Alignment.Center
         ) {
@@ -976,7 +1007,7 @@ private fun RunningCard(rt: RunningTool) {
         Modifier
             .fillMaxWidth()
             .padding(start = if (Cfg.avatarOn) 34.dp else 0.dp)
-            .background(SurfaceWhite, bubbleShape(12.dp))
+            .liquidBg(bubbleShape(12.dp))
             .border(1.dp, BorderGray, bubbleShape(12.dp))
             .padding(horizontal = bubblePadH(10.dp), vertical = bubblePadV(10.dp)),
         verticalAlignment = Alignment.CenterVertically
@@ -984,7 +1015,7 @@ private fun RunningCard(rt: RunningTool) {
         Box(
             Modifier
                 .size(22.dp)
-                .background(AccentBlueSoft, RoundedCornerShape(7.dp)),
+                .liquidBg(RoundedCornerShape(7.dp), tint = AccentBlueSoft),
             contentAlignment = Alignment.Center
         ) {
             ToolIcon(rt.name, AccentBlue, side = 13.dp)
@@ -1061,7 +1092,7 @@ private fun CtxRing(tokens: Int, budget: Int, onTap: () -> Unit) {
     Box(
         Modifier
             .size(34.dp)
-            .background(SurfaceMuted, CircleShape)
+            .liquidBg(CircleShape, tint = SurfaceMuted)
             .tap { onTap() },
         contentAlignment = Alignment.Center
     ) {
@@ -1257,7 +1288,7 @@ private fun InputBar(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .then(floatShadow)
-                .background(SurfaceWhite, RoundedCornerShape(14.dp))
+                .liquidBg(RoundedCornerShape(14.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
                 .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -1288,7 +1319,7 @@ private fun InputBar(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Row(
                             Modifier
-                                .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                                .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                                 .tap { onOpenModel() }
                                 .padding(start = 7.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -1310,10 +1341,8 @@ private fun InputBar(
                         //运行模式胶囊：点开选计划 / 标准 / 代码 / 极简 / 创造
                         Row(
                             Modifier
-                                .background(
-                                    if (Cfg.agentMode == AgentMode.STANDARD) SurfaceMuted else AccentBlueSoft,
-                                    RoundedCornerShape(8.dp)
-                                )
+                                .liquidBg(RoundedCornerShape(8.dp)
+                                , tint = if (Cfg.agentMode == AgentMode.STANDARD) SurfaceMuted else AccentBlueSoft)
                                 .tap { onOpenMode() }
                                 .padding(start = 7.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -1414,7 +1443,7 @@ private fun FullInputDialog(
                 Text(stringResource(R.string.cs_chars_unit, value.length), fontSize = 10.sp, color = TextSecondary)
                 Spacer(Modifier.width(8.dp))
                 Box(
-                    Modifier.size(28.dp).background(SurfaceMuted, CircleShape).tap { onClose() },
+                    Modifier.size(28.dp).liquidBg(CircleShape, tint = SurfaceMuted).tap { onClose() },
                     contentAlignment = Alignment.Center
                 ) { IcClose(TextSecondary, side = 12.dp) }
             }
@@ -1423,7 +1452,7 @@ private fun FullInputDialog(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp)
-                    .background(SurfaceWhite, RoundedCornerShape(16.dp))
+                    .liquidBg(RoundedCornerShape(16.dp))
                     .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
                     .padding(12.dp)
             ) {
@@ -1457,7 +1486,7 @@ private fun FullInputDialog(
                     .padding(14.dp)
                     .fillMaxWidth()
                     .height(46.dp)
-                    .background(if (canSend) AccentBlue else SurfaceMuted, RoundedCornerShape(14.dp))
+                    .liquidBg(RoundedCornerShape(14.dp), tint = if (canSend) AccentBlue else SurfaceMuted)
                     .tap(enabled = canSend) { onSend() },
                 contentAlignment = Alignment.Center
             ) {
@@ -1482,7 +1511,7 @@ private fun StreamingMsg(text: String, reason: String) {
     Column(
         Modifier
             .weight(1f)
-            .background(SurfaceWhite, bubbleShape(14.dp))
+            .liquidBg(bubbleShape(14.dp))
             .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
         ) {
         if (reason.isNotBlank()) {
@@ -1532,7 +1561,7 @@ private fun BranchArrow(glyph: String, onClick: () -> Unit) {
     Box(
         Modifier
             .size(34.dp)
-            .background(if (press) AccentBlue else AccentBlueSoft, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = if (press) AccentBlue else AccentBlueSoft)
             .clickable(interactionSource = src, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -1556,7 +1585,7 @@ private fun MessageItem(
             Box(
                 Modifier
                     .weight(1f, fill = false)
-                    .background(AccentBlueSoft, bubbleShape(14.dp))
+                    .liquidBg(bubbleShape(14.dp), tint = AccentBlueSoft)
                     .longPress { onLongPress(m) }
                     .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
                     ) {
@@ -1592,7 +1621,7 @@ private fun MessageItem(
             Column(
                 Modifier
                     .weight(1f)
-                    .background(SurfaceWhite, bubbleShape(14.dp))
+                    .liquidBg(bubbleShape(14.dp))
                     .longPress { onLongPress(m) }
                     .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
                     ) {
@@ -1670,7 +1699,7 @@ private fun ThinkBlock(m: ChatMsg) {
         Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .tap { open = !open }
             .padding(9.dp)
     ) {
@@ -1703,7 +1732,7 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(start = if (Cfg.avatarOn) 34.dp else 0.dp)
-            .background(SurfaceWhite, bubbleShape(12.dp))
+            .liquidBg(bubbleShape(12.dp))
             .border(
                 1.dp,
                 if (m.isError) DangerRed.copy(alpha = 0.35f) else BorderGray,
@@ -1716,10 +1745,8 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
             Box(
                 Modifier
                     .size(22.dp)
-                    .background(
-                        if (m.isError) DangerRedSoft else AccentBlueSoft,
-                        RoundedCornerShape(7.dp)
-                    ),
+                    .liquidBg(RoundedCornerShape(7.dp)
+                    , tint = if (m.isError) DangerRedSoft else AccentBlueSoft),
                 contentAlignment = Alignment.Center
             ) {
                 ToolIcon(
@@ -1786,7 +1813,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 160.dp)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .padding(10.dp)
                     .verticalScroll(rememberScrollState())
             ) {
@@ -1805,7 +1832,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 300.dp)
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -1825,7 +1852,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap {
                         runCatching {
                             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -1842,7 +1869,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -1860,7 +1887,7 @@ private fun SummaryMsg(m: ChatMsg, onLongPress: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
-            .background(SurfaceMuted, bubbleShape(12.dp))
+            .liquidBg(bubbleShape(12.dp), tint = SurfaceMuted)
             //点一下展开/收起，长按出「重新总结」菜单
             .tapLong(onClick = { open = !open }, onLong = onLongPress)
             .padding(horizontal = bubblePadH(10.dp), vertical = bubblePadV(10.dp))
@@ -1910,7 +1937,7 @@ private fun SummaryMenuDialog(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .tap { onClose() }
                 .padding(vertical = 11.dp)
         )
@@ -1953,7 +1980,7 @@ private fun MsgMenuDialog(
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 96.dp)
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(9.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -1993,7 +2020,7 @@ private fun MsgMenuDialog(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .tap { onClose() }
                 .padding(vertical = 11.dp)
         )
@@ -2006,7 +2033,7 @@ private fun MenuRow(title: String, sub: String, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .tap { onClick() }
             .padding(horizontal = 12.dp, vertical = 9.dp)
     ) {
@@ -2034,7 +2061,7 @@ private fun PromptDialog(
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 90.dp, max = 220.dp)
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(10.dp)
         ) {
             BasicTextField(
@@ -2054,7 +2081,7 @@ private fun PromptDialog(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -2065,7 +2092,7 @@ private fun PromptDialog(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(if (text.isBlank()) SurfaceMuted else AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = if (text.isBlank()) SurfaceMuted else AccentBlue)
                     .tap { if (text.isNotBlank()) onConfirm(text.trim()) }
                     .padding(vertical = 11.dp)
             )

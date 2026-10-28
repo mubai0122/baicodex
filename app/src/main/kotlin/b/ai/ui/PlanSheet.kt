@@ -63,7 +63,7 @@ fun PlanSheet(req: PlanReq) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 300.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(horizontal = 11.dp, vertical = 9.dp)
         ) {
             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -74,7 +74,7 @@ fun PlanSheet(req: PlanReq) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceWhite, RoundedCornerShape(11.dp))
+                .liquidBg(RoundedCornerShape(11.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(11.dp))
                 .padding(horizontal = 10.dp, vertical = 8.dp)
         ) {

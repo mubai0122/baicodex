@@ -86,7 +86,7 @@ fun PackDialog(pack: SkillPack, onClose: () -> Unit) {
                 fontSize = 11.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 5.dp)
             )
@@ -184,7 +184,7 @@ private fun FnBlock(
         Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .padding(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -197,7 +197,7 @@ private fun FnBlock(
                 fontSize = 10.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                     .tap { onEdit() }
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             )

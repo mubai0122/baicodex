@@ -197,7 +197,7 @@ internal fun WorkspaceDialog(onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = TextSecondary,
                     modifier = Modifier
-                        .background(SurfaceMuted, RoundedCornerShape(8.dp))
+                        .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                         .tap { onClose() }
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 )

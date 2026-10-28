@@ -49,6 +49,7 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
+import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DarkColors
 import b.ai.ui.theme.SurfaceWhite
@@ -93,6 +94,12 @@ fun FloatTabBar(
         if (tabPx <= 0f) 0 else ((x - padPx) / tabPx).toInt().coerceIn(0, tabs.lastIndex)
 
     Box(modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        //兜底底层：采样层还没画好的一两帧不至于白成一块，先垫页面底色
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(if (DarkColors) Color(0xFF1B1F26) else BgGray, CircleShape)
+        )
         //真玻璃：照参考项目的顺序——投影 -> 采样页面 -> 提饱和 -> 模糊 -> 边缘折射 -> 高光边 -> 底色
         val glassMod = if (Cfg.glassBar && bd != null) {
             Modifier.drawBackdrop(
@@ -123,7 +130,7 @@ fun FloatTabBar(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(62.dp)
+                .height(64.dp)
                 .onGloballyPositioned { totalPx = it.size.width.toFloat() }
                 //玻璃模式的投影与描边由 drawBackdrop 自己画，再叠 Compose 那套会多一圈脏边
                 .then(
@@ -150,7 +157,10 @@ fun FloatTabBar(
                             scope.launch { press.animateTo(0f, spring(0.7f, 900f)) }
                         },
                         onDragEnd = {
-                            if (dragFrom >= 0f) onSelect(indexAt(dragFrom + dragSum))
+                            //松手先落到最近的格子上，再交给选中态去弹；点在同格上也要归位
+                            val t = if (dragFrom >= 0f) indexAt(dragFrom + dragSum) else selected
+                            onSelect(t)
+                            scope.launch { offset.animateTo(t.toFloat(), spring(0.75f, 400f)) }
                             dragFrom = -1f
                             scope.launch { press.animateTo(0f, spring(0.7f, 900f)) }
                         },
@@ -161,7 +171,8 @@ fun FloatTabBar(
                             if (tabPx > 0f) {
                                 val f = ((dragFrom + dragSum - padPx) / tabPx)
                                     .coerceIn(0f, tabs.lastIndex.toFloat())
-                                scope.launch { offset.snapTo(f) }
+                                //胶囊不是硬贴着手指，而是带阻尼追过去，像水被拖着走
+                                scope.launch { offset.animateTo(f, spring(0.75f, 180f)) }
                             }
                         }
                     )
@@ -172,9 +183,13 @@ fun FloatTabBar(
                 Box(Modifier.padding(4.dp)) {
                     val pill = if (Cfg.glassBar && combined != null) {
                         Modifier
-                            .graphicsLayer { translationX = offset.value * tabPx }
-                            .width(tabDp)
-                            .height(54.dp)
+                            //左右各外扩 7dp 再回退半个，胶囊比格子宽一点；上移 4dp 让它高出栏面一截
+                            .graphicsLayer {
+                                translationX = offset.value * tabPx - 7.dp.toPx()
+                                translationY = -4.dp.toPx()
+                            }
+                            .width(tabDp + 14.dp)
+                            .height(62.dp)
                             .drawBackdrop(
                                 backdrop = combined,
                                 shape = { CircleShape },
@@ -209,9 +224,12 @@ fun FloatTabBar(
                             )
                     } else {
                         Modifier
-                            .graphicsLayer { translationX = offset.value * tabPx }
-                            .width(tabDp)
-                            .height(54.dp)
+                            .graphicsLayer {
+                                translationX = offset.value * tabPx - 7.dp.toPx()
+                                translationY = -4.dp.toPx()
+                            }
+                            .width(tabDp + 14.dp)
+                            .height(62.dp)
                             .clip(CircleShape)
                             .background(AccentBlueSoft)
                     }
@@ -242,7 +260,7 @@ private fun TabRow(tabs: List<FloatTab>, selected: Int, modifier: Modifier, onSe
             Column(
                 Modifier
                     .weight(1f)
-                    .height(54.dp)
+                    .height(56.dp)
                     .tap { onSelect(i) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center

@@ -98,7 +98,7 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
             .padding(bottom = 6.dp)
-            .background(SurfaceWhite, RoundedCornerShape(14.dp))
+            .liquidBg(RoundedCornerShape(14.dp))
             .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
     ) {
         Row(

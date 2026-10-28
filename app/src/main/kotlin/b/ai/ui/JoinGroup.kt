@@ -107,7 +107,7 @@ fun JoinGroupDialog(onClose: (never: Boolean) -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(start = 12.dp, end = 8.dp, top = 9.dp, bottom = 9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -125,7 +125,7 @@ fun JoinGroupDialog(onClose: (never: Boolean) -> Unit) {
             Spacer(Modifier.width(6.dp))
             Box(
                 Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .tap {
                         JoinGroup.copy(ctx)
                         tip = ctx.getString(R.string.qq_copied)
@@ -145,7 +145,7 @@ fun JoinGroupDialog(onClose: (never: Boolean) -> Unit) {
             Box(
                 Modifier
                     .size(16.dp)
-                    .background(if (never) AccentBlue else SurfaceMuted, RoundedCornerShape(5.dp)),
+                    .liquidBg(RoundedCornerShape(5.dp), tint = if (never) AccentBlue else SurfaceMuted),
                 contentAlignment = Alignment.Center
             ) { if (never) IcTick(Color.White, 10.dp) }
             Spacer(Modifier.width(8.dp))
@@ -164,7 +164,7 @@ fun JoinGroupDialog(onClose: (never: Boolean) -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose(never) }
                     .padding(vertical = 11.dp)
             )
@@ -175,7 +175,7 @@ fun JoinGroupDialog(onClose: (never: Boolean) -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         //跳不动就把群号复制好并留在卡片上，让用户看到提示再手动进群
                         if (JoinGroup.open(ctx)) {

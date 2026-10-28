@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray
+import b.ai.core.Cfg
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -91,18 +92,23 @@ fun Modifier.tapLong(onClick: () -> Unit, onLong: () -> Unit): Modifier = compos
     )
 }
 
-/** 白色圆角卡片容器 */
+/** 卡片容器：开了液态玻璃卡片、且这一页登记了背景层，就走真玻璃，否则还是原来那张白卡 */
 @Composable
 fun CardBox(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val backdrop = LocalCardBackdrop.current
+    if (Cfg.glassCard && backdrop != null) {
+        LiquidCard(backdrop, modifier.fillMaxWidth(), corner = 16.dp, content = content)
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(SurfaceWhite, RoundedCornerShape(16.dp))
+            .liquidBg(RoundedCornerShape(16.dp))
             .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
             .padding(16.dp),
         content = content
     )
-}
+} //白卡 / 玻璃卡
 
 @Composable
 fun SectionTitle(text: String, sub: String? = null) {
@@ -187,7 +193,7 @@ fun ChoiceRow(title: String, desc: String?, selected: Boolean, onClick: () -> Un
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .background(if (selected) AccentBlueSoft else SurfaceWhite, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceWhite)
             .border(1.dp, if (selected) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
             .tap { onClick() }
             .padding(12.dp),
@@ -221,7 +227,7 @@ fun FieldBox(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
-                .background(SurfaceWhite, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
                 .padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -256,8 +262,7 @@ fun SquareIconBox(
     Box(
         modifier = Modifier
             .size(34.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .background(AccentBlueSoft)
+            .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
             .tap(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -275,8 +280,7 @@ fun CircleIconBox(
     Box(
         modifier = Modifier
             .size(size)
-            .clip(CircleShape)
-            .background(AccentBlueSoft)
+            .liquidBg(CircleShape, tint = AccentBlueSoft)
             .tap(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -335,7 +339,7 @@ fun AvatarPick(title: String, desc: String, path: String, onPicked: (String) -> 
                 fontSize = 11.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                     .tap { pick.launch("image/*") }
                     .padding(horizontal = 9.dp, vertical = 5.dp)
             )

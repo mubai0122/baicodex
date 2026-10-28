@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BaiAgent</string>
+    <string name="app_name">Baicodex</string>
 
     <!-- 引导流程 -->
     <string name="ob_sub">设备上的本地 AI Agent</string>
@@ -135,6 +135,9 @@
     <string name="ms_add_sub">复制当前配置再改，适合同厂商加第二个模型</string>
     <string name="ms_add_provider">新增供应商</string>
     <string name="ms_add_provider_sub">选完厂商再填 Key，然后勾选要用的模型</string>
+    <string name="ms_add_model_hint">列表里没有？手打模型名，逗号分隔可加多个</string>
+    <string name="ms_add_model_tip">多个模型用半角逗号「,」隔开，例如 a,b,c；回车或点「添加」直接加进列表</string>
+    <string name="ms_add_ok">添加</string>
     <string name="ms_models_t">模型列表</string>
     <string name="ms_models_sub">勾上要用的模型，聊天页只在这几个里挑</string>
     <string name="ms_models_picked">已选 %1$d 个</string>
@@ -1110,7 +1113,7 @@
     <string name="pk_dir">目录：%1$s</string>
     <string name="pk_secret_save">保存密钥</string>
     <!-- 无障碍：屏幕操作 -->
-    <string name="a11y_label">BaiAgent 屏幕操作</string>
+    <string name="a11y_label">Baicodex 屏幕操作</string>
     <string name="a11y_desc">让 AI 读取当前屏幕的控件与截图，并代你点击、滑动、长按、输入文字。仅在你发起任务时使用。</string>
     <string name="ag_capsule_fmt">正在进行%1$s</string>
     <string name="shiz_manual">Shizuku 里已经选过「拒绝且不再询问」，这里不会再弹窗：打开 Shizuku → 授权应用 → 找到 BaiAgent 打开开关</string>

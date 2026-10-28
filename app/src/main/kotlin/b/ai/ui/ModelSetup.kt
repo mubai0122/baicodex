@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
@@ -36,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
@@ -240,6 +243,13 @@ fun ModelSetupPanel() {
                 onAll = { shown -> draft = draft + shown },
                 onClear = { draft = emptySet() },
                 onRetry = { pull() },
+                onAddModel = { name ->
+                    //手打进来的模型直接并进列表并勾上，保存时一起写进这条配置
+                    if (name.isNotBlank()) {
+                        if (name !in models) models = models + name
+                        draft = draft + name
+                    }
+                },
                 onOk = {
                     val list = draft.toList()
                     fModels = list
@@ -270,7 +280,7 @@ fun ModelSetupPanel() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .tap { newForm(); dialog = "provider" }
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -316,7 +326,7 @@ fun ModelSetupPanel() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .tap { dialog = "provider" }
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -354,7 +364,7 @@ fun ModelSetupPanel() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .tap {
                     if (loading) return@tap
                     draft = fModels.toSet()
@@ -483,7 +493,7 @@ private fun ProfileRow(p: ModelProfile) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (sel) AccentBlueSoft else SurfaceMuted, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
             .tap {
                 //切配置就整组换成那条的已保存内容，表单里没保存的改动会丢
                 Profiles.select(p.id)
@@ -508,7 +518,7 @@ private fun ProfileRow(p: ModelProfile) {
         if (sel) Text("✓", fontSize = 13.sp, color = AccentBlue)
         Spacer(Modifier.width(10.dp))
         Box(
-            Modifier.size(24.dp).background(if (sel) SurfaceWhite else Color.Transparent, CircleShape)
+            Modifier.size(24.dp).liquidBg(CircleShape, tint = if (sel) SurfaceWhite else Color.Transparent)
                 .tap { Profiles.remove(p.id) },
             contentAlignment = Alignment.Center
         ) { IcClose(TextSecondary, side = 11.dp) }
@@ -521,7 +531,7 @@ private fun DialogHead(title: String, onClose: () -> Unit) {
         Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.weight(1f))
         Box(
-            Modifier.size(28.dp).background(SurfaceMuted, CircleShape).tap { onClose() },
+            Modifier.size(28.dp).liquidBg(CircleShape, tint = SurfaceMuted).tap { onClose() },
             contentAlignment = Alignment.Center
         ) { IcClose(TextSecondary, side = 12.dp) }
     }
@@ -543,10 +553,8 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(
-                            if (sel) AccentBlueSoft else Color.Transparent,
-                            RoundedCornerShape(10.dp)
-                        )
+                        .liquidBg(RoundedCornerShape(10.dp)
+                        , tint = if (sel) AccentBlueSoft else Color.Transparent)
                         .tap { onPick(p) }
                         .padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -582,11 +590,20 @@ private fun ModelPickMulti(
     onAll: (List<String>) -> Unit,
     onClear: () -> Unit,
     onRetry: () -> Unit,
+    onAddModel: (String) -> Unit,
     onOk: () -> Unit,
     onClose: () -> Unit
 ) {
     val kw = q.trim()
     val shown = if (kw.isEmpty()) models else models.filter { it.contains(kw, ignoreCase = true) }
+    //手打添加用的输入：厂商接口拉不到的模型也能在这里加进来
+    var addM by remember { mutableStateOf("") }
+    //半角逗号分隔可以一次加多个，全角逗号一起认，空格自动去掉
+    fun commitAdd() {
+        if (addM.isBlank()) return
+        addM.split(',', '，').map { it.trim() }.filter { it.isNotEmpty() }.forEach(onAddModel)
+        addM = ""
+    }
     //返回键先收卡片，别把整个设置页带出去
     BackHandler { onClose() }
     BottomSheetCard(onDismiss = onClose) {
@@ -620,7 +637,7 @@ private fun ModelPickMulti(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -664,6 +681,48 @@ private fun ModelPickMulti(
                 modifier = Modifier.tap { onClear() }.padding(vertical = 4.dp)
             )
         }
+        //手打添加：列表里没有的模型能被加进来并直接勾上，不随列表滚动，永远看得见
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                .padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.weight(1f)) {
+                if (addM.isEmpty()) {
+                    Text(stringResource(R.string.ms_add_model_hint), fontSize = 12.sp, color = TextSecondary)
+                }
+                BasicTextField(
+                    value = addM,
+                    onValueChange = { addM = it.take(128) },
+                    textStyle = TextStyle(fontSize = 12.sp, color = TextPrimary),
+                    singleLine = true,
+                    cursorBrush = SolidColor(AccentBlue),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { commitAdd() }),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Text(
+                stringResource(R.string.ms_add_ok),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (addM.isBlank()) TextSecondary else AccentBlue,
+                modifier = Modifier
+                    .tap { commitAdd() }
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            )
+        }
+        //常驻小字：placeholder 一打字就没了，说明得单独留一行
+        Text(
+            stringResource(R.string.ms_add_model_tip),
+            fontSize = 10.sp,
+            color = TextSecondary,
+            lineHeight = 14.sp,
+            modifier = Modifier.padding(top = 4.dp, start = 2.dp)
+        )
         Spacer(Modifier.height(4.dp))
         if (err != null) {
             Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
@@ -687,7 +746,7 @@ private fun ModelPickMulti(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .background(if (on) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+                            .liquidBg(RoundedCornerShape(12.dp), tint = if (on) AccentBlueSoft else Color.Transparent)
                             .tap { onToggle(m) }
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -721,7 +780,7 @@ private fun ModelPickMulti(
             Box(
                 Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                     .tap { onClose() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -731,7 +790,7 @@ private fun ModelPickMulti(
             Box(
                 Modifier
                     .weight(1f)
-                    .background(if (picked.isEmpty()) SurfaceMuted else AccentBlue, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = if (picked.isEmpty()) SurfaceMuted else AccentBlue)
                     .tap { if (picked.isNotEmpty()) onOk() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -776,7 +835,7 @@ private fun HttpWarnDialog(
             Box(
                 Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                     .tap { onUseHttps() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -791,7 +850,7 @@ private fun HttpWarnDialog(
             Box(
                 Modifier
                     .weight(1f)
-                    .background(if (ready) AccentBlue else SurfaceMuted, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = if (ready) AccentBlue else SurfaceMuted)
                     .tap(enabled = ready) { if (ready) onUseHttp() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -875,7 +934,7 @@ private fun SheetRow(title: String, sub: String?, selected: Boolean, onClick: ()
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (selected) AccentBlueSoft else Color.Transparent, RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else Color.Transparent)
             .tap { onClick() }
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically

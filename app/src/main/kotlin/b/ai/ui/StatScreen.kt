@@ -282,7 +282,7 @@ fun StatTab() {
                     Modifier
                         .fillMaxWidth()
                         .height(6.dp)
-                        .background(SurfaceMuted, RoundedCornerShape(3.dp))
+                        .liquidBg(RoundedCornerShape(3.dp), tint = SurfaceMuted)
                 ) {
                     Box(
                         Modifier
@@ -545,7 +545,7 @@ private fun MonthGrid(items: List<DayUse>, pick: DayUse?, onPick: (DayUse) -> Un
 @Composable
 private fun MiniStat(label: String, v: Long, modifier: Modifier = Modifier) {
     Column(
-        modifier.background(SurfaceMuted, RoundedCornerShape(10.dp)).padding(vertical = 8.dp),
+        modifier.liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted).padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(tk(v), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
@@ -562,7 +562,7 @@ private fun DayField(
 ) {
     Box(
         modifier
-            .background(SurfaceMuted, RoundedCornerShape(9.dp))
+            .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
             .padding(horizontal = 8.dp, vertical = 8.dp)
     ) {
         if (value.isEmpty()) Text(hint, fontSize = 10.sp, color = TextSecondary)
@@ -589,7 +589,7 @@ private fun PriceField(value: String, label: String, modifier: Modifier = Modifi
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(SurfaceMuted, RoundedCornerShape(9.dp))
+                .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
                 .padding(horizontal = 8.dp, vertical = 7.dp)
         ) {
             if (value.isEmpty()) Text("0", fontSize = 11.sp, color = TextSecondary)

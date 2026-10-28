@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BaiAgent</string>
+    <string name="app_name">Baicodex</string>
 
     <!-- オンボーディング -->
     <string name="ob_sub">デバイス上のローカル AI エージェント</string>
@@ -135,6 +135,9 @@
     <string name="ms_add_sub">現在の設定を複製して変更。同じプロバイダーの 2 つ目のモデル向け</string>
     <string name="ms_add_provider">プロバイダーを追加</string>
     <string name="ms_add_provider_sub">プロバイダーを選び Key を入れたら、使うモデルにチェックを入れます</string>
+    <string name="ms_add_model_hint">一覧にない場合はモデル名を入力（カンマ区切りで複数可）</string>
+    <string name="ms_add_model_tip">複数は半角カンマ「,」で区切ります（例 a,b,c）。Enter か「追加」で一覧に入ります</string>
+    <string name="ms_add_ok">追加</string>
     <string name="ms_models_t">モデル一覧</string>
     <string name="ms_models_sub">使うモデルにチェックを入れると、チャットではその中から選べます</string>
     <string name="ms_models_picked">%1$d 件選択中</string>

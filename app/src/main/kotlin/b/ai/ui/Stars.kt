@@ -78,7 +78,7 @@ fun StarSheet(onClose: () -> Unit, onOpen: (String) -> Unit) {
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier
-                    .background(AccentBlueSoft, RoundedCornerShape(9.dp))
+                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
                     .tap { onClose() }
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             )
@@ -115,7 +115,7 @@ private fun StarRow(hit: StarHit, onOpen: () -> Unit, onUnstar: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(SurfaceMuted, RoundedCornerShape(10.dp))
+            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
             .tap { onOpen() }
             .padding(10.dp),
         verticalAlignment = Alignment.Top
@@ -144,7 +144,7 @@ private fun StarRow(hit: StarHit, onOpen: () -> Unit, onUnstar: () -> Unit) {
             fontSize = 10.sp,
             color = AccentBlue,
             modifier = Modifier
-                .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
                 .tap { onUnstar() }
                 .padding(horizontal = 8.dp, vertical = 5.dp)
         )

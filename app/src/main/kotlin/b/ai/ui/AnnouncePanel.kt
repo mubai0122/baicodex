@@ -57,7 +57,7 @@ fun AnnounceDialog(item: Announce.Item, onClose: () -> Unit) {
             Box(
                 Modifier
                     .size(28.dp)
-                    .background(SurfaceMuted, CircleShape)
+                    .liquidBg(CircleShape, tint = SurfaceMuted)
                     .tap { onClose() },
                 contentAlignment = Alignment.Center
             ) {
@@ -91,7 +91,7 @@ fun AnnounceDialog(item: Announce.Item, onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 320.dp)
-                .background(SurfaceMuted, RoundedCornerShape(12.dp))
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(horizontal = 12.dp, vertical = 10.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -109,7 +109,7 @@ fun AnnounceDialog(item: Announce.Item, onClose: () -> Unit) {
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .background(if (i == 0) AccentBlue else SurfaceMuted, RoundedCornerShape(12.dp))
+                    .liquidBg(RoundedCornerShape(12.dp), tint = if (i == 0) AccentBlue else SurfaceMuted)
                     .tap { openUrl(ctx, b.url) }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center

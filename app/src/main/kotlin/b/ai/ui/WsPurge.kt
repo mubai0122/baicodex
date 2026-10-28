@@ -138,7 +138,7 @@ fun WsPurgeDialog(onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = TextSecondary,
                     modifier = Modifier
-                        .background(SurfaceMuted, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                        .liquidBg(androidx.compose.foundation.shape.RoundedCornerShape(8.dp), tint = SurfaceMuted)
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
                 "done" -> PrimaryButton(stringResource(R.string.wsq_ok)) { onClose() }

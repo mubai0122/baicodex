@@ -73,7 +73,7 @@ fun StarDialog(manual: Boolean = false, onClose: (never: Boolean) -> Unit) {
             Box(
                 Modifier
                     .size(40.dp)
-                    .background(SurfaceMuted, RoundedCornerShape(12.dp)),
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -107,7 +107,7 @@ fun StarDialog(manual: Boolean = false, onClose: (never: Boolean) -> Unit) {
             Box(
                 Modifier
                     .size(16.dp)
-                    .background(if (never) DangerRed else SurfaceMuted, RoundedCornerShape(5.dp)),
+                    .liquidBg(RoundedCornerShape(5.dp), tint = if (never) DangerRed else SurfaceMuted),
                 contentAlignment = Alignment.Center
             ) { if (never) IcTick(Color.White, 10.dp) }
             Spacer(Modifier.width(8.dp))
@@ -122,7 +122,7 @@ fun StarDialog(manual: Boolean = false, onClose: (never: Boolean) -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(SurfaceMuted, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap { onClose(never) }
                     .padding(vertical = 11.dp)
             )
@@ -133,7 +133,7 @@ fun StarDialog(manual: Boolean = false, onClose: (never: Boolean) -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .background(AccentBlue, RoundedCornerShape(10.dp))
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
                     .tap {
                         openUrl(ctx, GITHUB_URL)
                         onClose(never)
