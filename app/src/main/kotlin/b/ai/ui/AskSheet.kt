@@ -155,7 +155,7 @@ fun AskSheet(req: AskReq) {
         Column(
             Modifier
                 .heightIn(max = 320.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             cur.options.forEachIndexed { i, opt ->
                 val on = picked[page].contains(i)

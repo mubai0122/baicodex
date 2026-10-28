@@ -91,7 +91,7 @@ fun TaskDialog(onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 380.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             //到点能不能准时，全看这三项：缺哪个系统都会把唤醒往后推
             PermRow(stringResource(R.string.tk_exact), exact, stringResource(R.string.tk_grant)) { Alarms.openExactAlarmSettings(ctx) }

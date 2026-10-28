@@ -17,13 +17,16 @@ object Repo {
 
     fun init(c: Context) {
         if (helper == null) helper = Db(c)
-        if (statHelper == null) {
-            val h = StatDb(c)
-            statHelper = h
-            //账本搬一次家：老库里那张 usage 表整表搬进统计库，之后主库不再碰它
-            runCatching { h.adopt(w()) }
-        }
-    }
+        if (statHelper == null) statHelper = StatDb(c)
+    } //建 helper（不打开库，可以放在主线程）
+    /**
+     * 统计库搬家：老库里那张 usage 表整表搬进统计库。要开库，放后台线程调一次。
+     * 跟 init 拆开是因为聊天首屏就会读会话，init 必须赶在首帧之前，而搬表只跟统计页有关
+     */
+    fun adoptUsage() {
+        val h = statHelper ?: return
+        runCatching { h.adopt(w()) }
+    } //统计库搬家
 
     private fun w() = helper!!.writableDatabase
     private fun r() = helper!!.readableDatabase

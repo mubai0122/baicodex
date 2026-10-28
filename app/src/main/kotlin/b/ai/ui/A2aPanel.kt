@@ -94,7 +94,7 @@ fun A2aPanel(onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 440.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Text(
                 "A2A 1.0 接口。两个方向：本机当客户端调用其他节点，本机当服务端接收任务。",

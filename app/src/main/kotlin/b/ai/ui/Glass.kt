@@ -34,8 +34,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -206,9 +208,40 @@ fun TactileChip(
         )
     }
 } //3D 质感胶囊
+/** 固定 shader 的刷子：平铺用的 shader 只建一次，每帧复用 */
+private class TileBrush(private val shader: Shader) : ShaderBrush() {
+    override fun createShader(size: Size): Shader = shader
+} //固定 shader 刷
 
-/** 页面背景修饰符：先铺 BgGray，再按 bg_style 叠柔光渐变 / 点阵，挂在根容器上即可 */
-fun Modifier.pageBg(): Modifier = drawBehind {
+/** 点阵的一格：按「步长 + 深浅色」缓存一张小图，draw 里平铺，别每帧画上千个圆 */
+private object DotTile {
+    private var key = ""
+    private var shader: Shader? = null
+
+    fun get(step: Int, dark: Boolean): Shader {
+        val k = "$step#$dark"
+        shader?.let { if (k == key) return it }
+        val n = step.coerceAtLeast(4)
+        val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        val paint = android.graphics.Paint().apply {
+            isAntiAlias = true
+            color = if (dark) 0x22FFFFFF else 0x16000000
+        }
+        canvas.drawCircle(n / 2f, n / 2f, (n / 12f).coerceAtLeast(1f), paint)
+        val s = android.graphics.BitmapShader(
+            bmp,
+            android.graphics.Shader.TileMode.REPEAT,
+            android.graphics.Shader.TileMode.REPEAT
+        )
+        key = k
+        shader = s
+        return s
+    } //取一格点阵
+} //点阵缓存
+
+/** 页面背景的绘制体：页面根容器用 pageBg() 挂它；采样层也要直接画它，不能只垫一块纯色 */
+fun DrawScope.drawPageBg() {
     val style = Cfg.bgStyle
     drawRect(BgGray)
     when (style) {
@@ -224,18 +257,9 @@ fun Modifier.pageBg(): Modifier = drawBehind {
             )
         }
         2 -> {
-            val dot = if (DarkColors) Color(0x22FFFFFF) else Color(0x16000000)
-            val step = 22.dp.toPx()
-            val r = 1.dp.toPx()
-            var y = step / 2f
-            while (y < size.height) {
-                var x = step / 2f
-                while (x < size.width) {
-                    drawCircle(dot, r, Offset(x, y))
-                    x += step
-                }
-                y += step
-            }
+            //点阵用一格小图平铺：原来是每帧画上千个 drawCircle，滚动时白烧 CPU
+            val step = 22.dp.toPx().toInt().coerceAtLeast(4)
+            drawRect(brush = TileBrush(DotTile.get(step, DarkColors)))
         }
     }
     //色系带的渐变（冰川 / 春野）：很淡地铺一层，只影响氛围，不抢前景文字
@@ -254,7 +278,8 @@ fun Modifier.pageBg(): Modifier = drawBehind {
         )
     }
     //自定义背景图：按 cover 裁切铺满，上面压一层淡遮罩，保证前景文字还看得清
-    val wp = Wallpaper.get(Cfg.bgImg, Cfg.bgBlur)
+    //真图没算完先铺缩略图（几十 KB 的 raw，读一次常驻内存），首帧就不会是一片白
+    val wp = Wallpaper.cached(Cfg.bgImg, Cfg.bgBlur) ?: Wallpaper.preview(Cfg.bgImg)
     if (wp != null) {
         val cw = size.width.toInt().coerceAtLeast(1)
         val ch = size.height.toInt().coerceAtLeast(1)
@@ -270,8 +295,11 @@ fun Modifier.pageBg(): Modifier = drawBehind {
             filterQuality = FilterQuality.Low
         )
         drawRect(if (DarkColors) Color(0x66000000) else Color(0x4DFFFFFF))
-    }
+}
 } //页面背景
+
+/** 页面背景修饰符：挂在根容器上即可 */
+fun Modifier.pageBg(): Modifier = drawBehind { drawPageBg() } //页面背景修饰符
 
 /** 3D 质感圆钮：发送键用它，按下去整块下沉贴住底面 */
 @Composable

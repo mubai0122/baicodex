@@ -55,8 +55,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
+import b.ai.core.Cfg
 import b.ai.core.Repo
 import b.ai.core.SessionRow
+import b.ai.net.Auth
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
@@ -79,6 +81,8 @@ import b.ai.R
 fun DrawerPanel(
     onNewChat: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenPlugins: () -> Unit,
+    onOpenAccount: () -> Unit,
     onClose: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -136,6 +140,23 @@ fun DrawerPanel(
             ) {
                 Text("Baicodex", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
+                //账号入口：登录后直接显示头像，没登录是个胶囊；卡片由根弹窗层统一渲染
+                if (Auth.logged) {
+                    Box(Modifier.size(30.dp).tap { onOpenAccount() }) {
+                        AccFace(Cfg.accUid, Cfg.accAvatar, 30.dp)
+                    }
+                } else {
+                    Text(
+                        stringResource(R.string.acc_login),
+                        fontSize = 11.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft)
+                            .tap { onOpenAccount() }
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 Box(
                     Modifier.size(30.dp).liquidBg(CircleShape).tap { onClose() },
                     contentAlignment = Alignment.Center
@@ -263,9 +284,15 @@ fun DrawerPanel(
                         toast = ""
                         onNewChat()
                     }
+                    //插件广场在这：装插件、传插件都从抽屉进
+                    DrawerAction(stringResource(R.string.dw_plugins), Modifier.weight(1f)) {
+                        toast = ""
+                        onOpenPlugins()
+                    }
                     //收藏 / 导出 / 记忆都挪到设置的「对话」「模型」页了，抽屉只剩这两个高频入口
                     DrawerAction(stringResource(R.string.dw_settings), Modifier.weight(1f)) {
                         toast = ""
+                        android.util.Log.w("Boot", "drawer tap settings")
                         onOpenSettings()
                     }
                 }

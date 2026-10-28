@@ -79,7 +79,7 @@ fun TriggerDialog(onClose: () -> Unit) {
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             //没有通知使用权就一条通知都读不到，先把人送去系统页
             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {

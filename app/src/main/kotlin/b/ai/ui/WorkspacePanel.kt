@@ -227,7 +227,7 @@ internal fun WorkspaceDialog(onClose: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 460.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(glassScrollState())
             ) {
                 key(ver) { WorkspaceSection(onBrowse = { picking = true }) }
                 Spacer(Modifier.height(6.dp))

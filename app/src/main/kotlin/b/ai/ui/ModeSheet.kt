@@ -42,7 +42,7 @@ internal fun ModeSheet(onClose: () -> Unit) {
         Column(
             Modifier
                 .heightIn(max = 420.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             AgentMode.entries.forEach { m ->
                 val on = Cfg.agentMode == m

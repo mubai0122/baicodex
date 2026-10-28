@@ -546,7 +546,7 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
             Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Providers.builtin.forEach { p ->
                 val sel = p.id == current
@@ -739,7 +739,7 @@ private fun ModelPickMulti(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(glassScrollState())
             ) {
                 shown.forEach { m ->
                     val on = m in picked
@@ -914,7 +914,7 @@ private fun ModelSheet(
             if (err != null) {
                 Text(err, fontSize = 11.sp, color = DangerRed, modifier = Modifier.padding(bottom = 6.dp))
             }
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxWidth().verticalScroll(glassScrollState())) {
                 if (stage == "provider") {
                     Providers.builtin.forEach { p ->
                         SheetRow(p.name, p.baseUrl, p.id == providerId) { onPickProvider(p) }

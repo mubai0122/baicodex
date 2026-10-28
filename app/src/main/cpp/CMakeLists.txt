@@ -17,6 +17,7 @@ add_library(baicodex SHARED
         jni/dsl_jni.cpp
         jni/net_jni.cpp
         jni/js_jni.cpp
+        jni/blur_jni.cpp
         js/qjs.cpp
         runtime/govern.cpp
         ctx/ctx.cpp)
@@ -29,8 +30,9 @@ target_include_directories(baicodex PRIVATE
 
 set(OSSL ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/android_openssl-master/ssl_3)
 target_include_directories(baicodex PRIVATE ${OSSL}/include)
-
 target_compile_features(baicodex PRIVATE cxx_std_17)
+#模糊是纯整数滑窗，debug 默认 -O0 会慢过 Kotlin，这里单独给这个文件开 -O3
+set_source_files_properties(jni/blur_jni.cpp PROPERTIES COMPILE_OPTIONS "-O3")
 target_compile_options(baicodex PRIVATE -Wall -Wextra -fvisibility=hidden)
 set_target_properties(baicodex PROPERTIES
         ANDROID_STL c++_static

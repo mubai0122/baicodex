@@ -184,7 +184,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
         Column(
             Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(Modifier.height(6.dp))

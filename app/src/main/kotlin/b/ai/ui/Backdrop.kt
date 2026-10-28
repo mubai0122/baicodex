@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +34,9 @@ class CardSlot {
 val LocalCardSlot = compositionLocalOf<CardSlot?> { null }
 
 /**
- * 弹窗背景层：内容层交给 backdrop 采样，弹窗打开时整屏按同一份 backdrop 再画一遍并加模糊
+ * 页面级模糊：内容层交给 backdrop 采样，弹窗打开时整屏按同一份 backdrop 再画一遍并加模糊
  * （backdrop 的 blur 走 RenderEffect，低版本库内部退化），上面压遮罩，最后才是弹窗卡片。
+ * 半径压到 10dp：全屏尺寸下每加一档半径都是实打实的 GPU 时间。
  */
 @Composable
 fun BackdropHost(
@@ -45,6 +47,13 @@ fun BackdropHost(
 ) {
     val backdrop = rememberLayerBackdrop()
     val slot = remember { CardSlot() }
+    //真弹窗（带遮罩的）打开期间整页降档：全屏那一次离屏已经很贵，底下几十个卡片不许再各做一遍
+    //抽屉不算：它没有遮罩，压下去会把抽屉里的玻璃卡改成平涂，等于改了设计
+    val modal = active && scrim
+    DisposableEffect(modal) {
+        GlassPerf.dialog = modal
+        onDispose { if (modal) GlassPerf.dialog = false }
+    }
     //模糊半径固定、只用 alpha 淡入：半径每帧变会让 RenderEffect 每帧重建，全屏尺寸下直接卡住
     val fade by animateFloatAsState(
         targetValue = if (active) 1f else 0f,
@@ -68,7 +77,7 @@ fun BackdropHost(
                     .drawBackdrop(
                         backdrop = backdrop,
                         shape = { RectangleShape },
-                        effects = { blur(18.dp.toPx()) }
+                        effects = { blur(10.dp.toPx()) }
                     )
             )
         }

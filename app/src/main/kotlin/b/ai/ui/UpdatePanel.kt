@@ -138,7 +138,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 .heightIn(max = 320.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Column {
                 val ls = lines(info.content)
@@ -279,7 +279,7 @@ fun UpdateHistoryDialog(list: List<Update.His>, onClose: () -> Unit) {
                 .heightIn(max = 380.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(glassScrollState())
         ) {
             Column {
                 if (list.isEmpty()) {

@@ -22,6 +22,13 @@ object Cfg {
         val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
         sp = p
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
+        //账号登录态：token 有值就算登录过，uid / 昵称 / 头像跟着一起恢复
+        mem("acc_token", "").value = p.getString("acc_token", "") ?: ""
+        mem("acc_uid", 0).value = p.getInt("acc_uid", 0)
+        mem("acc_uname", "").value = p.getString("acc_uname", "") ?: ""
+        mem("acc_nick", "").value = p.getString("acc_nick", "") ?: ""
+        mem("acc_avatar", "").value = p.getString("acc_avatar", "") ?: ""
+        mem("acc_onboarded", false).value = p.getBoolean("acc_onboarded", false)
         //独立无障碍激活流程：走过一次就不再自动弹，设置里仍可手动重跑
         mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
         //「加入我们」卡片：join_dismissed = 勾了永不提醒；join_seen = 已提示过的 versionCode；join_joined = 跳转过 QQ 群
@@ -246,10 +253,49 @@ object Cfg {
         get() = mem("fb_token", "").value
         set(v) { mem("fb_token", "").value = v; put("fb_token", v) }
 
+    /** 插件广场里用的邮箱：上传要收验证码与审核结果，记下来省得每次重填 */
+    var plEmail: String
+        get() = mem("pl_email", "").value
+        set(v) { mem("pl_email", "").value = v; put("pl_email", v) }
+
+    /** 账号：登录后服务器发的会话 token，空串 = 没登录 */
+    var accToken: String
+        get() = mem("acc_token", "").value
+        set(v) { mem("acc_token", "").value = v; put("acc_token", v) }
+
+    /** 账号：自己的 uid，0 = 没登录 */
+    var accUid: Int
+        get() = mem("acc_uid", 0).value
+        set(v) { mem("acc_uid", 0).value = v; put("acc_uid", v) }
+
+    /** 账号：用户名（全站唯一，主页地址用） */
+    var accUname: String
+        get() = mem("acc_uname", "").value
+        set(v) { mem("acc_uname", "").value = v; put("acc_uname", v) }
+
+    /** 账号：昵称 */
+    var accNick: String
+        get() = mem("acc_nick", "").value
+        set(v) { mem("acc_nick", "").value = v; put("acc_nick", v) }
+
+    /** 账号：头像地址（服务器上的绝对地址，空串 = 用昵称首字兜底） */
+    var accAvatar: String
+        get() = mem("acc_avatar", "").value
+        set(v) { mem("acc_avatar", "").value = v; put("acc_avatar", v) }
+
+    /** 账号：走过一次注册/登录引导就不再自动弹 */
+    var accOnboarded: Boolean
+        get() = mem("acc_onboarded", false).value
+        set(v) { mem("acc_onboarded", false).value = v; put("acc_onboarded", v) }
+
     /** 已同意的用户协议版本号，0 = 没同意过；进主界面前必须 >= Tos.VERSION */
     var tosAgreed: Int
         get() = mem("tos_agreed", 0).value
         set(v) { mem("tos_agreed", 0).value = v; put("tos_agreed", v) }
+    /** 旧版工作区已确认不存在：启动的迁移门直接放行，不再扫盘 */
+    var migClean: Boolean
+        get() = mem("mig_clean", false).value
+        set(v) { mem("mig_clean", false).value = v; put("mig_clean", v) }
 
     /** 已上报给服务端的协议版本号，避免每次启动重复上报 */
     var tosSent: Int
