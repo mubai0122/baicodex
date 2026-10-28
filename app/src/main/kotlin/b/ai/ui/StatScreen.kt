@@ -1,7 +1,9 @@
 package b.ai.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,13 +24,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.Cfg
 import b.ai.core.DayUse
+import b.ai.core.ModelUse
+import b.ai.core.Price
+import b.ai.core.Prices
 import b.ai.core.Stat
 import b.ai.core.StatSnap
 import b.ai.ui.theme.AccentBlue
@@ -44,7 +56,9 @@ import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
@@ -76,6 +90,14 @@ fun StatTab() {
     var pIn by remember { mutableStateOf(if (Cfg.priceIn > 0f) Cfg.priceIn.toString() else "") }
     var pOut by remember { mutableStateOf(if (Cfg.priceOut > 0f) Cfg.priceOut.toString() else "") }
     var pCache by remember { mutableStateOf(if (Cfg.priceCache > 0f) Cfg.priceCache.toString() else "") }
+    //图表形态：0 = 柱状，1 = 折线
+    var chartMode by remember { mutableIntStateOf(0) }
+    //正在配价的模型名 + 三个输入框的草稿
+    var editing by remember { mutableStateOf<String?>(null) }
+    var eIn by remember { mutableStateOf("") }
+    var eOut by remember { mutableStateOf("") }
+    var eCache by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     //只进页时扫一次库；切范围只是从已聚合好的天里截，不重复查库
     fun reload() {
@@ -129,7 +151,7 @@ fun StatTab() {
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            if (snap.price.on) stringResource(R.string.st_cost_total, money(snap.totalCost))
+            if (snap.priceOn) stringResource(R.string.st_cost_total, money(snap.totalCost))
             else stringResource(R.string.st_cost_off),
             fontSize = 10.sp,
             color = TextPrimary
@@ -154,6 +176,7 @@ fun StatTab() {
             }
         }
         Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.st_price_scope), fontSize = 9.sp, color = TextSecondary)
         Text(stringResource(R.string.st_price_note), fontSize = 9.sp, color = TextSecondary)
     }
 
@@ -199,10 +222,16 @@ fun StatTab() {
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
-        BarChart(shown) { pick = it }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            PolicyChip(stringResource(R.string.st_chart_bar), chartMode == 0) { chartMode = 0 }
+            PolicyChip(stringResource(R.string.st_chart_line), chartMode == 1) { chartMode = 1 }
+        }
+        Spacer(Modifier.height(6.dp))
+        if (chartMode == 1) LineChart(shown, pick) { pick = it }
+        else BarChart(shown) { pick = it }
         Spacer(Modifier.height(6.dp))
         Text(dayRangeLabel(shown), fontSize = 9.sp, color = TextSecondary)
-        if (snap.price.on) {
+        if (snap.priceOn) {
             Spacer(Modifier.height(4.dp))
             Text(
                 stringResource(R.string.st_cost_range, money(snap.costOf(shown))),
@@ -257,21 +286,21 @@ fun StatTab() {
             Text(stringResource(R.string.st_empty), fontSize = 11.sp, color = TextSecondary)
         } else {
             //条形长度按第一名归一，不然小模型会缩成一条线看不见
-            val maxModel = snap.models.first().second.coerceAtLeast(1L)
+            val maxModel = snap.models.first().total.coerceAtLeast(1L)
             val all = snap.total.coerceAtLeast(1L)
-            snap.models.take(8).forEach { (name, v) ->
+            snap.models.take(8).forEach { m ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        name,
+                        m.name,
                         fontSize = 11.sp,
                         color = TextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
-                    Text(tk(v), fontSize = 10.sp, color = TextSecondary)
+                    Text(tk(m.total), fontSize = 10.sp, color = TextSecondary)
                     Spacer(Modifier.width(6.dp))
-                    Text("%.0f%%".format(v * 100.0 / all), fontSize = 10.sp, color = AccentBlue)
+                    Text("%.0f%%".format(m.total * 100.0 / all), fontSize = 10.sp, color = AccentBlue)
                 }
                 Spacer(Modifier.height(3.dp))
                 Box(
@@ -282,13 +311,69 @@ fun StatTab() {
                 ) {
                     Box(
                         Modifier
-                            .fillMaxWidth((v.toFloat() / maxModel).coerceIn(0.02f, 1f))
+                            .fillMaxWidth((m.total.toFloat() / maxModel).coerceIn(0.02f, 1f))
                             .fillMaxHeight()
                             .background(
                                 Brush.horizontalGradient(listOf(ToneBlue, TonePink)),
                                 RoundedCornerShape(3.dp)
                             )
                     )
+                }
+                //第二行：这个模型花了多少钱 + 单独配价的入口
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (m.cost > 0.0) stringResource(R.string.st_cost_of, money(m.cost))
+                        else stringResource(R.string.st_cost_none),
+                        fontSize = 9.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.st_model_price),
+                        fontSize = 9.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .background(SurfaceMuted, RoundedCornerShape(7.dp))
+                            .tap {
+                                editing = if (editing == m.name) {
+                                    null
+                                } else {
+                                    //开的时候把现有价填进去：单独配过就是它自己那份，没有就带出全局默认
+                                    val p = Prices.get(m.name) ?: Price.now()
+                                    eIn = if (p.inP > 0f) p.inP.toString() else ""
+                                    eOut = if (p.outP > 0f) p.outP.toString() else ""
+                                    eCache = if (p.cacheP > 0f) p.cacheP.toString() else ""
+                                    m.name
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                if (editing == m.name) {
+                    Spacer(Modifier.height(5.dp))
+                    Text(stringResource(R.string.st_model_price_t), fontSize = 9.sp, color = TextSecondary)
+                    Spacer(Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PriceField(eIn, stringResource(R.string.st_price_in), Modifier.weight(1f)) { eIn = it }
+                        PriceField(eOut, stringResource(R.string.st_price_out), Modifier.weight(1f)) { eOut = it }
+                        PriceField(eCache, stringResource(R.string.st_price_cache), Modifier.weight(1f)) { eCache = it }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GhostButton(stringResource(R.string.st_price_clear), modifier = Modifier.weight(1f)) {
+                            Prices.remove(m.name)
+                            editing = null
+                            scope.launch { withContext(Dispatchers.IO) { snap = Stat.load() } }
+                        }
+                        PrimaryButton(stringResource(R.string.st_price_save), modifier = Modifier.weight(1f)) {
+                            Prices.put(
+                                m.name,
+                                Price(eIn.toFloatOrNull() ?: 0f, eOut.toFloatOrNull() ?: 0f, eCache.toFloatOrNull() ?: 0f)
+                            )
+                            editing = null
+                            scope.launch { withContext(Dispatchers.IO) { snap = Stat.load() } }
+                        }
+                    }
                 }
                 Spacer(Modifier.height(9.dp))
             }
@@ -375,6 +460,67 @@ private fun BarChart(items: List<DayUse>, onPick: (DayUse) -> Unit) {
         }
     }
 } //柱状图
+
+/** 按天折线图：点线 + 渐变填充，点一下选最近那天 */
+@Composable
+private fun LineChart(items: List<DayUse>, pick: DayUse?, onPick: (DayUse) -> Unit) {
+    if (items.isEmpty()) {
+        Text(stringResource(R.string.st_no_data), fontSize = 11.sp, color = TextSecondary)
+        return
+    }
+    val max = items.maxOf { it.total }.coerceAtLeast(1L)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(112.dp)
+            .pointerInput(items) {
+                detectTapGestures { off ->
+                    val n = items.size
+                    if (n == 1) {
+                        onPick(items[0])
+                    } else {
+                        val step = size.width.toFloat() / (n - 1)
+                        if (step > 0f) onPick(items[(off.x / step).roundToInt().coerceIn(0, n - 1)])
+                    }
+                }
+            }
+    ) {
+        Canvas(Modifier.fillMaxWidth().height(112.dp)) {
+            val n = items.size
+            val pad = 5.dp.toPx()
+            val h = size.height - pad * 2
+            val w = size.width
+            fun xOf(i: Int): Float = if (n == 1) w / 2f else w * i / (n - 1)
+            fun yOf(v: Long): Float = pad + h - (v.toFloat() / max) * h
+            val line = Path()
+            val fill = Path()
+            items.forEachIndexed { i, d ->
+                val x = xOf(i)
+                val y = yOf(d.total)
+                if (i == 0) {
+                    line.moveTo(x, y)
+                    fill.moveTo(x, size.height)
+                    fill.lineTo(x, y)
+                } else {
+                    line.lineTo(x, y)
+                    fill.lineTo(x, y)
+                }
+            }
+            fill.lineTo(xOf(n - 1), size.height)
+            fill.close()
+            drawPath(
+                fill,
+                Brush.verticalGradient(listOf(ToneBlue.copy(alpha = 0.30f), ToneBlue.copy(alpha = 0.02f)))
+            )
+            drawPath(line, ToneBlue, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            items.forEachIndexed { i, d ->
+                val c = Offset(xOf(i), yOf(d.total))
+                if (pick?.day == d.day) drawCircle(TonePink, radius = 3.6.dp.toPx(), center = c)
+                else if (n <= 40 && d.total > 0L) drawCircle(ToneBlue, radius = 1.9.dp.toPx(), center = c)
+            }
+        }
+    }
+} //折线图
 
 /** 本月方格图：7 列铺日号，没用的天浅灰，用过的按强度上渐变 */
 @Composable

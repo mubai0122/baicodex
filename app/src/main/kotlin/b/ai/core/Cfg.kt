@@ -55,6 +55,7 @@ object Cfg {
         mem("ctx_budget", 12000).value = p.getInt("ctx_budget", 12000)
         mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
+        mem("summary_prompt", "").value = p.getString("summary_prompt", "")!!
         mem("tool_budget_tokens", 0).value = p.getInt("tool_budget_tokens", 0)
         mem("think", false).value = p.getBoolean("think", false)
         mem("think_effort", "medium").value = p.getString("think_effort", "medium")!!
@@ -318,7 +319,7 @@ object Cfg {
         get() = mem("ctx_keep", 8).value
         set(v) { mem("ctx_keep", 8).value = v; put("ctx_keep", v) }
 
-    /** 未压缩消息条数超过它就触发压缩（与字符预算二选一，先到先压） */
+    /** 未压缩消息条数超过它、且占用已过预算四分之一才触发压缩（防止占用很低就先按条数压） */
     var ctxMsgCount: Int
         get() = mem("ctx_msg_count", 16).value
         set(v) { mem("ctx_msg_count", 16).value = v; put("ctx_msg_count", v) }

@@ -16,6 +16,12 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
+# Js$Bridge 只被 native 的 GetMethodID 反射调用，R8 看不到引用点会把 call 裁掉，一初始化就 NoSuchMethodError
+-keep class b.ai.core.Js$Bridge { *; }
+# 兜底：将来类挪包或被重打包，只要名字还叫 *$Bridge 就保住回调方法名与签名
+-keepclassmembers class **$Bridge {
+    public java.lang.String call(java.lang.String, java.lang.String);
+}
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

@@ -46,20 +46,30 @@ object Workspace {
         return made.absolutePath
     } //当前工作区路径
 
-    /** 新会话换一个新工作区：开新哈希目录并挂到本会话，旧目录原样保留 */
+    /** 新会话沿用默认工作区：第一次分配一个目录并记住，之后所有会话共用，不再每次新开目录 */
     fun newSessionWorkspace(): String {
-        //用户显式绑了固定目录就不动它，否则每建一个会话都会多出一个空哈希目录
+        //用户显式绑了固定目录就直接用它
         if (Cfg.workspace.trim().isNotEmpty()) return Cfg.workspace
         if (!Cfg.autoBindWorkspace) {
             Cfg.sessionWorkspace = ""
             cachedTree = null
             return ""
         }
+        val def = Cfg.defaultWorkspace.trim()
+        if (def.isNotEmpty()) {
+            val f = File(def)
+            if (f.isDirectory || f.mkdirs()) {
+                Cfg.sessionWorkspace = def
+                cachedTree = null
+                return def
+            }
+        }
         val dir = Paths.newDir()
+        Cfg.defaultWorkspace = dir.absolutePath
         Cfg.sessionWorkspace = dir.absolutePath
         cachedTree = null
         return dir.absolutePath
-    } //新会话配新工作区
+    } //新会话沿用默认工作区
 
     /** 设置项切换后清缓存，避免还拿旧目录的树 */
     fun invalidate() {

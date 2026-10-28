@@ -35,6 +35,26 @@ data class Price(val inP: Float = 0f, val outP: Float = 0f, val cacheP: Float = 
     }
 }
 
+/** 一个模型的累计用量与费用（费用按它自己的单价算） */
+data class ModelUse(
+    val name: String,
+    val prompt: Long,
+    val cached: Long,
+    val completion: Long,
+    val cost: Double = 0.0
+) {
+    val total: Long get() = prompt + completion
+}
+
+/** 每一天 × 每个模型的原始聚合：按模型分别计价要靠它 */
+data class RawDayModel(
+    val day: String,
+    val model: String,
+    val prompt: Long,
+    val cached: Long,
+    val completion: Long
+)
+
 /** 统计快照：一次查库聚合完，页面只负责画 */
 data class StatSnap(
     val totalPrompt: Long = 0,
@@ -42,12 +62,13 @@ data class StatSnap(
     val totalCached: Long = 0,
     val totalCost: Double = 0.0,
     val price: Price = Price(),
-    val models: List<Pair<String, Long>> = emptyList(),
+    val models: List<ModelUse> = emptyList(),
     val days: List<DayUse> = emptyList(),
     val months: List<MonthUse> = emptyList(),
     val monthDay: List<DayUse> = emptyList(),
     val monthLen: Int = 31,
-    val msgCount: Int = 0
+    val msgCount: Int = 0,
+    val priceOn: Boolean = false
 ) {
     val total: Long get() = totalPrompt + totalCompletion
 
@@ -84,6 +105,24 @@ object Stat {
         val price = Price.now()
         val t = Repo.usageTotals()
         val daily = Repo.usageDaily().associateBy { it.day }
+        //按天 × 模型再查一遍：费用必须按各自模型的单价算，不能拿一个全局价糊上去
+        val dm = Repo.usageDayModel()
+        val dayCost = HashMap<String, Double>()
+        val per = LinkedHashMap<String, DoubleArray>()
+        dm.forEach { r ->
+            val p = Prices.of(r.model)
+            val c = p.cost(r.prompt, r.cached, r.completion)
+            if (c > 0.0) dayCost[r.day] = (dayCost[r.day] ?: 0.0) + c
+            val a = per.getOrPut(r.model) { DoubleArray(4) }
+            a[0] += r.prompt.toDouble()
+            a[1] += r.cached.toDouble()
+            a[2] += r.completion.toDouble()
+            a[3] += c
+        }
+        val models = per.map { (k, a) ->
+            ModelUse(k.ifBlank { "未知模型" }, a[0].toLong(), a[1].toLong(), a[2].toLong(), a[3])
+        }.sortedByDescending { it.total }
+        val totalCost = models.sumOf { it.cost }
 
         val cal = Calendar.getInstance()
         cal.set(Calendar.HOUR_OF_DAY, 0)
@@ -97,7 +136,7 @@ object Stat {
             val c = cal.clone() as Calendar
             c.add(Calendar.DAY_OF_MONTH, -i)
             val k = dayKey(c.timeInMillis)
-            days += toDayUse(k, daily[k], price)
+            days += toDayUse(k, daily[k], dayCost)
         }
 
         //近 6 个月：活跃天数 + 用量
@@ -124,7 +163,7 @@ object Stat {
         val monthDay = ArrayList<DayUse>(len)
         for (d in 1..len) {
             val k = "$ck-${if (d < 10) "0$d" else d}"
-            monthDay += toDayUse(k, daily[k], price)
+            monthDay += toDayUse(k, daily[k], dayCost)
         }
 
         //cached 按行夹到 prompt 以内由 SQL 的 MIN(cached,prompt) 保证
@@ -132,9 +171,10 @@ object Stat {
             totalPrompt = t[1],
             totalCompletion = t[3],
             totalCached = t[2],
-            totalCost = price.cost(t[1], t[2], t[3]),
+            totalCost = totalCost,
             price = price,
-            models = Repo.usageModels().map { (m, v) -> m.ifBlank { "未知模型" } to v },
+            models = models,
+            priceOn = totalCost > 0.0,
             days = days,
             months = months,
             monthDay = monthDay,
@@ -143,7 +183,7 @@ object Stat {
         )
     } //统计聚合
 
-    private fun toDayUse(day: String, raw: RawDay?, price: Price): DayUse =
+    private fun toDayUse(day: String, raw: RawDay?, dayCost: Map<String, Double>): DayUse =
         if (raw == null) DayUse(day, 0, 0)
-        else DayUse(day, raw.prompt, raw.completion, raw.cached, price.cost(raw.prompt, raw.cached, raw.completion)) //单日快照
+        else DayUse(day, raw.prompt, raw.completion, raw.cached, dayCost[day] ?: 0.0) //单日快照，费用按模型分别算好后累加
 }
