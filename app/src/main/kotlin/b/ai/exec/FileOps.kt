@@ -51,7 +51,9 @@ object FileOps {
     fun write(rawPath: String, content: String): Out {
         val path = Workspace.resolve(rawPath)
         val route = Router.route(path)
-        return when (route) {
+        //写之前先留一份旧内容给界面算 diff；读不到（没权限/太大）就返回 null，跳过 diff
+        val before = readTextForDiff(path, route)
+        val out = when (route) {
             Route.SANDBOX, Route.ALL_FILES -> writeJava(path, File(path), content, route)
             Route.ZERO_WIDTH -> writeJava(path, File(Router.map(path)), content, route)
             Route.ROOT -> {
@@ -81,8 +83,35 @@ object FileOps {
                 if (r.ok) Out(true, "[Shizuku] 已写入 $path（${content.length} 字符）", route)
                 else Out(false, "[Shizuku] 写入失败(${r.code}): ${r.out}", route)
             }
+        } //四通道各自失败点都会提前 return
+        //写成功了才谈 diff：拼在结果尾部，UI 按标记拆开上色
+        if (!out.ok || before == null) return out
+        val d = Diff.unified(before, content)
+        if (d.isBlank()) return out
+        return out.copy(text = out.text + "\n" + Diff.MARK + "\n" + d + "\n" + Diff.MARK_END)
+    } //写入文件（带 diff）
+
+    /** 给 diff 用的旧内容：文件不存在返回空串（=整个文件都是新增），读不到返回 null（不加 diff） */
+    private fun readTextForDiff(path: String, route: Route): String? = runCatching {
+        when (route) {
+            Route.SANDBOX, Route.ALL_FILES, Route.ZERO_WIDTH -> {
+                val f = File(if (route == Route.ZERO_WIDTH) Router.map(path) else path)
+                when {
+                    !f.exists() -> ""
+                    !f.isFile || f.length() > READ_BYTES -> null
+                    else -> f.readText()
+                }
+            }
+            else -> {
+                val r = exec(route, "if [ -e ${q(path)} ]; then head -c $READ_BYTES ${q(path)}; else printf '[new]'; fi")
+                when {
+                    !r.ok -> null
+                    r.out.trim() == "[new]" -> ""
+                    else -> r.out
+                }
+            }
         }
-    } //写入文件
+    }.getOrNull()
 
     fun mkdir(rawPath: String): Out {
         val path = Workspace.resolve(rawPath)

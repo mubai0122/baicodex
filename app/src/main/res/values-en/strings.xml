@@ -245,6 +245,7 @@
     <string name="cs_think_proc">Thinking</string>
     <string name="cs_collapse">Collapse</string>
     <string name="cs_expand">Expand</string>
+    <string name="cs_part_diff">Partial changes</string>
     <string name="cs_no_output">(no output)</string>
     <string name="cs_fail">Failed</string>
     <string name="cs_done">Done</string>

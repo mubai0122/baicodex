@@ -245,6 +245,7 @@
     <string name="cs_think_proc">思考過程</string>
     <string name="cs_collapse">收合</string>
     <string name="cs_expand">展開</string>
+    <string name="cs_part_diff">部分修改</string>
     <string name="cs_no_output">（無輸出）</string>
     <string name="cs_fail">失敗</string>
     <string name="cs_done">完成</string>

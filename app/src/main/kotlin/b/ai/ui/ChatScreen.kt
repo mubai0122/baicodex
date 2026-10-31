@@ -110,6 +110,7 @@ import b.ai.core.Profiles
 import b.ai.core.Skills
 import b.ai.core.Speak
 import b.ai.core.Voice
+import b.ai.exec.Diff
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1728,7 +1729,12 @@ private fun ThinkBlock(m: ChatMsg) {
 
 @Composable
 private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
-    val first = m.content.lineSequence().firstOrNull()?.take(80) ?: ""
+    //写文件类工具的结果尾部带 diff 段，拆出来单独渲染成红绿行
+    val split = remember(m.id, m.content) { splitDiff(m.content) }
+    val body = split.first
+    val diff = split.second
+    var diffOpen by remember(m.id) { mutableStateOf(false) }
+    val first = body.lineSequence().firstOrNull()?.take(80) ?: ""
     //工具卡片跟 AI 气泡同宽：左边让出头像占的 34dp，右边不再留缺口
     Column(
         Modifier
@@ -1780,8 +1786,98 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.cs_detail), fontSize = 11.sp, color = AccentBlue)
         }
+
+        //有 diff 就多一行「部分修改 +N −M」，点开就地看改动
+        if (diff.isNotEmpty()) {
+            val plus = diff.count { it.startsWith("+") }
+            val minus = diff.count { it.startsWith("-") }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .tap { diffOpen = !diffOpen }
+                    .padding(top = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.cs_part_diff),
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.width(6.dp))
+                Text("+$plus", fontSize = 10.sp, color = OkGreen)
+                Spacer(Modifier.width(4.dp))
+                Text("−$minus", fontSize = 10.sp, color = DangerRed)
+                Spacer(Modifier.weight(1f))
+                Text(
+                    if (diffOpen) stringResource(R.string.cs_collapse) else stringResource(R.string.cs_expand),
+                    fontSize = 10.sp,
+                    color = AccentBlue
+                )
+            }
+            if (diffOpen) {
+                Spacer(Modifier.height(6.dp))
+                DiffView(diff)
+            }
+        }
     }
-} //工具结果：点开看详情弹窗
+} //工具结果：点开看详情弹窗，有改动就展开红绿行
+
+/** 工具结果拆成「摘要 / diff 行」：没有标记就整段当摘要 */
+private fun splitDiff(content: String): Pair<String, List<String>> {
+    val s = content.indexOf(Diff.MARK)
+    if (s < 0) return content to emptyList()
+    val e = content.indexOf(Diff.MARK_END, s + Diff.MARK.length)
+    val body = content.substring(0, s).trimEnd()
+    val raw = if (e > s) content.substring(s + Diff.MARK.length, e)
+    else content.substring(s + Diff.MARK.length)
+    return body to raw.trim('\n').lines().filter { it.isNotEmpty() }
+} //按 [[diff]] 标记拆分
+
+/** diff 行列表：+ 绿 / − 红 / @@ 蓝，背景淡色块；scroll=false 交给外层滚动 */
+@Composable
+private fun DiffView(lines: List<String>, scroll: Boolean = true) {
+    val box = if (scroll) {
+        Modifier
+            .fillMaxWidth()
+            .heightIn(max = 260.dp)
+            .verticalScroll(glassScrollState())
+    } else {
+        Modifier.fillMaxWidth()
+    }
+    Column(
+        box
+            .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
+            .padding(horizontal = 6.dp, vertical = 5.dp)
+    ) {
+        lines.forEach { ln ->
+            val add = ln.startsWith("+")
+            val del = ln.startsWith("-")
+            Text(
+                ln,
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                color = when {
+                    add -> OkGreen
+                    del -> DangerRed
+                    ln.startsWith("@@") -> AccentBlue
+                    else -> TextSecondary
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        when {
+                            add -> OkGreen.copy(alpha = 0.10f)
+                            del -> DangerRed.copy(alpha = 0.10f)
+                            else -> Color.Transparent
+                        },
+                        RoundedCornerShape(3.dp)
+                    )
+                    .padding(horizontal = 3.dp, vertical = 0.5.dp)
+            )
+        }
+    }
+} //修改行着色列表
 
 /** 从历史里的 assistant.tool_calls 反查本次调用的参数 */
 private fun argsOf(m: ChatMsg): String? {
@@ -1795,6 +1891,8 @@ private fun argsOf(m: ChatMsg): String? {
 private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val args = remember(m.id, m.toolCallId) { argsOf(m) }
+    //详情里的输出同样拆成摘要 + 改动行，不然 [[diff]] 标记会原文漏出来
+    val split = remember(m.id, m.content) { splitDiff(m.content) }
     var copied by remember(m.id) { mutableStateOf(false) }
     ScrimCard(onDismiss = onClose) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1828,7 +1926,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
         }
-        Text(stringResource(R.string.cs_out_chars, m.content.length), fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.cs_out_chars, split.first.length), fontSize = 11.sp, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Box(
             Modifier
@@ -1838,12 +1936,18 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 .padding(10.dp)
                 .verticalScroll(glassScrollState())
         ) {
-            Text(
-                if (m.content.isBlank()) stringResource(R.string.cs_no_output) else m.content,
-                fontSize = 11.sp,
-                color = if (m.isError) DangerRed else TextPrimary,
-                fontFamily = FontFamily.Monospace
-            )
+            Column {
+                Text(
+                    if (split.first.isBlank()) stringResource(R.string.cs_no_output) else split.first,
+                    fontSize = 11.sp,
+                    color = if (m.isError) DangerRed else TextPrimary,
+                    fontFamily = FontFamily.Monospace
+                )
+                if (split.second.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    DiffView(split.second, scroll = false)
+                }
+            }
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1858,7 +1962,7 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                     .tap {
                         runCatching {
                             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            cm.setPrimaryClip(ClipData.newPlainText("bai", m.content))
+                            cm.setPrimaryClip(ClipData.newPlainText("bai", split.first))
                         }
                         copied = true
                     }

@@ -245,6 +245,7 @@
     <string name="cs_think_proc">思考プロセス</string>
     <string name="cs_collapse">閉じる</string>
     <string name="cs_expand">展開</string>
+    <string name="cs_part_diff">部分変更</string>
     <string name="cs_no_output">（出力なし）</string>
     <string name="cs_fail">失敗</string>
     <string name="cs_done">完了</string>

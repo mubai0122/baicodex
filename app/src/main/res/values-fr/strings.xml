@@ -245,6 +245,7 @@
     <string name="cs_think_proc">Raisonnement</string>
     <string name="cs_collapse">Réduire</string>
     <string name="cs_expand">Développer</string>
+    <string name="cs_part_diff">Modifications partielles</string>
     <string name="cs_no_output">(aucune sortie)</string>
     <string name="cs_fail">Échec</string>
     <string name="cs_done">Terminé</string>
