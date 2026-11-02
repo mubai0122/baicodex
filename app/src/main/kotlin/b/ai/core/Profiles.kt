@@ -3,6 +3,7 @@ package b.ai.core
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 /** 一条模型配置：提供商 + base_url + Key + 模型名 + 该模型支持的能力，可同时存多套随时切换 */
 data class ModelProfile(
@@ -37,12 +38,24 @@ object Profiles {
         get() = cache.value.firstOrNull { it.id == Cfg.profileId } ?: cache.value.firstOrNull()
 
     fun init() {
-        val fromFile = Store.read(FILE)
-        cache.value = if (fromFile != null) {
-            runCatching { parse(fromFile) }.getOrDefault(emptyList())
-        } else {
-            //升级用户：把原来那套单条配置直接变成第一条
-            listOf(legacy())
+        //外部存储没挂上（direct boot / 开机未解锁）：ensure() 会退回私有目录，
+        //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，免得空表把真配置覆盖掉
+        if (!Paths.externalOk()) {
+            if (cache.value.isEmpty()) cache.value = listOf(legacy())
+            if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
+            apply(cache.value.first { it.id == Cfg.profileId })
+            return
+        }
+        val f = Paths.file(FILE)
+        val raw = if (f.isFile) runCatching { f.readText() }.getOrNull() else null
+        val parsed = raw?.let { runCatching { parse(it) }.getOrNull() }
+        //文件在却解析不出来 = 被截断或写坏了：留一份 .bad，绝不用默认条目覆盖整表
+        val broken = f.isFile && parsed == null
+        if (broken) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
+        cache.value = when {
+            parsed != null && parsed.isNotEmpty() -> parsed
+            !broken && !f.isFile -> listOf(legacy()) //升级用户：文件本来就没有，把原来那套单条配置变成第一条
+            else -> emptyList()
         }
         if (cache.value.isEmpty()) cache.value = listOf(legacy())
         if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
@@ -58,7 +71,8 @@ object Profiles {
             }
             Cfg.profileSeed = 1
         }
-        save()
+        //坏档只备份不覆盖：这次先拿默认条目撑着，用户重新配完下次启动还能读到好档
+        if (!broken) save()
         apply(cache.value.first { it.id == Cfg.profileId })
     } //读盘、迁 Key 到私有 SP、落盘
 

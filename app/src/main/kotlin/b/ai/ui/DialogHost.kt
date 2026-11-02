@@ -136,9 +136,13 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
 
 private val SheetShape = RoundedCornerShape(24.dp)
 
-/** 底部吸附卡片：同 ScrimCard 的玻璃底，但从下往上滑入、最大占屏 62% */
+/** 底部吸附卡片：同 ScrimCard 的玻璃底，但从下往上滑入、最大占屏 maxFrac */
 @Composable
-fun BottomSheetCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+fun BottomSheetCard(
+    onDismiss: (() -> Unit)? = null,
+    maxFrac: Float = 0.62f,
+    content: @Composable ColumnScope.() -> Unit
+) {
     val slot = LocalCardSlot.current
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { shown = true }
@@ -157,7 +161,7 @@ fun BottomSheetCard(onDismiss: (() -> Unit)? = null, content: @Composable Column
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = (sh * 0.62f).dp)
+                .heightIn(max = (sh * maxFrac).dp)
                 .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                 //卡片自己吞掉点击，否则点卡片里任何空白都会关掉
                 .tap { }

@@ -62,7 +62,12 @@ import kotlin.system.exitProcess
 fun MigrateGate(onReady: () -> Unit) {
     val ctx = LocalContext.current
     //上次已经确认没有旧版工作区：直接放行，不扫盘、不白等一帧
-    if (Cfg.migClean) { onReady(); return }
+    if (Cfg.migClean) {
+        //已确认干净：仍要铺底色 + 异步放行，别在 composition 里直接写上层状态
+        LaunchedEffect(Unit) { onReady() }
+        Box(Modifier.fillMaxSize().background(BgGray))
+        return
+    }
     val scope = rememberCoroutineScope()
     var olds by remember { mutableStateOf<List<File>?>(null) } //null = 还在探测旧目录
     var running by remember { mutableStateOf(false) }
@@ -83,8 +88,12 @@ fun MigrateGate(onReady: () -> Unit) {
     } //探测旧目录：一个都没有就直接放行
     BackHandler { quits(ctx) } //门的整个生命周期都吞返回键，返回键等于退出
 
-    val list = olds ?: return //探测中：什么都不画
-    if (list.isEmpty()) return //已放行，等重组切走
+    val list = olds
+    if (list == null || list.isEmpty()) {
+        //探测中或已放行：必须铺一层底色，否则整窗露出系统黑底，看着就是黑屏
+        Box(Modifier.fillMaxSize().background(BgGray))
+        return
+    }
 
     fun start() {
         running = true

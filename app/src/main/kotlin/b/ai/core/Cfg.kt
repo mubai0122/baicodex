@@ -181,7 +181,26 @@ object Cfg {
         mem("fc_alpha", 100).value = p.getInt("fc_alpha", 100)
         mem("fc_x", -1).value = p.getInt("fc_x", -1)
         mem("fc_y", -1).value = p.getInt("fc_y", -1)
-    } //读盘并预热状态
+        mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
+        mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
+        mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
+        mem("a2a_token", "").value = p.getString("a2a_token", "")!!
+        mem("tts_mode", "sys").value = p.getString("tts_mode", "sys")!!
+        mem("tts_base", "").value = p.getString("tts_base", "")!!
+        mem("tts_key", "").value = p.getString("tts_key", "")!!
+        mem("tts_model", "tts-1").value = p.getString("tts_model", "tts-1")!!
+        mem("tts_voice", "alloy").value = p.getString("tts_voice", "alloy")!!
+        mem("asr_mode", "sys").value = p.getString("asr_mode", "sys")!!
+        mem("asr_base", "").value = p.getString("asr_base", "")!!
+        mem("asr_key", "").value = p.getString("asr_key", "")!!
+        mem("asr_model", "whisper-1").value = p.getString("asr_model", "whisper-1")!!
+        mem("asr_lang", "zh-CN").value = p.getString("asr_lang", "zh-CN")!!
+        mem("plg_installed", "").value = p.getString("plg_installed", "")!!
+        mem("pl_email", "").value = p.getString("pl_email", "")!!
+        mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
+        mem("paste_limit", 3000).value = p.getInt("paste_limit", 3000)
+        mem("full_input_new", true).value = p.getBoolean("full_input_new", true)
+    } //读盘并预热状态；mig_clean 等 19 个键以前只 put 不读回，冷启动一律回默认
 
     private fun put(k: String, v: Any?) {
         val e = sp?.edit() ?: return

@@ -606,7 +606,7 @@ private fun ModelPickMulti(
     }
     //返回键先收卡片，别把整个设置页带出去
     BackHandler { onClose() }
-    BottomSheetCard(onDismiss = onClose) {
+    BottomSheetCard(onDismiss = onClose, maxFrac = 0.88f) {
         Box(Modifier.fillMaxWidth().padding(bottom = 6.dp), contentAlignment = Alignment.Center) {
             Box(Modifier.width(36.dp).height(4.dp).background(BorderGray, CircleShape))
         }
@@ -738,7 +738,7 @@ private fun ModelPickMulti(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
+                    .weight(1f, fill = false)
                     .verticalScroll(glassScrollState())
             ) {
                 shown.forEach { m ->

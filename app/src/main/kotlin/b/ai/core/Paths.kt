@@ -25,6 +25,9 @@ object Paths {
         return if (f.isDirectory) f else File(App.self.filesDir, DIR).also { runCatching { it.mkdirs() } }
     } //根目录
 
+    /** 外部存储是否已经挂上：没挂上时 ensure() 会静默退回私有目录，读写全会打偏 */
+    fun externalOk(): Boolean = Environment.getExternalStorageState() == Environment.MEDIA_MOUNTED
+
     fun file(name: String): File = File(ensure(), name)
 
     /** 新版本工作区根：baicode/workspace；旧版直接把哈希目录挂在 baicode 下面 */
