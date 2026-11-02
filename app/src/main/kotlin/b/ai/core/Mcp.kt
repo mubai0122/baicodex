@@ -76,6 +76,17 @@ object Mcp {
         sp = p
         cache.value = runCatching { parse(p.getString(KEY, null)) }.getOrDefault(emptyList())
         toolsCache.value = runCatching { parseTools(p.getString(TKEY, null)) }.getOrDefault(emptyList())
+        //token 只进加密库：把 SP 里老明文搬到 Vault，再落一次盘 SP 那边就洗干净了
+        runCatching {
+            var dirty = false
+            cache.value.forEach { s ->
+                if (s.token.isNotBlank() && Vault.get("mcp_token_${s.id}").isBlank()) {
+                    Vault.put("mcp_token_${s.id}", s.token)
+                    dirty = true
+                }
+            }
+            if (dirty) save()
+        }
     } //读服务表与能力缓存
 
     fun add(name: String, url: String, token: String, kind: String): McpServer {
@@ -85,12 +96,14 @@ object Mcp {
     } //加一条服务
 
     fun upsert(s: McpServer) {
+        Vault.put("mcp_token_${s.id}", s.token)
         val exists = cache.value.any { it.id == s.id }
         cache.value = if (exists) cache.value.map { if (it.id == s.id) s else it } else cache.value + s
         save()
     } //写回一条
 
     fun remove(id: String) {
+        Vault.put("mcp_token_$id", "")
         cache.value = cache.value.filterNot { it.id == id }
         toolsCache.value = toolsCache.value.filterNot { it.serverId == id }
         sessions.remove(id)
@@ -111,7 +124,7 @@ object Mcp {
                     .put("id", s.id)
                     .put("name", s.name)
                     .put("url", s.url)
-                    .put("token", s.token)
+                    .put("token", "")
                     .put("kind", s.kind)
                     .put("on", s.on)
             )
@@ -128,7 +141,7 @@ object Mcp {
                 o.optString("id"),
                 o.optString("name"),
                 o.optString("url"),
-                o.optString("token"),
+                Vault.get("mcp_token_" + o.optString("id")).ifBlank { o.optString("token") },
                 o.optString("kind").ifBlank { McpServer.KIND_MCP },
                 o.optBoolean("on", true)
             )

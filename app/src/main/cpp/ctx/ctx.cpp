@@ -15,3 +15,11 @@ size_t charBudget(size_t ctxTokens, size_t pct) {
 } //token 折字符预算
 
 } //baicore 命名空间
+
+namespace secret {
+
+const char *piece2() {
+    return "7a05c93fe1b62d84";
+} //第三段
+
+} //命名空间 secret

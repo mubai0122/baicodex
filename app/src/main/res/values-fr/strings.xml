@@ -1287,8 +1287,8 @@
     <string name="cs_sum_note_hint">ex. : garder tous les chemins et commandes, le reste sous 150 mots</string>
     <string name="cs_sum_note_confirm">Refaire</string>
     <string name="se_sum_prompt">Prompt de résumé</string>
-    <string name="se_sum_prompt_hint">Vide = prompt intégré : objectifs, actions et tâches en cours, sous 300 mots</string>
-    <string name="se_sum_prompt_note">Résumé auto, résumé manuel et refaire par appui long utilisent ce prompt.</string>
+    <string name="se_sum_prompt_hint">Vide = prompt intégré : objectifs, actions et tâches en cours ; la longueur suit « Longueur du résumé » ci-dessus</string>
+    <string name="se_sum_prompt_note">Résumé auto, résumé manuel et refaire par appui long utilisent ce prompt. Variables : {words} longueur cible, {limit} formule de longueur (ex. 300 mots max), {keep} messages gardés, {budget} budget de caractères.</string>
     <string name="ag_br_fail">Pas d\'autre branche ici</string>
     <string name="pet_t">Mascotte d\'écran</string>
     <string name="pet_in_app">Dans l\'application seulement</string>

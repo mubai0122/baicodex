@@ -16,6 +16,18 @@ val baiStringFogKey: String = run {
     props.getProperty("stringfog.key")?.takeIf { it.isNotBlank() } ?: "bai-stringfog-placeholder-key"
 }
 
+//密钥库种子：只从 local.properties（不进版本库）读；缺省时 C++ 那边用分散在四个源文件里的占位片段
+val baiAesSeed: String? = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run null
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    //只收 [A-Za-z0-9._-]：这串最终进 C 字符串字面量，带引号或分号会把编译命令搞坏
+    props.getProperty("baicodex.aes.key")?.trim()?.takeIf { s ->
+        s.isNotBlank() && s.all { it.isLetterOrDigit() || it == '.' || it == '_' || it == '-' }
+    }
+}
+
 android {
     namespace = "b.ai"
     compileSdk = 37
@@ -25,12 +37,18 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 27
-        versionName = "1.9.3"
+        versionCode = 28
+        versionName = "1.9.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+        //密钥种子只能挂在 defaultConfig 的 cmake 上：外层 android.externalNativeBuild 只有 path
+        if (baiAesSeed != null) {
+            externalNativeBuild {
+                cmake { arguments.add("-DBAI_KEY_HEX=$baiAesSeed") }
+            }
         }
     } //默认配置
 

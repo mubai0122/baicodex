@@ -21,9 +21,32 @@ object Cfg {
         if (sp != null) return
         val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
         sp = p
+        //凭据一律搬进加密库，搬完把 SP 里的明文删掉：SP 是明文 XML，root 和备份都拿得到
+        val legacy = LinkedHashMap<String, String>()
+        listOf("api_key", "asr_key", "tts_key", "a2a_token", "tavily_key").forEach { k ->
+            p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacy[k] = v }
+        }
+        p.all.forEach { (k, v) ->
+            if (v is String && v.isNotEmpty() && (k.startsWith("profkey_") || (k.startsWith("search_cfg_") && k.endsWith("_key")))) {
+                legacy[k] = v
+            }
+        }
+        //账号 token 另开一个文件：API Key 与会话 token 生命周期不同，混在一起容易一锅端
+        val legacyUser = LinkedHashMap<String, String>()
+        listOf("acc_token", "fb_token", "ssh_pass").forEach { k ->
+            p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacyUser[k] = v }
+        }
+        if (legacy.isNotEmpty() || legacyUser.isNotEmpty()) {
+            if (legacy.isNotEmpty()) Vault.adopt(legacy, Vault.API)
+            if (legacyUser.isNotEmpty()) Vault.adopt(legacyUser, Vault.USER)
+            val e = p.edit()
+            legacy.keys.forEach { e.remove(it) }
+            legacyUser.keys.forEach { e.remove(it) }
+            e.apply()
+        }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
         //账号登录态：token 有值就算登录过，uid / 昵称 / 头像跟着一起恢复
-        mem("acc_token", "").value = p.getString("acc_token", "") ?: ""
+        mem("acc_token", "").value = Vault.get("acc_token", Vault.USER)
         mem("acc_uid", 0).value = p.getInt("acc_uid", 0)
         mem("acc_uname", "").value = p.getString("acc_uname", "") ?: ""
         mem("acc_nick", "").value = p.getString("acc_nick", "") ?: ""
@@ -40,7 +63,7 @@ object Cfg {
         mem("star_shown", false).value = p.getBoolean("star_shown", false)
         mem("no_rate", false).value = p.getBoolean("no_rate", false)
         //反馈凭据：提交反馈时服务端下发，凭它只能看本机提交过的反馈
-        mem("fb_token", "").value = p.getString("fb_token", "")!!
+        mem("fb_token", "").value = Vault.get("fb_token", Vault.USER)
         //用户协议同意过的版本号（0 = 没同意过）；tos_sent = 已上报过的版本号
         mem("tos_agreed", 0).value = p.getInt("tos_agreed", 0)
         mem("tos_sent", 0).value = p.getInt("tos_sent", 0)
@@ -55,7 +78,7 @@ object Cfg {
         mem("profile_models", emptyList<String>())
         //1.7.0 的「全新模型配置」只提示一次，跟旧的桌宠引导解耦
         mem("pet_model_tip", false).value = p.getBoolean("pet_model_tip", false)
-        mem("api_key", "").value = p.getString("api_key", "")!!
+        mem("api_key", "").value = Vault.get("api_key")
         mem("model", "").value = p.getString("model", "")!!
         mem("workflow", "general").value = p.getString("workflow", "general")!!
         mem("ctx_auto", true).value = p.getBoolean("ctx_auto", true)
@@ -63,6 +86,8 @@ object Cfg {
         mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
         mem("summary_prompt", "").value = p.getString("summary_prompt", "")!!
+        mem("summary_words", 300).value = p.getInt("summary_words", 300)
+        mem("summary_profile", "").value = p.getString("summary_profile", "")!!
         mem("tool_budget_tokens", 0).value = p.getInt("tool_budget_tokens", 0)
         mem("think", false).value = p.getBoolean("think", false)
         mem("think_effort", "medium").value = p.getString("think_effort", "medium")!!
@@ -71,7 +96,7 @@ object Cfg {
         mem("model_vision", true).value = p.getBoolean("model_vision", true)
         mem("model_tool_call", true).value = p.getBoolean("model_tool_call", true)
         mem("model_reasoning", true).value = p.getBoolean("model_reasoning", true)
-        mem("tavily_key", "").value = p.getString("tavily_key", "")!!
+        mem("tavily_key", "").value = Vault.get("tavily_key")
         mem("search_provider", "").value = p.getString("search_provider", "")!!
         mem("persona_id", "").value = p.getString("persona_id", "")!!
         mem("system_prompt", "").value = p.getString("system_prompt", "")!!
@@ -94,7 +119,7 @@ object Cfg {
         mem("ssh_host", "").value = p.getString("ssh_host", "")!!
         mem("ssh_port", 22).value = p.getInt("ssh_port", 22)
         mem("ssh_user", "").value = p.getString("ssh_user", "")!!
-        mem("ssh_pass", "").value = p.getString("ssh_pass", "")!!
+        mem("ssh_pass", "").value = Vault.get("ssh_pass", Vault.USER)
         mem("max_mode", false).value = p.getBoolean("max_mode", false)
         mem("ctx_total", 128000).value = p.getInt("ctx_total", 128000)
         mem("ctx_pct", 70).value = p.getInt("ctx_pct", 70)
@@ -184,15 +209,15 @@ object Cfg {
         mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
         mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
         mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
-        mem("a2a_token", "").value = p.getString("a2a_token", "")!!
+        mem("a2a_token", "").value = Vault.get("a2a_token")
         mem("tts_mode", "sys").value = p.getString("tts_mode", "sys")!!
         mem("tts_base", "").value = p.getString("tts_base", "")!!
-        mem("tts_key", "").value = p.getString("tts_key", "")!!
+        mem("tts_key", "").value = Vault.get("tts_key")
         mem("tts_model", "tts-1").value = p.getString("tts_model", "tts-1")!!
         mem("tts_voice", "alloy").value = p.getString("tts_voice", "alloy")!!
         mem("asr_mode", "sys").value = p.getString("asr_mode", "sys")!!
         mem("asr_base", "").value = p.getString("asr_base", "")!!
-        mem("asr_key", "").value = p.getString("asr_key", "")!!
+        mem("asr_key", "").value = Vault.get("asr_key")
         mem("asr_model", "whisper-1").value = p.getString("asr_model", "whisper-1")!!
         mem("asr_lang", "zh-CN").value = p.getString("asr_lang", "zh-CN")!!
         mem("plg_installed", "").value = p.getString("plg_installed", "")!!
@@ -246,7 +271,7 @@ object Cfg {
         set(v) { mem("ssh_user", "").value = v; put("ssh_user", v) }
     var sshPass: String
         get() = mem("ssh_pass", "").value
-        set(v) { mem("ssh_pass", "").value = v; put("ssh_pass", v) }
+        set(v) { mem("ssh_pass", "").value = v; Vault.put("ssh_pass", v, Vault.USER) }
 
     /** 点过「立即加入」并成功跳出 QQ：下次卡片把「以后永不提醒」换成「我已加入，下次不再提示」 */
     var joinJoined: Boolean
@@ -270,7 +295,7 @@ object Cfg {
 
     var fbToken: String
         get() = mem("fb_token", "").value
-        set(v) { mem("fb_token", "").value = v; put("fb_token", v) }
+        set(v) { mem("fb_token", "").value = v; Vault.put("fb_token", v, Vault.USER) }
 
     /** 插件广场里用的邮箱：上传要收验证码与审核结果，记下来省得每次重填 */
     var plEmail: String
@@ -285,7 +310,7 @@ object Cfg {
     /** 账号：登录后服务器发的会话 token，空串 = 没登录 */
     var accToken: String
         get() = mem("acc_token", "").value
-        set(v) { mem("acc_token", "").value = v; put("acc_token", v) }
+        set(v) { mem("acc_token", "").value = v; Vault.put("acc_token", v, Vault.USER) }
 
     /** 账号：自己的 uid，0 = 没登录 */
     var accUid: Int
@@ -364,7 +389,7 @@ object Cfg {
 
     var apiKey: String
         get() = mem("api_key", "").value
-        set(v) { mem("api_key", "").value = v; put("api_key", v) }
+        set(v) { mem("api_key", "").value = v; Vault.put("api_key", v) }
 
     var model: String
         get() = mem("model", "").value
@@ -397,6 +422,14 @@ object Cfg {
     var summaryPrompt: String
         get() = mem("summary_prompt", "").value
         set(v) { mem("summary_prompt", "").value = v; put("summary_prompt", v) }
+    /** 摘要目标字数：提示词里的 {words} 会被替换成它，0 = 不限 */
+    var summaryWords: Int
+        get() = mem("summary_words", 300).value
+        set(v) { mem("summary_words", 300).value = v; put("summary_words", v) }
+    /** 总结用的模型配置 id：空 = 跟随当前聊天选中的那条 */
+    var summaryProfileId: String
+        get() = mem("summary_profile", "").value
+        set(v) { mem("summary_profile", "").value = v; put("summary_profile", v) }
 
     /** 是否让模型先思考再回答（下发 reasoning_effort） */
     var think: Boolean
@@ -433,10 +466,10 @@ object Cfg {
         get() = mem("model_reasoning", true).value
         set(v) { mem("model_reasoning", true).value = v; put("model_reasoning", v) }
 
-    /** Tavily API Key：联网搜索工具用 */
+    /** Tavily API Key：联网搜索工具用，和模型 Key 一样只进加密库 */
     var tavilyKey: String
         get() = mem("tavily_key", "").value
-        set(v) { mem("tavily_key", "").value = v; put("tavily_key", v) }
+        set(v) { mem("tavily_key", "").value = v; Vault.put("tavily_key", v.trim()) }
 
     /** 选中的搜索平台 id（对应 Search.providers），空 = 没启用搜索技能 */
     var searchProvider: String
@@ -495,12 +528,15 @@ object Cfg {
     private fun searchCfgKey(provider: String, field: String): String =
         if (provider == "tavily" && field == "key") "tavily_key" else "search_cfg_${provider}_$field"
 
+    /** 带 key 字样的配置项算凭据，只进加密库 */
+    private fun searchCfgSecret(field: String): Boolean = field == "key" || field.endsWith("_key")
+
     /** 读某个平台某个配置项（如 tavily 的 key、google 的 cx） */
     fun searchCfg(provider: String, field: String): String {
         if (provider.isBlank() || field.isBlank()) return ""
         val k = searchCfgKey(provider, field)
         val st = mem(k, "")
-        if (st.value == "") st.value = sp?.getString(k, "") ?: ""
+        if (st.value == "") st.value = if (searchCfgSecret(field)) Vault.get(k) else sp?.getString(k, "") ?: ""
         return st.value
     } //读平台配置
 
@@ -508,7 +544,7 @@ object Cfg {
         if (provider.isBlank() || field.isBlank()) return
         val k = searchCfgKey(provider, field)
         mem(k, "").value = v
-        put(k, v)
+        if (searchCfgSecret(field)) Vault.put(k, v.trim()) else put(k, v)
     } //写平台配置
 
     /** 附加请求参数（JSON），覆盖/补齐默认字段，留空则不加 */
@@ -720,7 +756,7 @@ object Cfg {
         set(v) { mem("a2a_port", 8720).value = v; put("a2a_port", v) }
     var a2aToken: String
         get() = mem("a2a_token", "").value
-        set(v) { mem("a2a_token", "").value = v; put("a2a_token", v) }
+        set(v) { mem("a2a_token", "").value = v; Vault.put("a2a_token", v) }
 
     var petOn: Boolean
         get() = mem("pet_on", true).value
@@ -890,7 +926,7 @@ object Cfg {
 
     var asrKey: String
         get() = mem("asr_key", "").value
-        set(v) { mem("asr_key", "").value = v; put("asr_key", v.trim()) }
+        set(v) { mem("asr_key", "").value = v; Vault.put("asr_key", v.trim()) }
 
     var asrModel: String
         get() = mem("asr_model", "whisper-1").value
@@ -911,7 +947,7 @@ object Cfg {
 
     var ttsKey: String
         get() = mem("tts_key", "").value
-        set(v) { mem("tts_key", "").value = v; put("tts_key", v.trim()) }
+        set(v) { mem("tts_key", "").value = v; Vault.put("tts_key", v.trim()) }
 
     var ttsModel: String
         get() = mem("tts_model", "tts-1").value
@@ -955,7 +991,7 @@ object Cfg {
         if (id.isBlank()) return ""
         val k = "profkey_$id"
         val st = mem(k, "")
-        if (st.value == "") st.value = sp?.getString(k, "") ?: ""
+        if (st.value == "") st.value = Vault.get(k)
         return st.value
     } //读配置 Key
 
@@ -963,7 +999,7 @@ object Cfg {
         if (id.isBlank()) return
         val k = "profkey_$id"
         mem(k, "").value = v
-        put(k, v)
+        Vault.put(k, v)
     } //写配置 Key
 
     /** 一个配置可以填多个 Key：换行 / 逗号 / 分号分隔，请求失败时轮换 */

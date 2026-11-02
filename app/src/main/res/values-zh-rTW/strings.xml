@@ -1288,8 +1288,8 @@
     <string name="cs_sum_note_hint">例如：保留所有檔案路徑和指令，其餘壓到 150 字內</string>
     <string name="cs_sum_note_confirm">重做</string>
     <string name="se_sum_prompt">總結提示詞</string>
-    <string name="se_sum_prompt_hint">留空用內建：壓成要點，保留目標、動作與未完成事項，300 字內</string>
-    <string name="se_sum_prompt_note">自動總結、立即總結、長按重總結都用這段提示詞。</string>
+    <string name="se_sum_prompt_hint">留空用內建：壓成要點，保留目標、動作與未完成事項；字數由上面「摘要字數」決定</string>
+    <string name="se_sum_prompt_note">自動總結、立即總結、長按重總結都用這段提示詞。可用變數：{words} 目標字數、{limit} 字數短語（如 300字以內）、{keep} 保留條數、{budget} 字元預算。</string>
     <string name="ag_br_fail">這條沒有可切換的分支</string>
     <string name="pet_t">桌寵</string>
     <string name="pet_in_app">只在應用程式內</string>

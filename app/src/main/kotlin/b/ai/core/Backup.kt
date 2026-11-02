@@ -55,7 +55,7 @@ object Backup {
     /** 导入第一步：解压。db 与配置落到 restore 目录等重启，baicode 与头像直接覆盖 */
     fun stageImport(ctx: Context, ins: InputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
         val dir = restoreDir(ctx)
-        dir.listFiles()?.forEach { it.delete() }
+        dir.listFiles()?.forEach { runCatching { it.deleteRecursively() } }
         var hasDb = false
         ZipInputStream(ins.buffered()).use { z ->
             while (true) {

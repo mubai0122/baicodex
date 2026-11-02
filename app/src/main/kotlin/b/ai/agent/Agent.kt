@@ -18,6 +18,7 @@ import b.ai.core.Memory
 import b.ai.core.MsgMeta
 import b.ai.core.Perms
 import b.ai.core.Personas
+import b.ai.core.Profiles
 import b.ai.core.Providers
 import b.ai.core.Repo
 import b.ai.core.Route
@@ -83,7 +84,7 @@ object Agent {
     //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     private const val SUMMARY_PROMPT =
         "你是上下文压缩器。把给你的对话记录压成要点摘要，保留：用户目标、已执行的动作与关键路径/命令、" +
-            "已得结论、未完成事项。不要编造，不要客套，直接输出摘要，300 字以内。"
+            "已得结论、未完成事项。不要编造，不要客套，直接输出摘要，字数{limit}。"
     private const val TITLE_PROMPT =
         "你是会话命名助手。看用户这一句需求，回一行：标题|描述。" +
             "标题 4-12 个字，名词性短语，不带标点和引号；描述一句话，不超过 24 个字，说这份对话在做什么。" +
@@ -1184,9 +1185,10 @@ object Agent {
             put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
             put(JSONObject().put("role", "user").put("content", render))
         }
+        val m = sumLlm()
         val resp = runCatching {
             withContext(Dispatchers.IO) {
-                LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).chat(Cfg.model, pay)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth).chat(m[3], pay)
             }
         }.getOrNull() ?: return false
         val text = resp.text("content").trim()
@@ -1217,8 +1219,21 @@ object Agent {
         return (head + list.joinToString("\n") { oneLine(it, 120) }).take(12_000)
     } //渲染待压缩历史
 
-    /** 总结用的 system 提示词：用户在设置里填了就用用户的 */
-    private fun summaryText(): String = Cfg.summaryPrompt.trim().ifBlank { SUMMARY_PROMPT }
+    /** 总结用的 system 提示词：用户在设置里填了就用用户的，再把 {words}/{limit}/{keep}/{budget} 换成当前配置 */
+    private fun summaryText(): String {
+        val w = Cfg.summaryWords
+        return Cfg.summaryPrompt.trim().ifBlank { SUMMARY_PROMPT }
+            .replace("{words}", w.coerceAtLeast(0).toString())
+            .replace("{limit}", if (w > 0) "${w}字以内" else "不限")
+            .replace("{keep}", Cfg.ctxKeep.toString())
+            .replace("{budget}", Cfg.ctxCharBudget.toString())
+    } //总结提示词（注入变量）
+    /** 总结用的连接参数：设置了专用模型配置就用它，没设就跟随当前聊天选中 */
+    private fun sumLlm(): Array<String> {
+        val p = Profiles.list.firstOrNull { it.id == Cfg.summaryProfileId && it.model.isNotBlank() }
+            ?: return arrayOf(Cfg.baseUrl, Cfg.apiKey, Cfg.providerId, Cfg.model)
+        return arrayOf(p.baseUrl, p.apiKey, p.providerId, p.model)
+    } //总结连接参数 baseUrl/key/provider/model
 
     /** 用户附加的微调要求，拼在总结提示词后面 */
     private fun extraBlock(note: String?): String {
@@ -1259,9 +1274,10 @@ object Agent {
             put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
             put(JSONObject().put("role", "user").put("content", render))
         }
+        val m = sumLlm()
         val resp = runCatching {
             withContext(Dispatchers.IO) {
-                LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth).chat(Cfg.model, pay)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth).chat(m[3], pay)
             }
         }.getOrNull() ?: return false
         val text = resp.text("content").trim()

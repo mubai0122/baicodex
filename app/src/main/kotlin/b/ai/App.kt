@@ -98,6 +98,8 @@ class App : Application() {
                 if (Cfg.petOn && Cfg.petGlobal && b.ai.exec.Pet.canShow(self)) b.ai.exec.PetSvc.start(self)
             }
             //功能级的配置库（技能、角色、定时任务、工作流、A2A 节点、价格、触发器、MCP）一律首帧之后再读
+            //老版本明文 secrets.json 先搬进加密库，技能执行时才能读到 $secret.xxx
+            runCatching { b.ai.core.Secret.migrate() }
             runCatching { Skills.init(self) }
             runCatching { Personas.init(self) }
             runCatching { Schedules.init(self) }

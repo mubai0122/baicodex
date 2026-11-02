@@ -20,6 +20,8 @@ add_library(baicodex SHARED
         jni/blur_jni.cpp
         js/qjs.cpp
         runtime/govern.cpp
+        runtime/secret.cpp
+        jni/secret_jni.cpp
         ctx/ctx.cpp)
 target_include_directories(baicodex PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/engine
@@ -31,6 +33,12 @@ target_include_directories(baicodex PRIVATE
 set(OSSL ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/android_openssl-master/ssl_3)
 target_include_directories(baicodex PRIVATE ${OSSL}/include)
 target_compile_features(baicodex PRIVATE cxx_std_17)
+#密钥种子：-D 传进来的是 CMake 变量，C++ 那边认的是预处理宏，这里必须显式转一手，否则配了也不生效
+if(DEFINED BAI_KEY_HEX AND NOT BAI_KEY_HEX STREQUAL "")
+    #拆成字节数组再下发：整串十六进制留在 .so 里会被 strings 一眼看到
+    string(REGEX REPLACE "(..)" "0x\\1," BAI_KEY_BYTES "${BAI_KEY_HEX}")
+    target_compile_definitions(baicodex PRIVATE "BAI_KEY_BYTES=${BAI_KEY_BYTES}")
+endif()
 #模糊是纯整数滑窗，debug 默认 -O0 会慢过 Kotlin，这里单独给这个文件开 -O3
 set_source_files_properties(jni/blur_jni.cpp PROPERTIES COMPILE_OPTIONS "-O3")
 target_compile_options(baicodex PRIVATE -Wall -Wextra -fvisibility=hidden)

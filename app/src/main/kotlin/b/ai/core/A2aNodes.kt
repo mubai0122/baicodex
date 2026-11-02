@@ -28,6 +28,17 @@ object A2aNodes {
         val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
         sp = p
         cache.value = runCatching { parse(p.getString("a2a_nodes", "")) }.getOrDefault(emptyList())
+        //对端 token 只进加密库，先把 SP 里的明文搬走
+        runCatching {
+            var dirty = false
+            cache.value.forEach { n ->
+                if (n.token.isNotBlank() && Vault.get("a2a_node_token_${n.id}").isBlank()) {
+                    Vault.put("a2a_node_token_${n.id}", n.token)
+                    dirty = true
+                }
+            }
+            if (dirty) save()
+        }
     } //读盘
 
     private fun parse(raw: String?): List<A2aNode> {
@@ -39,7 +50,7 @@ object A2aNodes {
                 id = o.optString("id"),
                 name = o.optString("name"),
                 url = o.optString("url"),
-                token = o.optString("token"),
+                token = Vault.get("a2a_node_token_" + o.optString("id")).ifBlank { o.optString("token") },
                 on = o.optBoolean("on", true)
             )
         }.filter { it.id.isNotBlank() && it.url.isNotBlank() }
@@ -50,7 +61,7 @@ object A2aNodes {
         cache.value.forEach { n ->
             arr.put(
                 JSONObject().put("id", n.id).put("name", n.name).put("url", n.url)
-                    .put("token", n.token).put("on", n.on)
+                    .put("token", "").put("on", n.on)
             )
         }
         sp?.edit()?.putString("a2a_nodes", arr.toString())?.apply()
@@ -79,17 +90,20 @@ object A2aNodes {
             token = token.trim(),
             on = true
         )
+        Vault.put("a2a_node_token_${n.id}", n.token)
         cache.value = cache.value + n
         save()
         return n
     } //新增
 
     fun update(n: A2aNode) {
+        Vault.put("a2a_node_token_${n.id}", n.token)
         cache.value = cache.value.map { if (it.id == n.id) n.copy(url = norm(n.url)) else it }
         save()
     } //覆盖
 
     fun remove(id: String) {
+        Vault.put("a2a_node_token_$id", "")
         cache.value = cache.value.filterNot { it.id == id }
         save()
     } //删除

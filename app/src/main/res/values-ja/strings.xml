@@ -1287,8 +1287,8 @@
     <string name="cs_sum_note_hint">例：ファイルパスとコマンドは全部残し、他は150字以内に</string>
     <string name="cs_sum_note_confirm">作り直す</string>
     <string name="se_sum_prompt">要約プロンプト</string>
-    <string name="se_sum_prompt_hint">空欄なら内蔵：目的・作業・未完了を残して300字以内</string>
-    <string name="se_sum_prompt_note">自動要約・手動要約・長押しの作り直しはすべてこのプロンプトを使います。</string>
+    <string name="se_sum_prompt_hint">空欄なら内蔵：目的・作業・未完了を残す；文字数は上の「要約文字数」に従う</string>
+    <string name="se_sum_prompt_note">自動要約・手動要約・長押しの作り直しはすべてこのプロンプトを使います。変数：{words}目標文字数、{limit}文字数の表現（例 300字以内）、{keep}保持件数、{budget}文字予算。</string>
     <string name="ag_br_fail">ここに切り替えられる分岐はありません</string>
     <string name="pet_t">デスクトップペット</string>
     <string name="pet_in_app">アプリ内のみ</string>

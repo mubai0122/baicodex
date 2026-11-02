@@ -782,6 +782,28 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             isSelected = { Cfg.ctxMsgCount == it },
             onSelect = { Cfg.ctxMsgCount = it }
         )
+        Spacer(Modifier.height(8.dp))
+        //摘要字数：0 表示不限；提示词里的 {limit}/{words} 会被换成这个值
+        SelectField(
+            "摘要字数",
+            if (Cfg.summaryWords > 0) "${Cfg.summaryWords} 字" else "不限",
+            listOf(0, 150, 300, 500, 800, 1200),
+            optionLabel = { if (it > 0) "$it 字" else "不限" },
+            isSelected = { Cfg.summaryWords == it },
+            onSelect = { Cfg.summaryWords = it }
+        )
+        Spacer(Modifier.height(8.dp))
+        //总结用模型：留空跟随聊天选中的那条配置，选了就单独走它的 base_url / Key / 模型
+        val sumProfiles = Profiles.list
+        val sumCur = sumProfiles.firstOrNull { it.id == Cfg.summaryProfileId }
+        SelectField(
+            "总结用模型",
+            sumCur?.label ?: "跟随当前聊天",
+            listOf("") + sumProfiles.map { it.id },
+            optionLabel = { id -> sumProfiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
+            isSelected = { it == Cfg.summaryProfileId },
+            onSelect = { Cfg.summaryProfileId = it }
+        )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton(stringResource(R.string.se_101), modifier = Modifier.height(38.dp)) { Agent.compactNow() }

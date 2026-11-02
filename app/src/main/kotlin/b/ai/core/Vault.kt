@@ -1,0 +1,110 @@
+package b.ai.core
+
+import b.ai.App
+import org.json.JSONObject
+import java.io.File
+
+/**
+ * 凭据库：按类别分文件存在私有目录 files/configs/，每个文件都是 AES-256-GCM 密文。
+ * 密钥派生与加解密都在 C 层（runtime/secret.cpp），解密结果只活在内存，不回写任何明文文件。
+ */
+object Vault {
+    const val DIR = "configs"
+    /** 模型 / 语音 / 搜索 / A2A 这些调用凭据 */
+    const val API = "apikeys.baicodex"
+    /** 账号登录态与反馈用的 token */
+    const val USER = "usertokens.baicodex"
+    /** 技能包里 $secret.xxx 引用的密钥 */
+    const val SECRET = "secrets.baicodex"
+
+    /** 全部桶：备份与指纹对账都按这张表遍历 */
+    val buckets = listOf(API, USER, SECRET)
+
+    /** 文件名 -> 该文件的全量明文，只在进程内存里存在 */
+    private val cache = HashMap<String, HashMap<String, String>>()
+    private val loaded = HashSet<String>()
+
+    /** 文件在、却解不开（种子换过）：这轮不给写，免得把还能救回来的密文冲掉 */
+    private val locked = HashSet<String>()
+
+    private val ok: Boolean by lazy { runCatching { System.loadLibrary("baicodex") }.isSuccess }
+
+    private fun path(f: String): String = File(File(App.self.filesDir, DIR), f).absolutePath
+
+    fun get(key: String, file: String = API): String {
+        ensure(file)
+        return cache[file]?.get(key).orEmpty()
+    } //读凭据
+
+    fun put(key: String, value: String, file: String = API) {
+        ensure(file)
+        if (file in locked) return
+        val m = cache.getOrPut(file) { HashMap() }
+        if (value.isEmpty()) m.remove(key) else m[key] = value
+        flush(file)
+    } //写凭据
+
+    fun snapshot(file: String = API): Map<String, String> {
+        ensure(file)
+        return HashMap(cache[file].orEmpty())
+    } //全量快照
+
+    /** 一次性搬入历史明文，返回真正写进去的条数 */
+    fun adopt(legacy: Map<String, String>, file: String = API): Int {
+        ensure(file)
+        if (file in locked) return 0
+        val m = cache.getOrPut(file) { HashMap() }
+        var n = 0
+        legacy.forEach { (k, v) ->
+            if (v.isNotBlank() && m[k] != v) {
+                m[k] = v
+                n++
+            }
+        }
+        if (n > 0) flush(file)
+        return n
+    } //搬入历史明文
+
+    /** 这个桶能不能写：解不开的密文不给覆盖，用户换回正确种子还能救 */
+    fun writable(file: String = API): Boolean {
+        ensure(file)
+        return file !in locked
+    } //是否可写
+
+    /** 当前编译进去的密钥指纹：换过 local.properties 里的种子它就会变，文件解不开时靠它对账 */
+    fun fingerprint(): String = if (ok) runCatching { nativeFingerprint() }.getOrDefault("") else ""
+
+    @Synchronized
+    private fun ensure(file: String) {
+        if (!loaded.add(file)) return
+        if (!ok) {
+            locked.add(file)
+            return
+        }
+        val raw = runCatching { nativeLoad(path(file)) }.getOrDefault("")
+        if (raw.isBlank()) {
+            //文件在却解不开 = 种子变了；文件不在 = 全新安装，照常可写
+            if (File(path(file)).isFile) locked.add(file)
+            return
+        }
+        val o = runCatching { JSONObject(raw) }.getOrNull() ?: return
+        val m = cache.getOrPut(file) { HashMap() }
+        o.keys().forEach { k ->
+            val v = o.optString(k)
+            if (v.isNotEmpty()) m[k] = v
+        }
+    } //首次访问时解密进内存
+
+    @Synchronized
+    private fun flush(file: String) {
+        if (!ok || file in locked) return
+        runCatching { File(App.self.filesDir, DIR).mkdirs() }
+        val o = JSONObject()
+        cache[file].orEmpty().forEach { (k, v) -> if (v.isNotEmpty()) o.put(k, v) }
+        runCatching { nativeSave(path(file), o.toString()) }
+    } //整体加密落盘
+
+    private external fun nativeSave(path: String, text: String): Boolean
+    private external fun nativeLoad(path: String): String
+    private external fun nativeFingerprint(): String
+} //凭据库

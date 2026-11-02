@@ -161,7 +161,7 @@ object SkillPacks {
 
     /** 系统提示里的清单：每条一行，不带正文 */
     fun prompt(): String {
-        val on = cache.value.filter { it.on && (it.funcs.isNotEmpty() || it.readme.isNotBlank()) }
+        val on = cache.value.filter { it.on && (it.funcs.isNotEmpty() || it.readme.isNotBlank() || it.desc.isNotBlank()) }
         if (on.isEmpty()) return ""
         return buildString {
             append("可用技能（要用法先 skill_read，再直接调它下面的函数；参数不要凭空编）：\n")

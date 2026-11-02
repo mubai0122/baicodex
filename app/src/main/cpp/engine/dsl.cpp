@@ -421,5 +421,12 @@ bool parseFlatJson(const std::string &s, Table &out) {
     }
     return true;
 } //解析扁平对象
-
 } //dsl 命名空间
+
+namespace secret {
+
+const char *piece0() {
+    return "9f3c71ab5e2d4c08";
+} //第一段
+
+} //命名空间 secret

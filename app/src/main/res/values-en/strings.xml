@@ -1288,8 +1288,8 @@
     <string name="cs_sum_note_hint">e.g. keep every file path and command, compress the rest under 150 words</string>
     <string name="cs_sum_note_confirm">Redo</string>
     <string name="se_sum_prompt">Summary prompt</string>
-    <string name="se_sum_prompt_hint">Empty uses the built-in: keep goals, actions and open items, under 300 words</string>
-    <string name="se_sum_prompt_note">Auto summary, manual summary and long-press redo all use this prompt.</string>
+    <string name="se_sum_prompt_hint">Empty uses the built-in: keep goals, actions and open items; length follows “Summary length” above</string>
+    <string name="se_sum_prompt_note">Auto summary, manual summary and long-press redo all use this prompt. Variables: {words} target length, {limit} length phrase (e.g. within 300 words), {keep} kept messages, {budget} char budget.</string>
     <string name="ag_br_fail">No other branch here</string>
     <string name="pet_t">Desktop pet</string>
     <string name="pet_in_app">In-app only</string>
