@@ -38,26 +38,29 @@ object Profiles {
         get() = cache.value.firstOrNull { it.id == Cfg.profileId } ?: cache.value.firstOrNull()
 
     fun init() {
-        //外部存储没挂上（direct boot / 开机未解锁）：ensure() 会退回私有目录，
-        //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，免得空表把真配置覆盖掉
+        //外部存储没挂上（direct boot / 开机自启 / 后台起进程）：ensure() 会退回私有目录，
+        //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，等界面回来再重试
         if (!Paths.externalOk()) {
+            deferred = true
             if (cache.value.isEmpty()) cache.value = listOf(legacy())
             if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
             apply(cache.value.first { it.id == Cfg.profileId })
             return
         }
+        deferred = false
         val f = Paths.file(FILE)
-        val raw = if (f.isFile) runCatching { f.readText() }.getOrNull() else null
+        val exists = f.isFile
+        val raw = if (exists) runCatching { f.readText() }.getOrNull() else null
         val parsed = raw?.let { runCatching { parse(it) }.getOrNull() }
-        //文件在却解析不出来 = 被截断或写坏了：留一份 .bad，绝不用默认条目覆盖整表
-        val broken = f.isFile && parsed == null
+        //文件在却读不出来（坏档 / 没读权限）：留一份 .bad，本次会话一个字节都不写回磁盘。
+        //内存里只用当前 Cfg 撑一条给界面，绝不用这条假表把磁盘上的好档冲掉
+        broken = exists && parsed == null
         if (broken) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
         cache.value = when {
             parsed != null && parsed.isNotEmpty() -> parsed
-            !broken && !f.isFile -> listOf(legacy()) //升级用户：文件本来就没有，把原来那套单条配置变成第一条
-            else -> emptyList()
+            broken -> cache.value.ifEmpty { listOf(legacy()) }
+            else -> listOf(legacy()) //文件本来就没有：全新安装，或从单条配置升级上来
         }
-        if (cache.value.isEmpty()) cache.value = listOf(legacy())
         if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
         //Key一律搬到私有 SP：数据根 models.json 在公共存储里，别的应用读得到，不能放明文
         cache.value.forEach { p ->
@@ -72,9 +75,31 @@ object Profiles {
             Cfg.profileSeed = 1
         }
         //坏档只备份不覆盖：这次先拿默认条目撑着，用户重新配完下次启动还能读到好档
-        if (!broken) save()
+        if (!blocked()) save()
         apply(cache.value.first { it.id == Cfg.profileId })
+        //总结用模型指着的那条已经不在表里（被删 / 没读出来）就回落「跟随当前聊天」，
+        //否则下拉显示的是跟随，实际请求还在用一个不存在的配置
+        if (Cfg.summaryProfileId.isNotBlank() && cache.value.none { it.id == Cfg.summaryProfileId }) {
+            Cfg.summaryProfileId = ""
+        }
     } //读盘、迁 Key 到私有 SP、落盘
+
+    /** 磁盘档读不出来（坏档 / 没读权限）：本次会话只读，一个字节都不许写回去 */
+    private var broken = false
+
+    /** 外部存储还没挂上就起进程：读盘延后，等界面回来再补一次 */
+    private var deferred = false
+
+    /** 上一次写盘的结果：空串 = 落盘成功，否则是给界面看的错误说明 */
+    var lastError: String = ""
+        private set
+
+    private fun blocked(): Boolean = broken || deferred
+
+    /** 外部存储晚挂载（开机自启 / 后台起进程）时补一次读盘：界面回来后调，幂等 */
+    fun retry() {
+        if (deferred && Paths.externalOk()) init()
+    } //延后读盘的重试
 
     private fun legacy(): ModelProfile = ModelProfile(
         id = "default",
@@ -123,6 +148,12 @@ object Profiles {
     } //从 JSON 还原（Key 从私有 SP 取）
 
     private fun save() {
+        //只读状态（外部存储没挂上 / 磁盘档读不出来）一个字节都不写：宁可这次改的丢，
+        //也不能拿内存里撑场面的假表把磁盘上的多条配置冲掉
+        if (blocked()) {
+            lastError = "没写进磁盘：外部存储不可用或 models.json 读不出来，重启后这条会丢"
+            return
+        }
         val arr = JSONArray()
         cache.value.forEach { p ->
             arr.put(
@@ -141,7 +172,8 @@ object Profiles {
                     .put("custom", p.custom)
             )
         }
-        Store.write(FILE, arr.toString(2))
+        //写失败不许当成功：以前这里返回值直接丢掉，界面照样提示「已保存」，重启才发现没了
+        lastError = if (Store.write(FILE, arr.toString(2))) "" else "没写进磁盘：models.json 不可写（外部存储目录被占用或无权限）"
     } //整表落盘
 
     /** 切换配置：整组提供商 / Key / 模型 / 能力一起换掉 */
@@ -203,11 +235,12 @@ object Profiles {
         upsert(cur.copy(models = clean, model = Cfg.model))
     } //保存勾选结果
 
-    fun upsert(p: ModelProfile) {
+    fun upsert(p: ModelProfile): Boolean {
         val exists = cache.value.any { it.id == p.id }
         cache.value = if (exists) cache.value.map { if (it.id == p.id) p else it } else cache.value + p
         save()
-    } //新增或覆盖
+        return lastError.isEmpty()
+    } //新增或覆盖，返回是否真写进了磁盘
 
     /** 复制当前配置成一条新的，方便同厂商加第二个模型 */
     fun duplicateCurrent(): String {

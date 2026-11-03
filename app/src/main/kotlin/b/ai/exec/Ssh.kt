@@ -36,6 +36,7 @@ object Ssh {
         val b = base()
         if (!b.isDirectory && !b.mkdirs()) return "建不了目录 ${b.absolutePath}"
         runCatching {
+            clearPass() //上次被超时杀掉的残留先删：文件写过只读位，不删就写不进去
             askFile().writeText("#!/bin/sh\ncat /root/.bai/pass\n")
             askFile().setExecutable(true, true)
             passFile().writeText(Cfg.sshPass + "\n")
@@ -45,11 +46,18 @@ object Ssh {
         return null
     } //准备认证文件
 
+    /** 上一次调用残留的密码文件先抹掉，再按当前配置重写 */
+    private fun clearPass() {
+        runCatching { passFile().delete() }
+    } //抹掉认证文件
+
     private fun sshCmd(remote: String): String = buildString {
         append("HOME=/root SSH_ASKPASS=/root/.bai/ask.sh SSH_ASKPASS_REQUIRE=force DISPLAY=:0 ")
         append("setsid -w ssh -T -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 ")
         append("-o NumberOfPasswordPrompts=1 -p ").append(Cfg.sshPort).append(' ')
         append(quote(target())).append(' ').append(quote(remote))
+        //认证文件只在该次调用里活着：命令一结束就删，rootfs 里不留常驻明文
+        append("; rm -f /root/.bai/pass")
     } //拼 ssh 命令
 
     private fun scpCmd(from: String, to: String): String = buildString {
@@ -57,6 +65,7 @@ object Ssh {
         append("setsid -w scp -q -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 ")
         append("-P ").append(Cfg.sshPort).append(' ')
         append(quote(from)).append(' ').append(quote(to))
+        append("; rm -f /root/.bai/pass")
     } //拼 scp 命令
 
     private fun remoteSpec(path: String): String = "${target()}:$path"

@@ -18,8 +18,10 @@ object Vault {
     const val SECRET = "secrets.baicodex"
     /** 位置地名缓存：坐标转出来的地址串，同样只以密文落盘 */
     const val PLACE = "places.baicodex"
+    /** SSH 与 GitHub 凭据：主机 / 端口 / 用户 / 密码 / token，单独一个文件 */
+    const val SSH = "ssh.baicodex"
     /** 全部桶：备份与指纹对账都按这张表遍历 */
-    val buckets = listOf(API, USER, SECRET, PLACE)
+    val buckets = listOf(API, USER, SECRET, PLACE, SSH)
 
     /** 文件名 -> 该文件的全量明文，只在进程内存里存在 */
     private val cache = HashMap<String, HashMap<String, String>>()

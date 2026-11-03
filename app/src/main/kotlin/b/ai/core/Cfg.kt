@@ -44,6 +44,19 @@ object Cfg {
             legacyUser.keys.forEach { e.remove(it) }
             e.apply()
         }
+        //SSH 与 GitHub 凭据独立一个加密文件：老版本散在 SP / 账号桶里，这里搬一次再洗掉
+        runCatching {
+            fun move(k: String, v: String) {
+                if (v.isNotBlank() && Vault.get(k, Vault.SSH).isBlank()) Vault.put(k, v, Vault.SSH)
+            }
+            move("host", p.getString("ssh_host", "").orEmpty())
+            val port = p.getInt("ssh_port", 0)
+            if (port in 1..65535) move("port", port.toString())
+            move("user", p.getString("ssh_user", "").orEmpty())
+            move("pass", Vault.get("ssh_pass", Vault.USER))
+            Vault.put("ssh_pass", "", Vault.USER)
+            p.edit().remove("ssh_host").remove("ssh_port").remove("ssh_user").apply()
+        }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
         //账号登录态：token 有值就算登录过，uid / 昵称 / 头像跟着一起恢复
         mem("acc_token", "").value = Vault.get("acc_token", Vault.USER)
@@ -116,10 +129,13 @@ object Cfg {
         mem("lang", "").value = p.getString("lang", "")!!
         //公告已读 id 与 SSH 连接信息：以前只写不读，重启就回到默认值
         mem("ann_seen", "").value = p.getString("ann_seen", "")!!
-        mem("ssh_host", "").value = p.getString("ssh_host", "")!!
-        mem("ssh_port", 22).value = p.getInt("ssh_port", 22)
-        mem("ssh_user", "").value = p.getString("ssh_user", "")!!
-        mem("ssh_pass", "").value = Vault.get("ssh_pass", Vault.USER)
+        //SSH 与 GitHub 凭据统一放加密文件 ssh.baicodex，SP 里一个字段都不留
+        mem("ssh_host", "").value = Vault.get("host", Vault.SSH)
+        mem("ssh_port", 22).value = Vault.get("port", Vault.SSH).toIntOrNull()?.takeIf { it in 1..65535 } ?: 22
+        mem("ssh_user", "").value = Vault.get("user", Vault.SSH)
+        mem("ssh_pass", "").value = Vault.get("pass", Vault.SSH)
+        mem("gh_user", "").value = Vault.get("gh_user", Vault.SSH)
+        mem("gh_token", "").value = Vault.get("gh_token", Vault.SSH)
         mem("max_mode", false).value = p.getBoolean("max_mode", false)
         mem("ctx_total", 128000).value = p.getInt("ctx_total", 128000)
         mem("ctx_pct", 70).value = p.getInt("ctx_pct", 70)
@@ -264,19 +280,31 @@ object Cfg {
         get() = mem("ann_seen", "").value
         set(v) { mem("ann_seen", "").value = v; put("ann_seen", v) }
 
-    /** SSH 服务器：主机 / 端口 / 用户名 / 密码；密码只落本机偏好，运行时会写到 rootfs 的 600 文件里 */
+    /** SSH 服务器：主机 / 端口 / 用户名 / 密码全部只存加密文件 ssh.baicodex，SP 里不落明文 */
     var sshHost: String
         get() = mem("ssh_host", "").value
-        set(v) { mem("ssh_host", "").value = v; put("ssh_host", v) }
+        set(v) { mem("ssh_host", "").value = v; Vault.put("host", v.trim(), Vault.SSH) }
     var sshPort: Int
         get() = mem("ssh_port", 22).value
-        set(v) { mem("ssh_port", 22).value = v; put("ssh_port", v) }
+        set(v) {
+            val n = if (v in 1..65535) v else 22
+            mem("ssh_port", 22).value = n
+            Vault.put("port", n.toString(), Vault.SSH)
+        }
     var sshUser: String
         get() = mem("ssh_user", "").value
-        set(v) { mem("ssh_user", "").value = v; put("ssh_user", v) }
+        set(v) { mem("ssh_user", "").value = v; Vault.put("user", v.trim(), Vault.SSH) }
     var sshPass: String
         get() = mem("ssh_pass", "").value
-        set(v) { mem("ssh_pass", "").value = v; Vault.put("ssh_pass", v, Vault.USER) }
+        set(v) { mem("ssh_pass", "").value = v; Vault.put("pass", v, Vault.SSH) }
+
+    /** GitHub：调用 GitHub 时首次要的用户名与 token（老式密码也填这一栏），同样只进 ssh.baicodex */
+    var ghUser: String
+        get() = mem("gh_user", "").value
+        set(v) { mem("gh_user", "").value = v; Vault.put("gh_user", v.trim(), Vault.SSH) }
+    var ghToken: String
+        get() = mem("gh_token", "").value
+        set(v) { mem("gh_token", "").value = v; Vault.put("gh_token", v.trim(), Vault.SSH) }
 
     /** 点过「立即加入」并成功跳出 QQ：下次卡片把「以后永不提醒」换成「我已加入，下次不再提示」 */
     var joinJoined: Boolean

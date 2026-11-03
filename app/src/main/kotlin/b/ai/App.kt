@@ -57,6 +57,8 @@ class App : Application() {
             override fun onActivityStarted(a: android.app.Activity) {}
             override fun onActivityResumed(a: android.app.Activity) {
                 act = a
+                //外部存储晚挂上（开机自启 / 后台起进程）时模型配置的读盘被延后了：界面回来补一次
+                runCatching { b.ai.core.Profiles.retry() }
             }
 
             override fun onActivityPaused(a: android.app.Activity) {}

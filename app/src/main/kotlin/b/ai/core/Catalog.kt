@@ -15,7 +15,10 @@ object Providers {
         Provider("custom", "自定义", "", AuthStyle.BEARER, custom = true)
     )
 
-    fun byId(id: String): Provider = builtin.firstOrNull { it.id == id } ?: builtin.first()
+    //找不到就退「自定义」：退成表里第一项（OpenAI）会让未知厂商的配置显示成 OpenAI，看着像厂商被改了
+    fun byId(id: String): Provider = builtin.firstOrNull { it.id == id }
+        ?: builtin.firstOrNull { it.custom }
+        ?: builtin.first()
 }
 
 object Workflows {

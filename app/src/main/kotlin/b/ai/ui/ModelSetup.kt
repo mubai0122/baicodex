@@ -165,6 +165,12 @@ fun ModelSetupPanel() {
         Profiles.upsert(p)
         Profiles.select(id)
         loadForm(p)
+        //写盘失败必须当场说清楚：以前这里无论落没落盘都提示「已保存」，重启才发现配置没了
+        if (Profiles.lastError.isNotEmpty()) {
+            formErr = Profiles.lastError
+            Toast.makeText(ctx, Profiles.lastError, Toast.LENGTH_LONG).show()
+            return
+        }
         savedTo = ctx.getString(R.string.ms_saved_to, p.label)
         Toast.makeText(ctx, savedTo, Toast.LENGTH_SHORT).show()
     } //保存到当前配置
