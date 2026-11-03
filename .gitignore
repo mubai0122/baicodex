@@ -3,6 +3,7 @@ build/
 .gradle/
 .kotlin/
 app/build/
+app/build.sh
 
 #参考源码（体积大，不进版本库）
 _operit/

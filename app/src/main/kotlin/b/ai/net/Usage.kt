@@ -4,6 +4,7 @@ import android.media.MediaDrm
 import android.os.Build
 import android.util.Log
 import b.ai.App
+import b.ai.core.Bai
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -13,7 +14,7 @@ import java.util.UUID
 
 /**启动上报：每次进程起来往服务端累加一次登录次数，deviceCode 用设备指纹哈希，不上传任何原始标识 */
 object Usage {
-    private const val ENDPOINT = "https://agent.ai.baiccb.cn/api/use/put.php"
+    private val ENDPOINT: String get() = Bai.api("/api/use/put.php")
     private const val TAG = "bai.usage"
 
     /** Widevine UUID：mediaDrmId 的来源 */

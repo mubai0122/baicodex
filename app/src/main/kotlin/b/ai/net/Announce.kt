@@ -1,12 +1,13 @@
 package b.ai.net
 
 import android.util.Log
+import b.ai.core.Bai
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 /** 公告：服务端 Announce.json 下发一张卡片，字段固定为标题 / 副标题 / 正文 / 按钮 / 日期 / 是否每次展示 */
 object Announce {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/announce"
+    private val BASE: String get() = Bai.api("/api/announce")
     private const val TAG = "bai.announce"
     /** 一个按钮：只允许跳浏览器，别的动作一概不支持 */
     data class Btn(val text: String, val url: String)

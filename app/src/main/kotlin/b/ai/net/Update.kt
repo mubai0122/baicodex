@@ -3,14 +3,15 @@ package b.ai.net
 import android.os.Build
 import android.util.Log
 import b.ai.App
+import b.ai.core.Bai
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** 检查更新：版本判定只看 code（纯数字），version 仅用于展示；域名以实测可用的 agent.ai.baiccb.cn 为准 */
+/** 检查更新：版本判定只看 code（纯数字），version 仅用于展示；域名取自构建期注入的服务端根地址 */
 object Update {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/update"
+    private val BASE: String get() = Bai.api("/api/update")
     private const val TAG = "bai.update"
 
     /** 服务端返回的一条版本信息：get.php 与 History.php 的字段基本一致，缺的按默认值兜底 */

@@ -26,6 +26,14 @@ val baiAesSeed: String? = run {
     }
 }
 
+val baiHost: String = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run ""
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    props.getProperty("baicodex.host")?.trim()?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: ""
+}
+
 android {
     namespace = "b.ai"
     compileSdk = 37
@@ -39,6 +47,7 @@ android {
         versionName = "1.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
@@ -58,6 +67,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     lint {
         checkReleaseBuilds = false

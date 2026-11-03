@@ -2,3 +2,4 @@ sdk.dir=
 cmake.dir=
 stringfog.key=
 baicodex.aes.key=
+baicodex.host=

@@ -1,13 +1,14 @@
 package b.ai.net
 
 import android.util.Log
+import b.ai.core.Bai
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 /** 停机开关：服务端 api/get/isuse.php 返回 false 时应用侧拦下并退出；读不到一律按 true 放行 */
 object Isuse {
-    private const val ENDPOINT = "https://agent.ai.baiccb.cn/api/get/isuse.php"
+    private val ENDPOINT: String get() = Bai.api("/api/get/isuse.php")
     private const val TAG = "bai.isuse"
 
     /** 读开关：连 3 秒 / 读 3 秒，任何异常都当 true——服务端故障不能把所有人挡在门外 */

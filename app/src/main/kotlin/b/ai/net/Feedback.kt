@@ -1,6 +1,7 @@
 package b.ai.net
 
 import android.os.Build
+import b.ai.core.Bai
 import b.ai.core.Cfg
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -8,9 +9,9 @@ import java.net.URL
 
 /** 用户反馈：提交 + 我的反馈（列表 / 详情 / 留言 / 评价），失败把服务端原话抛给界面 */
 object Feedback {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/get/"
-    private const val SUBMIT = BASE + "feedback.php"
-    private const val MINE = BASE + "feedback-mine.php"
+    private val BASE: String get() = Bai.api("/api/get/")
+    private val SUBMIT: String get() = BASE + "feedback.php"
+    private val MINE: String get() = BASE + "feedback-mine.php"
 
     /** 分类键，与服务器 feedback.php 校验的三个值一一对应 */
     const val BUG = "bug"

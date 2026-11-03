@@ -1,5 +1,6 @@
 package b.ai.net
 
+import b.ai.core.Bai
 import b.ai.core.Cfg
 import org.json.JSONObject
 import java.io.File
@@ -11,7 +12,7 @@ import java.net.URL
  * 登录成功后把 token 与资料写进 Cfg，其它模块只认 Cfg.accToken 这一个登录态。
  */
 object Auth {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/get/user.php"
+    private val BASE: String get() = Bai.api("/api/get/user.php")
 
     /** 服务端头像上限 512KB，客户端压缩后一般几十 KB */
     const val AV_MAX = 512 * 1024
@@ -184,7 +185,7 @@ object Auth {
         val d = File(b.ai.App.self.filesDir, "faces").apply { runCatching { mkdirs() } }
         val f = File(d, "u$uid-" + u.hashCode().toString(16) + ".jpg")
         if (f.length() > 0L) return f.absolutePath
-        val full = if (u.startsWith("http")) u else "https://agent.ai.baiccb.cn" + (if (u.startsWith("/")) "" else "/") + u
+        val full = if (u.startsWith("http")) u else Bai.host + (if (u.startsWith("/")) "" else "/") + u
         val ok = runCatching {
             val c = URL(full).openConnection() as HttpURLConnection
             c.connectTimeout = 8000

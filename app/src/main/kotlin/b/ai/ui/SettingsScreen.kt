@@ -2135,8 +2135,8 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
     }
 } //技能包列表
 
-//官网地址：服务端基础地址，仓库那栏等建库后再填
-internal const val SITE_URL = "https://agent.ai.baiccb.cn"
+//官网地址：服务端根地址在构建期从 local.properties 注入，仓库里没有真值
+internal val SITE_URL: String get() = b.ai.core.Bai.host
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /**安全与隐私：凭据与私密数据的开关都收在这里，不和「关于」的评价与调研混在一起 */
@@ -2245,7 +2245,10 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_252))
     CardBox {
-        LinkRow(stringResource(R.string.se_253), SITE_URL) { openUrl(ctx, SITE_URL) }
+        //服务端地址没配（fork 出去没填 local.properties）：链接置灰，点了也没意义
+        LinkRow(stringResource(R.string.se_253), SITE_URL, enabled = b.ai.core.Bai.configured) {
+            openUrl(ctx, SITE_URL)
+        }
         Spacer(Modifier.height(6.dp))
         //仓库还没建，留空就显示成灰的、点不动
         LinkRow("GitHub", GITHUB_URL.ifBlank { stringResource(R.string.se_254) }, enabled = GITHUB_URL.isNotBlank()) {

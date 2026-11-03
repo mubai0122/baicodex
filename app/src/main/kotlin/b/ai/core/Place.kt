@@ -29,7 +29,7 @@ object Place {
     private const val REC = "geo_rows"          //Vault 里那一条记录的键
     private const val TTL = 12 * 3600_000L      //同一个坐标 12 小时内不重查
     private const val MAX = 20                  //缓存最多留 20 条，超出按时间淘汰
-    private const val UA = "Baicodex/1.9.6 (Android; +https://agent.ai.baiccb.cn)"
+    private val UA: String get() = "Baicodex/" + b.ai.BuildConfig.VERSION_NAME + " (Android; +" + Bai.host + ")"
     private const val CUR_MS = 6000L            //现取一次定位最多等 6 秒
     private const val NET_MS = 5000             //单个逆地理接口超时
     private const val FRESH_MS = 120_000L       //现取的定位只要 2 分钟内就算新鲜

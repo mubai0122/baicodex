@@ -1,13 +1,14 @@
 package b.ai.net
 
 import android.util.Log
+import b.ai.core.Bai
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 /** 服务端下发的用户协议：版本号 + 当前语言的正文；拉不到就返回 null，客户端退回内置 assets */
 object TosDoc {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/tos"
+    private val BASE: String get() = Bai.api("/api/tos")
     private const val TAG = "bai.tos"
 
     /** version 决定要不要重新同意，lang 是正文实际语言，body 是纯文本正文 */

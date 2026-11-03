@@ -1,4 +1,5 @@
 package b.ai.net
+import b.ai.core.Bai
 import b.ai.core.Cfg
 import org.json.JSONObject
 import java.io.File
@@ -10,7 +11,7 @@ import java.net.URL
  * 上传与下载都走流式，进度直接回调给界面；失败一律把服务端中文原因抛出去。
  */
 object Plugins {
-    private const val BASE = "https://agent.ai.baiccb.cn/api/get/plugin.php"
+    private val BASE: String get() = Bai.api("/api/get/plugin.php")
 
     /** 包体积上限与服务端一致：8MB */
     const val ZIP_MAX = 8L * 1024 * 1024

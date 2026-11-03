@@ -3,6 +3,7 @@ package b.ai.net
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import b.ai.core.Bai
 import b.ai.core.Cfg
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -10,7 +11,7 @@ import java.net.URL
 
 /** 协议同意上报：设备码 + 协议版本 + 同意时间，落服务器 consent_log；失败静默，不挡用户进门 */
 object Consent {
-    private const val ENDPOINT = "https://agent.ai.baiccb.cn/api/get/consent.php"
+    private val ENDPOINT: String get() = Bai.api("/api/get/consent.php")
     private const val TAG = "bai.consent"
 
     /** 上报一次同意：同一版本已经上报过就跳过，不重复打点 */
