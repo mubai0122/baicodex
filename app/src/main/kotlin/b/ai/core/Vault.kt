@@ -16,9 +16,10 @@ object Vault {
     const val USER = "usertokens.baicodex"
     /** 技能包里 $secret.xxx 引用的密钥 */
     const val SECRET = "secrets.baicodex"
-
+    /** 位置地名缓存：坐标转出来的地址串，同样只以密文落盘 */
+    const val PLACE = "places.baicodex"
     /** 全部桶：备份与指纹对账都按这张表遍历 */
-    val buckets = listOf(API, USER, SECRET)
+    val buckets = listOf(API, USER, SECRET, PLACE)
 
     /** 文件名 -> 该文件的全量明文，只在进程内存里存在 */
     private val cache = HashMap<String, HashMap<String, String>>()

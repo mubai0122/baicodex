@@ -130,6 +130,8 @@ object Cfg {
         mem("inject_time", true).value = p.getBoolean("inject_time", true)
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
         mem("inject_place", false).value = p.getBoolean("inject_place", false)
+        mem("inject_precise", false).value = p.getBoolean("inject_precise", false)
+        mem("place_geo", true).value = p.getBoolean("place_geo", true)
         mem("inject_noti", false).value = p.getBoolean("inject_noti", false)
         mem("noti_limit", 0).value = p.getInt("noti_limit", 0)
         mem("inject_usage", false).value = p.getBoolean("inject_usage", false)
@@ -706,10 +708,20 @@ object Cfg {
         get() = mem("inject_battery", false).value
         set(v) { mem("inject_battery", false).value = v; put("inject_battery", v) }
 
-    /** 注入最后已知位置到系统提示（需定位权限，没授权就跳过） */
+    /** 注入位置到系统提示（需定位权限，没授权就跳过） */
     var injectPlace: Boolean
         get() = mem("inject_place", false).value
         set(v) { mem("inject_place", false).value = v; put("inject_place", v) }
+
+    /** 精确位置注入：开着就现取一次当前定位（要精确权限），关着只读最后已知位置 */
+    var injectPrecise: Boolean
+        get() = mem("inject_precise", false).value
+        set(v) { mem("inject_precise", false).value = v; put("inject_precise", v) }
+
+    /** 坐标自动转地名：开着注入的是「北京市东城区 xx」这种能读的位置，关掉只给经纬度 */
+    var placeGeo: Boolean
+        get() = mem("place_geo", true).value
+        set(v) { mem("place_geo", true).value = v; put("place_geo", v) }
 
     /** 注入今日通知（需通知使用权，没授权就跳过） */
     var injectNoti: Boolean

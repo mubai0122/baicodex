@@ -1,9 +1,6 @@
 package b.ai.core
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import android.location.LocationManager
 import android.os.BatteryManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -37,8 +34,9 @@ object Env {
         return "使用时长 今日 " + Usage.hm(min) + top
     } //今日使用时长
 
-    fun hasPlacePerm(c: Context): Boolean =
-        c.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    fun hasPlacePerm(c: Context): Boolean = Place.hasCoarse(c)
+
+    fun hasFinePerm(c: Context): Boolean = Place.hasFine(c)
 
     private fun battery(c: Context): String {
         val bm = c.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
@@ -47,21 +45,5 @@ object Env {
         return "电量 $pct%" + if (bm.isCharging) "（充电中）" else "（未充电）"
     } //电量与充电状态
 
-    private fun place(c: Context): String {
-        if (!hasPlacePerm(c)) return "位置 未授权（缺定位权限）"
-        val lm = c.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            ?: return "位置 读不到"
-        return runCatching {
-            //三个来源里挑时间最新的一个，GPS 常常是空的，网络定位更稳
-            val loc = listOf(
-                LocationManager.GPS_PROVIDER,
-                LocationManager.NETWORK_PROVIDER,
-                LocationManager.PASSIVE_PROVIDER
-            ).mapNotNull { p -> runCatching { lm.getLastKnownLocation(p) }.getOrNull() }
-                .maxByOrNull { it.time }
-            if (loc == null) "位置 暂无（还没定位过）"
-            else "位置 " + String.format(Locale.US, "%.5f,%.5f", loc.latitude, loc.longitude) +
-                "（精度约 ${loc.accuracy.toInt()} 米）"
-        }.getOrDefault("位置 未授权（缺定位权限）")
-    } //最后已知位置
+    private fun place(c: Context): String = Place.describe(c) //位置
 } //环境注入

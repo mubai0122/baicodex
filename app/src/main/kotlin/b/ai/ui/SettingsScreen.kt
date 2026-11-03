@@ -920,6 +920,10 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
         val locPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
             Cfg.injectPlace = it
         }
+        //精确位置要单独要权限：用户开了「精确位置注入」才弹
+        val finePerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { m ->
+            Cfg.injectPrecise = m[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        }
         CapSwitch(
             stringResource(R.string.se_105),
             if (Cfg.injectTime) stringResource(R.string.se_106) else stringResource(R.string.se_107),
@@ -946,6 +950,36 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             } else {
                 Cfg.injectPlace = on
             }
+        }
+        //注入位置打开后才滑出扩展项：精确位置注入（现取一次定位）、自动转地名（结果加密后本机缓存）
+        if (Cfg.injectPlace) {
+            Spacer(Modifier.height(6.dp))
+            CapSwitch(
+                stringResource(R.string.se_366),
+                when {
+                    !Cfg.injectPrecise -> stringResource(R.string.se_368)
+                    Env.hasFinePerm(ctx) -> stringResource(R.string.se_367)
+                    else -> stringResource(R.string.se_114)
+                },
+                Cfg.injectPrecise
+            ) { on ->
+                if (on && !Env.hasFinePerm(ctx)) {
+                    finePerm.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                } else {
+                    Cfg.injectPrecise = on
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            CapSwitch(
+                stringResource(R.string.se_369),
+                if (Cfg.placeGeo) stringResource(R.string.se_370) else stringResource(R.string.se_371),
+                Cfg.placeGeo
+            ) { Cfg.placeGeo = it }
         }
         Spacer(Modifier.height(8.dp))
         //通知与使用时长都要系统侧单独授权：开关先落地，缺权限就弹窗把人送去系统页

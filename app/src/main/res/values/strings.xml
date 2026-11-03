@@ -1163,6 +1163,12 @@
     <string name="se_363">没有拿到具体原因，可以改用手动方式开启。</string>
     <string name="se_364">关闭</string>
     <string name="se_365">去系统设置手动开</string>
+    <string name="se_366">精确位置注入</string>
+    <string name="se_367">现取一次当前定位，比上次记录更准</string>
+    <string name="se_368">关着：只用上次定位，不主动定位</string>
+    <string name="se_369">自动转地名</string>
+    <string name="se_370">把坐标转成城市与街区，结果加密后缓存在本机</string>
+    <string name="se_371">关着：只给经纬度，不联网查地名</string>
     <string name="qq_title">加入我们</string>
     <string name="qq_sub">加入我们的 QQ 群组，获取更多更新信息，提出建议、反馈 bug</string>
     <string name="qq_label">QQ 群</string>
