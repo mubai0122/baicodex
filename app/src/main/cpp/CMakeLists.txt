@@ -13,7 +13,9 @@ target_compile_options(quickjs PRIVATE -O2 -fwrapv -Wno-unused -Wno-sign-compare
 set_target_properties(quickjs PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(baicodex SHARED
         engine/dsl.cpp
+        engine/edit.cpp
         net/http.cpp
+        jni/edit_jni.cpp
         jni/dsl_jni.cpp
         jni/net_jni.cpp
         jni/js_jni.cpp

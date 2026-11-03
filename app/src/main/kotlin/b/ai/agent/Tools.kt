@@ -47,6 +47,8 @@ data class ToolOutcome(val ok: Boolean, val text: String, val route: Route)
 object Tools {
     const val READ = "read_file"
     const val WRITE = "write_file"
+    /** 局部改文件：old 按行定位，缩进与行尾换行自动对齐，命中唯一才替换 */
+    const val EDIT = "edit_file"
     const val MAKE_DIR = "make_dir"
     const val DELETE = "delete_file"
     const val SHELL = "exec_shell"
@@ -109,7 +111,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, ASK, SCREEN))
+            l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, ASK, SCREEN))
             l.addAll(
                 listOf(
                     LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB, JS,
@@ -130,7 +132,7 @@ object Tools {
 
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
     private val PLAN_OFF = setOf(
-        WRITE, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
+        WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
         FLOW_RUN, FLOW_SAVE, A2A,
         SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT
     )
@@ -157,6 +159,7 @@ object Tools {
     fun label(name: String): String = when (name) {
         READ -> "读取文件"
         WRITE -> "写入文件"
+        EDIT -> "修改文件"
         MAKE_DIR -> "创建目录"
         DELETE -> "删除文件"
         SHELL -> "执行命令"
@@ -261,6 +264,20 @@ object Tools {
             fn(
                 WRITE, "写入文本文件（覆盖写，父目录自动创建）。",
                 params("path" to str("绝对路径"), "content" to str("完整文本内容"))
+            )
+        )
+        //局部改：模型最爱大段重写整个文件，这里给它一条只改几行的路
+        arr.put(
+            fn(
+                EDIT,
+                "局部修改文件：把 old 这段原文换成 new。old 按行匹配、缩进和行尾空白自动忽略，" +
+                    "但其余字符必须与文件里完全一致；命中多处会报错，需要带更多上下文。new 每行的缩进" +
+                    "会自动对齐到原位置的缩进，换行符跟原文件一致。改几行就用它，别整篇 write_file。",
+                params(
+                    "path" to str("绝对路径"),
+                    "old" to str("文件里现在这几行的原文，原样抄，可以只抄正文不管缩进"),
+                    "new" to str("替换后的新代码，缩进不用自己补，靠前面对齐")
+                )
             )
         )
         arr.put(fn(DELETE, "删除文件或目录（目录递归删除）。", params("path" to str("绝对路径"))))
@@ -843,6 +860,7 @@ object Tools {
     fun execute(name: String, args: JSONObject): ToolOutcome = when (name) {
         READ -> FileOps.read(args.optString("path")).toOutcome().governed()
         WRITE -> FileOps.write(args.optString("path"), args.optString("content")).toOutcome().governed()
+        EDIT -> FileOps.edit(args.optString("path"), args.optString("old"), args.optString("new")).toOutcome().governed()
         MAKE_DIR -> FileOps.mkdir(args.optString("path")).toOutcome().governed()
         DELETE -> FileOps.delete(args.optString("path")).toOutcome().governed()
         SHELL -> execShell(args.optString("command")).governed()

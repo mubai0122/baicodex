@@ -18,8 +18,12 @@ private const val TAG = "bai-voice"
 
 /** 语音输入：默认走系统识别器；设置里切成模型模式就走录音 + 转写接口 */
 object Voice {
-    var listening by mutableStateOf(false)
-        private set
+    //系统识别器那一路自己在听；接口模式没有这个标记，直接看录音状态
+    private var sysOn by mutableStateOf(false)
+
+    /** 界面只关心「有没有在听」：接口模式跟着 Audio 的录音 / 上传走，系统模式看自己的标记 */
+    val listening: Boolean
+        get() = if (Cfg.asrMode == "api") Audio.recing || Audio.busy else sysOn
     var sysError by mutableStateOf("")
         private set
 
@@ -36,16 +40,14 @@ object Voice {
     fun toggle(ctx: Context, onText: (String) -> Unit) {
         if (Cfg.asrMode == "api") {
             Audio.toggleAsr(onText)
-            listening = Audio.recing
             return
         }
         if (sysBroken && hasApi()) {
             sysError = ""
             Audio.toggleAsr(onText)
-            listening = Audio.recing
             return
         }
-        if (listening) {
+        if (sysOn) {
             stop()
             return
         }
@@ -73,7 +75,7 @@ object Voice {
 
             override fun onError(e: Int) {
                 Log.w(TAG, "onError code=$e lang=${Cfg.asrLang} -> ${errText(ctx, e)}")
-                listening = false
+                sysOn = false
                 //ERROR_CLIENT 基本都是「系统里没有可绑定的识别服务」：配了接口就直接回退，没配就指路去设置
                 if (e == SpeechRecognizer.ERROR_CLIENT) {
                     sysBroken = true
@@ -91,7 +93,7 @@ object Voice {
             }
 
             override fun onResults(results: Bundle?) {
-                listening = false
+                sysOn = false
                 val list = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 Log.i(TAG, "onResults ${list?.size ?: 0} 条")
                 val t = list?.firstOrNull().orEmpty()
@@ -111,7 +113,7 @@ object Voice {
         //startListening 必须在主线程；不在主线程时系统会直接回 ERROR_CLIENT
         if (Looper.myLooper() != Looper.getMainLooper()) {
             Handler(Looper.getMainLooper()).post { runCatching { r.startListening(i) } }
-            listening = true
+            sysOn = true
             return
         }
         val ok = runCatching { r.startListening(i) }.isSuccess
@@ -121,18 +123,18 @@ object Voice {
             release()
             return
         }
-        listening = true
+        sysOn = true
     } //开始/结束听写
 
     fun stop() {
         runCatching { sr?.stopListening() }
-        listening = false
+        sysOn = false
     } //结束听写等结果
 
     fun release() {
         runCatching { sr?.destroy() }
         sr = null
-        listening = false
+        sysOn = false
     } //释放识别器
 
     /**配了独立接口地址或独立 key 才算能走录音转写：只回退主模型接口会打到不支持转写的服务上 */

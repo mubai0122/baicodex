@@ -188,6 +188,12 @@ private fun argPreview(ctx: Context, name: String, args: JSONObject): String = w
         val cut = if (body.length > 1200) body.take(1200) + ctx.getString(R.string.dh_trunc, body.length) else body
         "path: ${args.optString("path")}\n\n$cut"
     }
+    //改文件：把 old / new 都摆出来，用户确认时一眼能看出删了什么加了什么
+    Tools.EDIT -> {
+        fun cut(s: String) = if (s.length > 600) s.take(600) + ctx.getString(R.string.dh_trunc, s.length) else s
+        "path: ${args.optString("path")}\n\n－ 原代码\n" + cut(args.optString("old")) +
+            "\n\n＋ 新代码\n" + cut(args.optString("new"))
+    }
     else -> "path: ${args.optString("path")}"
 } //弹窗内参数全文
 

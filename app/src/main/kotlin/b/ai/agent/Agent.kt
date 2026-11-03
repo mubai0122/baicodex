@@ -933,7 +933,7 @@ object Agent {
 
     fun routeOf(name: String, args: JSONObject): Route {
         return when (name) {
-            Tools.READ, Tools.WRITE, Tools.MAKE_DIR, Tools.DELETE ->
+            Tools.READ, Tools.WRITE, Tools.EDIT, Tools.MAKE_DIR, Tools.DELETE ->
                 Router.route(Workspace.resolve(args.optString("path")))
             //车票查询、联网搜索与自带 Linux 都是应用内部通道，不受工作方式影响
             Tools.RAIL, Tools.WEB_SEARCH, Tools.LINUX -> Route.SANDBOX
@@ -985,13 +985,14 @@ object Agent {
             append("；当前工作方式：").append(mode)
             append("；Android/data 与 obb：").append(Router.dataZone(App.self))
             if (Cfg.workMode == WorkMode.NORMAL) {
-                append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / make_dir / delete_file）")
+                append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / edit_file / make_dir / delete_file）")
             }
             append("。\n")
             //环境段：时间 / 电量 / 位置，按设置里的注入开关拼，全关就是空串
             val env = Env.block(App.self)
             if (env.isNotBlank()) append(env)
             append("工具：").append(tools).append("。解压、安装、逆向等一律用 exec_shell 拼命令完成；")
+            append("只改文件里几行就用 edit_file（给现有原文 old 与新内容 new，缩进自动对齐），不要整篇重写；")
             append("车次、时刻、余票一律用 rail_query 查（action=tickets 余票 / transfer 中转 / route 经停），不要凭记忆编车次；")
             append("值得长期记住的偏好或结论用 memory_save 存下来，不要只在回答里提醒自己；")
             append("记忆条数多时提示里不一定列全，遇到像是以前告诉过你的事（地址、密码、偏好、结论）而上下文里没有，先用 memory_search 查一遍再开口，别猜也别急着问用户；")
@@ -1042,7 +1043,7 @@ object Agent {
     /** 运行模式段：模式改的不只是措辞，工具面也按模式裁，两边必须对齐 */
     private fun modePrompt(): String = when (Cfg.agentMode) {
         AgentMode.PLAN ->
-            "当前是【计划模式】：只调研、只出方案，不要改动任何东西。write_file / make_dir / delete_file / memory_save / linux_shell 都已禁用，" +
+            "当前是【计划模式】：只调研、只出方案，不要改动任何东西。write_file / edit_file / make_dir / delete_file / memory_save / linux_shell 都已禁用，" +
                 "exec_shell 只跑只读命令（ls / cat / grep / find / head）。先给结论，再给分步计划（每步写清改哪个文件、跑什么命令、怎么验证），" +
                 "结尾列出需要用户拍板的问题；用户同意后再切到标准或代码模式动手。"
         AgentMode.STANDARD ->

@@ -220,6 +220,9 @@ object Cfg {
         mem("asr_key", "").value = Vault.get("asr_key")
         mem("asr_model", "whisper-1").value = p.getString("asr_model", "whisper-1")!!
         mem("asr_lang", "zh-CN").value = p.getString("asr_lang", "zh-CN")!!
+        mem("asr_vendor", "openai").value = p.getString("asr_vendor", "openai")!!
+        mem("asr_rate", 16000).value = p.getInt("asr_rate", 16000)
+        mem("asr_max_sec", 60).value = p.getInt("asr_max_sec", 60)
         mem("plg_installed", "").value = p.getString("plg_installed", "")!!
         mem("pl_email", "").value = p.getString("pl_email", "")!!
         mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
@@ -936,6 +939,21 @@ object Cfg {
     var asrLang: String
         get() = mem("asr_lang", "zh-CN").value
         set(v) { mem("asr_lang", "zh-CN").value = v; put("asr_lang", v.trim()) }
+
+    /** 服务商预设：选中后 baseUrl 自动带上，用户只填 key 就能用 */
+    var asrVendor: String
+        get() = mem("asr_vendor", "openai").value
+        set(v) { mem("asr_vendor", "openai").value = v; put("asr_vendor", v) }
+
+    /** 录音采样率（Hz）：低了省流量、高了更准，各家普遍吃 16000 */
+    var asrRate: Int
+        get() = mem("asr_rate", 16000).value
+        set(v) { mem("asr_rate", 16000).value = v; put("asr_rate", v) }
+
+    /** 单次最长录音秒数：到点自动停并转写 */
+    var asrMaxSec: Int
+        get() = mem("asr_max_sec", 60).value
+        set(v) { mem("asr_max_sec", 60).value = v; put("asr_max_sec", v) }
 
     var ttsMode: String
         get() = mem("tts_mode", "sys").value

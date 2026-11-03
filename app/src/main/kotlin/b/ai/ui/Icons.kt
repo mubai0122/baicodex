@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -574,6 +575,7 @@ fun ToolIcon(name: String?, color: Color, side: Dp = 13.dp) {
     when (name) {
         Tools.READ -> IcFile(color, side = side)
         Tools.WRITE -> Icon(Icons.Filled.Create, null, tint = color, modifier = Modifier.size(side))
+        Tools.EDIT -> Icon(Icons.Filled.Edit, null, tint = color, modifier = Modifier.size(side))
         Tools.MAKE_DIR -> Icon(Icons.Filled.Add, null, tint = color, modifier = Modifier.size(side))
         Tools.DELETE -> Icon(Icons.Filled.Delete, null, tint = color, modifier = Modifier.size(side))
         Tools.WEB_SEARCH -> IcSearch(color, side = side)

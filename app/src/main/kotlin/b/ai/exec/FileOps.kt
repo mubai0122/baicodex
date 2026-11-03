@@ -3,6 +3,7 @@ package b.ai.exec
 import android.util.Base64
 import b.ai.App
 import b.ai.core.Route
+import b.ai.core.TextEdit
 import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -112,6 +113,44 @@ object FileOps {
             }
         }
     }.getOrNull()
+
+    /** 改文件时能读多大：整篇要进内存做行匹配，超过就不再硬上 */
+    private const val EDIT_BYTES = 1_500_000
+
+    /** 读整篇文本（改文件用）：不存在 / 没权限 / 太大都返回 null */
+    private fun readAll(path: String, route: Route): String? = runCatching {
+        when (route) {
+            Route.SANDBOX, Route.ALL_FILES, Route.ZERO_WIDTH -> {
+                val f = File(if (route == Route.ZERO_WIDTH) Router.map(path) else path)
+                if (!f.isFile || f.length() > EDIT_BYTES) null else f.readText()
+            }
+            else -> {
+                val sz = exec(route, "wc -c < ${q(path)} 2>/dev/null || echo -1")
+                val n = sz.out.trim().toLongOrNull() ?: -1L
+                if (n < 0 || n > EDIT_BYTES) return@runCatching null
+                val r = exec(route, "head -c $EDIT_BYTES ${q(path)} 2>/dev/null")
+                if (r.ok) r.out else null
+            }
+        }
+    }.getOrNull()
+
+    /** 改文件：old 按行定位（缩进与行尾空白自动忽略），唯一命中才替换，落盘复用 write 带 diff */
+    fun edit(rawPath: String, old: String, neu: String): Out {
+        if (old.isBlank()) return Out(false, "old 不能为空：至少给一行原文，新增整段用 write_file", Route.SANDBOX)
+        val path = Workspace.resolve(rawPath)
+        val route = Router.route(path)
+        val src = readAll(path, route)
+            ?: return Out(false, "[${route.label}] 读不到 $path（不存在、没权限或超过 1.5MB）", route)
+        val hit = when (val loc = TextEdit.locate(src, old)) {
+            is TextEdit.Loc.Bad -> return Out(false, loc.msg, route)
+            is TextEdit.Loc.One -> loc.hit
+        }
+        val next = TextEdit.splice(src, hit, neu)
+        if (next == src) return Out(true, "内容和原来一样，没有改动：$path", route)
+        val out = write(path, next)
+        if (!out.ok) return out
+        return out.copy(text = "已替换第 ${hit.start + 1} 行起共 ${hit.count} 行\n" + out.text)
+    } //局部改文件
 
     fun mkdir(rawPath: String): Out {
         val path = Workspace.resolve(rawPath)

@@ -109,6 +109,7 @@ import b.ai.core.Repo
 import b.ai.core.Profiles
 import b.ai.core.Skills
 import b.ai.core.Speak
+import b.ai.core.Audio
 import b.ai.core.Voice
 import b.ai.exec.Diff
 import java.text.SimpleDateFormat
@@ -1243,7 +1244,12 @@ private fun InputBar(
                 IcMic(if (Voice.listening) DangerRed else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    if (Voice.listening) stringResource(R.string.cs_listening) else stringResource(R.string.cs_voice),
+                    if (Voice.listening) {
+                        //接口模式显示已录秒数与上限，看着数字知道还要说多久
+                        val sec = Audio.recSec
+                        if (Cfg.asrMode == "api" && sec > 0) "$sec s / ${Cfg.asrMaxSec} s"
+                        else stringResource(R.string.cs_listening)
+                    } else stringResource(R.string.cs_voice),
                     fontSize = 10.sp,
                     color = if (Voice.listening) DangerRed else TextSecondary
                 )

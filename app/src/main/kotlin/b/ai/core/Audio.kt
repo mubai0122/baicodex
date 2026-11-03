@@ -30,11 +30,24 @@ object Audio {
     private var player: MediaPlayer? = null
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
 
-    /** 接口地址：自己填了就用自己填的，没填退回当前模型配置的 baseUrl，少填一遍 */
-    private fun base(custom: String): String =
-        (custom.ifBlank { Cfg.baseUrl }).trim().trimEnd('/')
+    /** 转写接口地址：手填 > 服务商预设 > 当前模型配置，三者都空就没法用 */
+    private fun asrBase(): String {
+        val preset = AsrPresets.of(Cfg.asrVendor).base
+        return (Cfg.asrBase.ifBlank { preset }).ifBlank { Cfg.baseUrl }.trim().trimEnd('/')
+    } //识别接口地址
+
+    /** 合成接口地址：手填 > 当前模型配置（TTS 不走识别预设，两家不是一回事） */
+    private fun ttsBase(): String = Cfg.ttsBase.ifBlank { Cfg.baseUrl }.trim().trimEnd('/')
 
     private fun key(custom: String): String = custom.ifBlank { Cfg.apiKey }.trim()
+
+    //录音秒数：界面显示用，到设置的上限自动停并转写
+    var recSec by mutableStateOf(0)
+        private set
+
+    private var clock: Runnable? = null
+    private var limit: Runnable? = null
+    private var cb: ((String) -> Unit)? = null
 
     fun startRec(): Boolean {
         stopRec()
@@ -45,7 +58,8 @@ object Audio {
             r.setAudioSource(MediaRecorder.AudioSource.MIC)
             r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            r.setAudioSamplingRate(16000)
+            //采样率按设置来：8k 适合窄带语音，16k 各家通吃，48k 留给音乐场景
+            r.setAudioSamplingRate(Cfg.asrRate.coerceIn(8000, 48000))
             r.setAudioChannels(1)
             r.setOutputFile(f.absolutePath)
             r.prepare()
@@ -59,6 +73,7 @@ object Audio {
         rec = r
         recFile = f
         recing = true
+        startClock()
         return true
     } //开始录音
 
@@ -71,35 +86,90 @@ object Audio {
         runCatching { r.release() }
         return recFile
     } //停止录音
+
+    /** 点一下开始录、再点一下停下并上传转写；结果切回主线程交给 onText */
+    fun toggleAsr(onText: (String) -> Unit) {
+        if (recing) {
+            if (cb == null) cb = onText
+            finish()
+            return
+        }
+        cb = onText
+        if (!startRec()) cb = null
+    } //录音转写开关
+
+    /** 收尾：停录音、上传转写，结果只交给这一轮的回调 */
+    private fun finish() {
+        stopClock()
+        val f = stopRec()
+        if (f == null || !f.exists() || f.length() == 0L) {
+            runCatching { f?.delete() }
+            return
+        }
+        val once = cb
+        cb = null
+        busy = true
+        error = ""
+        Thread({
+            val r = runCatching { transcribe(f) }
+            f.delete()
+            main.post {
+                busy = false
+                r.onSuccess { t -> once?.invoke(t) }.onFailure { error = it.message ?: "转写失败" }
+            }
+        }, "bai-asr").start()
+    } //停止并转写
+
+    /** 每秒走一格给界面看，到上限自动收 */
+    private fun startClock() {
+        stopClock()
+        recSec = 0
+        val max = Cfg.asrMaxSec.coerceIn(5, 3600)
+        var n = 0
+        val tick = object : Runnable {
+            override fun run() {
+                if (!recing) return
+                n++
+                recSec = n
+                if (n < max) main.postDelayed(this, 1000)
+            }
+        }
+        val stop = Runnable {
+            if (recing) {
+                error = "已到 $max 秒上限，自动停止并转写"
+                finish()
+            }
+        }
+        clock = tick
+        limit = stop
+        main.postDelayed(tick, 1000)
+        main.postDelayed(stop, max * 1000L)
+    } //录音计时
+
+    private fun stopClock() {
+        clock?.let { main.removeCallbacks(it) }
+        limit?.let { main.removeCallbacks(it) }
+        clock = null
+        limit = null
+        recSec = 0
+    } //停计时
+
     fun cancelRec() {
+        stopClock()
+        cb = null
         stopRec()
         recFile?.delete()
         recFile = null
     } //放弃这段录音
 
-    /** 点一下开始录、再点一下停下并上传转写；结果切回主线程交给 onText */
-    fun toggleAsr(onText: (String) -> Unit) {
-        if (recing) {
-            val f = stopRec()
-            if (f == null || !f.exists()) return
-            busy = true
-            error = ""
-            Thread({
-                val r = runCatching { transcribe(f) }
-                f.delete()
-                main.post {
-                    busy = false
-                    r.onSuccess(onText).onFailure { error = it.message ?: "转写失败" }
-                }
-            }, "bai-asr").start()
-            return
-        }
-        startRec()
-    } //录音转写开关
-
     /** 音频转文字：multipart 上传，返回识别出的正文；失败抛异常由调用方出提示 */
     fun transcribe(f: File): String {
-        val url = URL(base(Cfg.asrBase) + "/audio/transcriptions")
+        //服务商有单文件上限时先拦一下，比传完被拒省一轮等待
+        val cap = AsrPresets.of(Cfg.asrVendor).maxMb
+        if (cap > 0 && f.length() > cap * 1024L * 1024L) {
+            throw IllegalStateException("这段录音 ${f.length() / 1024 / 1024}MB，超过 ${cap}MB 上限，缩短一点或换服务商")
+        }
+        val url = URL(asrBase() + "/audio/transcriptions")
         val boundary = "----bai" + System.nanoTime()
         val body = java.io.ByteArrayOutputStream()
         fun part(name: String, value: String) {
@@ -133,13 +203,50 @@ object Audio {
         return t.trim()
     } //音频转文字
 
+    /** 拉 baseUrl 下的 /models：语音类筛出来给用户选，一个都没筛到就退回全量列表 */
+    fun listModels(): List<String> {
+        val b = asrBase()
+        if (b.isBlank()) throw IllegalStateException("baseUrl 还没填")
+        val c = (URL(b + "/models").openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 15000
+            readTimeout = 30000
+            setRequestProperty("Accept", "application/json")
+            if (key(Cfg.asrKey).isNotBlank()) setRequestProperty("Authorization", "Bearer " + key(Cfg.asrKey))
+        }
+        val code = c.responseCode
+        val text = (if (code in 200..299) c.inputStream else c.errorStream)
+            ?.bufferedReader()?.use { it.readText() }.orEmpty()
+        c.disconnect()
+        if (code !in 200..299) throw IllegalStateException("HTTP $code " + text.take(160))
+        val obj = runCatching { JSONObject(text) }.getOrNull()
+            ?: throw IllegalStateException("返回不是 JSON，这个服务可能没有 /models")
+        val arr = obj.optJSONArray("data") ?: obj.optJSONArray("models")
+            ?: throw IllegalStateException("返回里没有模型列表")
+        val all = ArrayList<String>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val id = o.optString("id").ifBlank {
+                o.optString("slug").ifBlank { o.optString("name") }
+            }
+            if (id.isNotBlank()) all.add(id)
+        }
+        //混着聊天模型没法选，先按名字筛一遍语音的
+        val voice = all.filter {
+            val n = it.lowercase()
+            n.contains("whisper") || n.contains("asr") || n.contains("transcri") ||
+                n.contains("sensevoice") || n.contains("paraformer") || n.contains("audio")
+        }
+        return (voice.ifEmpty { all }).distinct()
+    } //拉可用模型列表
+
     /** 文字转音频：拿回 mp3 字节存进缓存再播，返回是否成功 */
     fun speak(text: String): Boolean {
         val t = text.trim()
         if (t.isEmpty()) return false
         error = ""
         val bytes = runCatching {
-            val url = URL(base(Cfg.ttsBase) + "/audio/speech")
+            val url = URL(ttsBase() + "/audio/speech")
             val json = JSONObject()
                 .put("model", Cfg.ttsModel.ifBlank { "tts-1" })
                 .put("voice", Cfg.ttsVoice.ifBlank { "alloy" })

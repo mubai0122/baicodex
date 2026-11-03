@@ -77,6 +77,7 @@ import b.ai.agent.Tools
 import android.app.Activity
 import b.ai.core.Avatar
 import b.ai.core.Audio
+import b.ai.core.AsrPresets
 import b.ai.core.Backup
 import b.ai.core.Cfg
 import b.ai.core.Lang
@@ -599,11 +600,17 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
         }
     }
     item {
-        //语音识别：可以走系统能力，也可以自填模型接口
-        val ctx = LocalContext.current
+        //语音识别：系统识别器一条路，模型接口一条路；接口这边给主流服务商预设，模型能从 /models 拉
         val sysLabel = stringResource(R.string.se_v_mode_sys)
         val apiLabel = stringResource(R.string.se_v_mode_api)
         val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+        val preset = AsrPresets.of(Cfg.asrVendor)
+        val scope = rememberCoroutineScope()
+        var models by remember(Cfg.asrVendor) {
+            mutableStateOf(preset.models.ifEmpty { listOf(Cfg.asrModel) }.filter { it.isNotBlank() })
+        }
+        var loading by remember { mutableStateOf(false) }
+        var pickErr by remember { mutableStateOf("") }
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_v_in_t), stringResource(R.string.se_v_in_d))
         CardBox {
@@ -616,11 +623,26 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
                 onSelect = { Cfg.asrMode = it }
             )
             if (Cfg.asrMode == "api") {
+                //服务商：选完 baseUrl 跟着走，用户只剩填 key
+                SelectField(
+                    "服务商",
+                    preset.label,
+                    AsrPresets.all,
+                    optionLabel = { it.label },
+                    isSelected = { Cfg.asrVendor == it.id },
+                    onSelect = { p ->
+                        Cfg.asrVendor = p.id
+                        Cfg.asrBase = ""
+                        pickErr = ""
+                        models = p.models
+                        if (p.models.isNotEmpty()) Cfg.asrModel = p.models.first()
+                    }
+                )
                 Field(
                     label = stringResource(R.string.se_v_base),
                     value = Cfg.asrBase,
                     onValueChange = { Cfg.asrBase = it },
-                    placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+                    placeholder = preset.base.ifBlank { Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" } }
                 )
                 Field(
                     label = stringResource(R.string.se_v_key),
@@ -629,12 +651,69 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
                     placeholder = stringResource(R.string.se_v_key_ph),
                     secret = true
                 )
+                //预设里有模型就直接下拉选，拉回来的列表也塞这里
+                if (models.isNotEmpty()) {
+                    SelectField(
+                        "模型",
+                        Cfg.asrModel,
+                        models,
+                        optionLabel = { it },
+                        isSelected = { Cfg.asrModel == it },
+                        onSelect = { Cfg.asrModel = it }
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                GhostButton(
+                    if (loading) "拉取中…" else "从接口获取模型",
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    if (loading) return@GhostButton
+                    loading = true
+                    pickErr = ""
+                    scope.launch {
+                        val r = withContext(Dispatchers.IO) { runCatching { Audio.listModels() } }
+                        loading = false
+                        r.onSuccess { list ->
+                            if (list.isEmpty()) {
+                                pickErr = "接口没返回模型，下面手填"
+                            } else {
+                                models = list
+                                Cfg.asrModel = list.first()
+                            }
+                        }.onFailure { pickErr = it.message ?: "拉取失败" }
+                    }
+                }
                 Field(
-                    label = stringResource(R.string.se_v_model),
+                    label = "模型（也能手填）",
                     value = Cfg.asrModel,
                     onValueChange = { Cfg.asrModel = it },
                     placeholder = "whisper-1"
                 )
+                if (pickErr.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(pickErr, fontSize = 10.sp, color = DangerRed)
+                }
+                //录音参数：采样率决定上传体积与精度，最长时长到点自动停并转写
+                SelectField(
+                    "录音采样率",
+                    "${Cfg.asrRate} Hz",
+                    AsrPresets.rates,
+                    optionLabel = { "$it Hz" },
+                    isSelected = { Cfg.asrRate == it },
+                    onSelect = { Cfg.asrRate = it }
+                )
+                SelectField(
+                    "单次最长录音",
+                    "${Cfg.asrMaxSec} 秒",
+                    AsrPresets.maxSecs,
+                    optionLabel = { "$it 秒" },
+                    isSelected = { Cfg.asrMaxSec == it },
+                    onSelect = { Cfg.asrMaxSec = it }
+                )
+                if (preset.tip.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(preset.tip, fontSize = 10.sp, color = TextSecondary)
+                }
             }
             Field(
                 label = stringResource(R.string.se_v_lang),
