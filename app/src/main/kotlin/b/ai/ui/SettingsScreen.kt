@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -142,9 +141,8 @@ private val SettingsTabs = listOf(
     FloatTab(R.string.se_003) { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_005) { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab(R.string.se_sec_tab) { c -> Icon(Icons.Filled.Lock, null, tint = c, modifier = Modifier.size(18.dp)) }
-) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于 / 安全与隐私（权限已并入对话，语音并入模型；索引按标签匹配）
+    FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
+) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于（权限已并入对话，语音并入模型；索引按标签匹配）
 
 /** 色系主题名字，索引与 theme 的 ThemeTint 一一对应 */
 private val TINT_NAMES = listOf(
@@ -195,7 +193,7 @@ private val SettingIndex = listOf(
     SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK"),
     SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053),
     SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055),
-    SettingEntry(R.string.se_gd_title, R.string.se_sec_tab, R.string.se_sec_sub)
+    SettingEntry(R.string.se_gd_title, R.string.se_006, R.string.se_sec_sub)
 ) //搜索索引
 
 /** 按标签找 tab 下标，找不到就落回 0 */
@@ -428,7 +426,6 @@ fun SettingsScreen(
                         )
                         4 -> statTab(statUi)
                         5 -> aboutTab(onOpenFeedback)
-                        6 -> secTab()
                         else -> uiTab(onOpenPet)
                     }
             }
@@ -2139,16 +2136,7 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
 internal val SITE_URL: String get() = b.ai.core.Bai.host
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
-/**安全与隐私：凭据与私密数据的开关都收在这里，不和「关于」的评价与调研混在一起 */
-private fun LazyListScope.secTab() {
-    item {
-        Spacer(Modifier.height(10.dp))
-        SectionTitle(stringResource(R.string.se_sec_tab), stringResource(R.string.se_sec_sub))
-    }
-    item { GuardSection() }
-} //安全与隐私
-
-/** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 / 更新历史 + 官网 / GitHub 链接 */
+/** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 + 更新历史 + 官网 / GitHub 链接 */
 private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     //应用信息 +检查更新 +更新历史：状态只活在这一块里，滚出屏幕随 item 一起释放
     item {
@@ -2375,6 +2363,13 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
             Text(bkTip, fontSize = 11.sp, color = TextSecondary)
         }
     }
+    }
+
+    item {
+    Spacer(Modifier.height(14.dp))
+    //隐私与安全：单独一个分块放在关于页最后，不占分类位，也不挨着评价与调研
+    SectionTitle(stringResource(R.string.se_sec_tab), stringResource(R.string.se_sec_sub))
+    GuardSection()
     }
 } //关于分类
 

@@ -1616,7 +1616,7 @@
     <string name="se_gd_go_wait">读完再开（%1$ds）</string>
     <string name="se_gd_wipe">我确认清空</string>
     <string name="se_gd_wipe_wait">确认清空（%1$ds）</string>
-    <string name="se_sec_tab">安全与隐私</string>
+    <string name="se_sec_tab">隐私与安全</string>
     <string name="se_sec_sub">凭据与私密数据的保护开关，改动前请读完整段警告</string>
     <string name="se_ns_t">关闭流式输出</string>
     <string name="se_ns_on">已关闭：等模型整段写完一次性显示，看不到逐字输出</string>
