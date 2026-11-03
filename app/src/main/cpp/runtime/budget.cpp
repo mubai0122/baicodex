@@ -1,4 +1,4 @@
-#include "govern.h"
+#include "budget.h"
 
 namespace baicore {
 
@@ -11,12 +11,5 @@ bool govern(const std::string &text, size_t maxChars, std::string &out) {
     out = text.substr(0, maxChars);
     return false;
 } //超出预算硬截止
-} //baicore 命名空间
 
-namespace secret {
-
-const char *piece1() {
-    return "d14b8e6027af35c9";
-} //第二段
-
-} //命名空间 secret
+} //命名空间 baicore

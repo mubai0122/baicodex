@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace secret {
 
@@ -18,5 +19,8 @@ std::string load(const std::string &path);
 
 /** 当前编译进去的密钥指纹，换密钥导致解不开时用它比对 */
 std::string fingerprint();
+
+/** 主种子副本（32 字节），给数据保障层派生第二种子；调用方用完自己擦 */
+std::vector<unsigned char> seedCopy();
 
 } //命名空间 secret

@@ -105,6 +105,48 @@ object Vault {
         runCatching { nativeSave(path(file), o.toString()) }
     } //整体加密落盘
 
+    /** 逐桶解进内存：迁移阶段先摸底，解不开的桶进 locked，后面不会被覆盖 */
+    @Synchronized
+    fun loadAll(): Int {
+        var n = 0
+        buckets.forEach { f ->
+            ensure(f)
+            if (f in loaded) n++
+        }
+        return n
+    } //全部解密进内存
+
+    /** 逐桶按当前密钥写回：调用前 native 那侧必须已经 unlock，否则写出来的是解不开的密文 */
+    @Synchronized
+    fun flushAll(): Int {
+        var n = 0
+        buckets.forEach { f ->
+            if (f !in loaded || f in locked) return@forEach
+            if (cache[f].isNullOrEmpty() && !File(path(f)).isFile) return@forEach
+            flush(f)
+            n++
+        }
+        return n
+    } //全部重新加密落盘
+
+    /** 把全部桶按当前密钥重写一遍：开启数据超强加密后旧 v1 密文在这里变成 v2 */
+    @Synchronized
+    fun rewriteAll(): Int {
+        loadAll()
+        return flushAll()
+    } //全量重写
+
+    /** 强制清空：密文文件全删，内存缓存与锁定状态一起清掉，不给旧值留回写机会 */
+    @Synchronized
+    fun wipeAll() {
+        buckets.forEach { f ->
+            runCatching { File(path(f)).delete() }
+            cache.remove(f)
+            loaded.remove(f)
+            locked.remove(f)
+        }
+    } //清空全部凭据
+
     private external fun nativeSave(path: String, text: String): Boolean
     private external fun nativeLoad(path: String): String
     private external fun nativeFingerprint(): String

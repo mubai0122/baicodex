@@ -3,22 +3,10 @@
 #include <string>
 
 #include "edit.h"
+#include "jni_util.h"
 
-namespace {
-
-std::string jstr(JNIEnv *env, jstring js) {
-    if (js == nullptr) return "";
-    const char *p = env->GetStringUTFChars(js, nullptr);
-    std::string out = p == nullptr ? "" : p;
-    if (p != nullptr) env->ReleaseStringUTFChars(js, p);
-    return out;
-} //jstring → std::string（只用来比较，不往外回写）
-
-jstring back(JNIEnv *env, const std::string &s) {
-    return env->NewStringUTF(s.c_str());
-} //std::string → jstring
-
-} //匿名命名空间
+using jni::back;
+using jni::jstr;
 
 extern "C" {
 

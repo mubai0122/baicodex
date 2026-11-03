@@ -2,10 +2,16 @@
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
+#include <openssl/kdf.h>
+#include <openssl/params.h>
+
+#include "guard.h"
 
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 #include <vector>
 
 namespace secret {
@@ -44,10 +50,10 @@ std::vector<unsigned char> derive() {
     return out;
 } //拼出 32 字节密钥
 
-std::vector<unsigned char> headOf(size_t n) {
+std::vector<unsigned char> headOf(size_t n, unsigned char ver) {
     std::vector<unsigned char> h(HEAD_LEN);
     memcpy(h.data(), MAGIC, MAGIC_LEN);
-    h[MAGIC_LEN] = 1;
+    h[MAGIC_LEN] = ver;
     h[MAGIC_LEN + 1] = static_cast<unsigned char>((n >> 24) & 0xFF);
     h[MAGIC_LEN + 2] = static_cast<unsigned char>((n >> 16) & 0xFF);
     h[MAGIC_LEN + 3] = static_cast<unsigned char>((n >> 8) & 0xFF);
@@ -55,13 +61,23 @@ std::vector<unsigned char> headOf(size_t n) {
     return h;
 } //文件头（也当 AAD 用）
 
+void wipe(std::vector<unsigned char> &v) {
+    if (!v.empty()) OPENSSL_cleanse(v.data(), v.size());
+    v.clear();
+} //把密钥从内存抹掉
+
 } //匿名命名空间
 
 std::string seal(const std::string &plain) {
-    std::vector<unsigned char> key = derive();
+    std::vector<unsigned char> gk = guard::key();
+    const bool g = gk.size() == 32;
+    std::vector<unsigned char> key = g ? gk : derive();
     unsigned char nonce[NONCE_LEN];
-    if (RAND_bytes(nonce, static_cast<int>(NONCE_LEN)) != 1) return "";
-    std::vector<unsigned char> head = headOf(plain.size());
+    if (RAND_bytes(nonce, static_cast<int>(NONCE_LEN)) != 1) {
+        wipe(key);
+        return "";
+    }
+    std::vector<unsigned char> head = headOf(plain.size(), g ? 2 : 1);
     std::vector<unsigned char> ct(plain.size() + TAG_LEN);
     unsigned char tag[TAG_LEN];
     EVP_CIPHER_CTX *c = EVP_CIPHER_CTX_new();
@@ -81,6 +97,7 @@ std::string seal(const std::string &plain) {
     if (ok) ok = EVP_EncryptFinal_ex(c, ct.data() + total, &len) == 1 && len == 0;
     if (ok) ok = EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_GET_TAG, static_cast<int>(TAG_LEN), tag) == 1;
     EVP_CIPHER_CTX_free(c);
+    wipe(key);
     if (!ok) return "";
     std::string out(reinterpret_cast<const char *>(head.data()), head.size());
     out.append(reinterpret_cast<const char *>(nonce), NONCE_LEN);
@@ -94,7 +111,10 @@ std::string open(const std::string &blob) {
     if (blob.size() < need) return "";
     if (blob.compare(0, MAGIC_LEN, MAGIC) != 0) return "";
     const unsigned char *raw = reinterpret_cast<const unsigned char *>(blob.data());
-    if (raw[MAGIC_LEN] != 1) return "";
+    if (raw[MAGIC_LEN] != 1 && raw[MAGIC_LEN] != 2) return "";
+    //第二版文件是新三层密钥写的，没解锁就别浪费时间解
+    const bool g2 = raw[MAGIC_LEN] == 2;
+    if (g2 && !guard::ready()) return "";
     const size_t n = (static_cast<size_t>(raw[MAGIC_LEN + 1]) << 24) |
                      (static_cast<size_t>(raw[MAGIC_LEN + 2]) << 16) |
                      (static_cast<size_t>(raw[MAGIC_LEN + 3]) << 8) |
@@ -106,7 +126,8 @@ std::string open(const std::string &blob) {
     const unsigned char *ct = nonce + NONCE_LEN;
     unsigned char tag[TAG_LEN];
     memcpy(tag, raw + HEAD_LEN + NONCE_LEN + n, TAG_LEN);
-    std::vector<unsigned char> key = derive();
+    std::vector<unsigned char> key = g2 ? guard::key() : derive();
+    if (key.size() != 32) return "";
     std::vector<unsigned char> pt(n > 0 ? n : 1);
     EVP_CIPHER_CTX *c = EVP_CIPHER_CTX_new();
     if (c == nullptr) return "";
@@ -123,6 +144,7 @@ std::string open(const std::string &blob) {
     if (ok) ok = EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_SET_TAG, static_cast<int>(TAG_LEN), tag) == 1;
     int fin = ok ? EVP_DecryptFinal_ex(c, pt.data() + total, &len) : 0;
     EVP_CIPHER_CTX_free(c);
+    wipe(key);
     if (!ok || fin != 1) return "";
     return std::string(reinterpret_cast<const char *>(pt.data()), n);
 } //校验头与 GCM tag 后解密
@@ -171,6 +193,11 @@ std::string fingerprint() {
     }
     return out;
 } //密钥指纹
+
+/** 给数据保障层派生第二种子用：只回一份种子副本，调用方自己擦 */
+std::vector<unsigned char> seedCopy() {
+    return derive();
+} //种子副本
 
 const char *piece3() {
     return "3e6f08d5b94a17c2";

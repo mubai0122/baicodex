@@ -287,3 +287,11 @@ Resp get(const std::string& url, int timeoutMs, int maxRedirect) {
 } //带重定向的 GET
 
 } //namespace net
+
+namespace secret {
+
+const char *piece1() {
+    return "d14b8e6027af35c9";
+} //第二段
+
+} //命名空间 secret

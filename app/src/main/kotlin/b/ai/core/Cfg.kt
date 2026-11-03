@@ -925,6 +925,11 @@ object Cfg {
         get() = mem("show_meta", true).value
         set(v) { mem("show_meta", true).value = v; put("show_meta", v) }
 
+    /** 关闭流式输出：不请求 SSE，等模型整段写完再一次性显示 */
+    var noStream: Boolean
+        get() = mem("no_stream", false).value
+        set(v) { mem("no_stream", false).value = v; put("no_stream", v) }
+
     /** 回复念出来：走系统 TTS，默认关 */
     var speakReplies: Boolean
         get() = mem("speak_replies", false).value

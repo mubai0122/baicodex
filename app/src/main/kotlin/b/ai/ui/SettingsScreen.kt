@@ -8,6 +8,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.foundation.background
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -56,6 +58,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,6 +82,7 @@ import b.ai.core.Avatar
 import b.ai.core.Audio
 import b.ai.core.AsrPresets
 import b.ai.core.Backup
+import b.ai.core.Guard
 import b.ai.core.Cfg
 import b.ai.core.Lang
 import b.ai.core.Mcp
@@ -138,8 +142,9 @@ private val SettingsTabs = listOf(
     FloatTab(R.string.se_003) { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_005) { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
-    FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
-) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于（权限已并入对话，语音并入模型；索引按标签匹配）
+    FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_sec_tab) { c -> Icon(Icons.Filled.Lock, null, tint = c, modifier = Modifier.size(18.dp)) }
+) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于 / 安全与隐私（权限已并入对话，语音并入模型；索引按标签匹配）
 
 /** 色系主题名字，索引与 theme 的 ThemeTint 一一对应 */
 private val TINT_NAMES = listOf(
@@ -189,7 +194,8 @@ private val SettingIndex = listOf(
     SettingEntry(R.string.se_050, R.string.se_005, hintRaw = ""),
     SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK"),
     SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053),
-    SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055)
+    SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055),
+    SettingEntry(R.string.se_gd_title, R.string.se_sec_tab, R.string.se_sec_sub)
 ) //搜索索引
 
 /** 按标签找 tab 下标，找不到就落回 0 */
@@ -422,6 +428,7 @@ fun SettingsScreen(
                         )
                         4 -> statTab(statUi)
                         5 -> aboutTab(onOpenFeedback)
+                        6 -> secTab()
                         else -> uiTab(onOpenPet)
                     }
             }
@@ -1039,6 +1046,12 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             if (Cfg.showMeta) stringResource(R.string.se_120) else stringResource(R.string.se_121),
             Cfg.showMeta
         ) { Cfg.showMeta = it }
+        Spacer(Modifier.height(8.dp))
+        CapSwitch(
+            stringResource(R.string.se_ns_t),
+            if (Cfg.noStream) stringResource(R.string.se_ns_on) else stringResource(R.string.se_ns_off),
+            Cfg.noStream
+        ) { Cfg.noStream = it }
     }
 
     }
@@ -2126,6 +2139,15 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
 internal const val SITE_URL = "https://agent.ai.baiccb.cn"
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
+/**安全与隐私：凭据与私密数据的开关都收在这里，不和「关于」的评价与调研混在一起 */
+private fun LazyListScope.secTab() {
+    item {
+        Spacer(Modifier.height(10.dp))
+        SectionTitle(stringResource(R.string.se_sec_tab), stringResource(R.string.se_sec_sub))
+    }
+    item { GuardSection() }
+} //安全与隐私
+
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 / 更新历史 + 官网 / GitHub 链接 */
 private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     //应用信息 +检查更新 +更新历史：状态只活在这一块里，滚出屏幕随 item 一起释放
@@ -2352,6 +2374,96 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     }
     }
 } //关于分类
+
+/** 数据保障开关：开启走强制警告 +15s 冷静期，开启后只能强制清空，没有回退 */
+@Composable
+private fun GuardSection() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var on by remember { mutableStateOf(Guard.on) }
+    //0 空闲 1 开启警告 2 关闭警告 3 执行中 4 已清空
+    var mode by remember { mutableStateOf(0) }
+    var tip by remember { mutableStateOf("") }
+    //开启进度：1 生成密钥 2 迁移旧数据 3 加密落盘 4 完成
+    var step by remember { mutableIntStateOf(1) }
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.se_gd_title), fontSize = 14.sp, color = TextPrimary)
+                Text(
+                    guardStateText(),
+                    fontSize = 11.sp,
+                    color = if (on && !Guard.ready) DangerRed else TextSecondary
+                )
+            }
+            Switch(
+                checked = on,
+                //开关是受控的：点「关」只弹警告，真清空成功才把状态改掉
+                onCheckedChange = { want -> if (want != on) mode = if (want) 1 else 2 },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            stringResource(R.string.se_gd_note),
+            fontSize = 11.sp,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            stringResource(R.string.se_gd_covers),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
+        if (tip.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(tip, fontSize = 11.sp, color = TextSecondary)
+        }
+    }
+    HostInOverlay(mode != 0) {
+        when (mode) {
+            1 -> GuardWarnDialog(
+                cost = if (Guard.lastCostMs > 0) String.format("%.1f秒", Guard.lastCostMs / 1000f) else "2–4秒",
+                device = Guard.deviceName(),
+                onCancel = { mode = 0 },
+                onConfirm = {
+                    step = 1
+                    mode = 3
+                    scope.launch {
+                        val done = withContext(Dispatchers.IO) {
+                            runCatching { Guard.enable { step = it } }.getOrDefault(false)
+                        }
+                        on = Guard.on
+                        mode = 0
+                        if (done) {
+                            tip = ctx.getString(R.string.se_gd_tip_on)
+                        } else {
+                            Toast.makeText(ctx, R.string.se_gd_fail, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            )
+            2 -> GuardOffDialog(
+                onCancel = { mode = 0 },
+                onConfirm = {
+                    mode = 5
+                    scope.launch {
+                        withContext(Dispatchers.IO) { runCatching { Guard.disable() } }
+                        on = false
+                        mode = 4
+                    }
+                }
+            )
+            3 -> GuardProgressDialog(step)
+            5 -> GuardBusyDialog(stringResource(R.string.se_gd_busy))
+            4 -> SimpleDialog(
+                stringResource(R.string.se_gd_cleared_title),
+                stringResource(R.string.se_gd_cleared_body),
+                onClose = { android.os.Process.killProcess(android.os.Process.myPid()) }
+            )
+        }
+    }
+} //数据保障开关
 
 /** 一行链接：右侧显示地址，不可点时整行变灰 */
 @Composable

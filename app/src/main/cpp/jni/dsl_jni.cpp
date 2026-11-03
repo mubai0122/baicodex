@@ -2,22 +2,14 @@
 
 #include <string>
 
+#include "budget.h"
 #include "dsl.h"
-#include "govern.h"
+#include "jni_util.h"
+
+using jni::back;
+using jni::jstr;
 
 namespace {
-
-std::string jstr(JNIEnv *env, jstring js) {
-    if (js == nullptr) return "";
-    const char *p = env->GetStringUTFChars(js, nullptr);
-    std::string out = p == nullptr ? "" : p;
-    if (p != nullptr) env->ReleaseStringUTFChars(js, p);
-    return out;
-} //jstring → std::string
-
-jstring back(JNIEnv *env, const std::string &s) {
-    return env->NewStringUTF(s.c_str());
-} //std::string → jstring
 
 /**统一返回 "OK\n<文本>" 或 "ERR\n<错误>"，Kotlin 侧只看第一行 */
 std::string pack(const dsl::Result &r) {

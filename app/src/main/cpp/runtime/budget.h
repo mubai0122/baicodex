@@ -9,4 +9,4 @@ namespace baicore {
  *  未超限时 out=text 且返回 true；超限时 out=硬截断文本且返回 false。 */
 bool govern(const std::string &text, size_t maxChars, std::string &out);
 
-} //baicore 命名空间
+} //命名空间 baicore

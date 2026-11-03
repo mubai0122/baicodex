@@ -537,7 +537,11 @@ object Agent {
                     val client = LlmClient(Cfg.baseUrl, keyOf(keyIdx), Providers.byId(Cfg.providerId).auth)
                     val got = runCatching {
                         val streamed = withContext(Dispatchers.IO) {
-                            try {
+                            //关了流式就整包等：端点不支持 SSE 时也走这条，界面上没有逐字过程
+                            if (Cfg.noStream) {
+                                status = host.getString(R.string.ag_stream_off)
+                                client.chat(Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams)
+                            } else try {
                                 client.chatStream(
                                     Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams,
                                     shouldStop = { !ctx.isActive },

@@ -77,6 +77,9 @@ class App : Application() {
         Paths.ensure()
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
+        //数据保障必须在 Cfg.init 之前解锁：否则加密库读不出 v2 密文，会把整个桶当「解不开」锁掉
+        val guardOk = runCatching { b.ai.core.Guard.boot() }.getOrDefault(false)
+        android.util.Log.w("Boot", "Guard.boot=" + guardOk + " on=" + b.ai.core.Guard.on)
         Cfg.init(this)
         android.util.Log.w("Boot", "Cfg.init done +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms")
         //背景图：缩略图同步读进内存 + 真图后台读盘缓存，首帧就有对色的底，不会先白一下
@@ -100,6 +103,8 @@ class App : Application() {
             //功能级的配置库（技能、角色、定时任务、工作流、A2A 节点、价格、触发器、MCP）一律首帧之后再读
             //老版本明文 secrets.json 先搬进加密库，技能执行时才能读到 $secret.xxx
             runCatching { b.ai.core.Secret.migrate() }
+            //数据保障开着就把还是旧版的密文重写一遍：中途被杀的迁移在这里收尾
+            runCatching { if (b.ai.core.Guard.ready) b.ai.core.Vault.rewriteAll() }
             runCatching { Skills.init(self) }
             runCatching { Personas.init(self) }
             runCatching { Schedules.init(self) }

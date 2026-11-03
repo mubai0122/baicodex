@@ -219,6 +219,8 @@ fun ToolConfirmDialog(p: PendingTool) {
         Box(
             Modifier
                 .fillMaxWidth()
+                //参数区吃剩余高度（fill=false 不强行撑满）：参数再长也压不到下面的按钮
+                .weight(1f, fill = false)
                 .heightIn(max = 300.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
@@ -370,6 +372,7 @@ fun SimpleDialog(title: String, body: String, onClose: () -> Unit) {
         Box(
             Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .heightIn(max = 360.dp)
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .padding(10.dp)
