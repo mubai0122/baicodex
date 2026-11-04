@@ -158,6 +158,10 @@ object Cfg {
         mem("price_out", 0f).value = p.getFloat("price_out", 0f)
         mem("price_cache", 0f).value = p.getFloat("price_cache", 0f)
         mem("show_meta", true).value = p.getBoolean("show_meta", true)
+        //这几个以前只 put 不读回：改完当场生效，重启就回默认值
+        mem("no_stream", false).value = p.getBoolean("no_stream", false)
+        mem("mask_out", false).value = p.getBoolean("mask_out", false)
+        mem("no_shot", false).value = p.getBoolean("no_shot", false)
         mem("speak_replies", false).value = p.getBoolean("speak_replies", false)
         mem("profile_name", "").value = p.getString("profile_name", "")!!
         mem("profile_custom", false).value = p.getBoolean("profile_custom", false)
@@ -957,6 +961,18 @@ object Cfg {
     var noStream: Boolean
         get() = mem("no_stream", false).value
         set(v) { mem("no_stream", false).value = v; put("no_stream", v) }
+    /** 数据输出脱敏：回复里出现口令 / token 一类字段时把值打成掩码；逐字流式没法事后过滤，开了它必须关流式 */
+    var maskOut: Boolean
+        get() = mem("mask_out", false).value
+        set(v) {
+            mem("mask_out", false).value = v
+            put("mask_out", v)
+            if (v && !noStream) noStream = true
+        }
+    /** 禁止截图与录屏：主界面加 FLAG_SECURE，系统层直接取不到画面 */
+    var noShot: Boolean
+        get() = mem("no_shot", false).value
+        set(v) { mem("no_shot", false).value = v; put("no_shot", v) }
 
     /** 回复念出来：走系统 TTS，默认关 */
     var speakReplies: Boolean

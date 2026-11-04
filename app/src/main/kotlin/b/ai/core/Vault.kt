@@ -20,8 +20,10 @@ object Vault {
     const val PLACE = "places.baicodex"
     /** SSH 与 GitHub 凭据：主机 / 端口 / 用户 / 密码 / token，单独一个文件 */
     const val SSH = "ssh.baicodex"
+    /** 数据输出脱敏的关键词表：服务端下发，本地只做缓存，不算凭据但一并不外露 */
+    const val MASK = "maskrules.baicodex"
     /** 全部桶：备份与指纹对账都按这张表遍历 */
-    val buckets = listOf(API, USER, SECRET, PLACE, SSH)
+    val buckets = listOf(API, USER, SECRET, PLACE, SSH, MASK)
 
     /** 文件名 -> 该文件的全量明文，只在进程内存里存在 */
     private val cache = HashMap<String, HashMap<String, String>>()

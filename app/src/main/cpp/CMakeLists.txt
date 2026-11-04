@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.22.1)
 project(baicodex C CXX)
 
 #cpp/ 目录职责，新增文件按此归位：
-#  _third_party/  第三方源码：quickjs、android_openssl。只读不改
-#  tools/         工具实现：工具模板 DSL（shell 命令 / http 报文渲染与校验）、edit_file 按行定位
-#  image/         纯算法：像素处理（盒式模糊），不认识 JNI
-#  js/            QuickJS 运行时封装 + 会话层（句柄、宿主工具桥回调）
-#  net/           HTTPS 客户端
-#  runtime/       加解密与预算治理：secret 落盘加密、guard 数据保障、budget 超限截断
-#  jni/           只有 JNI 薄壳：Java_* 入口 + jni_util.h 字符串胶水，禁止写业务逻辑
+#  core/base/      与业务无关的基础工具：字节、KV 文本、掩码写入、扫描游走
+#  core/security/  安全相关：数据输出脱敏、加解密、常量时间比较
+#  core/feature/   功能相关：与安全无关的业务能力
+#  ffi/            纯 C ABI 薄壳：Java_* 入口 + 导出给 Rust/C++ 双实现的同名符号
+#  _third_party/   第三方源码：quickjs、android_openssl。只读不改
+#
+# 迁移中：以下旧目录按上面的分类逐步搬走，搬完即删，不再往里加新文件
+#  tools/ -> core/feature/  image/ -> core/feature/  js/ -> core/feature/
+#  net/   -> core/feature/  runtime/ -> core/security/  jni/ -> ffi/
 
 add_library(quickjs STATIC
         _third_party/quickjs/quickjs.c
@@ -23,6 +25,16 @@ target_compile_options(quickjs PRIVATE -O2 -fwrapv -Wno-unused -Wno-sign-compare
 set_target_properties(quickjs PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
 add_library(baicodex SHARED
+        core/base/bytes.cpp
+        core/base/kv.cpp
+        core/base/marks.cpp
+        core/base/text.cpp
+        core/security/mask/mask.cpp
+        core/security/mask/patterns.cpp
+        core/security/mask/rules.cpp
+        core/security/mask/scan.cpp
+        ffi/mask_ffi.cpp
+        ffi/mask_jni.cpp
         tools/dsl.cpp
         tools/edit.cpp
         image/blur.cpp
@@ -40,6 +52,7 @@ add_library(baicodex SHARED
         jni/net_jni.cpp
         jni/secret_jni.cpp)
 target_include_directories(baicodex PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/tools
         ${CMAKE_CURRENT_SOURCE_DIR}/image
         ${CMAKE_CURRENT_SOURCE_DIR}/jni
@@ -56,13 +69,15 @@ if(ANDROID_ABI STREQUAL "arm64-v8a")
         set(RUST_MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/../rust/baiguard/Cargo.toml)
         set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/rust)
         set(RUST_LIB ${RUST_TARGET_DIR}/aarch64-linux-android/release/libbaiguard.a)
+        #Rust 侧已拆成多模块，DEPENDS 必须把 src 下所有 .rs 都算上，改动子模块才会重编
+        file(GLOB_RECURSE RUST_SOURCES CONFIGURE_DEPENDS
+                ${CMAKE_CURRENT_SOURCE_DIR}/../rust/baiguard/src/*.rs)
         add_custom_command(
                 OUTPUT ${RUST_LIB}
                 COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${RUST_TARGET_DIR}
                         ${CARGO_BIN} build --release --target aarch64-linux-android
                         --manifest-path ${RUST_MANIFEST}
-                DEPENDS ${RUST_MANIFEST}
-                        ${CMAKE_CURRENT_SOURCE_DIR}/../rust/baiguard/src/lib.rs
+                DEPENDS ${RUST_MANIFEST} ${RUST_SOURCES}
                 COMMENT "cargo build baiguard (aarch64-linux-android)"
                 VERBATIM)
         add_custom_target(baiguard_rust DEPENDS ${RUST_LIB})

@@ -6,6 +6,7 @@ import android.app.Activity
 import android.graphics.Color
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -101,17 +102,24 @@ class MainActivity : ComponentActivity() {
         }
         super.onPause()
     } //累计前台时长
-
     //进程退出前把 TTS 引擎关掉，否则念到一半退出会漏声音
     override fun onDestroy() {
         Speak.release()
         super.onDestroy()
     } //释放朗读引擎
 
+    /** 禁止截图：加上 FLAG_SECURE 后截屏与录屏拿到的就是黑屏，设置里改开关时即时生效 */
+    fun applySecure(on: Boolean) {
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    } //防截取标记
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val tf = android.os.SystemClock.uptimeMillis()
         readTaskPrompt(intent)
+        //禁止截图：开关开着就在最早期给窗口打上防截取标记，系统层直接取不到画面
+        applySecure(Cfg.noShot)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)

@@ -85,6 +85,7 @@ import b.ai.core.Guard
 import b.ai.core.Cfg
 import b.ai.core.Lang
 import b.ai.core.Mcp
+import b.ai.core.Mask
 import b.ai.core.McpServer
 import b.ai.core.Env
 import b.ai.core.Speak
@@ -115,6 +116,8 @@ import b.ai.exec.Router
 import b.ai.exec.Toolchain
 import b.ai.exec.Workspace
 import b.ai.net.Update
+import b.ai.net.MaskRules
+import b.ai.MainActivity
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
@@ -2371,6 +2374,13 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     SectionTitle(stringResource(R.string.se_sec_tab), stringResource(R.string.se_sec_sub))
     GuardSection()
     }
+
+    item {
+    Spacer(Modifier.height(14.dp))
+    //新增保护：注入与泄漏相关的两个开关，同样不占分类位，排在隐私与安全后面
+    SectionTitle(stringResource(R.string.se_pt_tab), stringResource(R.string.se_pt_sub))
+    ProtectSection()
+    }
 } //关于分类
 
 /** 数据保障开关：开启走强制警告 +15s 冷静期，开启后只能强制清空，没有回退 */
@@ -2462,6 +2472,111 @@ private fun GuardSection() {
         }
     }
 } //数据保障开关
+
+/** 新增保护：数据输出脱敏与禁止截图录屏，两个开关都不碰数据，随时可关 */
+@Composable
+private fun ProtectSection() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var mask by remember { mutableStateOf(Cfg.maskOut) }
+    var shot by remember { mutableStateOf(Cfg.noShot) }
+    //脱敏开启前的强制警告
+    var warn by remember { mutableStateOf(false) }
+    //开启后的结果提示：服务端规则到底拉到没拉到
+    var tip by remember { mutableStateOf("") }
+    //当前规则规模：高 8 位键名数，低 8 位前缀数
+    var shape by remember { mutableIntStateOf(Mask.shape()) }
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.se_pt_mask_t), fontSize = 14.sp, color = TextPrimary)
+                Text(
+                    if (mask) stringResource(R.string.se_pt_mask_on) else stringResource(R.string.se_pt_mask_off),
+                    fontSize = 11.sp,
+                    color = if (mask) AccentBlue else TextSecondary
+                )
+            }
+            Switch(
+                checked = mask,
+                //开要走 15 秒警告，关直接生效
+                onCheckedChange = { want ->
+                    if (want != mask) {
+                        if (want) {
+                            warn = true
+                        } else {
+                            Cfg.maskOut = false
+                            mask = false
+                            tip = ""
+                        }
+                    }
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.se_pt_mask_note), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.se_pt_mask_stream), fontSize = 10.sp, color = TextSecondary)
+        if (mask) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.se_pt_mask_rules, (shape shr 8) and 0xFF, shape and 0xFF),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+        if (tip.isNotBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(tip, fontSize = 11.sp, color = TextSecondary)
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.se_pt_shot_t), fontSize = 14.sp, color = TextPrimary)
+                Text(
+                    if (shot) stringResource(R.string.se_pt_shot_on) else stringResource(R.string.se_pt_shot_off),
+                    fontSize = 11.sp,
+                    color = if (shot) AccentBlue else TextSecondary
+                )
+            }
+            Switch(
+                checked = shot,
+                //先落盘再改窗口标记：进程被杀重启后也能按新状态恢复
+                onCheckedChange = { want ->
+                    Cfg.noShot = want
+                    shot = want
+                    (ctx as? MainActivity)?.applySecure(want)
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.se_pt_shot_note), fontSize = 11.sp, color = TextSecondary)
+    }
+    HostInOverlay(warn) {
+        if (warn) {
+            MaskWarnDialog(
+                onCancel = { warn = false },
+                onConfirm = {
+                    warn = false
+                    //setter 里会顺手关掉流式输出：逐字显示没法事后过滤
+                    Cfg.maskOut = true
+                    mask = true
+                    tip = ""
+                    scope.launch {
+                        val done = withContext(Dispatchers.IO) {
+                            runCatching { MaskRules.sync(force = true) }.getOrDefault(false)
+                        }
+                        shape = Mask.shape()
+                        tip = ctx.getString(if (done) R.string.se_pt_mask_ok else R.string.se_pt_mask_fail)
+                    }
+                }
+            )
+        }
+    }
+} //新增保护
 
 /** 一行链接：右侧显示地址，不可点时整行变灰 */
 @Composable

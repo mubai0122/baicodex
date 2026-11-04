@@ -139,6 +139,9 @@ class App : Application() {
             runCatching { Alarms.rescheduleAll(this) }
             //每次进程起来上报一次使用计数：失败静默
             runCatching { Usage.reportOnce() }
+            //脱敏：先把上次缓存的服务端规则装回 native，再按有效期后台换一份新的
+            runCatching { b.ai.core.Mask.boot() }
+            runCatching { if (Cfg.maskOut) b.ai.net.MaskRules.sync() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
         b.ai.ui.PerfProbe.install()

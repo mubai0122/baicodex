@@ -529,3 +529,56 @@ fun guardStateText(): String = when {
     !Guard.ready -> stringResource(R.string.se_gd_state_bad)
     else -> stringResource(R.string.se_gd_state_on)
 } //状态文案
+
+/** 数据输出脱敏的开启警告：15 秒冷静期，读完才能点确认；明确写出「并不完全安全」 */
+@Composable
+fun MaskWarnDialog(onCancel: () -> Unit, onConfirm: () -> Unit) {
+    ScrimCard {
+        Text(stringResource(R.string.se_pt_warn_title), fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.se_pt_warn_head), fontSize = 12.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                //正文区吃剩余高度，按钮永远保持固有高度
+                .weight(1f, fill = false)
+                .heightIn(max = 280.dp)
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                .padding(10.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Column {
+                WarnLine(stringResource(R.string.se_pt_w1_t), stringResource(R.string.se_pt_w1_b), AccentBlue)
+                Spacer(Modifier.height(8.dp))
+                WarnLine(stringResource(R.string.se_pt_w2_t), stringResource(R.string.se_pt_w2_b), WarnAmber)
+                Spacer(Modifier.height(8.dp))
+                WarnLine(stringResource(R.string.se_pt_w3_t), stringResource(R.string.se_pt_w3_b), DangerRed)
+                Spacer(Modifier.height(10.dp))
+                Text(stringResource(R.string.se_pt_mask_note), fontSize = 11.sp, color = TextSecondary)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    stringResource(R.string.se_pt_warn_back),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = DangerRed
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                stringResource(R.string.se_gd_cancel),
+                fontSize = 12.sp,
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .tap { onCancel() }
+                    .padding(vertical = 11.dp)
+            )
+            HoldButton(stringResource(R.string.se_pt_go), { stringResource(R.string.se_pt_go_wait, it) }, danger = false) { onConfirm() }
+        }
+    }
+} //脱敏开启警告
