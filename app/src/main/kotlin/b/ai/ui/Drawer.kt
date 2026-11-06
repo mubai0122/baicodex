@@ -125,7 +125,8 @@ fun DrawerPanel(
 
     Box(
         Modifier
-            .width(DrawerWidth)
+            //宽度由宿主按屏宽算好经 CompositionLocal 下发，面板自己不猜
+            .width(LocalDrawerWidth.current)
             .fillMaxHeight()
             .liquidBg(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp), tint = BgGray, veil = 0.45f)
             .onGloballyPositioned {

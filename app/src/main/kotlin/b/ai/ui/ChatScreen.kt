@@ -134,6 +134,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.runtime.CompositionLocalProvider
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -173,8 +178,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var sumNote by remember { mutableStateOf(false) }
     var promptReq by remember { mutableStateOf<PromptReq?>(null) }
     var wsPanel by remember { mutableStateOf(false) }
-    //上下文用量小卡片：原来挂在 material DropdownMenu 里（自带不透明底），改成走根弹窗层才有一致的玻璃
+    //上下文用量小卡片：原来走根弹窗层是一张居中大卡，现在改成贴顶栏预算环的小卡片
     var ctxOpen by remember { mutableStateOf(false) }
+    //预算环在根坐标系里的右下角，小卡片按它锚定
+    var ctxRingX by remember { mutableIntStateOf(0) }
+    var ctxRingY by remember { mutableIntStateOf(0) }
     var attachPanel by remember { mutableStateOf(false) }
     var cfgPanel by remember { mutableStateOf(false) }
     var modePanel by remember { mutableStateOf(false) }
@@ -188,10 +196,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
+    val (pageTop, pageBottom) = backdropPageInset()
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
         //采样层必须含真背景：只垫纯色的话，玻璃在没内容的地方采到的就是一块灰白
-        drawPageBg()
+        drawPageBg(offsetY = -pageTop, fullHeight = size.height + pageTop + pageBottom)
         drawContent()
     }
     //卡片玻璃的采样源：纯背景一层，不能含消息卡自己，否则采到上一帧的自己
@@ -260,10 +269,11 @@ Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glas
              onOpenWorkspace = { wsPanel = true },
              onPersona = { personaPanel = !personaPanel },
              onOpenCtx = { ctxOpen = true },
-            ctxTok = cst[0],
-            ctxFreshCount = cst[1],
-            ctxFreshTok = cst[2]
-        )
+             onCtxPos = { x, y -> ctxRingX = x; ctxRingY = y },
+             ctxTok = cst[0],
+             ctxFreshCount = cst[1],
+             ctxFreshTok = cst[2]
+         )
 
         //面板开着时返回键先收面板，别直接退出应用
         BackHandler(enabled = panelOpen) {
@@ -534,7 +544,7 @@ Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glas
 
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
-        detail != null || menuFor != null || promptReq != null || wsPanel || ctxOpen || fullInput || modePanel ||
+        detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
             sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
@@ -590,9 +600,6 @@ Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glas
                 }
             )
             wsPanel -> WorkspaceDialog { wsPanel = false }
-            ctxOpen -> ScrimCard(onDismiss = { ctxOpen = false }) {
-                CtxCard(cst[0], Cfg.ctxTokenBudget, cst[1], cst[2])
-            }
             d != null -> ToolDetailDialog(d) { detail = null }
             sm != null -> SummaryMenuDialog(
                 onRegen = {
@@ -665,6 +672,11 @@ Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glas
             )
         }
     }
+        //上下文用量小卡片：贴着顶栏预算环弹出，点外面任意处收起
+    if (ctxOpen) {
+        Box(Modifier.fillMaxSize().tap { ctxOpen = false })
+        CtxCard(cst[0], Cfg.ctxTokenBudget, cst[1], cst[2], ctxRingX, ctxRingY)
+    }
         //应用内桌宠：只在「仅应用内展示」时出现，压在输入区右上，不挡发送键
         PetInApp(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 96.dp))
     }
@@ -677,6 +689,7 @@ private fun TopBar(
     onOpenWorkspace: () -> Unit,
     onPersona: () -> Unit,
     onOpenCtx: () -> Unit,
+    onCtxPos: (Int, Int) -> Unit,
     ctxTok: Int,
     ctxFreshCount: Int,
     ctxFreshTok: Int
@@ -690,7 +703,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(34.dp)
-                .liquidBg(CircleShape, tint = SurfaceMuted)
+                .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
                 .tap { onOpenDrawer() },
             contentAlignment = Alignment.Center
         ) { IcMenu(TextPrimary) }
@@ -712,7 +725,7 @@ private fun TopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .liquidBg(RoundedCornerShape(10.dp)
-                        , tint = if (role == null) SurfaceMuted else AccentBlueSoft)
+                        , tint = if (role == null) SurfaceMuted else AccentBlueSoft, gate = 0.dp)
                         .tap { onPersona() }
                         .padding(start = 3.dp, end = 7.dp, top = 2.dp, bottom = 2.dp)
                 ) {
@@ -740,14 +753,14 @@ private fun TopBar(
             )
         }
         Spacer(Modifier.width(8.dp))
-        //上下文占用环：占加号左边那个位置，点开是用量小卡片（走根弹窗层，跟其它弹窗同一套玻璃）
-        CtxRing(tokens = ctxTok, budget = Cfg.ctxTokenBudget) { onOpenCtx() }
+        //上下文占用环：占加号左边那个位置，点开是贴它下方的小卡片
+        CtxRing(tokens = ctxTok, budget = Cfg.ctxTokenBudget, onPos = onCtxPos) { onOpenCtx() }
         Spacer(Modifier.width(8.dp))
         //右上角两个动作：新建会话（加号）、工作区绑定（代码尖括号）
         Box(
             Modifier
                 .size(34.dp)
-                .liquidBg(CircleShape, tint = SurfaceMuted)
+                .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
                 .tap { Agent.newSession() },
             contentAlignment = Alignment.Center
         ) { IcPlus(TextPrimary) }
@@ -755,7 +768,7 @@ private fun TopBar(
         Box(
             Modifier
                 .size(34.dp)
-                .liquidBg(CircleShape, tint = SurfaceMuted)
+                .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
                 .tap { onOpenWorkspace() },
             contentAlignment = Alignment.Center
         ) { IcCode(TextPrimary) }
@@ -937,7 +950,7 @@ private fun BarChip(
     if (glassOn) {
         Row(
             Modifier
-                .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted, highlightAlpha = 0.85f)
+                .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted, highlightAlpha = 0.85f, gate = 0.dp)
                 .tap { onTap() }
                 .padding(horizontal = 9.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -978,7 +991,7 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
         Box(
             Modifier
                 .size(36.dp)
-                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted, highlightAlpha = 0.85f)
+                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted, highlightAlpha = 0.85f, gate = 0.dp)
                 .tap(enabled = canSend) { onSend() },
             contentAlignment = Alignment.Center
         ) {
@@ -1089,14 +1102,19 @@ private fun ctxStat(list: List<ChatMsg>): IntArray {
 
 /** 上下文占用的环形进度：环长按真实百分比画，70% 以下是绿的，70% 起变红 */
 @Composable
-private fun CtxRing(tokens: Int, budget: Int, onTap: () -> Unit) {
+private fun CtxRing(tokens: Int, budget: Int, onPos: (Int, Int) -> Unit, onTap: () -> Unit) {
     val pct = if (budget <= 0) 0f else (tokens.toFloat() / budget).coerceIn(0f, 1f)
     val c = if (pct < 0.7f) OkGreen else DangerRed
     //尺寸与底色都跟顶栏那个加号一致，摆在一起才不突兀
     Box(
         Modifier
             .size(34.dp)
-            .liquidBg(CircleShape, tint = SurfaceMuted)
+            //锚点：小卡片按环的右下角落位
+            .onGloballyPositioned {
+                val r = it.boundsInRoot()
+                onPos(r.right.toInt(), r.bottom.toInt())
+            }
+            .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
             .tap { onTap() },
         contentAlignment = Alignment.Center
     ) {
@@ -1117,39 +1135,50 @@ private fun CtxRing(tokens: Int, budget: Int, onTap: () -> Unit) {
     }
 } //上下文占用环
 
-/** 点环之后的小卡片：占用多少、这个对话一共烧了多少、没压缩的那段烧了多少 */
+/** 点环之后的小卡片：贴预算环右下方，只报三个数 */
 @Composable
-private fun CtxCard(tokens: Int, budget: Int, freshCount: Int, freshTok: Int) {
+private fun CtxCard(tokens: Int, budget: Int, freshCount: Int, freshTok: Int, anchorX: Int, anchorY: Int) {
     val sid = Agent.sessionId.orEmpty()
     var spent by remember(sid) { mutableStateOf(0L) }
     LaunchedEffect(sid) {
         spent = withContext(Dispatchers.IO) { Repo.usageSession(sid).sum() }
     }
     val over = budget > 0 && tokens.toLong() * 100 / budget >= 70
-    Column(Modifier.width(214.dp).padding(horizontal = 12.dp, vertical = 10.dp)) {
+    val d = LocalDensity.current
+    //宽度按内容压到 168dp；右边缘跟环对齐，左边不出屏
+    val wDp = 168.dp
+    val x = (anchorX - with(d) { wDp.toPx() }).coerceAtLeast(with(d) { 8.dp.toPx() })
+    val y = anchorY + with(d) { 6.dp.toPx() }
+    Column(
+        Modifier
+            .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+            .width(wDp)
+            .liquidBg(RoundedCornerShape(14.dp), veil = 0.42f, gate = 0.dp)
+            .padding(horizontal = 10.dp, vertical = 9.dp)
+    ) {
         Text(
             stringResource(R.string.ctx_tip_title),
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(5.dp))
         Text(
             stringResource(R.string.ctx_tip_used, fmtNum(tokens), fmtNum(budget)),
-            fontSize = 10.5.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
             color = if (over) DangerRed else OkGreen
         )
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             stringResource(R.string.ctx_tip_total, fmtNum(spent)),
-            fontSize = 10.5.sp,
+            fontSize = 10.sp,
             color = TextPrimary
         )
-        Spacer(Modifier.height(3.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             stringResource(R.string.ctx_tip_fresh, fmtNum(freshTok), freshCount),
-            fontSize = 10.5.sp,
+            fontSize = 10.sp,
             color = TextSecondary
         )
     }
@@ -1297,7 +1326,7 @@ private fun InputBar(
                 .fillMaxWidth()
                 .heightIn(min = 44.dp)
                 .then(floatShadow)
-                .liquidBg(RoundedCornerShape(14.dp))
+                .liquidBg(RoundedCornerShape(14.dp), gate = 0.dp)
                 .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
                 .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically

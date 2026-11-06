@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -248,10 +249,11 @@ fun SettingsScreen(
     }
 
     //页面层：底栏的玻璃就采样这一层（底色先垫一发，缺内容的地方不至于透成黑）
+    val (pageTop, pageBottom) = backdropPageInset()
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
         //采样层必须含真背景：只垫纯色的话，底栏玻璃在没内容的地方采到的就是一块灰白
-        drawPageBg()
+        drawPageBg(offsetY = -pageTop, fullHeight = size.height + pageTop + pageBottom)
         drawContent()
     }
     //卡片玻璃只采纯背景那一层：不能采 pageBackdrop，卡片自己也在里面，采到的会是上一帧的自己
@@ -356,8 +358,12 @@ fun SettingsScreen(
             LazyColumn(
                 Modifier
                     .fillMaxSize()
-                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp),
-                state = scroll
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp),
+                state = scroll,
+                //底部让位必须走 contentPadding：列表要一直滚到屏幕底、从悬浮底栏下面穿过去，
+                //底栏的玻璃才有东西可采。以前写 Modifier.padding(bottom = 104.dp)，内容在底栏上方
+                //就被硬裁断，底栏和内容之间还剩一条空带，看着像底栏自带一块填充
+                contentPadding = PaddingValues(bottom = 86.dp)
             ) {
                 when {
                     find && fq.isNotBlank() -> {

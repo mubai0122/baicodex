@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -39,8 +41,12 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.highlight.Highlight
 import b.ai.core.Cfg
 import b.ai.core.Wallpaper
 import androidx.compose.ui.graphics.FilterQuality
@@ -66,6 +72,9 @@ fun GlassPanel(
     val glass = Cfg.glassCard
     val shape = RoundedCornerShape(corner)
     val dark = DarkColors
+    //真玻璃要有采样源：页面没登记背景层就只能平涂
+    val bd = LocalCardBackdrop.current ?: CardBackdropHolder.current
+    val gOn = glass && bd != null && GlassPerf.heavy
     var touch by remember { mutableStateOf(Offset(-1f, -1f)) }
     var pressed by remember { mutableStateOf(false) }
     Column(
@@ -100,7 +109,26 @@ fun GlassPanel(
                     Modifier
                 }
             )
-            .background(if (glass) GlassBrush(touch.x, touch.y, pressed, dark) else SolidColor(SurfaceWhite))
+            .then(
+                if (gOn) {
+                    //真玻璃：采样背景 -> 提饱和 -> 模糊 -> 高光边，手指柔光压在玻璃上、内容下
+                    Modifier.drawBackdrop(
+                        backdrop = bd!!,
+                        shape = { shape },
+                        effects = {
+                            padding = maxOf(padding, 24.dp.toPx())
+                            vibrancy()
+                            if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                        },
+                        highlight = { Highlight.Default.copy(alpha = 0.45f) },
+                        onDrawSurface = {
+                            drawRect(brush = GlassBrush(touch.x, touch.y, pressed, dark, 0.30f))
+                        }
+                    )
+                } else {
+                    Modifier.background(if (glass) GlassBrush(touch.x, touch.y, pressed, dark) else SolidColor(SurfaceWhite))
+                }
+            )
             .border(
                 1.dp,
                 if (glass) Color.White.copy(alpha = if (dark) 0.12f else 0.60f) else BorderGray,
@@ -117,16 +145,21 @@ private class GlassBrush(
     private val touchX: Float,
     private val touchY: Float,
     private val pressed: Boolean,
-    private val dark: Boolean
+    private val dark: Boolean,
+    //真玻璃模式只留一层很淡的白托住文字；1f 是原来平涂的强度
+    private val alphaScale: Float = 1f
 ) : androidx.compose.ui.graphics.ShaderBrush() {
 
     override fun createShader(size: Size): Shader {
+        val v0 = (if (dark) 225 else 238) * alphaScale
+        val v1 = (if (dark) 190 else 205) * alphaScale
+        //alphaScale 一压，整层就退成薄纱，玻璃的模糊和折射才透得出来
         val base = if (dark) intArrayOf(
-            android.graphics.Color.argb(225, 25, 28, 33),
-            android.graphics.Color.argb(190, 25, 28, 33)
+            android.graphics.Color.argb(v0.toInt().coerceIn(0, 255), 25, 28, 33),
+            android.graphics.Color.argb(v1.toInt().coerceIn(0, 255), 25, 28, 33)
         ) else intArrayOf(
-            android.graphics.Color.argb(238, 255, 255, 255),
-            android.graphics.Color.argb(205, 247, 250, 255)
+            android.graphics.Color.argb(v0.toInt().coerceIn(0, 255), 255, 255, 255),
+            android.graphics.Color.argb(v1.toInt().coerceIn(0, 255), 247, 250, 255)
         )
         val vertical = android.graphics.LinearGradient(
             0f, 0f, 0f, size.height,
@@ -145,8 +178,8 @@ private class GlassBrush(
         val spot = android.graphics.RadialGradient(
             touchX, touchY, r.coerceAtLeast(1f),
             intArrayOf(
-                android.graphics.Color.argb(a, 255, 255, 255),
-                android.graphics.Color.argb(a / 3, 255, 255, 255),
+                android.graphics.Color.argb((a * alphaScale).toInt(), 255, 255, 255),
+                android.graphics.Color.argb((a * alphaScale / 3).toInt(), 255, 255, 255),
                 android.graphics.Color.argb(0, 255, 255, 255)
             ),
             floatArrayOf(0f, 0.45f, 1f),
@@ -241,7 +274,7 @@ private object DotTile {
 } //点阵缓存
 
 /** 页面背景的绘制体：页面根容器用 pageBg() 挂它；采样层也要直接画它，不能只垫一块纯色 */
-fun DrawScope.drawPageBg() {
+fun DrawScope.drawPageBg(offsetY: Float = 0f, fullHeight: Float = size.height) {
     val style = Cfg.bgStyle
     drawRect(BgGray)
     when (style) {
@@ -251,15 +284,19 @@ fun DrawScope.drawPageBg() {
             drawRect(
                 Brush.linearGradient(
                     listOf(a, BgGray, b),
-                    start = Offset.Zero,
-                    end = Offset(size.width, size.height)
+                    start = Offset(0f, offsetY),
+                    end = Offset(size.width, offsetY + fullHeight)
                 )
             )
         }
         2 -> {
             //点阵用一格小图平铺：原来是每帧画上千个 drawCircle，滚动时白烧 CPU
             val step = 22.dp.toPx().toInt().coerceAtLeast(4)
-            drawRect(brush = TileBrush(DotTile.get(step, DarkColors)))
+            drawRect(
+                brush = TileBrush(DotTile.get(step, DarkColors)),
+                topLeft = Offset(0f, offsetY),
+                size = Size(size.width, fullHeight)
+            )
         }
     }
     //色系带的渐变（冰川 / 春野）：很淡地铺一层，只影响氛围，不抢前景文字
@@ -272,8 +309,8 @@ fun DrawScope.drawPageBg() {
                     Color.Transparent,
                     tg[1].copy(alpha = if (DarkColors) 0.10f else 0.22f)
                 ),
-                start = Offset.Zero,
-                end = Offset(size.width, size.height)
+                start = Offset(0f, offsetY),
+                end = Offset(size.width, offsetY + fullHeight)
             )
         )
     }
@@ -282,7 +319,7 @@ fun DrawScope.drawPageBg() {
     val wp = Wallpaper.cached(Cfg.bgImg, Cfg.bgBlur) ?: Wallpaper.preview(Cfg.bgImg)
     if (wp != null) {
         val cw = size.width.toInt().coerceAtLeast(1)
-        val ch = size.height.toInt().coerceAtLeast(1)
+        val ch = fullHeight.toInt().coerceAtLeast(1)
         val k = maxOf(cw / wp.width.toFloat(), ch / wp.height.toFloat())
         val sw = (cw / k).toInt().coerceIn(1, wp.width)
         val sh = (ch / k).toInt().coerceIn(1, wp.height)
@@ -290,7 +327,7 @@ fun DrawScope.drawPageBg() {
             image = wp,
             srcOffset = IntOffset((wp.width - sw) / 2, (wp.height - sh) / 2),
             srcSize = IntSize(sw, sh),
-            dstOffset = IntOffset.Zero,
+            dstOffset = IntOffset(0, offsetY.toInt()),
             dstSize = IntSize(cw, ch),
             filterQuality = FilterQuality.Low
         )
@@ -300,6 +337,16 @@ fun DrawScope.drawPageBg() {
 
 /** 页面背景修饰符：挂在根容器上即可 */
 fun Modifier.pageBg(): Modifier = drawBehind { drawPageBg() } //页面背景修饰符
+
+/** 采样层比真实全屏少了 safeDrawing 的上下两条，返回 (topPx, bottomPx) 交给 drawPageBg 补齐 */
+@Composable
+fun backdropPageInset(): Pair<Float, Float> {
+    val d = LocalDensity.current
+    val ins = WindowInsets.safeDrawing
+    val top = ins.getTop(d).toFloat()
+    val bottom = ins.getBottom(d).toFloat()
+    return remember(top, bottom) { top to bottom }
+} //采样层内外边距补偿
 
 /** 3D 质感圆钮：发送键用它，按下去整块下沉贴住底面 */
 @Composable

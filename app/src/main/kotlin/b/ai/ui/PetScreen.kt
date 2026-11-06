@@ -167,10 +167,11 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
     }
 
     //页面层：底栏的玻璃就采样这一层
+    val (pageTop, pageBottom) = backdropPageInset()
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
         //采样层必须含真背景：只垫纯色的话，底栏玻璃在没内容的地方采到的就是一块灰白
-        drawPageBg()
+        drawPageBg(offsetY = -pageTop, fullHeight = size.height + pageTop + pageBottom)
         drawContent()
     }
     //卡片玻璃的采样源：纯背景一层，不含卡片自己，否则卡片会采到上一帧的自己
@@ -277,7 +278,8 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                 Modifier
                     .fillMaxSize()
                     .verticalScroll(glassScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp)
+                    //底部让位不写进 padding：写了内容会在底栏上方被裁断，底栏底下只剩一条空带
+                    .padding(start = 16.dp, end = 16.dp, top = 4.dp)
             ) {
                 when {
                     find && fq.isNotBlank() -> {
@@ -360,6 +362,8 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                         )
                     }
                 }
+                //底栏让位改成尾部留白：内容能滚到屏幕底、从栏下面穿过去，栏的玻璃才有东西可采
+                Spacer(Modifier.height(86.dp))
             }
         }
         } //玻璃作用域

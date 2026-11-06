@@ -418,10 +418,11 @@ fun PluginMarket(onBack: () -> Unit) {
     }
 
     //底栏玻璃的采样源：整页内容一层，不含底栏自己
+    val (pageTop, pageBottom) = backdropPageInset()
     val pageBackdrop = rememberLayerBackdrop {
         drawRect(BgGray)
         //采样层必须含真背景：只垫纯色的话，底栏玻璃在没内容的地方采到的就是一块灰白
-        drawPageBg()
+        drawPageBg(offsetY = -pageTop, fullHeight = size.height + pageTop + pageBottom)
         drawContent()
     }
     //卡片玻璃的采样源：纯背景一层，不含卡片自己

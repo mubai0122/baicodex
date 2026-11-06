@@ -24,9 +24,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
@@ -262,8 +265,12 @@ private fun Root() {
     val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null || ann != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
-    //抽屉一开始动（targetValue 变 Open）就起模糊，不等抽屉动画跑完，视觉上才是跟手
-    val drawerOpening = drawerCtl.active
+    //抽屉开合只订阅布尔，不读进度：组合期读 anim.value 会让抽屉每移一帧就重组整个 Root
+    val drawerActive by produceState(initialValue = drawerCtl.active, drawerCtl) {
+        snapshotFlow { drawerCtl.active }.distinctUntilChanged().collect { value = it }
+    }
+    //抽屉一开始动就起模糊，不等抽屉动画跑完，视觉上才是跟手
+    val drawerOpening = drawerActive
     val anyOverlay = active || drawerOpening
 
     //深色模式下状态栏/导航条要换成浅色图标，不然黑图标贴在深底上看不见
@@ -286,9 +293,20 @@ private fun Root() {
     LaunchedEffect(Unit) {
         if (Cfg.petOn && Cfg.petGlobal && Cfg.onboarded && !b.ai.exec.Pet.canShow(ctx)) petPerm = true
     }
-    //返回键：抽屉开着先关抽屉；设置页在开「预测性手势支持」时走 PredictiveBackHandler，跟手缩放后再回聊天
-    BackHandler(enabled = drawerCtl.active) {
+    //返回键：抽屉开着先关抽屉；开了「预测性手势支持」就用系统手势直接拖着抽屉收，而不是点了才动
+    BackHandler(enabled = drawerActive && !Cfg.predictiveBack) {
         drawerCtl.close()
+    }
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && drawerActive) { progress ->
+        var done = false
+        try {
+            //手势进度 0→1 直接映射成抽屉 1→0：手指滑多少抽屉收多少
+            progress.collect { e -> drawerCtl.follow(1f - e.progress) }
+            done = true
+        } finally {
+            //滑过阈值松手就是真关闭，中途放弃就弹回全开
+            if (done) drawerCtl.close() else drawerCtl.open()
+        }
     }
     //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
     BackHandler(enabled = starsOpen) { starsOpen = false }
@@ -298,7 +316,7 @@ private fun Root() {
         screen = if (screen == "pet") "settings" else "chat"
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet") && !drawerCtl.active) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet") && !drawerActive) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
             screen = if (screen == "pet") "settings" else "chat"

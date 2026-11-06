@@ -1,6 +1,7 @@
 package b.ai.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,7 +68,12 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
+
+/** 按下时胶囊横向额外长大的比例：高度 62->86 就是 0.387 倍，宽度照同一比例走 */
+private const val PILL_GROW = 0.387f
 
 /** 底栏的一格：自绘图标 + 文案 */
 data class FloatTab(val labelRes: Int, val icon: @Composable (Color) -> Unit)
@@ -96,9 +103,12 @@ fun FloatTabBar(
     val tabsBackdrop = rememberLayerBackdrop()
     val bd = backdrop
     val combined = if (bd == null) null else rememberCombinedBackdrop(bd, tabsBackdrop)
-    //玻璃容器底色：白底越透越像玻璃，0.50 在浅色页面上会看着发白，压到 0.40
-    val containerColor = if (DarkColors) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.40f)
+    //玻璃容器不铺底：用户要求底栏「不要有背景」，玻璃只靠模糊、折射、高光边读形状
     val glassOn = Cfg.glassBar && bd != null
+    //拖过两端时整条栏最多跟手 4dp，像被橡皮筋拽着
+    val rubberPx = with(density) { 4.dp.toPx() }
+    //这一位移只在布局阶段被读，改它只重摆位置，不触发重组
+    var panelPx by remember { mutableFloatStateOf(0f) }
     //降档用的极淡白：只提亮一点，不发白
     val thin = if (DarkColors) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.16f)
     //底栏只看"有没有整屏弹窗"：滑动中也必须是真玻璃，一降档整条栏就白一下再变回来
@@ -117,8 +127,10 @@ fun FloatTabBar(
 
     //整条底栏离屏幕底再抬 18dp：别贴着导航条，视觉上才是悬浮的
     val gap = 18.dp
-    //根容器固定 104dp：栏本体只占底部 64dp，上方空出来的高度就是水滴按压时长大的余量
-    Box(modifier.fillMaxWidth().height(104.dp)) {
+    //按压时长大的余量靠 Box 不裁剪自然溢出，不用预留空白高度
+    //根容器高度跟着栏体走（64dp + 抬起 18dp）：以前写死 104dp，多出来的 22dp 在列表上方
+    //糊出一整块空白层，滑动时看着像底栏自带一块底
+    Box(modifier.fillMaxWidth()) {
         //这里不垫任何底色：底栏区域要透出页面背景，垫一块 BgGray 就是「没内容也填白」的来源
         //真玻璃：照参考项目的顺序——投影 -> 采样页面 -> 提饱和 -> 模糊 -> 边缘折射 -> 高光边 -> 底色
         //折射参数必须是常量：跟着 press.value 每帧变，等于每帧重建一个 RuntimeShader，点了就卡
@@ -143,7 +155,7 @@ fun FloatTabBar(
                     scaleX = s
                     scaleY = s
                 },
-                onDrawSurface = { drawRect(containerColor) }
+                onDrawSurface = {}
             )
         } else {
             Modifier.background(SolidColor(if (glassOn) thin else SurfaceWhite), CircleShape)
@@ -156,6 +168,8 @@ fun FloatTabBar(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .height(64.dp)
+                //拖出两端时整条栏跟着手指微微位移，松手回原位
+                .offset { IntOffset(panelPx.roundToInt(), 0) }
                 .onGloballyPositioned { totalPx = it.size.width.toFloat() }
                 //玻璃模式的投影与描边由 drawBackdrop 自己画，再叠 Compose 那套会多一圈脏边
                 .then(
@@ -174,15 +188,20 @@ fun FloatTabBar(
         //底边始终落在栏本体中线上左右对称，长出来上下各一半，跟参考项目的水滴一致
         if (tabPx > 0f) {
             val p = press.value
+            //宽高同比放大：高度 61->86 是 0.387 倍，宽度跟同一比例，按下时左右各长出去一截
+            val w0 = tabDp + 14.dp
+            val grow = w0 * (PILL_GROW * p)
             Box(
                 Modifier
                     .align(Alignment.BottomStart)
                     //x：20dp 栏体留白 + 4dp 内边距，再往左让 7dp；y：静止时底边距栏底 1dp，按下向下均分
                     .offset {
                         val dy = with(density) { (12.dp * p - 19.dp).toPx() }
-                        IntOffset((17.dp.toPx() + offset.value * tabPx).roundToInt(), dy.roundToInt())
+                        //胶囊跟栏体一起被橡胶带推着走；横向从中间往两边鼓，锚点回退半个增量
+                        val x = 17.dp.toPx() + offset.value * tabPx + panelPx - grow.toPx() / 2f
+                        IntOffset(x.roundToInt(), dy.roundToInt())
                     }
-                    .requiredWidth(tabDp + 14.dp + 8.dp * p)
+                    .requiredWidth(w0 + grow)
                     .requiredHeight(62.dp + 24.dp * p)
                     .then(
                         if (Cfg.glassBar && combined != null && soft) {
@@ -237,6 +256,7 @@ fun FloatTabBar(
                         },
                         onDragCancel = {
                             dragFrom = -1f
+                            panelPx = 0f
                             scope.launch { press.animateTo(0f, spring(0.7f, 900f)) }
                         },
                         onDragEnd = {
@@ -245,6 +265,8 @@ fun FloatTabBar(
                             onSelect(t)
                             scope.launch { offset.animateTo(t.toFloat(), spring(0.75f, 400f)) }
                             dragFrom = -1f
+                            //橡胶带同时松掉：4dp 的跳变肉眼看不出来，不必再挂一个动画
+                            panelPx = 0f
                             scope.launch { press.animateTo(0f, spring(0.7f, 900f)) }
                         },
                         onHorizontalDrag = { change, dx ->
@@ -252,8 +274,11 @@ fun FloatTabBar(
                             if (dragFrom < 0f) dragFrom = change.position.x
                             dragSum += dx
                             if (tabPx > 0f) {
-                                val f = ((dragFrom + dragSum - padPx) / tabPx)
-                                    .coerceIn(0f, tabs.lastIndex.toFloat())
+                                val raw = (dragFrom + dragSum - padPx) / tabPx
+                                val f = raw.coerceIn(0f, tabs.lastIndex.toFloat())
+                                //超出两端的部分转成整条栏的橡胶带位移：按 EaseOut 压到最多 4dp
+                                val over = raw - f
+                                panelPx = rubberPx * over.sign * EaseOut.transform(abs(over).coerceIn(0f, 1f))
                                 //胶囊不是硬贴着手指，而是带阻尼追过去，像水被拖着走
                                 scope.launch { offset.animateTo(f, spring(0.75f, 180f)) }
                             }
@@ -264,12 +289,29 @@ fun FloatTabBar(
             TabRow(tabs, selected, Modifier.fillMaxWidth().padding(4.dp), onSelect) { i, down ->
                 pressedIdx = if (down) i else -1
             }
-            //不可见的一份内容，专门录给胶囊玻璃当采样源（否则胶囊里看不到图标被折射）
-            if (Cfg.glassBar && combined != null && soft) {
+            //第二份图标行：自己先过一遍同样的玻璃，再被录进 tabsBackdrop 当胶囊的采样源。
+            //少了这层玻璃，胶囊采到的就是「裸图标」，图标会被二次模糊糊成一团色块
+            if (soft && bd != null && combined != null) {
                 TabRow(
                     tabs,
                     selected,
-                    Modifier.fillMaxWidth().padding(4.dp).alpha(0f).layerBackdrop(tabsBackdrop),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp)
+                        .offset { IntOffset(panelPx.roundToInt(), 0) }
+                        .clearAndSetSemantics {}
+                        .alpha(0f)
+                        .layerBackdrop(tabsBackdrop)
+                        .drawBackdrop(
+                            backdrop = bd,
+                            shape = { CircleShape },
+                            effects = {
+                                vibrancy()
+                                if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                                lens(24.dp.toPx(), 24.dp.toPx())
+                            },
+                            onDrawSurface = {}
+                        ),
                     onSelect
                 )
             }

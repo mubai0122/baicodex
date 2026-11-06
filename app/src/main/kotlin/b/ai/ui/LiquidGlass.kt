@@ -279,24 +279,29 @@ fun Modifier.liquidBg(
     veil: Float = 0.12f,
     blur: Boolean = true,
     //弹窗卡片专用：弹窗一开 GlassPerf.dialog 就把全站降档，弹窗自己那张卡不能跟着变平涂
-    always: Boolean = false
+    always: Boolean = false,
+    //最小边门槛：小于这个尺寸的控件不做离屏，默认 156dp 以下的按钮/输入框走平涂；
+    //传 0.dp 就是强制玻璃，给「必须和卡片同一套材质」的小控件用
+    gate: Dp = 156.dp
 ): Modifier {
     val bd = LocalCardBackdrop.current ?: CardBackdropHolder.current
     if (!Cfg.glassCard || bd == null) return background(tint, shape)
     //真玻璃的最小尺寸：设置页/聊天页里 156dp 以下的行、输入框、胶囊全部出局。
     //阈值越高，进页面首帧之后要"升级成玻璃"的节点越少，二次组合也就越轻
-    val gate = with(LocalDensity.current) { 156.dp.toPx() }
+    val gatePx = with(LocalDensity.current) { gate.toPx() }
     //首屏之后、且内容没有刚换过时，新建的卡片直接就是真玻璃：切设置分类时不用再白着等
-    var big by remember { mutableStateOf(GlassPerf.ready && !GlassPerf.warming) }
+    //强制玻璃（gate 为 0）的控件不等量测、不等首屏，第一次组合就是真玻璃：
+    //否则 warming 窗口里建出来的节点会一直停留在平涂（onSizeChanged 只会再响一次，尺寸不变就不再回来）
+    var big by remember { mutableStateOf(gate <= 0.dp || (GlassPerf.ready && !GlassPerf.warming)) }
     //测量完不立刻升级：错峰几十毫秒再建离屏，避免启动/换页时几个节点同帧一起建
     val scope = rememberCoroutineScope()
     //用普通数组当一次性开关，别用 mutableState：那只会在首帧后再触发一次重组
-    val once = remember { booleanArrayOf(GlassPerf.ready && !GlassPerf.warming) }
+    val once = remember { booleanArrayOf(gate <= 0.dp || (GlassPerf.ready && !GlassPerf.warming)) }
     //小节点在这里就返回，全程不读 GlassPerf：否则全站几百个胶囊都会订阅全局降档开关，
     //一滑动、一点击就让整棵树重组一遍，那才是"点一下卡一秒"
     if (!big || !blur) {
         return glassLite(shape, tint, veil).onSizeChanged { s ->
-            if (!once[0] && minOf(s.width, s.height) >= gate) {
+            if (!once[0] && minOf(s.width, s.height) >= gatePx) {
                 once[0] = true
                 scope.launch {
                     delay(GlassPerf.stagger())

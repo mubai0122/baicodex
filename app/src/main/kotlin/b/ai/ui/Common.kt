@@ -134,15 +134,19 @@ fun PrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Mo
     ) { Text(text, fontSize = 14.sp) }
 }
 
+/** 次要按钮：玻璃底 + 描边，材质跟卡片一致（原来用 OutlinedButton，是 Material 的白底描边） */
 @Composable
 fun GhostButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier.height(42.dp),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderGray)
+    Box(
+        modifier
+            .height(42.dp)
+            .liquidBg(RoundedCornerShape(12.dp), veil = 0.22f, gate = 0.dp)
+            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+            .tap { onClick() }
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
     ) { Text(text, fontSize = 13.sp, color = TextPrimary) }
-}
+} //次要按钮
 
 @Composable
 fun Tag(text: String, fg: Color = AccentBlue, bg: Color = AccentBlueSoft) {
@@ -172,19 +176,29 @@ fun Field(
             Text(label, fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
         }
-        OutlinedTextField(
+        //输入框也接液态玻璃：原来用 OutlinedTextField，材质跟卡片对不上（白的描边框）
+        BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(placeholder, fontSize = 13.sp, color = TextSecondary) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidBg(RoundedCornerShape(12.dp), veil = 0.28f, gate = 0.dp)
+                .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            textStyle = TextStyle(fontSize = 13.sp, color = TextPrimary),
             singleLine = singleLine,
             minLines = minLines,
-            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-            shape = RoundedCornerShape(12.dp),
-            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None
+            cursorBrush = SolidColor(AccentBlue),
+            visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
+            decorationBox = { inner ->
+                if (value.isEmpty() && placeholder.isNotEmpty()) {
+                    Text(placeholder, fontSize = 13.sp, color = TextSecondary)
+                }
+                inner()
+            }
         )
     }
-}
+} //输入框
 
 /** 单选行：标题 + 说明 + 右侧对勾 */
 @Composable
@@ -193,7 +207,7 @@ fun ChoiceRow(title: String, desc: String?, selected: Boolean, onClick: () -> Un
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceWhite)
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceWhite, gate = 0.dp)
             .border(1.dp, if (selected) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
             .tap { onClick() }
             .padding(12.dp),
