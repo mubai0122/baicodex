@@ -38,6 +38,18 @@ tasks.register<Jar>("winFatJar") {
     }
 } //Windows 胖 jar
 
+//离屏渲染截图：不开窗口、不用 X11，产物默认 build/ui.png
+tasks.register<JavaExec>("shot") {
+    group = "verification"
+    description = "把界面离屏渲染成 PNG"
+    mainClass.set("b.ai.desktop.ScreenshotKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    systemProperty("java.awt.headless", "true")
+    val out = (findProperty("shotOut") as String?)
+        ?: layout.buildDirectory.file("ui.png").get().asFile.absolutePath
+    args(out)
+} //截图任务
+
 //Windows 的 exe/msi 只能在 Windows 上打；这台设备仅验证编译
 compose.desktop {
     application {

@@ -3,6 +3,7 @@ package b.ai.desktop.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,26 +32,51 @@ fun WindowScope.TitleBar(state: WindowState, title: String, onClose: () -> Unit)
         Modifier.fillMaxWidth().height(40.dp)
             .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)))
     ) {
-        WindowDraggableArea(Modifier.fillMaxWidth().height(40.dp)) {
-            Row(
-                Modifier.fillMaxWidth().height(40.dp).padding(start = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("BaiCodex", color = GlassTheme.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.size(10.dp))
-                Text(title, color = GlassTheme.sub, fontSize = 12.sp)
-                Spacer(Modifier.weight(1f))
-            }
-        }
-        Row(Modifier.align(Alignment.CenterEnd).height(40.dp)) {
-            WinButton("—") { state.isMinimized = true }
-            WinButton(if (maxed) "❐" else "□") {
+        WindowDraggableArea(Modifier.fillMaxWidth().height(40.dp)) { TitleStrip(title) }
+        WinButtons(
+            maxed = maxed,
+            onMin = { state.isMinimized = true },
+            onMax = {
                 state.placement = if (maxed) WindowPlacement.Floating else WindowPlacement.Maximized
-            }
-            WinButton("✕", danger = true, onClick = onClose)
-        }
+            },
+            onClose = onClose
+        )
     }
-} //标题栏
+} //标题栏（真窗口用）
+
+//离屏截图用：没有 WindowScope 时画同一条标题栏，视觉与真窗口一致，只是不能拖
+@Composable
+fun TitleBarPreview(title: String) {
+    Box(
+        Modifier.fillMaxWidth().height(40.dp)
+            .background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)))
+    ) {
+        TitleStrip(title)
+        WinButtons(maxed = false, onMin = {}, onMax = {}, onClose = {})
+    }
+} //标题栏（截图用）
+
+@Composable
+private fun TitleStrip(title: String) {
+    Row(
+        Modifier.fillMaxWidth().height(40.dp).padding(start = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("BaiCodex", color = GlassTheme.text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.size(10.dp))
+        Text(title, color = GlassTheme.sub, fontSize = 12.sp)
+        Spacer(Modifier.weight(1f))
+    }
+} //标题文字
+
+@Composable
+private fun BoxScope.WinButtons(maxed: Boolean, onMin: () -> Unit, onMax: () -> Unit, onClose: () -> Unit) {
+    Row(Modifier.align(Alignment.CenterEnd).height(40.dp)) {
+        WinButton("—", onClick = onMin)
+        WinButton(if (maxed) "❐" else "□", onClick = onMax)
+        WinButton("✕", danger = true, onClick = onClose)
+    }
+} //三个窗口按钮
 
 @Composable
 private fun WinButton(glyph: String, danger: Boolean = false, onClick: () -> Unit) {
