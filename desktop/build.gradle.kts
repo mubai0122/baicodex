@@ -15,6 +15,29 @@ dependencies {
     implementation(compose.material3)
 }
 
+//交叉出 Windows 包用的 skiko：把宿主平台那份换成 Windows x64 的 dll
+//版本必须跟 Compose 带上来的 skiko 一致，升级 Compose 要回来改
+val winSkiko: Configuration by configurations.creating
+
+dependencies {
+    winSkiko("org.jetbrains.skiko:skiko-awt-runtime-windows-x64:0.150.2")
+}
+
+//打一个 Windows 能跑的胖 jar：应用类 + 全部依赖 + Windows 版 skiko
+tasks.register<Jar>("winFatJar") {
+    archiveFileName.set("baicodex.jar")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest { attributes["Main-Class"] = "b.ai.desktop.MainKt" }
+    from(sourceSets.main.get().output)
+    from({
+        val deps = configurations.runtimeClasspath.get()
+            .filterNot { it.name.contains("skiko-awt-runtime-linux") }
+        (deps + winSkiko).map { if (it.isDirectory) it else zipTree(it) }
+    }) {
+        exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+    }
+} //Windows 胖 jar
+
 //Windows 的 exe/msi 只能在 Windows 上打；这台设备仅验证编译
 compose.desktop {
     application {
