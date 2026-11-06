@@ -11,13 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import b.ai.desktop.core.ShellCore
+import b.ai.desktop.ui.GlassRoot
 import b.ai.desktop.ui.GlassTheme
 import b.ai.desktop.ui.MainPane
 import b.ai.desktop.ui.Sidebar
@@ -48,18 +48,17 @@ fun main() = application {
     }
 } //桌面入口：无边框窗口 + 自绘标题栏 + 侧栏/主区两栏
 
-//整窗外壳：标题栏 + 侧栏 + 主区。真窗口与离屏截图共用，避免两处布局走偏
+//整窗外壳：壁纸层 + 标题栏 + 侧栏 + 主区。真窗口与离屏截图共用，避免两处布局走偏
 @Composable
 fun ShellBody(core: ShellCore, titleBar: @Composable () -> Unit) {
-    Column(
-        Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(GlassTheme.bg0, GlassTheme.bg1)))
-    ) {
-        titleBar()
-        Row(Modifier.fillMaxSize()) {
-            Sidebar(core)
-            Box(Modifier.width(1.dp).fillMaxHeight().background(GlassTheme.line))
-            MainPane(core, Modifier.weight(1f))
+    GlassRoot(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            titleBar()
+            Row(Modifier.fillMaxSize()) {
+                Sidebar(core)
+                Box(Modifier.width(1.dp).fillMaxHeight().background(GlassTheme.line))
+                MainPane(core, Modifier.weight(1f))
+            }
         }
     }
 } //整窗外壳

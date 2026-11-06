@@ -7,12 +7,16 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
+    //backdrop-desktop 2.0.0 是 Java 21 字节码，工具链不能低于 21
+    jvmToolchain(21)
 }
 
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    //液态玻璃：和移动端同一个库，桌面变体带 SkikoRuntimeShader
+    //版本必须 2.0.1：2.0.0 调的是 skiko 老签名 makeShader(Matrix33)，在 Compose 1.12.2 的 skiko 0.150.2 上直接 NoSuchMethodError
+    implementation("io.github.kyant0:backdrop-desktop:2.0.1")
 }
 
 //交叉出 Windows 包用的 skiko：把宿主平台那份换成 Windows x64 的 dll
@@ -45,6 +49,10 @@ tasks.register<JavaExec>("shot") {
     mainClass.set("b.ai.desktop.ScreenshotKt")
     classpath = sourceSets["main"].runtimeClasspath
     systemProperty("java.awt.headless", "true")
+    //必须用 21 起进程：backdrop-desktop 是 class 65，JVM 17 会在加载类时直接炸
+    javaLauncher.set(
+        javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) }
+    )
     val out = (findProperty("shotOut") as String?)
         ?: layout.buildDirectory.file("ui.png").get().asFile.absolutePath
     args(out)
