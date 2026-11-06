@@ -1245,12 +1245,8 @@ object Agent {
             .replace("{keep}", Cfg.ctxKeep.toString())
             .replace("{budget}", Cfg.ctxCharBudget.toString())
     } //总结提示词（注入变量）
-    /** 总结用的连接参数：设置了专用模型配置就用它，没设就跟随当前聊天选中 */
-    private fun sumLlm(): Array<String> {
-        val p = Profiles.list.firstOrNull { it.id == Cfg.summaryProfileId && it.model.isNotBlank() }
-            ?: return arrayOf(Cfg.baseUrl, Cfg.apiKey, Cfg.providerId, Cfg.model)
-        return arrayOf(p.baseUrl, p.apiKey, p.providerId, p.model)
-    } //总结连接参数 baseUrl/key/provider/model
+    /** 总结用的连接参数：统一走 core/Sum（与工具里的「搜索总结」共用同一份配置） */
+    private fun sumLlm(): Array<String> = b.ai.core.Sum.llm()
 
     /** 用户附加的微调要求，拼在总结提示词后面 */
     private fun extraBlock(note: String?): String {

@@ -1,0 +1,1 @@
+sh /storage/emulated/0/baicode/skill/refactor/scripts/show.sh {ws} {doc} {page}

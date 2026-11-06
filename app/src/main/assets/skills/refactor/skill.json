@@ -1,0 +1,69 @@
+{
+  "dsl": 1,
+  "id": "refactor",
+  "name": "项目重构专家",
+  "desc": "先在工作区建 .docs 索引（文件作用 / 依赖 / 规模），再按换语言或换架构一次一个文件、一个模块地改",
+  "trigger": ["重构", "项目重构", "换语言", "换架构", "迁移语言", "改架构"],
+  "funcs": [
+    {
+      "name": "rf_scan",
+      "kind": "cmd",
+      "file": "scan.js",
+      "desc": "扫工作区建索引：.docs/function.txt（每个文件干什么）、imports.txt（谁依赖谁）、index.txt（规模与入口）",
+      "params": {
+        "ws": "^/.{1,300}$"
+      }
+    },
+    {
+      "name": "rf_refs",
+      "kind": "cmd",
+      "file": "refs.js",
+      "desc": "反查引用：哪些文件的 import 里指向了目标文件（改签名 / 删文件前先跑它）",
+      "params": {
+        "ws": "^/.{1,300}$",
+        "target": "^.{1,200}$"
+      }
+    },
+    {
+      "name": "rf_deps",
+      "kind": "cmd",
+      "file": "deps.js",
+      "desc": "正查依赖：某个文件自己 import 了谁，能对上工作区文件的标「内部」，其余是外部依赖",
+      "params": {
+        "ws": "^/.{1,300}$",
+        "file": "^.{1,200}$"
+      }
+    },
+    {
+      "name": "rf_plan",
+      "kind": "cmd",
+      "file": "plan.js",
+      "desc": "生成 .docs/refactor.txt 分步计划：mode=lang 换语言 / mode=arch 换架构，六步，一次只做一件事",
+      "params": {
+        "ws": "^/.{1,300}$",
+        "mode": "^(lang|arch)$"
+      }
+    },
+    {
+      "name": "rf_grep",
+      "kind": "cmd",
+      "file": "grep.js",
+      "desc": "在建好的索引里搜关键字：快速定位「哪个文件干这件事」，不用全文 grep",
+      "params": {
+        "ws": "^/.{1,300}$",
+        "kw": "^.{1,60}$"
+      }
+    },
+    {
+      "name": "rf_show",
+      "kind": "cmd",
+      "file": "show.js",
+      "desc": "翻页看一份索引（一次 100 行）：doc=function|imports|index|refactor，page 从 1 开始",
+      "params": {
+        "ws": "^/.{1,300}$",
+        "doc": "^(function|imports|index|refactor)$",
+        "page": "^[0-9]{1,4}$"
+      }
+    }
+  ]
+}

@@ -60,4 +60,52 @@ object TextEdit {
         out.addAll(tail)
         return out.joinToString("\n")
     } //拼装替换结果
+
+    /** 在 anchor 行之后插入一段（anchor=0 表示插到文件最前面）：缩进以锚点行为基准，换行符跟原文件一致 */
+    fun insert(src: String, anchor: Int, text: String): String {
+        val cr = if (src.contains("\r\n")) "\r" else ""
+        val lines = src.split("\n").toMutableList()
+        val a = anchor.coerceIn(0, lines.size)
+        //锚点行的缩进即目标缩进；插在最前面时借下面第一行的缩进
+        val refRaw = when {
+            a > 0 -> lines[a - 1]
+            lines.isNotEmpty() -> lines[0]
+            else -> ""
+        }
+        val ref = refRaw.substring(0, refRaw.length - refRaw.trimStart().length)
+        val raw = text.split("\n")
+        var s = 0
+        var e = raw.size
+        while (s < e && raw[s].isBlank()) s++
+        while (e > s && raw[e - 1].isBlank()) e--
+        val block = raw.subList(s, e)
+        if (block.isEmpty()) return src
+        //新代码自己的首行缩进当作基准，后面的行按与首行的缩进差平移，用户给的相对层次不丢
+        val oldIndent = block.first().let { it.substring(0, it.length - it.trimStart().length) }
+        val out = ArrayList<String>(block.size)
+        for (line in block) {
+            val body = line.trim()
+            val lead = line.substring(0, line.length - line.trimStart().length)
+            val pre = if (lead.length >= oldIndent.length) ref + lead.substring(oldIndent.length) else ref
+            out.add(if (body.isEmpty()) "" else pre + body)
+            if (cr.isNotEmpty()) out[out.size - 1] = out[out.size - 1] + cr
+        }
+        lines.addAll(a, out)
+        return lines.joinToString("\n")
+    } //按行插入
+
+    /** 删掉从 start 行（0 基）起的 n 行：剩下的行原样拼回去，末尾换行风格不变 */
+    fun cut(src: String, start: Int, n: Int): String {
+        val lines = src.split("\n")
+        val a = start.coerceIn(0, lines.size)
+        val b = (a + n).coerceIn(a, lines.size)
+        return (lines.subList(0, a) + lines.subList(b, lines.size)).joinToString("\n")
+    } //按行删除
+
+    /** 行数：文件以换行结尾时 split 会多出一个空串，那个不算一行 */
+    fun lineCount(src: String): Int {
+        if (src.isEmpty()) return 0
+        val lines = src.split("\n")
+        return if (lines.last().isEmpty()) lines.size - 1 else lines.size
+    } //统计行数
 } //按行改文件

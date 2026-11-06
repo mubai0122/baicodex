@@ -82,6 +82,12 @@ object Tools {
     const val ZIP = "zip_op"
     const val GREP = "grep_files"
 
+    /** 重构：建工作区索引（.docs/function.txt 等）、查谁引用了谁、查自己的 imports、生成分步计划 */
+    const val REF_SCAN = "refactor_scan"
+    const val REF_REFS = "refactor_refs"
+    const val REF_DEPS = "refactor_deps"
+    const val REF_PLAN = "refactor_plan"
+
     /** 剪贴板 / 打开链接 / 分享 / 本地通知与今日通知 / 直发 HTTP */
     const val CLIP = "clipboard"
     const val OPEN = "open_link"
@@ -259,7 +265,20 @@ object Tools {
 
     fun definitions(): JSONArray {
         val arr = JSONArray()
-        arr.put(fn(READ, "读取文件内容；路径是目录时返回目录列表。", params("path" to str("绝对路径"))))
+        arr.put(
+            fn(
+                READ,
+                "读取文件内容，按行分页并带行号与总行数；路径是目录时返回目录列表。" +
+                    "行号可直接喂给 edit_file 的 line 参数；文件很大就一页页翻，别一次要几千行。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("path", str("绝对路径"))
+                        .put("page", JSONObject().put("type", "integer").put("description", "第几页，从 1 开始，默认 1"))
+                        .put("lines", JSONObject().put("type", "integer").put("description", "每页多少行，默认 400，上限 2000"))
+                ).put("required", JSONArray().put("path"))
+            )
+        )
         arr.put(
             fn(
                 WRITE, "写入文本文件（覆盖写，父目录自动创建）。",
@@ -270,14 +289,27 @@ object Tools {
         arr.put(
             fn(
                 EDIT,
-                "局部修改文件：把 old 这段原文换成 new。old 按行匹配、缩进和行尾空白自动忽略，" +
-                    "但其余字符必须与文件里完全一致；命中多处会报错，需要带更多上下文。new 每行的缩进" +
-                    "会自动对齐到原位置的缩进，换行符跟原文件一致。改几行就用它，别整篇 write_file。",
-                params(
-                    "path" to str("绝对路径"),
-                    "old" to str("文件里现在这几行的原文，原样抄，可以只抄正文不管缩进"),
-                    "new" to str("替换后的新代码，缩进不用自己补，靠前面对齐")
-                )
+                "局部修改文件，两种用法。①默认 replace：把 old 这段原文换成 new，old 按行匹配、缩进和行尾空白" +
+                    "自动忽略，其余字符必须与文件里完全一致，命中多处会报错。②mode=insert / delete：按行号插入或删除，" +
+                    "line 直接抄 read_file 结果里的行号；insert 用 text 给新代码、pos 决定插在该行后还是前，" +
+                    "delete 用 count 说明删几行。插入行的缩进会自动对齐到锚点行，不用自己补。" +
+                    "改几行就用它，别整篇 write_file。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("path", str("绝对路径"))
+                        .put("old", str("replace：文件里现在这几行的原文，原样抄，可以只抄正文不管缩进"))
+                        .put("new", str("replace：替换后的新代码，缩进不用自己补，靠前面对齐"))
+                        .put("mode", str("留空=replace；insert=按行号插入；delete=按行号删除"))
+                        .put(
+                            "line",
+                            JSONObject().put("type", "integer")
+                                .put("description", "insert / delete 的行号，从 1 开始；insert 时 line=0 表示插到文件最前面")
+                        )
+                        .put("count", JSONObject().put("type", "integer").put("description", "delete：删几行，默认 1"))
+                        .put("pos", str("insert：after（默认，插在该行后面）或 before（插在该行前面）"))
+                        .put("text", str("insert：要插入的代码"))
+                ).put("required", JSONArray().put("path"))
             )
         )
         arr.put(fn(DELETE, "删除文件或目录（目录递归删除）。", params("path" to str("绝对路径"))))
@@ -553,13 +585,20 @@ object Tools {
         arr.put(
             fn(
                 LIST,
-                "列目录（比 read_file 读目录更清楚）：带类型、体积、修改时间。recurse=true 递归到 6 层。",
+                "列目录（比 read_file 读目录更清楚）：带类型、体积、修改时间。recurse=true 递归到 6 层；" +
+                    "match 按文件名过滤（*.kt 通配或关键字）；summarize=true 让总结模型归纳这批文件是什么、先看哪几个。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
                         .put("path", str("目录绝对路径"))
                         .put("recurse", JSONObject().put("type", "boolean").put("description", "是否递归，默认 false"))
                         .put("limit", JSONObject().put("type", "integer").put("description", "最多列多少项，默认 200"))
+                        .put("match", str("按文件名过滤：*.kt 这类通配，或普通关键字（忽略大小写），留空=全部"))
+                        .put(
+                            "summarize",
+                            JSONObject().put("type", "boolean")
+                                .put("description", "true 时把结果交给总结模型归纳，默认 false")
+                        )
                 ).put("required", JSONArray().put("path"))
             )
         )
@@ -597,7 +636,8 @@ object Tools {
         )
         arr.put(
             fn(
-                GREP, "在文件或整个目录里按内容搜（正则），输出 路径:行号: 内容；跳过二进制与超 2MB 的文件。",
+                GREP, "在文件或整个目录里按内容搜（正则），输出 路径:行号: 内容；跳过二进制与超 2MB 的文件。" +
+                    "recurse=false 只搜该目录直属文件；summarize=true 让总结模型归纳命中集中在哪、下一步看哪几行。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
@@ -606,6 +646,12 @@ object Tools {
                         .put("ext", str("只搜这些扩展名，英文逗号分隔，留空=全部"))
                         .put("max", JSONObject().put("type", "integer").put("description", "最多命中多少条，默认 60"))
                         .put("ignore_case", JSONObject().put("type", "boolean").put("description", "是否忽略大小写，默认 true"))
+                        .put("recurse", JSONObject().put("type", "boolean").put("description", "目录是否往下递归，默认 true"))
+                        .put(
+                            "summarize",
+                            JSONObject().put("type", "boolean")
+                                .put("description", "true 时把命中结果交给总结模型归纳，默认 false")
+                        )
                 ).put("required", JSONArray().put("path").put("pattern"))
             )
         )
@@ -858,9 +904,22 @@ object Tools {
     } //OpenAI tools 定义
 
     fun execute(name: String, args: JSONObject): ToolOutcome = when (name) {
-        READ -> FileOps.read(args.optString("path")).toOutcome().governed()
+        READ -> FileOps.read(
+            args.optString("path"), args.optInt("page", 1), args.optInt("lines", 400)
+        ).toOutcome().governed()
         WRITE -> FileOps.write(args.optString("path"), args.optString("content")).toOutcome().governed()
-        EDIT -> FileOps.edit(args.optString("path"), args.optString("old"), args.optString("new")).toOutcome().governed()
+        EDIT -> {
+            //mode=insert / delete 走按行号那套，其余仍是 old→new 的整段替换
+            val mode = args.optString("mode").trim().lowercase()
+            if (mode == "insert" || mode == "delete") {
+                FileOps.editAt(
+                    args.optString("path"), mode, args.optInt("line", 0), args.optInt("count", 1),
+                    args.optString("pos", "after").trim().lowercase() != "before", args.optString("text")
+                ).toOutcome().governed()
+            } else {
+                FileOps.edit(args.optString("path"), args.optString("old"), args.optString("new")).toOutcome().governed()
+            }
+        }
         MAKE_DIR -> FileOps.mkdir(args.optString("path")).toOutcome().governed()
         DELETE -> FileOps.delete(args.optString("path")).toOutcome().governed()
         SHELL -> execShell(args.optString("command")).governed()
@@ -873,7 +932,8 @@ object Tools {
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
         SCREEN -> screen(args).governed()
         LIST -> FileOps.list(
-            args.optString("path"), args.optBoolean("recurse", false), args.optInt("limit", 200)
+            args.optString("path"), args.optBoolean("recurse", false), args.optInt("limit", 200),
+            args.optString("match"), args.optBoolean("summarize", false)
         ).toOutcome().governed()
         INFO -> FileOps.info(args.optString("path")).toOutcome().governed()
         MOVE -> FileOps.move(
@@ -882,7 +942,8 @@ object Tools {
         ZIP -> zipOp(args).governed()
         GREP -> FileOps.grep(
             args.optString("path"), args.optString("pattern"), args.optString("ext"),
-            args.optInt("max", 60), args.optBoolean("ignore_case", true)
+            args.optInt("max", 60), args.optBoolean("ignore_case", true),
+            args.optBoolean("recurse", true), args.optBoolean("summarize", false)
         ).toOutcome().governed()
         CLIP -> clip(args).governed()
         OPEN -> openLink(args).governed()
