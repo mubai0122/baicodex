@@ -959,7 +959,7 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
                 color = TextSecondary
             )
         }
-        //总结提示词：留空用内置那套，填了就整套替换；自动总结与长按重总结都走它
+        //总结补充要求：留空不追加，填了拼在内置四段提示词后面（结构永远保留）；自动总结、立即总结与长按重总结都走它
         Field(
             label = stringResource(R.string.se_sum_prompt),
             value = Cfg.summaryPrompt,

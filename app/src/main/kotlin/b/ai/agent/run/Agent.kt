@@ -1279,10 +1279,14 @@ object Agent {
         return (head + list.joinToString("\n") { oneLine(it, 120) }).take(12_000)
     } //渲染待压缩历史
 
-    /** 总结用的 system 提示词：用户在设置里填了就用用户的，再把 {words}/{limit}/{level}/{keep}/{budget} 换成当前配置 */
+    /** 总结用的 system 提示词：内置四段结构固定当基底，设置里填的只作补充要求追加，最后替换 {words}/{limit}/{level}/{keep}/{budget} */
     private fun summaryText(): String {
         val w = Cfg.summaryWords
-        return Cfg.summaryPrompt.trim().ifBlank { SUMMARY_PROMPT }
+        val extra = Cfg.summaryPrompt.trim()
+        //以前是填了就整套替换：用户只写一句「多说点细节」，四段结构与标题就全没了，摘要跟着散架
+        val base = if (extra.isEmpty()) SUMMARY_PROMPT else SUMMARY_PROMPT +
+            "\n\n用户的补充要求（上面的段落结构与标题照旧保留，其余按这些要求来；与上面的写法冲突时以这里为准）：\n" + extra
+        return base
             .replace("{level}", b.ai.core.model.chat.Sum.levelName(Cfg.summaryLevel))
             .replace("{words}", w.coerceAtLeast(0).toString())
             .replace("{limit}", if (w > 0) "${w}字以内" else "不限，按内容需要充分展开")
