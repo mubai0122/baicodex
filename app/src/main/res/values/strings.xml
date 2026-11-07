@@ -1064,15 +1064,15 @@
     <string name="se_bg_grad">柔光渐变</string>
     <string name="se_bg_dots">点阵</string>
     <string name="se_bk">备份与恢复</string>
-    <string name="se_bk_d">整库导出成一个 zip，换机或清数据前先备一份</string>
+    <string name="se_bk_d">整库导出成一个加密备份，换机或清数据前先备一份</string>
     <string name="se_bk_doing">处理中…</string>
     <string name="se_bk_ok">已导出到所选位置</string>
     <string name="se_bk_fail">导出失败，换个位置再试</string>
     <string name="se_bk_imported">已导入，重启 App 后生效</string>
-    <string name="se_bk_bad">这个 zip 不是 BaiAgent 的备份</string>
+    <string name="se_bk_bad">这个文件不是可用的备份（密钥不对或已损坏）</string>
     <string name="se_bk_export">导出备份</string>
     <string name="se_bk_import">导入备份</string>
-    <string name="se_bk_note">备份含数据库、全部设置、技能 / 角色 / 模型清单与头像；工作区文件与 Linux 环境不打包</string>
+    <string name="se_bk_note">备份含数据库、全部设置、技能 / 角色 / 模型清单与头像；导出为加密的 .baicodex，导入时自动解密，密钥不在备份里；工作区文件与 Linux 环境不打包</string>
     <string name="dw_memory">记忆</string>
     <string name="mem_title">永久记忆</string>
     <string name="mem_hint">这些内容每轮都会随系统提示发给 AI；删掉就不再发送。</string>
@@ -1659,4 +1659,5 @@
     <string name="se_gd_pg4_t">完成</string>
     <string name="se_gd_pg4_b">密钥与本机硬件绑定，换机与刷机都解不开</string>
     <string name="se_gd_covers">纳入加密：模型 / 语音 / 搜索 / MCP / A2A 密钥、账号与反馈 token、SSH 密码、技能包密钥、位置地名缓存</string>
+    <string name="cs_max_on">最大 ·开</string>
 </resources>

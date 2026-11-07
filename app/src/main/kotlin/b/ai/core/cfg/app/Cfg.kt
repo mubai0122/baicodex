@@ -243,6 +243,8 @@ object Cfg {
         mem("fc_alpha", 100).value = p.getInt("fc_alpha", 100)
         mem("fc_x", -1).value = p.getInt("fc_x", -1)
         mem("fc_y", -1).value = p.getInt("fc_y", -1)
+        mem("dev_show", false).value = p.getBoolean("dev_show", false)
+        mem("dev_on", false).value = p.getBoolean("dev_on", false)
         mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
         mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
         mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
@@ -740,6 +742,16 @@ object Cfg {
     var maxMode: Boolean
         get() = mem("max_mode", false).value
         set(v) { mem("max_mode", false).value = v; put("max_mode", v) }
+
+    /** 开发者模式：关于页连点版本号 5 次解锁，解锁后关于页最下方才显示开关与工具入口 */
+    var devShow: Boolean
+        get() = mem("dev_show", false).value
+        set(v) { mem("dev_show", false).value = v; put("dev_show", v) }
+
+    /** 开发者工具总开关：只有 devShow 为真时才看得到，关掉后工具卡片一起收起 */
+    var devOn: Boolean
+        get() = mem("dev_on", false).value
+        set(v) { mem("dev_on", false).value = v; put("dev_on", v) }
 
     /** 当前选中配置的显示名；只在 profileCustom=true 时生效 */
     var profileName: String

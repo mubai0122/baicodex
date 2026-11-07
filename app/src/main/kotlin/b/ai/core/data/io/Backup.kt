@@ -31,12 +31,14 @@ object Backup {
         restoreDir(ctx).listFiles()?.isNotEmpty() == true
     }.getOrDefault(false) //待恢复
 
-    /** 导出：先压一次 WAL，保证拷走的库是完整状态 */
+    /** 导出：先压一次 WAL，保证拷走的库是完整状态；打出来的 zip 再整份加密，落成 .baicodex */
     fun export(ctx: Context, out: OutputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
         Repo.checkpoint()
         //配置库写盘是合并延迟的，不刷一遍拷走的可能还是半秒前的
         Prefs.flushAll()
-        ZipOutputStream(BufferedOutputStream(out)).use { z ->
+        //先打明文 zip 到中间文件再整份加密：加密是流式写，不能回头再压
+        val tmp = File(Layout.dir(ctx, Layout.COMPRESS), "export.tmp")
+        ZipOutputStream(BufferedOutputStream(tmp.outputStream())).use { z ->
             fun put(name: String, f: File) {
                 if (!f.isFile) return
                 f.inputStream().use { ins ->
@@ -57,50 +59,74 @@ object Backup {
                 put("avatars/" + it.name, it)
             }
         }
-        onLog("打包完成")
+        onLog("打包完成 ${tmp.length() / 1024}K")
+        try {
+            BackupCrypt.seal(tmp, out)
+            onLog("已加密")
+        } finally {
+            tmp.delete()
+        }
         true
     }.getOrDefault(false) //导出
 
-    /** 导入第一步：解压。db 与配置落到 restore 目录等重启，baicode 与头像直接覆盖 */
+    /** 导入第一步：先落本地副本，是密文就解开，再当 zip 解压；db 与配置等重启换，baicode 与头像直接覆盖 */
     fun stageImport(ctx: Context, ins: InputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
         val dir = restoreDir(ctx)
         dir.listFiles()?.forEach { runCatching { it.deleteRecursively() } }
-        var hasDb = false
-        ZipInputStream(ins.buffered()).use { z ->
-            while (true) {
-                val e = z.nextEntry ?: break
-                val name = e.name
-                if (e.isDirectory) continue
-                when {
-                    name == "bai.db" -> {
-                        File(dir, "bai.db").outputStream().use { z.copyTo(it) }
-                        hasDb = true
-                        onLog("+ bai.db")
-                    }
-                    name == "bai_stat.db" -> {
-                        File(dir, "bai_stat.db").outputStream().use { z.copyTo(it) }
-                        onLog("+ bai_stat.db")
-                    }
-                    name == CFG_JSON || name == CFG_XML -> {
-                        File(dir, name).outputStream().use { z.copyTo(it) }
-                        onLog("+ $name")
-                    }
-                    name.startsWith("baicode/") -> {
-                        val f = File(Paths.ensure(), name.removePrefix("baicode/"))
-                        f.parentFile?.mkdirs()
-                        f.outputStream().use { z.copyTo(it) }
-                        onLog("+ $name")
-                    }
-                    name.startsWith("avatars/") -> {
-                        //zip 里还是 avatars/xxx，落盘落到新布局 img/avatars/
-                        val f = File(Layout.dir(ctx, Layout.AVATAR), name.removePrefix("avatars/"))
-                        f.parentFile?.mkdirs()
-                        f.outputStream().use { z.copyTo(it) }
-                        onLog("+ $name")
-                    }
-                }
-                z.closeEntry()
+        //ContentResolver 给的是单向流：先存下来，才能看文件头判断要不要解密
+        val raw = File(Layout.dir(ctx, Layout.COMPRESS), "import.tmp")
+        raw.outputStream().use { ins.copyTo(it) }
+        val zip = if (BackupCrypt.isSealed(raw)) {
+            val plain = File(Layout.dir(ctx, Layout.COMPRESS), "import.zip")
+            val ok = BackupCrypt.open(raw, plain)
+            raw.delete()
+            if (!ok) {
+                onLog("备份解不开：密钥对不上或文件已损坏")
+                return false
             }
+            onLog("已解密 ${plain.length() / 1024}K")
+            plain
+        } else raw
+        var hasDb = false
+        try {
+            ZipInputStream(zip.inputStream().buffered()).use { z ->
+                while (true) {
+                    val e = z.nextEntry ?: break
+                    val name = e.name
+                    if (e.isDirectory) continue
+                    when {
+                        name == "bai.db" -> {
+                            File(dir, "bai.db").outputStream().use { z.copyTo(it) }
+                            hasDb = true
+                            onLog("+ bai.db")
+                        }
+                        name == "bai_stat.db" -> {
+                            File(dir, "bai_stat.db").outputStream().use { z.copyTo(it) }
+                            onLog("+ bai_stat.db")
+                        }
+                        name == CFG_JSON || name == CFG_XML -> {
+                            File(dir, name).outputStream().use { z.copyTo(it) }
+                            onLog("+ $name")
+                        }
+                        name.startsWith("baicode/") -> {
+                            val f = File(Paths.ensure(), name.removePrefix("baicode/"))
+                            f.parentFile?.mkdirs()
+                            f.outputStream().use { z.copyTo(it) }
+                            onLog("+ $name")
+                        }
+                        name.startsWith("avatars/") -> {
+                            //zip 里还是 avatars/xxx，落盘落到新布局 img/avatars/
+                            val f = File(Layout.dir(ctx, Layout.AVATAR), name.removePrefix("avatars/"))
+                            f.parentFile?.mkdirs()
+                            f.outputStream().use { z.copyTo(it) }
+                            onLog("+ $name")
+                        }
+                    }
+                    z.closeEntry()
+                }
+            }
+        } finally {
+            zip.delete()
         }
         //没有 bai.db 就不是本 App 的备份，直接判定失败
         hasDb

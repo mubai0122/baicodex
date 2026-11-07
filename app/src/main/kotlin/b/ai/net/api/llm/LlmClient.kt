@@ -15,9 +15,13 @@ class LlmException(message: String) : Exception(message)
 internal fun JSONObject.text(name: String, def: String = ""): String =
     if (isNull(name)) def else optString(name, def)
 
-
 /** 极简 OpenAI 兼容客户端：只依赖 HttpURLConnection */
 class LlmClient(baseUrl: String, private val apiKey: String, private val auth: AuthStyle) {
+    companion object {
+        /** 最大模式下至少下发的单轮上限：比自己设的小值抬上来，比这个还大就按用户设的走 */
+        private const val MAX_CAP = 8192
+    }
+
     private val base = normalize(baseUrl)
 
     private fun normalize(u: String): String {
@@ -78,8 +82,8 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
             if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
         temperature?.let { body.put("temperature", it) }
-        //单轮上限：最大模式不下发（交给服务端默认最大），否则按配置的 max_tokens
-        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) 0 else b.ai.core.cfg.app.Cfg.maxTokens
+        //单轮上限：最大模式显式抬到下限 8192（各家服务端默认值普遍偏小，DeepSeek 是 4096），否则按配置的 max_tokens
+        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
         if (maxTok > 0) body.put("max_tokens", maxTok)
         //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
         if (think && b.ai.core.cfg.app.Cfg.modelReasoning) {

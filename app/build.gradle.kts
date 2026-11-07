@@ -34,6 +34,17 @@ val baiHost: String = run {
     props.getProperty("baicodex.host")?.trim()?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: ""
 }
 
+/** 备份独立密钥：跟加密库的四段种子分开一把，只认 local.properties 里的 baicodex.backup.key */
+val baiBkKey: String = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run "baicodex-backup-placeholder"
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    props.getProperty("baicodex.backup.key")?.trim()?.takeIf { s ->
+        s.isNotBlank() && s.all { it.isLetterOrDigit() || it == '.' || it == '_' || it == '-' }
+    } ?: "baicodex-backup-placeholder"
+}
+
 android {
     namespace = "b.ai"
     compileSdk = 37
@@ -44,10 +55,11 @@ android {
         minSdk = 24
         targetSdk = 34
         versionCode = 35
-        versionName = "1.11.1"
+        versionName = "1.12.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
+        buildConfigField("String", "BAI_BK_KEY", "\"$baiBkKey\"")
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }

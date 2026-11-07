@@ -52,14 +52,14 @@ object Repo {
     } //压 WAL
 
     /**
-     * 迁移前整库备份：压完 WAL 后走 Backup.export 打一个 zip 落到 数据根/backup/premigrate-时间戳.zip。
+     * 迁移前整库备份：压完 WAL 后走 Backup.export 打一份加密备份落到 数据根/backup/premigrate-时间戳.baicodex。
      * 备份失败返回 null，调用方照旧迁移（不因为备份失败卡住流程）。
      */
     fun backupAll(ctx: Context): String? = runCatching {
         checkpoint()
         val dir = File(Paths.ensure(), "backup").also { runCatching { it.mkdirs() } }
         val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(java.util.Date())
-        val f = File(dir, "premigrate-$stamp.zip")
+        val f = File(dir, "premigrate-$stamp" + b.ai.core.data.io.BackupCrypt.EXT)
         FileOutputStream(f).use { out -> if (Backup.export(ctx, out)) f.absolutePath else null }
     }.getOrNull() //迁移前整库备份
 

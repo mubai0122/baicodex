@@ -1006,10 +1006,13 @@ private fun BarChip(
 ) {
     //开了液态玻璃走玻璃；没开玻璃才轮得到质感按钮，否则 3D 胶囊会把玻璃整个盖掉
     val glassOn = Cfg.glassCard && (LocalCardBackdrop.current ?: CardBackdropHolder.current) != null
+    //开着的胶囊再加一圈同色描边：淡底在深色主题下容易被玻璃吃掉，只靠底色看不出开没开
+    val edge = Modifier.border(1.dp, if (active) accent else Color.Transparent, RoundedCornerShape(9.dp))
     if (glassOn) {
         Row(
             Modifier
                 .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted, highlightAlpha = 0.85f, gate = 0.dp)
+                .then(edge)
                 .tap { onTap() }
                 .padding(horizontal = 9.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1021,6 +1024,7 @@ private fun BarChip(
         Row(
             Modifier
                 .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted)
+                .then(edge)
                 .tap { onTap() }
                 .padding(horizontal = 9.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1305,19 +1309,21 @@ private fun InputBar(
                 Text(
                     if (Cfg.think) stringResource(R.string.cs_think_effort, Cfg.thinkEffort) else stringResource(R.string.cs_think),
                     fontSize = 10.sp,
+                    fontWeight = if (Cfg.think) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (Cfg.think) AccentBlue else TextSecondary
                 )
             }
             Spacer(Modifier.width(6.dp))
-            //最大模式：不下发 max_tokens、思考顶到 high，长任务不容易被截断
+            //最大模式：把单轮上限抬到 8192，长任务不容易被截断
             BarChip(
                 active = Cfg.maxMode,
                 flatActive = AccentBlueSoft,
                 onTap = { Cfg.maxMode = !Cfg.maxMode }
             ) {
                 Text(
-                    stringResource(R.string.cs_max),
+                    if (Cfg.maxMode) stringResource(R.string.cs_max_on) else stringResource(R.string.cs_max),
                     fontSize = 10.sp,
+                    fontWeight = if (Cfg.maxMode) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (Cfg.maxMode) AccentBlue else TextSecondary
                 )
             }

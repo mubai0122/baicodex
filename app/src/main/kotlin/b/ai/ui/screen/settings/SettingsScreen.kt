@@ -2237,10 +2237,17 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.se_242), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
+            //连点 5 次解锁开发者模式：解锁后才在关于页最下方放出开关，平时不占地方
             Text(
                 "${Update.clientVersion()}",
                 fontSize = 12.sp,
-                color = TextPrimary
+                color = TextPrimary,
+                modifier = Modifier.tap {
+                    if (!Cfg.devShow && Dev.tap()) {
+                        Cfg.devShow = true
+                        UpdateUi.tip = "开发者模式已解锁：看本页最下方"
+                    }
+                }
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -2378,8 +2385,8 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     CardBox {
         var bkTip by remember { mutableStateOf("") }
         var bkBusy by remember { mutableStateOf(false) }
-        //导出：系统选择器给个默认文件名，zip 里是 db + 配置 + baicode 小文件 + 头像
-        val bkSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        //导出：系统选择器给个默认文件名，打出来的是加密后的 .baicodex
+        val bkSave = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
             if (uri != null) {
                 bkBusy = true
                 bkTip = ctx.getString(R.string.se_bk_doing)
@@ -2414,10 +2421,11 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(stringResource(R.string.se_bk_export), modifier = Modifier.height(38.dp)) {
-                if (!bkBusy) bkSave.launch("BaiAgent-backup-${System.currentTimeMillis()}.zip")
+                if (!bkBusy) bkSave.launch("Baicodex-backup-${System.currentTimeMillis()}.baicodex")
             }
             GhostButton(stringResource(R.string.se_bk_import), modifier = Modifier.height(38.dp)) {
-                if (!bkBusy) bkOpen.launch(arrayOf("application/zip"))
+                //老备份是 zip、新备份是 .baicodex，系统都不认识这两个后缀的 mime，放开成任意文件
+                if (!bkBusy) bkOpen.launch(arrayOf("*/*"))
             }
         }
         if (bkTip.isNotBlank()) {
@@ -2439,6 +2447,15 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     //新增保护：注入与泄漏相关的两个开关，同样不占分类位，排在隐私与安全后面
     SectionTitle(stringResource(R.string.se_pt_tab), stringResource(R.string.se_pt_sub))
     ProtectSection()
+    }
+
+    //开发者工具：只有连点版本号解锁过才出现，摆在关于页最下面，不干扰普通用户
+    if (Cfg.devShow) {
+        item {
+            Spacer(Modifier.height(14.dp))
+            SectionTitle("开发者")
+            DevSection()
+        }
     }
 } //关于分类
 
