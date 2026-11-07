@@ -90,11 +90,14 @@ data class RunningTool(val seq: Long, val name: String, val args: String, val fr
 object Agent {
     //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     private const val SUMMARY_PROMPT =
-        "你是长对话的上下文压缩器。输出两段，段首标题原样照抄，不要序号、不要解释、不要前言：\n" +
+        "你是长对话的上下文压缩器。输出四段，段首标题原样照抄，不要序号、不要解释、不要前言：\n" +
             "【最重要】跨轮次永不缩减的部分：用户到底要什么、已经拍板的关键决策、已经确认的事实与硬信息" +
             "（版本号、路径、地址、字段名、接口名、命令名）。此前摘要里这部分的每一条都必须原样留住，" +
             "只允许补充新的，不许删减、不许合并概括、不许因为后面轮次而缩短。\n" +
             "【当前任务】这份对话总体在做什么、现在进行到哪一步、下一步要做什么、已经执行过的主要命令与关键路径。\n" +
+            "【用户状态】用户当前的情绪与心理状态（着急 / 满意 / 在试探 / 长时间等待 / 反复纠正同一件事等）、" +
+            "他在意什么、偏好与约束有没有变、现在卡在哪一步。只写从对话里能看出来的，不美化、不猜测。\n" +
+            "【用量】把输入末尾「本次统计」那一行原样抄下来；此前摘要里已有的用量行保留，别改数字、别合并求和。\n" +
             "不许编造，不许客套，不要复述工具原始输出，字数{limit}。"
     private const val TITLE_PROMPT =
         "你是会话命名助手。看用户这一句需求，回一行：标题|描述。" +
@@ -1207,10 +1210,13 @@ object Agent {
         //二次压缩要把上一次的摘要带进去，否则最早那段历史直接被忘掉
         val render = renderPart(old, prev)
         if (render.isBlank()) return false
+        //用量那一行由程序数好摆在最后，让模型照抄进【用量】段
+        val stat = statPart(old)
+        val input = if (stat.isBlank()) render else render + "\n\n" + stat
         status = host.getString(R.string.ag_compress_run)
         val pay = JSONArray().apply {
             put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
-            put(JSONObject().put("role", "user").put("content", render))
+            put(JSONObject().put("role", "user").put("content", input))
         }
         val m = sumLlm()
         val resp = runCatching {
@@ -1228,6 +1234,30 @@ object Agent {
         status = host.getString(R.string.ag_think_again)
         return true
     } //超预算或条数到线时压成摘要
+
+    /** 本段对话的工具用量：轮数、总次数、最常用的几个、技能激活次数，全由程序数，AI 只许照抄 */
+    private fun statPart(list: List<ChatMsg>): String {
+        val calls = list.sumOf { it.toolCalls.size }
+        if (calls <= 0) return ""
+        val turns = list.count { it.toolCalls.isNotEmpty() }
+        val cnt = LinkedHashMap<String, Int>()
+        list.forEach { m -> m.toolCalls.forEach { c -> cnt[c.name] = (cnt[c.name] ?: 0) + 1 } }
+        val top = cnt.entries.sortedByDescending { it.value }.take(6)
+            .joinToString("、") { "${it.key} ${it.value}次" }
+        //技能都经 skill_read 取正文，参数里带 id 或 name；取不到名字就只报次数
+        val ids = list.flatMap { it.toolCalls }
+            .filter { it.name == Tools.SKILL_READ }
+            .mapNotNull { c ->
+                runCatching {
+                    val o = JSONObject(c.arguments)
+                    o.optString("id").ifBlank { o.optString("name") }
+                }.getOrNull()
+            }
+            .filter { it.isNotBlank() }
+        val skill = if (ids.isEmpty()) "" else
+            "；技能：skill_read ${ids.size}次（${ids.distinct().take(6).joinToString("、")}）"
+        return "【本次统计（程序给出，数字不许改）】工具调用 $turns 轮 / $calls 次；最常用：$top$skill"
+    } //工具用量统计
 
     /** 单条消息压成一行，供摘要渲染 */
     private fun oneLine(m: ChatMsg, cap: Int): String = when (m.role) {
@@ -1297,9 +1327,12 @@ object Agent {
             ?.let { stripMarker(it.content) }
         val render = renderPart(part, prev)
         if (render.isBlank()) return false
+        //重总结同样把用量摆进输入，否则【用量】段会被模型编出数字
+        val stat = statPart(part)
+        val input = if (stat.isBlank()) render else render + "\n\n" + stat
         val pay = JSONArray().apply {
             put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
-            put(JSONObject().put("role", "user").put("content", render))
+            put(JSONObject().put("role", "user").put("content", input))
         }
         val m = sumLlm()
         val resp = runCatching {
