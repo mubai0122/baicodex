@@ -1,4 +1,6 @@
 package b.ai.ui
+import b.ai.App
+import b.ai.net.text
 
 import android.content.Context
 import android.content.Intent

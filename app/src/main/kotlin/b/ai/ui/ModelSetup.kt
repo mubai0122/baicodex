@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -41,11 +42,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.Cfg
-import b.ai.core.ModelProfile
-import b.ai.core.Provider
-import b.ai.core.Providers
-import b.ai.core.Profiles
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.profile.ModelProfile
+import b.ai.core.model.chat.Provider
+import b.ai.core.plugin.skill.Providers
+import b.ai.core.data.profile.Profiles
 import b.ai.net.LlmClient
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray

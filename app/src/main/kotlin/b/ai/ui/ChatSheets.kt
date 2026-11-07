@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,9 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.Cfg
-import b.ai.core.Profiles
-import b.ai.core.Skills
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.profile.Profiles
+import b.ai.core.plugin.skill.Skills
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.SurfaceMuted

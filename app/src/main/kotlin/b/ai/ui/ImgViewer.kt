@@ -27,7 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import b.ai.core.Images
+import b.ai.core.media.img.Images
 
 /** 图片查看器的全局开关：气泡里的图点一下把路径塞进来，挂载点在 ChatScreen 的根弹窗层 */
 object ImgView {

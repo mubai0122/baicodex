@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 import android.content.Context
 
 import androidx.compose.foundation.background
@@ -28,9 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Tools
-import b.ai.core.Mcp
-import b.ai.core.McpTool
-import b.ai.core.Skills
+import b.ai.net.mcp.Mcp
+import b.ai.net.mcp.McpTool
+import b.ai.core.plugin.skill.Skills
 import b.ai.exec.Workspace
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.SurfaceMuted

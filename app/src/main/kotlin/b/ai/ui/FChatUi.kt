@@ -1,4 +1,6 @@
 package b.ai.ui
+import b.ai.MainActivity
+import b.ai.net.text
 
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -40,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import b.ai.exec.FChat
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed

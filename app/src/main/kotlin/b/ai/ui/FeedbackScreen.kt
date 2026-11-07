@@ -1,4 +1,7 @@
 package b.ai.ui
+import b.ai.App
+import b.ai.core.data.io.Attach
+import b.ai.net.text
 
 import android.content.Context
 import android.graphics.BitmapFactory

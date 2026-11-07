@@ -1,7 +1,7 @@
 package b.ai.exec
 
 import b.ai.App
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import java.io.File
 
 /**

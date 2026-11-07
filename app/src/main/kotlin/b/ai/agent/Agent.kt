@@ -1,37 +1,38 @@
 package b.ai.agent
+import b.ai.core.model.chat.Sum
 
 import android.content.Context
 import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import b.ai.core.AgentMode
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.AgentMode
+import b.ai.core.cfg.app.Cfg
 import b.ai.App
 import b.ai.R
 import java.io.File
-import b.ai.core.ChatMsg
-import b.ai.core.Env
-import b.ai.core.Flow
-import b.ai.core.Flows
-import b.ai.core.Memory
-import b.ai.core.Mask
-import b.ai.core.MsgMeta
-import b.ai.core.Perms
-import b.ai.core.Personas
-import b.ai.core.Profiles
-import b.ai.core.Providers
-import b.ai.core.Repo
-import b.ai.core.Route
-import b.ai.core.Search
-import b.ai.core.SessionRow
-import b.ai.core.Skills
-import b.ai.core.SkillPacks
-import b.ai.core.Speak
-import b.ai.core.ToolCall
-import b.ai.core.Waifu
-import b.ai.core.WorkMode
-import b.ai.core.Workflows
+import b.ai.core.model.chat.ChatMsg
+import b.ai.core.cfg.env.Env
+import b.ai.agent.flow.Flow
+import b.ai.agent.flow.Flows
+import b.ai.agent.memory.Memory
+import b.ai.native.Mask
+import b.ai.core.model.chat.MsgMeta
+import b.ai.core.perm.Perms
+import b.ai.agent.persona.Personas
+import b.ai.core.data.profile.Profiles
+import b.ai.core.plugin.skill.Providers
+import b.ai.core.data.db.Repo
+import b.ai.core.model.chat.Route
+import b.ai.net.search.Search
+import b.ai.core.model.chat.SessionRow
+import b.ai.core.plugin.skill.Skills
+import b.ai.core.plugin.skill.SkillPacks
+import b.ai.core.model.voice.Speak
+import b.ai.core.model.chat.ToolCall
+import b.ai.core.pet.say.Waifu
+import b.ai.core.model.chat.WorkMode
+import b.ai.core.plugin.skill.Workflows
 import b.ai.exec.Linux
 import b.ai.exec.Router
 import b.ai.exec.Workspace
@@ -1246,7 +1247,7 @@ object Agent {
             .replace("{budget}", Cfg.ctxCharBudget.toString())
     } //总结提示词（注入变量）
     /** 总结用的连接参数：统一走 core/Sum（与工具里的「搜索总结」共用同一份配置） */
-    private fun sumLlm(): Array<String> = b.ai.core.Sum.llm()
+    private fun sumLlm(): Array<String> = b.ai.core.model.chat.Sum.llm()
 
     /** 用户附加的微调要求，拼在总结提示词后面 */
     private fun extraBlock(note: String?): String {

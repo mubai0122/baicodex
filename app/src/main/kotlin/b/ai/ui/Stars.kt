@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,8 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Repo
-import b.ai.core.StarHit
+import b.ai.core.data.db.Repo
+import b.ai.core.model.chat.StarHit
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.SurfaceMuted

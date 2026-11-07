@@ -1,6 +1,6 @@
 package b.ai.net
 
-import b.ai.core.A2aNode
+import b.ai.net.api.A2aNode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection

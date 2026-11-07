@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.Perms
+import b.ai.core.perm.Perms
 import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary

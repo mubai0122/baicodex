@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -45,12 +46,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.DayUse
-import b.ai.core.ModelUse
-import b.ai.core.Price
-import b.ai.core.Prices
-import b.ai.core.Stat
-import b.ai.core.StatSnap
+import b.ai.core.data.usage.DayUse
+import b.ai.core.data.usage.ModelUse
+import b.ai.core.data.usage.Price
+import b.ai.core.data.profile.Prices
+import b.ai.core.data.usage.StatSnap
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
@@ -117,7 +117,7 @@ fun LazyListScope.statTab(ui: StatUi) {
     //只进页时扫一次库；切范围只是从已聚合好的天里截，不重复查库
     LaunchedEffect(Unit) {
         if (!ui.loaded) {
-            withContext(Dispatchers.IO) { ui.snap = Stat.load() }
+            withContext(Dispatchers.IO) { ui.snap = b.ai.core.data.usage.Stat.load() }
             ui.loaded = true
         }
     }
@@ -356,7 +356,7 @@ fun LazyListScope.statTab(ui: StatUi) {
                         ) {
                             Prices.remove(m.name)
                             ui.editing = null
-                            scope.launch { withContext(Dispatchers.IO) { ui.snap = Stat.load() } }
+                            scope.launch { withContext(Dispatchers.IO) { ui.snap = b.ai.core.data.usage.Stat.load() } }
                         }
                         PrimaryButton(stringResource(R.string.st_price_save), modifier = Modifier.weight(1f)) {
                             Prices.put(
@@ -364,7 +364,7 @@ fun LazyListScope.statTab(ui: StatUi) {
                                 Price(ui.eIn.toFloatOrNull() ?: 0f, ui.eOut.toFloatOrNull() ?: 0f, ui.eCache.toFloatOrNull() ?: 0f)
                             )
                             ui.editing = null
-                            scope.launch { withContext(Dispatchers.IO) { ui.snap = Stat.load() } }
+                            scope.launch { withContext(Dispatchers.IO) { ui.snap = b.ai.core.data.usage.Stat.load() } }
                         }
                     }
                 }

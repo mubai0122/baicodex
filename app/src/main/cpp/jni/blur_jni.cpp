@@ -8,7 +8,7 @@ extern "C" {
 
 /** 原地两趟盒式模糊近似高斯：arr 是 ARGB_8888 的像素数组，走临界区不复制；失败返回 false 由 Kotlin 兜底 */
 JNIEXPORT jboolean JNICALL
-Java_b_ai_core_Blur_nativeBox(JNIEnv *env, jobject, jintArray arr, jint w, jint h, jint r) {
+Java_b_ai_native_Blur_nativeBox(JNIEnv *env, jobject, jintArray arr, jint w, jint h, jint r) {
     if (arr == nullptr || w < 2 || h < 2 || r <= 0) return JNI_FALSE;
     const jsize len = env->GetArrayLength(arr);
     if (len < static_cast<jsize>(w) * h) return JNI_FALSE;

@@ -1,4 +1,6 @@
 package b.ai.ui
+import b.ai.core.task.alarm.Schedules
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -31,9 +33,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.FlowRunner
-import b.ai.core.Flow
-import b.ai.core.FlowStep
-import b.ai.core.Flows
+import b.ai.agent.flow.Flow
+import b.ai.agent.flow.FlowStep
+import b.ai.agent.flow.Flows
 import b.ai.exec.Alarms
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
@@ -369,5 +371,5 @@ private fun flowParseAt(date: String, time: String, daily: Boolean): Long? {
     val at = d.time
     val now = System.currentTimeMillis()
     if (at > now) return at
-    return if (daily) b.ai.core.Schedules.rollForward(at, true, now) else null
+    return if (daily) b.ai.core.task.alarm.Schedules.rollForward(at, true, now) else null
 } //定时时间解析

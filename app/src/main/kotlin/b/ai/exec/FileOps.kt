@@ -1,10 +1,11 @@
 package b.ai.exec
+import b.ai.net.text
 
 import android.util.Base64
 import b.ai.App
-import b.ai.core.Route
-import b.ai.core.Sum
-import b.ai.core.TextEdit
+import b.ai.core.model.chat.Route
+import b.ai.core.model.chat.Sum
+import b.ai.native.TextEdit
 import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat

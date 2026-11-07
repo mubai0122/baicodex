@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 import android.content.Context
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
 import b.ai.agent.PendingTool
 import b.ai.agent.Tools
-import b.ai.core.Perms
+import b.ai.core.perm.Perms
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray

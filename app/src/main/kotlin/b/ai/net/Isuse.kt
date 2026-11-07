@@ -1,7 +1,7 @@
 package b.ai.net
 
 import android.util.Log
-import b.ai.core.Bai
+import b.ai.core.cfg.app.Bai
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL

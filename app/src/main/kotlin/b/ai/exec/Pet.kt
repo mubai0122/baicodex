@@ -1,4 +1,6 @@
 package b.ai.exec
+import b.ai.net.text
+import b.ai.ui.tap
 
 import android.annotation.SuppressLint
 import android.animation.ObjectAnimator
@@ -21,9 +23,9 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.PetSay
-import b.ai.core.PetSound
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.pet.say.PetSay
+import b.ai.core.pet.sound.PetSound
 
 /**
  * 桌宠悬浮窗。位置默认固定，动画都做在 View 自己身上：

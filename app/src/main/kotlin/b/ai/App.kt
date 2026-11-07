@@ -1,4 +1,20 @@
 package b.ai
+import b.ai.exec.Root
+import b.ai.core.cfg.secret.Secret
+import b.ai.core.data.io.Pastes
+import b.ai.core.data.profile.Prices
+import b.ai.core.media.wall.Wallpaper
+import b.ai.exec.Capsule
+import b.ai.exec.FChat
+import b.ai.exec.Pet
+import b.ai.exec.PetSvc
+import b.ai.native.Guard
+import b.ai.native.Mask
+import b.ai.native.Vault
+import b.ai.net.MaskRules
+import b.ai.net.api.A2aNodes
+import b.ai.ui.GlassPerf
+import b.ai.ui.PerfProbe
 
 import android.app.ActivityManager
 import android.app.Application
@@ -6,26 +22,25 @@ import android.app.Application.ActivityLifecycleCallbacks
 import android.content.Context
 import android.os.Build
 import android.os.Process
-import b.ai.core.Cfg
-import b.ai.core.Js
-import b.ai.core.Backup
-import b.ai.core.Brands
-import b.ai.core.Providers
-import b.ai.core.Paths
-import b.ai.core.Mcp
-import b.ai.core.Memory
-import b.ai.core.Personas
-import b.ai.core.Profiles
-import b.ai.core.Flows
-import b.ai.core.Schedules
-import b.ai.core.Skills
-import b.ai.core.Triggers
-import b.ai.core.SkillPacks
-import b.ai.core.Repo
-import b.ai.core.WorkMode
+import b.ai.core.cfg.app.Cfg
+import b.ai.native.Js
+import b.ai.core.data.io.Backup
+import b.ai.core.model.provider.Brands
+import b.ai.core.plugin.skill.Providers
+import b.ai.core.cfg.io.Paths
+import b.ai.net.mcp.Mcp
+import b.ai.agent.memory.Memory
+import b.ai.agent.persona.Personas
+import b.ai.core.data.profile.Profiles
+import b.ai.agent.flow.Flows
+import b.ai.core.task.alarm.Schedules
+import b.ai.core.plugin.skill.Skills
+import b.ai.core.task.hook.Triggers
+import b.ai.core.plugin.skill.SkillPacks
+import b.ai.core.data.db.Repo
+import b.ai.core.model.chat.WorkMode
 import b.ai.exec.A2aSrv
 import b.ai.exec.Alarms
-import b.ai.exec.Root
 import b.ai.exec.Router
 import b.ai.exec.Workspace
 import b.ai.net.Usage
@@ -50,7 +65,7 @@ class App : Application() {
         android.util.Log.w("Boot", "onCreate start")
         self = this
         //上次进程被杀留下的过期粘贴文件，启动时清一遍
-        runCatching { b.ai.core.Pastes.purge() }
+        runCatching { b.ai.core.data.io.Pastes.purge() }
         //当前在前台的 Activity：WebView 需要窗口上下文，拿不到就退回 Application
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}
@@ -58,7 +73,7 @@ class App : Application() {
             override fun onActivityResumed(a: android.app.Activity) {
                 act = a
                 //外部存储晚挂上（开机自启 / 后台起进程）时模型配置的读盘被延后了：界面回来补一次
-                runCatching { b.ai.core.Profiles.retry() }
+                runCatching { b.ai.core.data.profile.Profiles.retry() }
             }
 
             override fun onActivityPaused(a: android.app.Activity) {}
@@ -80,12 +95,12 @@ class App : Application() {
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
         //数据保障必须在 Cfg.init 之前解锁：否则加密库读不出 v2 密文，会把整个桶当「解不开」锁掉
-        val guardOk = runCatching { b.ai.core.Guard.boot() }.getOrDefault(false)
-        android.util.Log.w("Boot", "Guard.boot=" + guardOk + " on=" + b.ai.core.Guard.on)
+        val guardOk = runCatching { b.ai.native.Guard.boot() }.getOrDefault(false)
+        android.util.Log.w("Boot", "Guard.boot=" + guardOk + " on=" + b.ai.native.Guard.on)
         Cfg.init(this)
         android.util.Log.w("Boot", "Cfg.init done +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms")
         //背景图：缩略图同步读进内存 + 真图后台读盘缓存，首帧就有对色的底，不会先白一下
-        runCatching { b.ai.core.Wallpaper.warm(this, Cfg.bgImg, Cfg.bgBlur) }
+        runCatching { b.ai.core.media.wall.Wallpaper.warm(this, Cfg.bgImg, Cfg.bgBlur) }
         android.util.Log.w("Boot", "Wallpaper done +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms")
         //桌宠默认全局展示：有权限就直接起前台服务，没权限交给界面弹授权（起服务要过系统，挪到后台）
         Profiles.init()
@@ -104,15 +119,15 @@ class App : Application() {
             }
             //功能级的配置库（技能、角色、定时任务、工作流、A2A 节点、价格、触发器、MCP）一律首帧之后再读
             //老版本明文 secrets.json 先搬进加密库，技能执行时才能读到 $secret.xxx
-            runCatching { b.ai.core.Secret.migrate() }
+            runCatching { b.ai.core.cfg.secret.Secret.migrate() }
             //数据保障开着就把还是旧版的密文重写一遍：中途被杀的迁移在这里收尾
-            runCatching { if (b.ai.core.Guard.ready) b.ai.core.Vault.rewriteAll() }
+            runCatching { if (b.ai.native.Guard.ready) b.ai.native.Vault.rewriteAll() }
             runCatching { Skills.init(self) }
             runCatching { Personas.init(self) }
             runCatching { Schedules.init(self) }
             runCatching { Flows.init(self) }
-            runCatching { b.ai.core.A2aNodes.init(self) }
-            runCatching { b.ai.core.Prices.init(self) }
+            runCatching { b.ai.net.api.A2aNodes.init(self) }
+            runCatching { b.ai.core.data.profile.Prices.init(self) }
             runCatching { Triggers.init(self) }
             runCatching { Mcp.init(self) }
             // A2A 服务端：上次开着就恢复监听；端口被占就失败，不崩
@@ -140,7 +155,7 @@ class App : Application() {
             //每次进程起来上报一次使用计数：失败静默
             runCatching { Usage.reportOnce() }
             //脱敏：先把上次缓存的服务端规则装回 native，再按有效期后台换一份新的
-            runCatching { b.ai.core.Mask.boot() }
+            runCatching { b.ai.native.Mask.boot() }
             runCatching { if (Cfg.maskOut) b.ai.net.MaskRules.sync() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发

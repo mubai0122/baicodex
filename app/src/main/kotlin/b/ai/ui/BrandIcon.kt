@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -23,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.core.Brands
+import b.ai.core.model.provider.Brands
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs

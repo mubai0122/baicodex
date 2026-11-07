@@ -1,4 +1,8 @@
 package b.ai.ui
+import b.ai.App
+import b.ai.core.cfg.app.Lang
+import b.ai.net.TosDoc
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BgGray
 import b.ai.ui.theme.SurfaceMuted
@@ -51,7 +55,7 @@ object Tos {
 
     /** 当前该用哪个语言拿正文：繁简共用 zh，日法各一档，其余 en */
     fun langKey(): String {
-        val t = Cfg.lang.ifBlank { b.ai.core.Lang.systemTag() }
+        val t = Cfg.lang.ifBlank { b.ai.core.cfg.app.Lang.systemTag() }
         return when {
             t.startsWith("zh") -> "zh"
             t.startsWith("ja") -> "ja"

@@ -47,8 +47,8 @@ import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.highlight.Highlight
-import b.ai.core.Cfg
-import b.ai.core.Wallpaper
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.media.wall.Wallpaper
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize

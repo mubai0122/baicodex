@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -28,11 +29,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Dsl
-import b.ai.core.Secret
-import b.ai.core.SkillFn
-import b.ai.core.SkillPack
-import b.ai.core.SkillPacks
+import b.ai.native.Dsl
+import b.ai.core.cfg.secret.Secret
+import b.ai.core.plugin.skill.SkillFn
+import b.ai.core.plugin.skill.SkillPack
+import b.ai.core.plugin.skill.SkillPacks
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.SurfaceMuted

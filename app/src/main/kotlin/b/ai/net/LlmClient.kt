@@ -1,6 +1,8 @@
 package b.ai.net
+import b.ai.agent.Tools
+import b.ai.core.cfg.app.Cfg
 
-import b.ai.core.AuthStyle
+import b.ai.core.model.chat.AuthStyle
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -70,22 +72,22 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
             .put("model", model)
             .put("messages", messages)
         //模型不支持工具调用就别发 tools，发了有的中转站直接 400
-        if (b.ai.core.Cfg.modelToolCall) {
+        if (b.ai.core.cfg.app.Cfg.modelToolCall) {
             //传了就按传的来（分智能体只下发只读工具），传空数组等于这轮不给工具
             val defs = tools ?: b.ai.agent.Tools.definitions()
             if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
         temperature?.let { body.put("temperature", it) }
         //单轮上限：最大模式不下发（交给服务端默认最大），否则按配置的 max_tokens
-        val maxTok = if (b.ai.core.Cfg.maxMode) 0 else b.ai.core.Cfg.maxTokens
+        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) 0 else b.ai.core.cfg.app.Cfg.maxTokens
         if (maxTok > 0) body.put("max_tokens", maxTok)
         //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
-        if (think && b.ai.core.Cfg.modelReasoning) {
+        if (think && b.ai.core.cfg.app.Cfg.modelReasoning) {
             body.put("reasoning_effort", thinkEffort)
         }
         //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
-        val ds = b.ai.core.Cfg.providerId.contains("deepseek", true) ||
-            b.ai.core.Cfg.baseUrl.contains("deepseek", true)
+        val ds = b.ai.core.cfg.app.Cfg.providerId.contains("deepseek", true) ||
+            b.ai.core.cfg.app.Cfg.baseUrl.contains("deepseek", true)
         if (ds && !think) {
             body.put("thinking", JSONObject().put("type", "disabled"))
         }

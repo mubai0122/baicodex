@@ -1,4 +1,5 @@
 package b.ai.net
+import b.ai.agent.Agent
 
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory

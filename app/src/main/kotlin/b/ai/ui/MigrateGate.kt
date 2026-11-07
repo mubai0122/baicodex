@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import android.app.Activity
 import android.content.Context
@@ -38,8 +39,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.Repo
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.db.Repo
 import b.ai.exec.Workspace
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BgGray

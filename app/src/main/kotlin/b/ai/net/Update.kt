@@ -3,7 +3,7 @@ package b.ai.net
 import android.os.Build
 import android.util.Log
 import b.ai.App
-import b.ai.core.Bai
+import b.ai.core.cfg.app.Bai
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection

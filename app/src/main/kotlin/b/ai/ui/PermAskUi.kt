@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -16,8 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Noti
-import b.ai.core.Usage
+import b.ai.core.task.hook.Noti
+import b.ai.core.data.usage.Usage
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 

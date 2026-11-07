@@ -2,9 +2,9 @@ package b.ai.agent
 
 import b.ai.App
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.Perms
-import b.ai.core.Providers
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.perm.Perms
+import b.ai.core.plugin.skill.Providers
 import b.ai.net.LlmClient
 import b.ai.net.text
 import kotlinx.coroutines.CancellationException

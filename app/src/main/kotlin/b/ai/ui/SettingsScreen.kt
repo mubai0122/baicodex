@@ -1,4 +1,9 @@
 package b.ai.ui
+import b.ai.core.cfg.app.Bai
+import b.ai.core.task.hook.Noti
+import b.ai.exec.AutoA11y
+import b.ai.exec.PetSvc
+import b.ai.net.text
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -78,35 +83,35 @@ import androidx.compose.ui.unit.sp
 import b.ai.agent.Agent
 import b.ai.agent.Tools
 import android.app.Activity
-import b.ai.core.Avatar
-import b.ai.core.Audio
-import b.ai.core.AsrPresets
-import b.ai.core.Backup
-import b.ai.core.Guard
-import b.ai.core.Cfg
-import b.ai.core.Lang
-import b.ai.core.Mcp
-import b.ai.core.Mask
-import b.ai.core.McpServer
-import b.ai.core.Env
-import b.ai.core.Speak
-import b.ai.core.Perms
-import b.ai.core.Persona
-import b.ai.core.Personas
-import b.ai.core.Profiles
-import b.ai.core.A2aNodes
-import b.ai.core.Flows
+import b.ai.core.media.img.Avatar
+import b.ai.core.model.voice.Audio
+import b.ai.core.model.voice.AsrPresets
+import b.ai.core.data.io.Backup
+import b.ai.native.Guard
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.Lang
+import b.ai.net.mcp.Mcp
+import b.ai.native.Mask
+import b.ai.net.mcp.McpServer
+import b.ai.core.cfg.env.Env
+import b.ai.core.model.voice.Speak
+import b.ai.core.perm.Perms
+import b.ai.agent.persona.Persona
+import b.ai.agent.persona.Personas
+import b.ai.core.data.profile.Profiles
+import b.ai.net.api.A2aNodes
+import b.ai.agent.flow.Flows
 import b.ai.exec.A2aSrv
-import b.ai.core.Schedules
-import b.ai.core.Triggers
-import b.ai.core.Search
-import b.ai.core.Skill
-import b.ai.core.Skills
-import b.ai.core.Secret
-import b.ai.core.SkillPacks
-import b.ai.core.SkillPack
-import b.ai.core.Wallpaper
-import b.ai.core.WorkMode
+import b.ai.core.task.alarm.Schedules
+import b.ai.core.task.hook.Triggers
+import b.ai.net.search.Search
+import b.ai.core.plugin.skill.Skill
+import b.ai.core.plugin.skill.Skills
+import b.ai.core.cfg.secret.Secret
+import b.ai.core.plugin.skill.SkillPacks
+import b.ai.core.plugin.skill.SkillPack
+import b.ai.core.media.wall.Wallpaper
+import b.ai.core.model.chat.WorkMode
 import b.ai.exec.Shiz
 import b.ai.exec.Alarms
 import b.ai.exec.FChat
@@ -1000,12 +1005,12 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             stringResource(R.string.se_320),
             when {
                 !Cfg.injectNoti -> stringResource(R.string.se_321)
-                !b.ai.core.Noti.allow(ctx) -> stringResource(R.string.se_322)
-                else -> stringResource(R.string.se_323, b.ai.core.Noti.count(ctx))
+                !b.ai.core.task.hook.Noti.allow(ctx) -> stringResource(R.string.se_322)
+                else -> stringResource(R.string.se_323, b.ai.core.task.hook.Noti.count(ctx))
             },
             Cfg.injectNoti
         ) { on ->
-            if (on && !b.ai.core.Noti.allow(ctx)) {
+            if (on && !b.ai.core.task.hook.Noti.allow(ctx)) {
                 Cfg.injectNoti = true
                 PermAsk.kind.value = "noti"
             } else {
@@ -1021,12 +1026,12 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             stringResource(R.string.se_328),
             when {
                 !Cfg.injectUsage -> stringResource(R.string.se_329)
-                !b.ai.core.Usage.allow(ctx) -> stringResource(R.string.se_330)
-                else -> stringResource(R.string.se_331, b.ai.core.Usage.hm(b.ai.core.Usage.today(ctx).first))
+                !b.ai.core.data.usage.Usage.allow(ctx) -> stringResource(R.string.se_330)
+                else -> stringResource(R.string.se_331, b.ai.core.data.usage.Usage.hm(b.ai.core.data.usage.Usage.today(ctx).first))
             },
             Cfg.injectUsage
         ) { on ->
-            if (on && !b.ai.core.Usage.allow(ctx)) {
+            if (on && !b.ai.core.data.usage.Usage.allow(ctx)) {
                 Cfg.injectUsage = true
                 PermAsk.kind.value = "usage"
             } else {
@@ -2142,7 +2147,7 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
 } //技能包列表
 
 //官网地址：服务端根地址在构建期从 local.properties 注入，仓库里没有真值
-internal val SITE_URL: String get() = b.ai.core.Bai.host
+internal val SITE_URL: String get() = b.ai.core.cfg.app.Bai.host
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 + 更新历史 + 官网 / GitHub 链接 */
@@ -2243,7 +2248,7 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     SectionTitle(stringResource(R.string.se_252))
     CardBox {
         //服务端地址没配（fork 出去没填 local.properties）：链接置灰，点了也没意义
-        LinkRow(stringResource(R.string.se_253), SITE_URL, enabled = b.ai.core.Bai.configured) {
+        LinkRow(stringResource(R.string.se_253), SITE_URL, enabled = b.ai.core.cfg.app.Bai.configured) {
             openUrl(ctx, SITE_URL)
         }
         Spacer(Modifier.height(6.dp))

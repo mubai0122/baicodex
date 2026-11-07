@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import android.content.ClipData
 import android.content.ClipboardManager

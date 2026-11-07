@@ -12,7 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 
 private val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),

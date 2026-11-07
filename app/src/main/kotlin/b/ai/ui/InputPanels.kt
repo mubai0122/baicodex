@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,13 +68,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import b.ai.net.LlmClient
-import b.ai.core.Effort
-import b.ai.core.Profiles
-import b.ai.core.Providers
-import b.ai.core.Skills
-import b.ai.core.Mcp
+import b.ai.core.model.chat.Effort
+import b.ai.core.data.profile.Profiles
+import b.ai.core.plugin.skill.Providers
+import b.ai.core.plugin.skill.Skills
+import b.ai.net.mcp.Mcp
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray

@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -45,7 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Guard
+import b.ai.native.Guard
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft

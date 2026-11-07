@@ -3,9 +3,9 @@ package b.ai.exec
 import android.content.Context
 
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.Repo
-import b.ai.core.Paths
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.db.Repo
+import b.ai.core.cfg.io.Paths
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

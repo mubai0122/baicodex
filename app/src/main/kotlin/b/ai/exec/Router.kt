@@ -3,11 +3,11 @@ package b.ai.exec
 import android.content.Context
 import b.ai.R
 
-import b.ai.core.Cfg
-import b.ai.core.Paths
-import b.ai.core.Perms
-import b.ai.core.Route
-import b.ai.core.WorkMode
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.io.Paths
+import b.ai.core.perm.Perms
+import b.ai.core.model.chat.Route
+import b.ai.core.model.chat.WorkMode
 import java.io.File
 
 /**

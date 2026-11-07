@@ -1,4 +1,6 @@
 package b.ai.exec
+import b.ai.App
+import b.ai.net.text
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap

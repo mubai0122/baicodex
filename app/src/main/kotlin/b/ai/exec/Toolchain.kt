@@ -3,8 +3,8 @@ package b.ai.exec
 import android.content.Context
 
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.WorkMode
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.model.chat.WorkMode
 
 /**编译工具链检测：编译 APK 要的 JDK / gradle / aapt2 / Android SDK 是否齐 */
 object Toolchain {

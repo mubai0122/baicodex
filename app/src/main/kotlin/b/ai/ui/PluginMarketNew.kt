@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -49,10 +50,10 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.Paths
-import b.ai.core.PluginInstall
-import b.ai.core.PluginNote
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.io.Paths
+import b.ai.core.plugin.install.PluginInstall
+import b.ai.core.plugin.install.PluginNote
 import b.ai.net.Auth
 import b.ai.net.Plugins
 import b.ai.ui.theme.AccentBlue

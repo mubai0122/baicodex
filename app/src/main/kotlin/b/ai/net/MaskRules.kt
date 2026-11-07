@@ -1,10 +1,10 @@
 package b.ai.net
 
 import android.util.Log
-import b.ai.core.Bai
-import b.ai.core.Cfg
-import b.ai.core.Mask
-import b.ai.core.Vault
+import b.ai.core.cfg.app.Bai
+import b.ai.core.cfg.app.Cfg
+import b.ai.native.Mask
+import b.ai.native.Vault
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL

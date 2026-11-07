@@ -1,8 +1,8 @@
 package b.ai.exec
 
 import android.content.Context
-import b.ai.core.Cfg
-import b.ai.core.WorkMode
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.model.chat.WorkMode
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

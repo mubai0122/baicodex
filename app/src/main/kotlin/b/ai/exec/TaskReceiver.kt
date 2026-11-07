@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import b.ai.agent.Agent
 import b.ai.agent.FlowRunner
-import b.ai.core.Flows
-import b.ai.core.Schedules
+import b.ai.agent.flow.Flows
+import b.ai.core.task.alarm.Schedules
 
 /** 定时任务广播：开机/改时间/升级后重排闹钟；闹钟到点则发通知并（可选）直接跑一轮 */
 class TaskReceiver : BroadcastReceiver() {

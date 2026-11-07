@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
@@ -30,9 +31,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Noti
-import b.ai.core.NoteTrigger
-import b.ai.core.Triggers
+import b.ai.core.task.hook.Noti
+import b.ai.core.task.hook.NoteTrigger
+import b.ai.core.task.hook.Triggers
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

@@ -1,7 +1,8 @@
 package b.ai.net
+import b.ai.App
 
-import b.ai.core.Bai
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Bai
+import b.ai.core.cfg.app.Cfg
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection

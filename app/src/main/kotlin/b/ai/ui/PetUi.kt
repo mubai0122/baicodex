@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -45,9 +46,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.PetSay
-import b.ai.core.PetSound
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.pet.say.PetSay
+import b.ai.core.pet.sound.PetSound
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary

@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background

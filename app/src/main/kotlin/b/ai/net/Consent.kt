@@ -3,8 +3,8 @@ package b.ai.net
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import b.ai.core.Bai
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Bai
+import b.ai.core.cfg.app.Cfg
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL

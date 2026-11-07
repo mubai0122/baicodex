@@ -1,9 +1,11 @@
 package b.ai.exec
+import b.ai.net.A2A
+import b.ai.net.text
 
 import b.ai.agent.SubAgents
 import b.ai.agent.SubOut
 import b.ai.agent.SubTask
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

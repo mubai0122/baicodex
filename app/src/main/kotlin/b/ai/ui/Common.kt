@@ -1,4 +1,5 @@
 package b.ai.ui
+import b.ai.net.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray
-import b.ai.core.Cfg
+import b.ai.core.cfg.app.Cfg
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -56,7 +57,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
-import b.ai.core.Avatar
+import b.ai.core.media.img.Avatar
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft
 import androidx.compose.ui.res.stringResource

@@ -1,0 +1,312 @@
+package b.ai.core.data.profile
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.io.Paths
+import b.ai.core.cfg.io.Store
+import b.ai.core.plugin.skill.Providers
+
+import androidx.compose.runtime.mutableStateOf
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+
+/** 一条模型配置：提供商 + base_url + Key + 模型名 + 该模型支持的能力，可同时存多套随时切换 */
+data class ModelProfile(
+    val id: String,
+    val name: String,
+    val providerId: String,
+    val baseUrl: String,
+    val apiKey: String,
+    val model: String,
+    /** 设置里勾选过的模型：聊天页的模型卡片只在这几个里挑，可同时存多条 */
+    val models: List<String> = emptyList(),
+    val vision: Boolean = true,
+    val toolCall: Boolean = true,
+    val reasoning: Boolean = true,
+    val maxTokens: Int = 0,
+    /** 名字是否用户自定义：false 时始终按「厂商 · 模型」显示，改模型名字跟着变 */
+    val custom: Boolean = false
+) {
+    val autoLabel: String get() = Profiles.autoLabel(providerId, model)
+    val label: String get() = if (custom && name.isNotBlank()) name else autoLabel
+}
+
+/** 模型配置库：整表 JSON 落在数据根 models.json，选中项把值灌进 Cfg 供请求链读取 */
+object Profiles {
+    const val FILE = "models.json"
+
+    private val cache = mutableStateOf<List<ModelProfile>>(emptyList())
+
+    val list: List<ModelProfile> get() = cache.value
+
+    val selected: ModelProfile?
+        get() = cache.value.firstOrNull { it.id == Cfg.profileId } ?: cache.value.firstOrNull()
+
+    fun init() {
+        //外部存储没挂上（direct boot / 开机自启 / 后台起进程）：ensure() 会退回私有目录，
+        //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，等界面回来再重试
+        if (!Paths.externalOk()) {
+            deferred = true
+            if (cache.value.isEmpty()) cache.value = listOf(legacy())
+            if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
+            apply(cache.value.first { it.id == Cfg.profileId })
+            return
+        }
+        deferred = false
+        val f = Paths.file(FILE)
+        val exists = f.isFile
+        val raw = if (exists) runCatching { f.readText() }.getOrNull() else null
+        val parsed = raw?.let { runCatching { parse(it) }.getOrNull() }
+        //文件在却读不出来（坏档 / 没读权限）：留一份 .bad，本次会话一个字节都不写回磁盘。
+        //内存里只用当前 Cfg 撑一条给界面，绝不用这条假表把磁盘上的好档冲掉
+        broken = exists && parsed == null
+        if (broken) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
+        cache.value = when {
+            parsed != null && parsed.isNotEmpty() -> parsed
+            broken -> cache.value.ifEmpty { listOf(legacy()) }
+            else -> listOf(legacy()) //文件本来就没有：全新安装，或从单条配置升级上来
+        }
+        if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
+        //Key一律搬到私有 SP：数据根 models.json 在公共存储里，别的应用读得到，不能放明文
+        cache.value.forEach { p ->
+            if (Cfg.profileKey(p.id).isBlank() && p.apiKey.isNotBlank()) Cfg.setProfileKey(p.id, p.apiKey)
+        }
+        //无论文件在不在都落一次盘：既补默认项，也把老文件里的明文 Key 洗掉
+        //老版本把自动名也写成了"自定义名"，这里降一次级：名字正好等于自动名的重新跟随模型
+        if (Cfg.profileSeed < 1) {
+            cache.value = cache.value.map { p ->
+                if (p.custom && p.name == autoLabel(p.providerId, p.model)) p.copy(custom = false) else p
+            }
+            Cfg.profileSeed = 1
+        }
+        //坏档只备份不覆盖：这次先拿默认条目撑着，用户重新配完下次启动还能读到好档
+        if (!blocked()) save()
+        apply(cache.value.first { it.id == Cfg.profileId })
+        //总结用模型指着的那条已经不在表里（被删 / 没读出来）就回落「跟随当前聊天」，
+        //否则下拉显示的是跟随，实际请求还在用一个不存在的配置
+        if (Cfg.summaryProfileId.isNotBlank() && cache.value.none { it.id == Cfg.summaryProfileId }) {
+            Cfg.summaryProfileId = ""
+        }
+    } //读盘、迁 Key 到私有 SP、落盘
+
+    /** 磁盘档读不出来（坏档 / 没读权限）：本次会话只读，一个字节都不许写回去 */
+    private var broken = false
+
+    /** 外部存储还没挂上就起进程：读盘延后，等界面回来再补一次 */
+    private var deferred = false
+
+    /** 上一次写盘的结果：空串 = 落盘成功，否则是给界面看的错误说明 */
+    var lastError: String = ""
+        private set
+
+    private fun blocked(): Boolean = broken || deferred
+
+    /** 外部存储晚挂载（开机自启 / 后台起进程）时补一次读盘：界面回来后调，幂等 */
+    fun retry() {
+        if (deferred && Paths.externalOk()) init()
+    } //延后读盘的重试
+
+    private fun legacy(): ModelProfile = ModelProfile(
+        id = "default",
+        name = "",
+        providerId = Cfg.providerId,
+        baseUrl = Cfg.baseUrl,
+        apiKey = Cfg.apiKey,
+        model = Cfg.model,
+        models = if (Cfg.model.isBlank()) emptyList() else listOf(Cfg.model),
+        vision = Cfg.modelVision,
+        toolCall = Cfg.modelToolCall,
+        reasoning = Cfg.modelReasoning,
+        maxTokens = Cfg.maxTokens
+    )
+
+    private fun parse(raw: String): List<ModelProfile> {
+        if (raw.isBlank()) return emptyList()
+        val arr = JSONArray(raw)
+        return (0 until arr.length()).mapNotNull { i ->
+            val o = arr.optJSONObject(i) ?: return@mapNotNull null
+            val id = o.optString("id")
+            if (id.isBlank()) return@mapNotNull null
+            val prov = o.optString("providerId", o.optString("provider_id", "custom"))
+            val modelName = o.optString("model", "")
+            val name = o.optString("name")
+            ModelProfile(
+                id = id,
+                name = name,
+                providerId = prov,
+                baseUrl = o.optString("baseUrl", o.optString("base_url", "")),
+                //Key 只在私有 SP 里；老文件可能还留着明文字段，读出来是为了迁移
+                apiKey = Cfg.profileKey(id).ifBlank { o.optString("apiKey", o.optString("api_key", "")) },
+                model = modelName,
+                //老文件没有 models 字段：把当前那条模型当成已勾选的唯一一条
+                models = o.optJSONArray("models")?.let { a ->
+                    (0 until a.length()).mapNotNull { j -> a.optString(j).takeIf { it.isNotBlank() } }
+                } ?: listOfNotNull(modelName.takeIf { it.isNotBlank() }),
+                vision = o.optBoolean("vision", true),
+                toolCall = o.optBoolean("toolCall", o.optBoolean("tool_call", true)),
+                reasoning = o.optBoolean("reasoning", true),
+                maxTokens = o.optInt("maxTokens", o.optInt("max_tokens", 0)),
+                //老文件没这个字段：名字正好等于自动名就算自动名，跟着模型走
+                custom = o.optBoolean("custom", name.isNotBlank() && name != autoLabel(prov, modelName))
+            )
+        }
+    } //从 JSON 还原（Key 从私有 SP 取）
+
+    private fun save() {
+        //只读状态（外部存储没挂上 / 磁盘档读不出来）一个字节都不写：宁可这次改的丢，
+        //也不能拿内存里撑场面的假表把磁盘上的多条配置冲掉
+        if (blocked()) {
+            lastError = "没写进磁盘：外部存储不可用或 models.json 读不出来，重启后这条会丢"
+            return
+        }
+        val arr = JSONArray()
+        cache.value.forEach { p ->
+            arr.put(
+                JSONObject()
+                    .put("id", p.id)
+                    .put("name", p.name)
+                    .put("providerId", p.providerId)
+                    .put("baseUrl", p.baseUrl)
+                    //Key 不落这里：models.json 在公共存储，明文 Key 会被别的应用读到
+                    .put("model", p.model)
+                    .put("models", JSONArray(p.models))
+                    .put("vision", p.vision)
+                    .put("toolCall", p.toolCall)
+                    .put("reasoning", p.reasoning)
+                    .put("maxTokens", p.maxTokens)
+                    .put("custom", p.custom)
+            )
+        }
+        //写失败不许当成功：以前这里返回值直接丢掉，界面照样提示「已保存」，重启才发现没了
+        lastError = if (Store.write(FILE, arr.toString(2))) "" else "没写进磁盘：models.json 不可写（外部存储目录被占用或无权限）"
+    } //整表落盘
+
+    /** 切换配置：整组提供商 / Key / 模型 / 能力一起换掉 */
+    fun select(id: String) {
+        val p = cache.value.firstOrNull { it.id == id } ?: return
+        Cfg.profileId = id
+        apply(p)
+    } //切换
+
+    private fun apply(p: ModelProfile) {
+        Cfg.providerId = p.providerId
+        Cfg.baseUrl = p.baseUrl
+        Cfg.apiKey = p.apiKey
+        Cfg.model = p.model
+        Cfg.profileModels = p.models
+        Cfg.modelVision = p.vision
+        Cfg.modelToolCall = p.toolCall
+        Cfg.modelReasoning = p.reasoning
+        Cfg.maxTokens = p.maxTokens
+        Cfg.profileName = p.name
+        Cfg.profileCustom = p.custom
+    } //把配置灌进全局
+
+    /** 自动名：厂商 · 模型，配置没起名时用它 */
+    fun autoLabel(providerId: String, model: String): String {
+        val prov = Providers.byId(providerId).name
+        return if (model.isBlank()) prov else "$prov · $model"
+    } //自动名
+
+    /** 把当前 Cfg 的状态写回选中条目：实时跟随，改一个字段就落一次 */
+    fun capture() {
+        val cur = selected ?: return
+        //Key 单独进私有 SP，文件里只留非敏感字段
+        Cfg.setProfileKey(cur.id, Cfg.apiKey)
+        val custom = Cfg.profileCustom && Cfg.profileName.isNotBlank()
+        val p = cur.copy(
+            name = if (custom) Cfg.profileName.trim() else autoLabel(Cfg.providerId, Cfg.model),
+            custom = custom,
+            providerId = Cfg.providerId,
+            baseUrl = Cfg.baseUrl,
+            apiKey = Cfg.apiKey,
+            model = Cfg.model,
+            models = Cfg.profileModels,
+            vision = Cfg.modelVision,
+            toolCall = Cfg.modelToolCall,
+            reasoning = Cfg.modelReasoning,
+            maxTokens = Cfg.maxTokens
+        )
+        upsert(p)
+    } //当前值写回
+
+    /** 设置里勾选完模型：写回当前配置并灌进 Cfg，聊天页卡片据此列可选模型 */
+    fun setModels(list: List<String>) {
+        val cur = selected ?: return
+        val clean = list.distinct().filter { it.isNotBlank() }
+        Cfg.profileModels = clean
+        //当前模型被取消勾选就落到剩下的第一条，免得请求一个已经不在列表里的模型
+        if (Cfg.model.isBlank() || Cfg.model !in clean) Cfg.model = clean.firstOrNull() ?: Cfg.model
+        upsert(cur.copy(models = clean, model = Cfg.model))
+    } //保存勾选结果
+
+    fun upsert(p: ModelProfile): Boolean {
+        val exists = cache.value.any { it.id == p.id }
+        cache.value = if (exists) cache.value.map { if (it.id == p.id) p else it } else cache.value + p
+        save()
+        return lastError.isEmpty()
+    } //新增或覆盖，返回是否真写进了磁盘
+
+    /** 复制当前配置成一条新的，方便同厂商加第二个模型 */
+    fun duplicateCurrent(): String {
+        val cur = selected
+        val id = "p${System.currentTimeMillis()}"
+        val p = ModelProfile(
+            id = id,
+            name = "",
+            providerId = cur?.providerId ?: Cfg.providerId,
+            baseUrl = cur?.baseUrl ?: Cfg.baseUrl,
+            apiKey = cur?.apiKey ?: Cfg.apiKey,
+            model = cur?.model ?: Cfg.model,
+            models = cur?.models ?: emptyList(),
+            vision = cur?.vision ?: Cfg.modelVision,
+            toolCall = cur?.toolCall ?: Cfg.modelToolCall,
+            reasoning = cur?.reasoning ?: Cfg.modelReasoning,
+            maxTokens = cur?.maxTokens ?: Cfg.maxTokens,
+            custom = false
+        )
+        upsert(p.copy(name = ""))
+        //新条目沿用当前 Key（同样只进私有 SP）
+        Cfg.setProfileKey(id, Cfg.apiKey)
+        select(id)
+        return id
+    } //新增一条
+
+    /** 新样式：新增一条空白供应商配置，选完厂商再填 Key 就行（模型交给列表挑） */
+    fun add(): String {
+        val id = "p${System.currentTimeMillis()}"
+        upsert(
+            ModelProfile(
+                id = id,
+                name = "",
+                providerId = "custom",
+                baseUrl = "",
+                apiKey = "",
+                model = "",
+                models = emptyList(),
+                vision = Cfg.modelVision,
+                toolCall = Cfg.modelToolCall,
+                reasoning = Cfg.modelReasoning,
+                maxTokens = 0,
+                custom = false
+            )
+        )
+        Cfg.setProfileKey(id, "")
+        select(id)
+        return id
+    } //新增空白配置
+
+    fun rename(id: String, name: String) {
+        val n = name.trim()
+        cache.value = cache.value.map { if (it.id == id) it.copy(name = n, custom = n.isNotBlank()) else it }
+        save()
+    } //改名
+
+    /** 删除；删的是当前选中项就自动切到剩下的第一条 */
+    fun remove(id: String) {
+        if (cache.value.size <= 1) return
+        cache.value = cache.value.filterNot { it.id == id }
+        Cfg.setProfileKey(id, "")
+        save()
+        if (Cfg.profileId == id) cache.value.firstOrNull()?.let { select(it.id) }
+    } //删除
+} //模型配置库

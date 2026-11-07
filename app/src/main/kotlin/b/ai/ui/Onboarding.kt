@@ -1,4 +1,6 @@
 package b.ai.ui
+import b.ai.exec.Root
+import b.ai.net.text
 
 import android.Manifest
 import android.app.Activity
@@ -42,14 +44,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import b.ai.R
-import b.ai.core.Cfg
-import b.ai.core.Lang
-import b.ai.core.Perms
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.Lang
+import b.ai.core.perm.Perms
 import b.ai.net.Consent
-import b.ai.core.WorkMode
-import b.ai.core.Workflows
+import b.ai.core.model.chat.WorkMode
+import b.ai.core.plugin.skill.Workflows
 import b.ai.exec.Linux
-import b.ai.exec.Root
 import b.ai.exec.Router
 import b.ai.exec.Shiz
 import b.ai.ui.theme.AccentBlue

@@ -1,4 +1,12 @@
 package b.ai
+import b.ai.exec.AutoA11y
+import b.ai.exec.FChat
+import b.ai.exec.Pet
+import b.ai.exec.PetGrant
+import b.ai.exec.PetSvc
+import b.ai.net.Announce
+import b.ai.ui.AnnounceUi
+import b.ai.ui.Ime
 
 import android.content.Context
 import android.content.Intent
@@ -34,9 +42,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
 import b.ai.agent.Agent
-import b.ai.core.Cfg
-import b.ai.core.Lang
-import b.ai.core.Perms
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.Lang
+import b.ai.core.perm.Perms
 import b.ai.exec.Alarms
 import b.ai.net.Auth
 import b.ai.net.Consent
@@ -81,7 +89,7 @@ import b.ai.ui.UpdateHistoryDialog
 import b.ai.ui.UpdateTipDialog
 import b.ai.ui.UpdateUi
 import b.ai.ui.theme.BaiTheme
-import b.ai.core.Speak
+import b.ai.core.model.voice.Speak
 import b.ai.ui.theme.BgGray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

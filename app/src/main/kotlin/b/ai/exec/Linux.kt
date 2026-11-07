@@ -3,8 +3,8 @@ package b.ai.exec
 import android.content.Context
 import android.os.Process
 import b.ai.App
-import b.ai.core.Cfg
-import b.ai.core.WorkMode
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.model.chat.WorkMode
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
