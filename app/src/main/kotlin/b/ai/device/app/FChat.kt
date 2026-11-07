@@ -19,7 +19,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import b.ai.core.cfg.app.Cfg
-import b.ai.ui.FChatUi
+import b.ai.ui.overlay.FChatUi
 import b.ai.ui.theme.BaiTheme
 
 /**

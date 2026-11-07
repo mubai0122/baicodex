@@ -13,8 +13,8 @@ import b.ai.native.Mask
 import b.ai.native.Vault
 import b.ai.net.doc.MaskRules
 import b.ai.net.api.A2aNodes
-import b.ai.ui.GlassPerf
-import b.ai.ui.PerfProbe
+import b.ai.ui.glass.GlassPerf
+import b.ai.ui.overlay.PerfProbe
 
 import android.app.ActivityManager
 import android.app.Application
@@ -159,10 +159,10 @@ class App : Application() {
             runCatching { if (Cfg.maskOut) b.ai.net.doc.MaskRules.sync() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
-        b.ai.ui.PerfProbe.install()
+        b.ai.ui.overlay.PerfProbe.install()
         android.util.Log.w("Boot", "onCreate end +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms")
         //首屏过去 1.2 秒后把玻璃标成「已经上过屏」：之后新建的大卡片不再错峰排队，切分类时直接进真玻璃
-        Thread({ runCatching { Thread.sleep(1200); b.ai.ui.GlassPerf.ready = true } }, "glass-ready").apply { isDaemon = true }.start()
+        Thread({ runCatching { Thread.sleep(1200); b.ai.ui.glass.GlassPerf.ready = true } }, "glass-ready").apply { isDaemon = true }.start()
     } //进程入口：初始化配置、数据库、定时任务与 root 通道，并后台探测零宽路径
 
     private fun procName(): String = runCatching {

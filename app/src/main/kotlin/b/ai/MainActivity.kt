@@ -5,8 +5,8 @@ import b.ai.device.pet.Pet
 import b.ai.device.sys.PetGrant
 import b.ai.device.pet.PetSvc
 import b.ai.net.api.Announce
-import b.ai.ui.AnnounceUi
-import b.ai.ui.Ime
+import b.ai.ui.screen.settings.AnnounceUi
+import b.ai.ui.overlay.Ime
 
 import android.content.Context
 import android.content.Intent
@@ -50,44 +50,44 @@ import b.ai.net.api.Auth
 import b.ai.net.doc.Consent
 import b.ai.net.doc.Isuse
 import b.ai.net.api.Update
-import b.ai.ui.AccDialogs
-import b.ai.ui.AccUi
-import b.ai.ui.AnnounceDialog
-import b.ai.ui.AskSheet
-import b.ai.ui.A11yAuto
-import b.ai.ui.A11yAutoDialog
-import b.ai.ui.A11ySetup
-import b.ai.ui.A11ySetupDialog
-import b.ai.ui.BackdropHost
-import b.ai.ui.ChatScreen
-import b.ai.ui.DrawerCtl
-import b.ai.ui.DrawerHost
-import b.ai.ui.DrawerPanel
-import b.ai.ui.FeedbackDetailScreen
-import b.ai.ui.FeedbackScreen
-import b.ai.ui.HaltDialog
-import b.ai.ui.IntentInbox
-import b.ai.ui.JoinGroupDialog
-import b.ai.ui.OnboardingScreen
-import b.ai.ui.Overlay
-import b.ai.ui.PermNoticeDialog
-import b.ai.ui.PetPermAsk
-import b.ai.ui.PetScreen
-import b.ai.ui.SettingsScreen
-import b.ai.ui.MemorySheet
-import b.ai.ui.MigrateGate
-import b.ai.ui.PlanSheet
-import b.ai.ui.PluginMarket
-import b.ai.ui.StarSheet
-import b.ai.ui.Rate
-import b.ai.ui.StarDialog
-import b.ai.ui.ToolConfirmDialog
-import b.ai.ui.Tos
-import b.ai.ui.TosScreen
-import b.ai.ui.UpdateDialog
-import b.ai.ui.UpdateHistoryDialog
-import b.ai.ui.UpdateTipDialog
-import b.ai.ui.UpdateUi
+import b.ai.ui.screen.user.AccDialogs
+import b.ai.ui.screen.user.AccUi
+import b.ai.ui.screen.settings.AnnounceDialog
+import b.ai.ui.dialog.AskSheet
+import b.ai.ui.screen.settings.A11yAuto
+import b.ai.ui.screen.settings.A11yAutoDialog
+import b.ai.ui.screen.settings.A11ySetup
+import b.ai.ui.screen.settings.A11ySetupDialog
+import b.ai.ui.glass.BackdropHost
+import b.ai.ui.screen.chat.ChatScreen
+import b.ai.ui.overlay.DrawerCtl
+import b.ai.ui.overlay.DrawerHost
+import b.ai.ui.overlay.DrawerPanel
+import b.ai.ui.screen.misc.FeedbackDetailScreen
+import b.ai.ui.screen.misc.FeedbackScreen
+import b.ai.ui.dialog.HaltDialog
+import b.ai.ui.screen.settings.IntentInbox
+import b.ai.ui.screen.user.JoinGroupDialog
+import b.ai.ui.screen.misc.OnboardingScreen
+import b.ai.ui.dialog.Overlay
+import b.ai.ui.dialog.PermNoticeDialog
+import b.ai.ui.screen.pet.PetPermAsk
+import b.ai.ui.screen.pet.PetScreen
+import b.ai.ui.screen.settings.SettingsScreen
+import b.ai.ui.screen.settings.MemorySheet
+import b.ai.ui.screen.misc.MigrateGate
+import b.ai.ui.screen.chat.PlanSheet
+import b.ai.ui.screen.market.PluginMarket
+import b.ai.ui.screen.user.StarSheet
+import b.ai.ui.screen.user.Rate
+import b.ai.ui.screen.user.StarDialog
+import b.ai.ui.dialog.ToolConfirmDialog
+import b.ai.ui.screen.misc.Tos
+import b.ai.ui.screen.misc.TosScreen
+import b.ai.ui.screen.settings.UpdateDialog
+import b.ai.ui.screen.settings.UpdateHistoryDialog
+import b.ai.ui.screen.settings.UpdateTipDialog
+import b.ai.ui.screen.settings.UpdateUi
 import b.ai.ui.theme.BaiTheme
 import b.ai.core.model.voice.Speak
 import b.ai.ui.theme.BgGray
@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         )
         //键盘高度兜底：部分 ROM（鸿蒙 4）不上报 ime insets，靠它把输入框顶上来
-        b.ai.ui.Ime.attach(this)
+        b.ai.ui.overlay.Ime.attach(this)
         setContent {
             BaiTheme {
                 Root()
@@ -254,13 +254,13 @@ private fun Root() {
         updChecked = true
         //公告：always=true 的每次都弹，否则同一 id 只弹一次；拉不到就当没有
         val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.Announce.check() }.getOrNull() }
-        if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.AnnounceUi.cur = annItem
+        if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.screen.settings.AnnounceUi.cur = annItem
     }
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
     val updTip = UpdateUi.tip
-    val ann = b.ai.ui.AnnounceUi.cur
+    val ann = b.ai.ui.screen.settings.AnnounceUi.cur
     //群卡片要等更新卡片关掉：先看完版本更新再邀请进群，避免两张卡片抢同一个槽
     LaunchedEffect(updChecked, upd, updHis) {
         if (!updChecked || halted || upd != null || updHis != null) return@LaunchedEffect
@@ -445,7 +445,7 @@ private fun Root() {
                         ann != null -> AnnounceDialog(ann) {
                             //always=true 的公告不记已读，下次进应用还弹
                             if (!ann.always) Cfg.annSeen = ann.id
-                            b.ai.ui.AnnounceUi.close()
+                            b.ai.ui.screen.settings.AnnounceUi.close()
                         }
                         memOpen -> MemorySheet { memOpen = false }
                         //独立激活流程优先于聊天页的失败弹窗，避免两个弹窗抢同一个 Overlay 槽

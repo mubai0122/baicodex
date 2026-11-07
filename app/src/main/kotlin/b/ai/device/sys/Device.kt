@@ -1,7 +1,7 @@
 package b.ai.device.sys
 import b.ai.agent.run.Agent
 import b.ai.net.api.text
-import b.ai.ui.openUrl
+import b.ai.ui.screen.settings.openUrl
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

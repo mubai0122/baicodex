@@ -1,6 +1,6 @@
 package b.ai.device.pet
 import b.ai.net.api.text
-import b.ai.ui.tap
+import b.ai.ui.widget.tap
 
 import android.annotation.SuppressLint
 import android.animation.ObjectAnimator

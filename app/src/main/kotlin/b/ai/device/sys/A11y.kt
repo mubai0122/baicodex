@@ -1,7 +1,7 @@
 package b.ai.device.sys
 import b.ai.device.pet.Pet
 import b.ai.net.api.text
-import b.ai.ui.tap
+import b.ai.ui.widget.tap
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo

@@ -1,7 +1,7 @@
 package b.ai.agent.tool
 import b.ai.device.shell.Root
 import b.ai.net.api.text
-import b.ai.ui.tap
+import b.ai.ui.widget.tap
 
 import b.ai.net.api.A2aNode
 import b.ai.net.api.A2aNodes
