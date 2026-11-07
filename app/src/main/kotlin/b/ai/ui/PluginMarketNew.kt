@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -54,8 +54,8 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.io.Paths
 import b.ai.core.plugin.install.PluginInstall
 import b.ai.core.plugin.install.PluginNote
-import b.ai.net.Auth
-import b.ai.net.Plugins
+import b.ai.net.api.Auth
+import b.ai.net.api.Plugins
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

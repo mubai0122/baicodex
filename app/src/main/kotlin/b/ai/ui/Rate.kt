@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image

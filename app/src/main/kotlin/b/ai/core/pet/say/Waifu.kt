@@ -1,5 +1,5 @@
 package b.ai.core.pet.say
-import b.ai.net.text
+import b.ai.net.api.text
 
 /** Waifu 模式：把整段回复按标点切成小句逐条发出去，像真人连发消息 */
 object Waifu {

@@ -1,7 +1,7 @@
 package b.ai.ui
 import b.ai.App
 import b.ai.core.data.io.Attach
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.content.Context
 import android.graphics.BitmapFactory
@@ -52,7 +52,7 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
-import b.ai.net.Feedback
+import b.ai.net.api.Feedback
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

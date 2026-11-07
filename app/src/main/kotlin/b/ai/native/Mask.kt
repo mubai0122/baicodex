@@ -1,6 +1,6 @@
 package b.ai.native
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.util.Log
 

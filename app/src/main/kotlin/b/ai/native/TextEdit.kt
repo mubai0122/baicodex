@@ -1,5 +1,5 @@
 package b.ai.native
-import b.ai.net.text
+import b.ai.net.api.text
 
 /** 按行改文件：定位在 C++（engine/edit.cpp），拼文本在 Kotlin，避免整篇文本过 JNI 把 4 字节字符踩坏 */
 object TextEdit {

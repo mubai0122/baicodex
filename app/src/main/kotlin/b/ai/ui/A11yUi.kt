@@ -1,6 +1,6 @@
 package b.ai.ui
-import b.ai.exec.AutoA11y
-import b.ai.net.text
+import b.ai.device.sys.AutoA11y
+import b.ai.net.api.text
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -118,7 +118,7 @@ fun A11yPermCard(desc: String) {
     //高权限探测放后台：root 模式要跑一次 su，不能在组合里干等
     var ch by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(tick, on) {
-        ch = if (on) null else withContext(Dispatchers.IO) { b.ai.exec.AutoA11y.quickChannel(ctx) }
+        ch = if (on) null else withContext(Dispatchers.IO) { b.ai.device.sys.AutoA11y.quickChannel(ctx) }
     }
     val canAuto = ch != null
     Column(Modifier.fillMaxWidth()) {

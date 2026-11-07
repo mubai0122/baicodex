@@ -1,6 +1,6 @@
 package b.ai.ui
-import b.ai.exec.Root
-import b.ai.net.text
+import b.ai.device.shell.Root
+import b.ai.net.api.text
 
 import android.Manifest
 import android.app.Activity
@@ -47,12 +47,12 @@ import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
 import b.ai.core.perm.Perms
-import b.ai.net.Consent
+import b.ai.net.doc.Consent
 import b.ai.core.model.chat.WorkMode
 import b.ai.core.plugin.skill.Workflows
-import b.ai.exec.Linux
-import b.ai.exec.Router
-import b.ai.exec.Shiz
+import b.ai.device.shell.Linux
+import b.ai.device.sys.Router
+import b.ai.device.shell.Shiz
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.OkGreen

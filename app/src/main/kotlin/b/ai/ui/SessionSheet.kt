@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.agent.Agent
+import b.ai.agent.run.Agent
 import b.ai.core.data.db.Repo
 import b.ai.core.model.chat.SessionRow
 import b.ai.ui.theme.AccentBlue

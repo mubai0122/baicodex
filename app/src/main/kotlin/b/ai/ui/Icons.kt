@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import b.ai.agent.Tools
+import b.ai.agent.tool.Tools
 
 /** 自绘加号，不引图标库 */
 @Composable

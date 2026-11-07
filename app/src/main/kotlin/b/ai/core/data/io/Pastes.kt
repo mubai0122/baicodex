@@ -1,8 +1,8 @@
 package b.ai.core.data.io
-import b.ai.net.text
+import b.ai.net.api.text
 
 import b.ai.App
-import b.ai.exec.Workspace
+import b.ai.device.fs.Workspace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

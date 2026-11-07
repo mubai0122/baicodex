@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

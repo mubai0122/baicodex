@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 import android.content.Context
 
 import androidx.compose.foundation.background
@@ -28,11 +28,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.agent.Tools
+import b.ai.agent.tool.Tools
 import b.ai.net.mcp.Mcp
 import b.ai.net.mcp.McpTool
 import b.ai.core.plugin.skill.Skills
-import b.ai.exec.Workspace
+import b.ai.device.fs.Workspace
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite

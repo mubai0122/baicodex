@@ -3,7 +3,7 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.usage.Usage
 import b.ai.core.place.geo.Place
 import b.ai.core.task.hook.Noti
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.content.Context
 import android.os.BatteryManager

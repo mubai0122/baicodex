@@ -1,17 +1,17 @@
 package b.ai
-import b.ai.exec.Root
+import b.ai.device.shell.Root
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.data.io.Pastes
 import b.ai.core.data.profile.Prices
 import b.ai.core.media.wall.Wallpaper
-import b.ai.exec.Capsule
-import b.ai.exec.FChat
-import b.ai.exec.Pet
-import b.ai.exec.PetSvc
+import b.ai.device.sys.Capsule
+import b.ai.device.app.FChat
+import b.ai.device.pet.Pet
+import b.ai.device.pet.PetSvc
 import b.ai.native.Guard
 import b.ai.native.Mask
 import b.ai.native.Vault
-import b.ai.net.MaskRules
+import b.ai.net.doc.MaskRules
 import b.ai.net.api.A2aNodes
 import b.ai.ui.GlassPerf
 import b.ai.ui.PerfProbe
@@ -39,11 +39,11 @@ import b.ai.core.task.hook.Triggers
 import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.data.db.Repo
 import b.ai.core.model.chat.WorkMode
-import b.ai.exec.A2aSrv
-import b.ai.exec.Alarms
-import b.ai.exec.Router
-import b.ai.exec.Workspace
-import b.ai.net.Usage
+import b.ai.net.api.A2aSrv
+import b.ai.device.sys.Alarms
+import b.ai.device.sys.Router
+import b.ai.device.fs.Workspace
+import b.ai.net.api.Usage
 
 class App : Application() {
     /**
@@ -86,11 +86,11 @@ class App : Application() {
         //:exec 进程只跑 Shizuku 命令，不做应用初始化，否则会多挂一个胶囊、白扫一遍库
         if (procName() != packageName) return
         //胶囊的兜底宿主：没有无障碍时靠悬浮窗权限显示
-        b.ai.exec.Capsule.attachApp(this)
+        b.ai.device.sys.Capsule.attachApp(this)
         //桌宠的兜底宿主：没有无障碍时靠悬浮窗权限显示
-        b.ai.exec.Pet.attachApp(this)
+        b.ai.device.pet.Pet.attachApp(this)
         //悬浮聊天窗的宿主：WindowManager 里挂 ComposeView，靠 applicationContext 活着
-        b.ai.exec.FChat.attach(this)
+        b.ai.device.app.FChat.attach(this)
         Paths.ensure()
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
@@ -115,7 +115,7 @@ class App : Application() {
         Thread({
             //桌宠的常驻服务：走 startForeground，系统那边一圈调用，首帧用不到
             runCatching {
-                if (Cfg.petOn && Cfg.petGlobal && b.ai.exec.Pet.canShow(self)) b.ai.exec.PetSvc.start(self)
+                if (Cfg.petOn && Cfg.petGlobal && b.ai.device.pet.Pet.canShow(self)) b.ai.device.pet.PetSvc.start(self)
             }
             //功能级的配置库（技能、角色、定时任务、工作流、A2A 节点、价格、触发器、MCP）一律首帧之后再读
             //老版本明文 secrets.json 先搬进加密库，技能执行时才能读到 $secret.xxx
@@ -156,7 +156,7 @@ class App : Application() {
             runCatching { Usage.reportOnce() }
             //脱敏：先把上次缓存的服务端规则装回 native，再按有效期后台换一份新的
             runCatching { b.ai.native.Mask.boot() }
-            runCatching { if (Cfg.maskOut) b.ai.net.MaskRules.sync() }
+            runCatching { if (Cfg.maskOut) b.ai.net.doc.MaskRules.sync() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
         b.ai.ui.PerfProbe.install()

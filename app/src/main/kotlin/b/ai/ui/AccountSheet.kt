@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.core.media.img.Avatar
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.Auth
+import b.ai.net.api.Auth
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

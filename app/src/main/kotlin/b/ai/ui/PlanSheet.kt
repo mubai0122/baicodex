@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -32,9 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.agent.Agent
-import b.ai.agent.PlanReq
-import b.ai.agent.PlanVerdict
+import b.ai.agent.run.Agent
+import b.ai.agent.run.PlanReq
+import b.ai.agent.run.PlanVerdict
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.SurfaceMuted

@@ -1,5 +1,5 @@
 package b.ai.native
-import b.ai.net.text
+import b.ai.net.api.text
 
 import b.ai.App
 import org.json.JSONObject

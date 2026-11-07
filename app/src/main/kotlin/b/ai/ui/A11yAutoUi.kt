@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.perm.Perms
-import b.ai.exec.A11y
-import b.ai.exec.AutoA11y
+import b.ai.device.sys.A11y
+import b.ai.device.sys.AutoA11y
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

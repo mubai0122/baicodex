@@ -1,10 +1,10 @@
 package b.ai.native
 import b.ai.core.cfg.io.Paths
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.util.Log
 import b.ai.App
-import b.ai.agent.Tools
+import b.ai.agent.tool.Tools
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File

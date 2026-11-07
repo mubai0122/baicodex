@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.sp
 import b.ai.App
 import b.ai.R
 import b.ai.core.cfg.io.Paths
-import b.ai.exec.Router
-import b.ai.exec.Workspace
+import b.ai.device.sys.Router
+import b.ai.device.fs.Workspace
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary

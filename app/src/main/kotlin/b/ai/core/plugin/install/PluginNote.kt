@@ -1,6 +1,6 @@
 package b.ai.core.plugin.install
 import b.ai.App
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

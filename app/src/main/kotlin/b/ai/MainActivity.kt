@@ -1,10 +1,10 @@
 package b.ai
-import b.ai.exec.AutoA11y
-import b.ai.exec.FChat
-import b.ai.exec.Pet
-import b.ai.exec.PetGrant
-import b.ai.exec.PetSvc
-import b.ai.net.Announce
+import b.ai.device.sys.AutoA11y
+import b.ai.device.app.FChat
+import b.ai.device.pet.Pet
+import b.ai.device.sys.PetGrant
+import b.ai.device.pet.PetSvc
+import b.ai.net.api.Announce
 import b.ai.ui.AnnounceUi
 import b.ai.ui.Ime
 
@@ -41,15 +41,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
-import b.ai.agent.Agent
+import b.ai.agent.run.Agent
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
 import b.ai.core.perm.Perms
-import b.ai.exec.Alarms
-import b.ai.net.Auth
-import b.ai.net.Consent
-import b.ai.net.Isuse
-import b.ai.net.Update
+import b.ai.device.sys.Alarms
+import b.ai.net.api.Auth
+import b.ai.net.doc.Consent
+import b.ai.net.doc.Isuse
+import b.ai.net.api.Update
 import b.ai.ui.AccDialogs
 import b.ai.ui.AccUi
 import b.ai.ui.AnnounceDialog
@@ -164,9 +164,9 @@ class MainActivity : ComponentActivity() {
         fgSince = SystemClock.elapsedRealtime()
         Rate.check()
         //悬浮聊天窗：开关开着就补挂一次，进程重启后窗口是会丢的
-        if (Cfg.fcOn) runCatching { b.ai.exec.FChat.show(this) }
-        if (!b.ai.exec.AutoA11y.need(this)) return
-        Thread({ runCatching { b.ai.exec.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
+        if (Cfg.fcOn) runCatching { b.ai.device.app.FChat.show(this) }
+        if (!b.ai.device.sys.AutoA11y.need(this)) return
+        Thread({ runCatching { b.ai.device.sys.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
     } //自动补无障碍
 
     //通知点开而不是冷启动时也会走这里，重新把任务内容送进输入框
@@ -253,7 +253,7 @@ private fun Root() {
         if (info != null && info.updateEnabled && info.hasUpdate) UpdateUi.prompt = info
         updChecked = true
         //公告：always=true 的每次都弹，否则同一 id 只弹一次；拉不到就当没有
-        val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.Announce.check() }.getOrNull() }
+        val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.Announce.check() }.getOrNull() }
         if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.AnnounceUi.cur = annItem
     }
 
@@ -301,7 +301,7 @@ private fun Root() {
 
     //只在启动时判一次：无障碍在跑或者已有悬浮窗权限就不会弹
     LaunchedEffect(Unit) {
-        if (Cfg.petOn && Cfg.petGlobal && Cfg.onboarded && !b.ai.exec.Pet.canShow(ctx)) petPerm = true
+        if (Cfg.petOn && Cfg.petGlobal && Cfg.onboarded && !b.ai.device.pet.Pet.canShow(ctx)) petPerm = true
     }
     //返回键：抽屉开着先关抽屉；开了「预测性手势支持」就用系统手势直接拖着抽屉收，而不是点了才动
     BackHandler(enabled = drawerActive && !Cfg.predictiveBack) {
@@ -418,13 +418,13 @@ private fun Root() {
                             onClose = { petPerm = false },
                             onGrant = {
                                 petPerm = false
-                                b.ai.exec.PetGrant.grant(ctx) { r ->
-                                    if (r.ok && Cfg.petGlobal) b.ai.exec.PetSvc.start(ctx)
+                                b.ai.device.sys.PetGrant.grant(ctx) { r ->
+                                    if (r.ok && Cfg.petGlobal) b.ai.device.pet.PetSvc.start(ctx)
                                 }
                             },
                             onOpen = {
                                 petPerm = false
-                                b.ai.exec.PetGrant.openOverlaySetting(ctx)
+                                b.ai.device.sys.PetGrant.openOverlaySetting(ctx)
                             }
                         )
                         permNotice -> PermNoticeDialog(

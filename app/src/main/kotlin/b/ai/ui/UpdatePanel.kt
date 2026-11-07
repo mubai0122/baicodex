@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.app.Activity
 import android.content.Context
@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import b.ai.core.misc.apk.ApkInstall
-import b.ai.net.Update
+import b.ai.net.api.Update
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.SurfaceMuted

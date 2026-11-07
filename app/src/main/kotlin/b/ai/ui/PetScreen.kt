@@ -1,6 +1,6 @@
 package b.ai.ui
 import b.ai.core.model.chat.Route
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.os.Environment
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -53,9 +53,9 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.pet.balance.PetBalance
 import b.ai.core.pet.say.PetLines
 import b.ai.core.pet.sound.PetSound
-import b.ai.exec.Pet
-import b.ai.exec.PetGrant
-import b.ai.exec.PetSvc
+import b.ai.device.pet.Pet
+import b.ai.device.sys.PetGrant
+import b.ai.device.pet.PetSvc
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

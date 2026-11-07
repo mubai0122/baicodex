@@ -1,7 +1,7 @@
 package b.ai.core.misc.refactor
-import b.ai.net.text
+import b.ai.net.api.text
 
-import b.ai.exec.Workspace
+import b.ai.device.fs.Workspace
 import java.io.File
 
 /** 重构引擎：扫工作区建索引（.docs/function.txt 等）、查 imports 与被引用关系；只读源码，只往 .docs 写 */

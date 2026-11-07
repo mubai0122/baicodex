@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -93,9 +93,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
-import b.ai.agent.Agent
-import b.ai.agent.RunningTool
-import b.ai.agent.Tools
+import b.ai.agent.run.Agent
+import b.ai.agent.run.RunningTool
+import b.ai.agent.tool.Tools
 import b.ai.core.cfg.app.AgentMode
 import b.ai.core.media.img.Avatar
 import b.ai.core.data.io.Attach
@@ -112,7 +112,7 @@ import b.ai.core.plugin.skill.Skills
 import b.ai.core.model.voice.Speak
 import b.ai.core.model.voice.Audio
 import b.ai.core.model.voice.Voice
-import b.ai.exec.Diff
+import b.ai.device.fs.Diff
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -550,7 +550,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
-            sumMenu != null || sumNote || b.ai.exec.A11y.needPerm.value || ImgView.path.value != null ||
+            sumMenu != null || sumNote || b.ai.device.sys.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
         val d = detail
@@ -564,11 +564,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             petIntro -> ModelIntroDialog(
                 onClose = {
                     Cfg.petModelTip = true
-                    Cfg.petSeen = b.ai.net.Update.clientCode()
+                    Cfg.petSeen = b.ai.net.api.Update.clientCode()
                     petIntro = false
                 }
             )
-            b.ai.exec.A11y.needPerm.value -> A11yPermDialog { b.ai.exec.A11y.permHandled() }
+            b.ai.device.sys.A11y.needPerm.value -> A11yPermDialog { b.ai.device.sys.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,

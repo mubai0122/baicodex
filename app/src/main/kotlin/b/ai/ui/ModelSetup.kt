@@ -1,5 +1,5 @@
 package b.ai.ui
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -47,7 +47,7 @@ import b.ai.core.data.profile.ModelProfile
 import b.ai.core.model.chat.Provider
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.data.profile.Profiles
-import b.ai.net.LlmClient
+import b.ai.net.api.LlmClient
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.AccentBlueSoft

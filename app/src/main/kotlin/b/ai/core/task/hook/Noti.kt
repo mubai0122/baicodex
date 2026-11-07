@@ -1,5 +1,5 @@
 package b.ai.core.task.hook
-import b.ai.net.text
+import b.ai.net.api.text
 
 import android.content.Context
 import android.content.Intent

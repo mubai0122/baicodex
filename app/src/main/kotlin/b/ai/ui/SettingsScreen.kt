@@ -1,9 +1,9 @@
 package b.ai.ui
 import b.ai.core.cfg.app.Bai
 import b.ai.core.task.hook.Noti
-import b.ai.exec.AutoA11y
-import b.ai.exec.PetSvc
-import b.ai.net.text
+import b.ai.device.sys.AutoA11y
+import b.ai.device.pet.PetSvc
+import b.ai.net.api.text
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,8 +80,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.agent.Agent
-import b.ai.agent.Tools
+import b.ai.agent.run.Agent
+import b.ai.agent.tool.Tools
 import android.app.Activity
 import b.ai.core.media.img.Avatar
 import b.ai.core.model.voice.Audio
@@ -101,7 +101,7 @@ import b.ai.agent.persona.Personas
 import b.ai.core.data.profile.Profiles
 import b.ai.net.api.A2aNodes
 import b.ai.agent.flow.Flows
-import b.ai.exec.A2aSrv
+import b.ai.net.api.A2aSrv
 import b.ai.core.task.alarm.Schedules
 import b.ai.core.task.hook.Triggers
 import b.ai.net.search.Search
@@ -112,17 +112,17 @@ import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.SkillPack
 import b.ai.core.media.wall.Wallpaper
 import b.ai.core.model.chat.WorkMode
-import b.ai.exec.Shiz
-import b.ai.exec.Alarms
-import b.ai.exec.FChat
-import b.ai.exec.Linux
-import b.ai.exec.Pet
-import b.ai.exec.PetGrant
-import b.ai.exec.Router
-import b.ai.exec.Toolchain
-import b.ai.exec.Workspace
-import b.ai.net.Update
-import b.ai.net.MaskRules
+import b.ai.device.shell.Shiz
+import b.ai.device.sys.Alarms
+import b.ai.device.app.FChat
+import b.ai.device.shell.Linux
+import b.ai.device.pet.Pet
+import b.ai.device.sys.PetGrant
+import b.ai.device.sys.Router
+import b.ai.device.shell.Toolchain
+import b.ai.device.fs.Workspace
+import b.ai.net.api.Update
+import b.ai.net.doc.MaskRules
 import b.ai.MainActivity
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
@@ -1391,7 +1391,7 @@ private fun LazyListScope.permTab() {
                 msg = null
                 note = null
                 Thread({
-                    val ok = b.ai.exec.AutoA11y.run(ctx)
+                    val ok = b.ai.device.sys.AutoA11y.run(ctx)
                     val doneText = ctx.getString(R.string.se_357)
                     val failText = ctx.getString(R.string.se_363)
                     st = Shiz.probe(ctx)
@@ -3575,10 +3575,10 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
                 Cfg.petOn = on
                 if (on) {
                     //全局展示才需要悬浮窗：无障碍在跑就不需要额外权限
-                    if (Cfg.petGlobal && b.ai.exec.Pet.canShow(ctx)) b.ai.exec.PetSvc.start(ctx)
+                    if (Cfg.petGlobal && b.ai.device.pet.Pet.canShow(ctx)) b.ai.device.pet.PetSvc.start(ctx)
                 } else {
-                    b.ai.exec.PetSvc.stop(ctx)
-                    b.ai.exec.Pet.hide()
+                    b.ai.device.pet.PetSvc.stop(ctx)
+                    b.ai.device.pet.Pet.hide()
                 }
             }
         )

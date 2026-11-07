@@ -1,8 +1,8 @@
 package b.ai.ui
 import b.ai.App
 import b.ai.core.cfg.app.Lang
-import b.ai.net.TosDoc
-import b.ai.net.text
+import b.ai.net.doc.TosDoc
+import b.ai.net.api.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -51,7 +51,7 @@ object Tos {
     const val LOCAL_VERSION = 1
 
     /** 服务端协议缓存：启动时按当前语言拉一次，换语言后重新拉 */
-    var doc: b.ai.net.TosDoc.Doc? = null
+    var doc: b.ai.net.doc.TosDoc.Doc? = null
 
     /** 当前该用哪个语言拿正文：繁简共用 zh，日法各一档，其余 en */
     fun langKey(): String {
@@ -69,7 +69,7 @@ object Tos {
 
     /** 按当前语言拉一次；拉不到就保留旧的缓存，正文继续走兜底 */
     fun loadRemote() {
-        doc = b.ai.net.TosDoc.fetch(langKey()) ?: doc
+        doc = b.ai.net.doc.TosDoc.fetch(langKey()) ?: doc
     } //拉服务端协议
 
     /** 按当前界面语言挑正文：服务端正文语言对得上就用，否则读 assets */

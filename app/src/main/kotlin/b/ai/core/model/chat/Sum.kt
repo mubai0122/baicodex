@@ -2,9 +2,9 @@ package b.ai.core.model.chat
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers
-import b.ai.net.text
+import b.ai.net.api.text
 
-import b.ai.net.LlmClient
+import b.ai.net.api.LlmClient
 import org.json.JSONArray
 import org.json.JSONObject
 

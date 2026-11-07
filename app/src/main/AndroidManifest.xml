@@ -71,7 +71,7 @@
 
         <!-- 屏幕操作：无障碍服务由系统绑定，能力配置在 res/xml/a11y_service.xml -->
         <service
-            android:name=".exec.A11yService"
+            android:name=".device.sys.A11yService"
             android:exported="true"
             android:label="@string/a11y_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -84,7 +84,7 @@
         </service>
 
         <service
-            android:name=".exec.NotiSvc"
+            android:name=".device.sys.NotiSvc"
             android:exported="true"
             android:label="Baicodex 通知读取"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
@@ -93,7 +93,7 @@
             </intent-filter>
         </service>
         <service
-            android:name=".exec.PetSvc"
+            android:name=".device.pet.PetSvc"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
@@ -101,12 +101,12 @@
                 android:value="floating_pet_overlay" />
         </service>
         <service
-            android:name=".exec.ShizukuShell"
+            android:name=".device.shell.ShizukuShell"
             android:exported="true"
             android:process=":exec" />
 
         <receiver
-            android:name=".exec.TaskReceiver"
+            android:name=".device.sys.TaskReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
