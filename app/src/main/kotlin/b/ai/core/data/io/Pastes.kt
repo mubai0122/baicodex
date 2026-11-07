@@ -1,4 +1,5 @@
 package b.ai.core.data.io
+import b.ai.core.data.io.Store
 import b.ai.net.api.llm.text
 
 import b.ai.App
@@ -14,7 +15,7 @@ import java.io.File
 object Pastes {
     /** 存活时长：两分钟后自动清理 */
     const val TTL_MS = 120_000L
-    const val DIR = ".paste"
+    const val DIR = "paste"
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     //已经被用户挂成附件的文件：TTL 和 purge 都不许再动它，否则还没点发送就被删了
@@ -23,7 +24,7 @@ object Pastes {
     /** 存放目录：优先跟工作区走，没有工作区就落应用私有目录 */
     fun dir(): File {
         val ws = Workspace.path()
-        val base = if (ws.isNotBlank()) File(ws) else App.self.filesDir
+        val base = if (ws.isNotBlank()) File(ws) else Store.dir(App.self, Store.CACHE)
         return File(base, DIR)
     } //粘贴文件目录
 

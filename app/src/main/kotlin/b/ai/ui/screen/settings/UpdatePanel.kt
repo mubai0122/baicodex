@@ -1,4 +1,5 @@
 package b.ai.ui.screen.settings
+import b.ai.core.data.io.Store
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
@@ -94,7 +95,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         pct = 0
         msg = ctx.getString(R.string.up_startdl)
         scope.launch {
-            val dest = File(File(ctx.filesDir, "update"), "bai-${info.latestCode}.apk")
+            val dest = File(Store.dir(ctx, Store.APK), "bai-${info.latestCode}.apk")
             val r = withContext(Dispatchers.IO) {
                 runCatching {
                     Update.download(direct, dest) { p -> main.post { pct = p.coerceAtLeast(0) } }

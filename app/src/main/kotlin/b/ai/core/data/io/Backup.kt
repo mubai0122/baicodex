@@ -1,7 +1,6 @@
 package b.ai.core.data.io
 import b.ai.core.data.db.Repo
 import b.ai.core.cfg.io.Paths
-
 import android.content.Context
 import java.io.BufferedOutputStream
 import java.io.File
@@ -13,18 +12,15 @@ import java.util.zip.ZipOutputStream
 
 /**
  * 整库备份：bai.db + bai_stat.db + bai_cfg.xml + baicode 根下的小文件 + 头像，打成一个 zip。
- * 导入不直接覆盖（运行中 SQLite 正持有库），先落到 files/restore，下次进程启动时替换。
+ * 导入不直接覆盖（运行中 SQLite 正持有库），先落到 data/compress/restore，下次进程启动时替换。
+ * zip 里的条目名保持 avatars/ 不变：备份格式不跟内部目录布局一起改，老备份还能导入。
  */
 object Backup {
     private const val RESTORE = "restore"
-
     private fun dbFile(ctx: Context) = ctx.getDatabasePath("bai.db")
-
     private fun statFile(ctx: Context) = ctx.getDatabasePath("bai_stat.db")
-
-    private fun prefsFile(ctx: Context) = File(ctx.applicationInfo.dataDir + "/shared_prefs/bai_cfg.xml")
-
-    private fun restoreDir(ctx: Context) = File(ctx.filesDir, RESTORE).also { runCatching { it.mkdirs() } }
+private fun prefsFile(ctx: Context) = File(ctx.applicationInfo.dataDir + "/shared_prefs/bai_cfg.xml")
+    private fun restoreDir(ctx: Context) = Store.dir(ctx, Store.COMPRESS + "/" + RESTORE)
 
     /** 导出：先压一次 WAL，保证拷走的库是完整状态 */
     fun export(ctx: Context, out: OutputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
@@ -46,7 +42,7 @@ object Backup {
             Paths.base().listFiles()?.filter { it.isFile }?.sortedBy { it.name }?.forEach {
                 put("baicode/" + it.name, it)
             }
-            File(ctx.filesDir, "avatars").listFiles()?.filter { it.isFile }?.forEach {
+            Store.dir(ctx, Store.AVATAR).listFiles()?.filter { it.isFile }?.forEach {
                 put("avatars/" + it.name, it)
             }
         }
@@ -85,7 +81,8 @@ object Backup {
                         onLog("+ $name")
                     }
                     name.startsWith("avatars/") -> {
-                        val f = File(ctx.filesDir, name)
+                        //zip 里还是 avatars/xxx，落盘落到新布局 img/avatars/
+                        val f = File(Store.dir(ctx, Store.AVATAR), name.removePrefix("avatars/"))
                         f.parentFile?.mkdirs()
                         f.outputStream().use { z.copyTo(it) }
                         onLog("+ $name")

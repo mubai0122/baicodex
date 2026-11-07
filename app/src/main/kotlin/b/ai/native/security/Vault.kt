@@ -10,7 +10,10 @@ import java.io.File
  * 密钥派生与加解密都在 C 层（runtime/secret.cpp），解密结果只活在内存，不回写任何明文文件。
  */
 object Vault {
-    const val DIR = "configs"
+    /** 密文所在目录：私有目录 data/configs，跟别的数据一起分块，不再平铺在 files/ 根下 */
+    const val DIR = b.ai.core.data.io.Store.CFG
+    /** 老安装的密文目录：迁移没跑到（进程被杀）时仍要能读，读到顺手搬过去 */
+    private const val OLD = "configs"
     /** 模型 / 语音 / 搜索 / A2A 这些调用凭据 */
     const val API = "apikeys.baicodex"
     /** 账号登录态与反馈用的 token */
@@ -37,7 +40,18 @@ object Vault {
 
     private val ok: Boolean by lazy { runCatching { System.loadLibrary("baicodex") }.isSuccess }
 
-    private fun path(f: String): String = File(File(App.self.filesDir, DIR), f).absolutePath
+    private fun path(f: String): String {
+        val d = File(File(App.self.filesDir, DIR), f)
+        //老路径还有这份密文、新路径没有：先搬过来再用，避免升级后一次性读空当成全新安装
+        if (!d.isFile) {
+            val old = File(File(App.self.filesDir, OLD), f)
+            if (old.isFile) runCatching {
+                d.parentFile?.mkdirs()
+                if (!old.renameTo(d)) old.copyTo(d, overwrite = false)
+            }
+        }
+        return d.absolutePath
+    } //密文绝对路径
 
     fun get(key: String, file: String = API): String {
         ensure(file)

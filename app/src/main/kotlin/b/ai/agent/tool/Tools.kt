@@ -1,4 +1,5 @@
 package b.ai.agent.tool
+import b.ai.core.data.io.Store
 import b.ai.device.shell.root.Root
 import b.ai.net.api.llm.text
 import b.ai.ui.widget.tap
@@ -1427,9 +1428,9 @@ object Tools {
         return ToolOutcome(!bad, t, Route.SANDBOX)
     } //屏幕操作分发
 
-    /** 截图落盘到私有目录 shots/，路径回给模型；勾了图片输入的模型可以据此看图 */
+    /** 截图落盘到私有目录 img/shots，路径回给模型；勾了图片输入的模型可以据此看图 */
     private fun shotFile(): java.io.File =
-        java.io.File(b.ai.App.self.filesDir, "shots/shot-" + System.currentTimeMillis() + ".jpg")
+        java.io.File(Store.dir(b.ai.App.self, Store.SHOT), "shot-" + System.currentTimeMillis() + ".jpg")
 
     /** 按包名或名字拉起应用 */
     private fun launchApp(key: String): String {

@@ -1,4 +1,5 @@
 package b.ai.net.api.account
+import b.ai.core.data.io.Store
 import b.ai.net.api.plugin.Plugins
 import b.ai.App
 
@@ -184,7 +185,7 @@ object Auth {
     fun face(uid: Int, url: String): String {
         val u = url.trim()
         if (u.isBlank()) return ""
-        val d = File(b.ai.App.self.filesDir, "faces").apply { runCatching { mkdirs() } }
+        val d = Store.dir(b.ai.App.self, Store.FACE).apply { runCatching { mkdirs() } }
         val f = File(d, "u$uid-" + u.hashCode().toString(16) + ".jpg")
         if (f.length() > 0L) return f.absolutePath
         val full = if (u.startsWith("http")) u else Bai.host + (if (u.startsWith("/")) "" else "/") + u

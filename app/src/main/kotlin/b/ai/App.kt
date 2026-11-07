@@ -92,6 +92,9 @@ class App : Application() {
         //悬浮聊天窗的宿主：WindowManager 里挂 ComposeView，靠 applicationContext 活着
         b.ai.device.app.FChat.attach(this)
         Paths.ensure()
+        //私有目录换布局：data/ img/ cache/ 三块，老目录在这里搬过去。
+        //必须排在 Backup.applyPending / Guard.boot / Cfg.init 之前：那时才会读 restore 与密文
+        runCatching { b.ai.core.data.io.Store.migrate(this) }
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
         //数据保障必须在 Cfg.init 之前解锁：否则加密库读不出 v2 密文，会把整个桶当「解不开」锁掉
