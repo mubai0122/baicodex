@@ -45,15 +45,16 @@ object Avatar {
         return if (side <= SIDE) cut else Bitmap.createScaledBitmap(cut, SIDE, SIDE, true)
     } //裁方缩图
 
-    private val cache = ConcurrentHashMap<String, ImageBitmap?>()
+    private val cache = ConcurrentHashMap<String, ImageBitmap>()
 
     /** 路径转可绘制的位图，带缓存；文件没了返回 null 让界面退回默认图标 */
     fun bitmap(path: String): ImageBitmap? {
         val p = path.trim()
         if (p.isEmpty()) return null
         cache[p]?.let { return it }
-        val bmp = runCatching { BitmapFactory.decodeFile(p) }.getOrNull()
-        val out = bmp?.asImageBitmap()
+        //解不出来就别写缓存：ConcurrentHashMap 不收 null 值，写进去直接 NPE（顶栏头像就这么崩过）
+        val bmp = runCatching { BitmapFactory.decodeFile(p) }.getOrNull() ?: return null
+        val out = bmp.asImageBitmap()
         cache[p] = out
         return out
     } //读头像（带缓存）
