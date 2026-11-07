@@ -1,5 +1,5 @@
 package b.ai.core.media.img
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 import b.ai.agent.persona.Personas
 import b.ai.core.cfg.app.Cfg
 
@@ -19,7 +19,7 @@ object Avatar {
     private const val SIDE = 256
     private const val QUALITY = 90
 
-    private fun dir(ctx: Context): File = Store.dir(ctx, Store.AVATAR).apply { mkdirs() }
+    private fun dir(ctx: Context): File = Layout.dir(ctx, Layout.AVATAR).apply { mkdirs() }
 
     /** 从相册选一张落盘，返回本地绝对路径；解码失败返回 null */
     fun importFrom(ctx: Context, uri: Uri): String? {

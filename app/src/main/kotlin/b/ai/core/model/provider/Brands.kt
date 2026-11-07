@@ -1,5 +1,5 @@
 package b.ai.core.model.provider
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -23,7 +23,7 @@ object Brands {
     /** 内存缓存：失败也记（value 为 null），免得每次重组都重连一次已挂的域名 */
     private val mem = HashMap<String, ImageBitmap?>()
 
-    private fun dir(ctx: Context): File = Store.dir(ctx, Store.BRAND).apply { runCatching { mkdirs() } }
+    private fun dir(ctx: Context): File = Layout.dir(ctx, Layout.BRAND).apply { runCatching { mkdirs() } }
 
     /** 常见接口子域：去掉后剩下的才是官网主域（api.deepseek.com → deepseek.com） */
     private val SUBS = setOf("api", "www", "open", "chat", "portal", "console", "llm", "gateway", "server", "v1")

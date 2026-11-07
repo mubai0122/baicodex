@@ -1,7 +1,7 @@
 package b.ai.core.task.alarm
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,7 +21,7 @@ data class Task(
 /** 定时任务库：整表 JSON 存在 bai_cfg 里，任何改动立刻落盘 */
 object Schedules {
     private val cache = mutableStateOf<List<Task>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
 
     val list: List<Task> get() = cache.value
     /** 参与调度的任务：开关打开且时间没被清掉 */
@@ -29,7 +29,7 @@ object Schedules {
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         cache.value = runCatching { parse(p.getString("tasks", "")) }.getOrDefault(emptyList())
     } //读盘

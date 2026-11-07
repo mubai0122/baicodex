@@ -5,16 +5,16 @@ import b.ai.native.security.Vault
 import b.ai.net.api.llm.text
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 
-/** 全局配置：SharedPreferences 落盘 + Compose 状态镜像 */
+/** 全局配置：data/prefs/bai_cfg.json 落盘 + Compose 状态镜像 */
 object Cfg {
     /** 自定义系统提示在数据根里的文件名 */
     const val SYSTEM_PROMPT_FILE = "system_prompt.md"
 
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
     private val cache = HashMap<String, MutableState<Any?>>()
 
     @Suppress("UNCHECKED_CAST")
@@ -23,14 +23,14 @@ object Cfg {
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         //凭据一律搬进加密库，搬完把 SP 里的明文删掉：SP 是明文 XML，root 和备份都拿得到
         val legacy = LinkedHashMap<String, String>()
         listOf("api_key", "asr_key", "tts_key", "a2a_token", "tavily_key").forEach { k ->
             p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacy[k] = v }
         }
-        p.all.forEach { (k, v) ->
+        p.all().forEach { (k, v) ->
             if (v is String && v.isNotEmpty() && (k.startsWith("profkey_") || (k.startsWith("search_cfg_") && k.endsWith("_key")))) {
                 legacy[k] = v
             }

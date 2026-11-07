@@ -2,20 +2,20 @@ package b.ai.core.data.profile
 import b.ai.core.data.usage.Price
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONObject
 
 /** 按模型定价库：key = usage 表里的 model 名，整表 JSON 存在 bai_cfg 的 prices 键 */
 object Prices {
     private val cache = mutableStateOf<Map<String, Price>>(emptyMap())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
 
     val all: Map<String, Price> get() = cache.value
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         cache.value = runCatching { parse(p.getString("prices", "")) }.getOrDefault(emptyMap())
     } //读盘

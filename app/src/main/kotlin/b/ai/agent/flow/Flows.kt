@@ -1,7 +1,7 @@
 package b.ai.agent.flow
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -42,7 +42,7 @@ object Flows {
     const val MAX_STEPS = 12
 
     private val cache = mutableStateOf<List<Flow>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
 
     val list: List<Flow> get() = cache.value
 
@@ -52,7 +52,7 @@ object Flows {
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         cache.value = runCatching { parse(p.getString("flows", "")) }.getOrDefault(emptyList())
     } //读盘

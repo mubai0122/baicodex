@@ -1,5 +1,4 @@
 package b.ai.core.data.io
-import b.ai.core.data.io.Store
 
 import android.content.Context
 import android.net.Uri
@@ -10,7 +9,7 @@ import java.io.File
 object Attach {
     fun importFrom(ctx: Context, uri: Uri): String? {
         val name = queryName(ctx, uri) ?: "file-${System.currentTimeMillis()}"
-        val dir = Store.dir(ctx, Store.ATTACH).apply { mkdirs() }
+        val dir = Layout.dir(ctx, Layout.ATTACH).apply { mkdirs() }
         val safe = name.replace('/', '_').take(80)
         val direct = File(dir, safe)
         val target = if (direct.exists()) File(dir, "${System.currentTimeMillis()}-$safe") else direct

@@ -3,7 +3,7 @@ import b.ai.native.security.Vault
 import b.ai.net.api.llm.text
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -57,7 +57,7 @@ object Mcp {
     private val cache = mutableStateOf<List<McpServer>>(emptyList())
     /** 已拉到的能力清单（落盘，重启不用重拉）；只有启用的服务才会下发给模型 */
     private val toolsCache = mutableStateOf<List<McpTool>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
     /** 服务 id → Mcp-Session-Id，只在内存里，闪退重连会重新 initialize */
     private val sessions = HashMap<String, String>()
     private var seq = 1
@@ -74,7 +74,7 @@ object Mcp {
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         cache.value = runCatching { parse(p.getString(KEY, null)) }.getOrDefault(emptyList())
         toolsCache.value = runCatching { parseTools(p.getString(TKEY, null)) }.getOrDefault(emptyList())

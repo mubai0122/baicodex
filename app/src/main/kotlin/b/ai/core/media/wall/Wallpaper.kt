@@ -1,5 +1,5 @@
 package b.ai.core.media.wall
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 import b.ai.native.media.Blur
 
 import android.content.Context
@@ -44,7 +44,7 @@ object Wallpaper {
     @Volatile
     private var app: Context? = null
 
-    private fun dir(ctx: Context): File = Store.dir(ctx, Store.WALL).apply { runCatching { mkdirs() } }
+    private fun dir(ctx: Context): File = Layout.dir(ctx, Layout.WALL).apply { runCatching { mkdirs() } }
 
     /** 缓存戳的记忆表：draw 里会反复问同一条路径，别每帧都去 stat 文件 */
     private val stamps = HashMap<String, Int>()

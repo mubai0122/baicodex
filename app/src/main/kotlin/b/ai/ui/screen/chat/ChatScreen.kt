@@ -218,7 +218,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     LaunchedEffect(Agent.sessionId) {
         input = Cfg.draft(Agent.sessionId.orEmpty())
     }
-    //停手 0.8 秒才落盘，避免每敲一个字都写一次 SharedPreferences
+    //停手 0.8 秒才落盘，避免每敲一个字都写一次配置库
     LaunchedEffect(input, Agent.sessionId) {
         val sid = Agent.sessionId ?: return@LaunchedEffect
         delay(800)

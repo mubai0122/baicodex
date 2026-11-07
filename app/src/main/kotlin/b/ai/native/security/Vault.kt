@@ -1,4 +1,5 @@
 package b.ai.native.security
+import b.ai.core.data.io.Layout
 import b.ai.net.api.llm.text
 
 import b.ai.App
@@ -11,7 +12,7 @@ import java.io.File
  */
 object Vault {
     /** 密文所在目录：私有目录 data/configs，跟别的数据一起分块，不再平铺在 files/ 根下 */
-    const val DIR = b.ai.core.data.io.Store.CFG
+    const val DIR = b.ai.core.data.io.Layout.CFG
     /** 老安装的密文目录：迁移没跑到（进程被杀）时仍要能读，读到顺手搬过去 */
     private const val OLD = "configs"
     /** 模型 / 语音 / 搜索 / A2A 这些调用凭据 */

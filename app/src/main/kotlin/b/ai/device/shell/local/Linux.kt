@@ -1,5 +1,5 @@
 package b.ai.device.shell.local
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 import b.ai.device.shell.root.Root
 
 import android.content.Context
@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 /**内置 Linux 环境：proot + Ubuntu 根文件系统，跑在应用私有目录，不依赖 Termux */
 object Linux {
     /** proot 与库放这里；rootfs 单独一层目录，方便整体删掉重装 */
-    private fun base() = Store.dir(App.self, Store.USER + "/linux")
+    private fun base() = Layout.dir(App.self, Layout.USER + "/linux")
     private fun libs() = File(base(), "lib")
     private fun tmp() = File(base(), "tmp").apply { mkdirs() }
 

@@ -1,5 +1,5 @@
 package b.ai.native.script
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 import b.ai.core.cfg.io.Paths
 import b.ai.net.api.llm.text
 
@@ -53,7 +53,7 @@ object Js {
 
     /** 脚本目录：内部私有目录 + 外部 baicode/js（用户直接丢文件进去就能注册工具） */
     private fun dirs(): List<File> =
-        listOf(Store.dir(App.self, Store.USER + "/js"), File(Paths.ensure(), "js"))
+        listOf(Layout.dir(App.self, Layout.USER + "/js"), File(Paths.ensure(), "js"))
 
     /** 启动时把脚本都跑一遍，脚本里 registerTool 的工具就此可用 */
     fun loadScripts() {

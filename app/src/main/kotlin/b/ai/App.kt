@@ -1,4 +1,5 @@
 package b.ai
+import b.ai.core.data.io.Layout
 import b.ai.device.shell.root.Root
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.data.io.Pastes
@@ -28,6 +29,7 @@ import b.ai.core.data.io.Backup
 import b.ai.core.model.provider.Brands
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.cfg.io.Paths
+import b.ai.core.cfg.io.Prefs
 import b.ai.net.mcp.Mcp
 import b.ai.agent.memory.Memory
 import b.ai.agent.persona.Personas
@@ -47,16 +49,18 @@ import b.ai.net.api.site.Usage
 
 class App : Application() {
     /**
-     * 这里比 onCreate 更早：先把 SharedPreferences 的 XML 解析丢到后台线程。
-     * bai_cfg.xml 十几 KB、几百个键，解析一次四十毫秒上下，正好能跟 ContentProvider 初始化并行跑完
+     * 这里比 onCreate 更早：先把配置库从盘里读进内存。
+     * data/prefs/bai_cfg.json 几百个键，第一次还要从老的 SharedPreferences 导一遍，正好跟 ContentProvider 初始化并行跑完
      */
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
         android.util.Log.w("Boot", "attachBaseContext")
         if (procName() != packageName) return
+        //有待恢复的备份就不预热：配置一会儿整份换掉，热了白热，还会挡住老 XML 备份的导入
+        if (runCatching { Backup.pending(base) }.getOrDefault(false)) return
         Thread({
-            runCatching { base.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE) }
-        }, "sp-warm").apply { isDaemon = true }.start()
+            runCatching { Prefs.get(base) }
+        }, "cfg-warm").apply { isDaemon = true }.start()
     } //进程上下文预热
 
     override fun onCreate() {
@@ -76,7 +80,10 @@ class App : Application() {
                 runCatching { b.ai.core.data.profile.Profiles.retry() }
             }
 
-            override fun onActivityPaused(a: android.app.Activity) {}
+            override fun onActivityPaused(a: android.app.Activity) {
+                //切后台前把配置库的内存表刷一遍：写盘是 250ms 合并的，不刷会丢最后半秒
+                runCatching { Prefs.flushAll() }
+            }
             override fun onActivityStopped(a: android.app.Activity) {}
             override fun onActivitySaveInstanceState(a: android.app.Activity, b: android.os.Bundle) {}
             override fun onActivityDestroyed(a: android.app.Activity) {
@@ -94,7 +101,7 @@ class App : Application() {
         Paths.ensure()
         //私有目录换布局：data/ img/ cache/ 三块，老目录在这里搬过去。
         //必须排在 Backup.applyPending / Guard.boot / Cfg.init 之前：那时才会读 restore 与密文
-        runCatching { b.ai.core.data.io.Store.migrate(this) }
+        runCatching { b.ai.core.data.io.Layout.migrate(this) }
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
         //数据保障必须在 Cfg.init 之前解锁：否则加密库读不出 v2 密文，会把整个桶当「解不开」锁掉

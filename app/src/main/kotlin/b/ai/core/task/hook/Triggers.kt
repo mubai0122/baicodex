@@ -1,7 +1,7 @@
 package b.ai.core.task.hook
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,13 +22,13 @@ object Triggers {
     private const val GAP = 60_000L
 
     private val cache = mutableStateOf<List<NoteTrigger>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
 
     val list: List<NoteTrigger> get() = cache.value
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         cache.value = runCatching { parse(p.getString("note_triggers", "")) }.getOrDefault(emptyList())
     } //读盘

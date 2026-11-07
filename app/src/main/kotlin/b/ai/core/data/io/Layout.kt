@@ -6,21 +6,24 @@ import java.io.File
 /**
  * 私有目录的数据布局：按「能不能丢」分三块，不再让十几个目录平铺在 files/ 根下。
  *
- * data/   不能丢：加密库、用户脚本与 Linux 根、导入导出的中间产物、统计
+ * data/   不能丢：加密库、配置库、用户脚本与 Linux 根、导入导出的中间产物、统计
  * img/    全是图片：壁纸、头像、聊天图、账号头像、厂商图标、截图
  * cache/  随时可清：附件缓存、下载的安装包
  *
+ * 别和 core/cfg/io/Store 混：那个是数据根里的单文件读写（read/write/exists），这个只管目录归位。
  * 老安装的一次性搬迁在 [migrate] 里做，启动时排在 Guard.boot / Cfg.init 之前。
  */
-object Store {
+object Layout {
     /** 布局版本：加 1 就让所有设备再跑一次搬迁 */
-    const val VER = 2
+    const val VER = 3
     private const val MARK = ".layout"
 
     /** 不能丢的数据根 */
     const val DATA = "data"
     /** 加密库：Vault 的每个桶都是这个目录下的一个密文文件 */
     const val CFG = "data/configs"
+    /** 配置库：原来的 SharedPreferences 换成这里的一堆 json，一库一文件 */
+    const val PREFS = "data/prefs"
     /** 用户自己的东西：js 脚本、Linux 根文件系统、通知记录 */
     const val USER = "data/user"
     /** 导入备份、打包这类中间产物 */
@@ -43,7 +46,7 @@ object Store {
     const val APK = "cache/update"
 
     /** 全部需要预先建出来的目录：少一层各写一次 mkdirs */
-    private val DIRS = listOf(CFG, USER, COMPRESS, STAT, WALL, AVATAR, CHAT, FACE, BRAND, SHOT, ATTACH, APK)
+    private val DIRS = listOf(CFG, PREFS, USER, COMPRESS, STAT, WALL, AVATAR, CHAT, FACE, BRAND, SHOT, ATTACH, APK)
 
     private fun root(ctx: Context): File = ctx.filesDir
 

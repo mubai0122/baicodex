@@ -1,5 +1,4 @@
 package b.ai.core.data.io
-import b.ai.core.data.io.Store
 import b.ai.net.api.llm.text
 
 import b.ai.App
@@ -24,7 +23,7 @@ object Pastes {
     /** 存放目录：优先跟工作区走，没有工作区就落应用私有目录 */
     fun dir(): File {
         val ws = Workspace.path()
-        val base = if (ws.isNotBlank()) File(ws) else Store.dir(App.self, Store.CACHE)
+        val base = if (ws.isNotBlank()) File(ws) else Layout.dir(App.self, Layout.CACHE)
         return File(base, DIR)
     } //粘贴文件目录
 

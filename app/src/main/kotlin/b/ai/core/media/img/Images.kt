@@ -1,5 +1,5 @@
 package b.ai.core.media.img
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -21,7 +21,7 @@ object Images {
     private const val QUALITY = 85
 
     private fun dir(ctx: Context): File =
-        Store.dir(ctx, Store.CHAT).apply { mkdirs() }
+        Layout.dir(ctx, Layout.CHAT).apply { mkdirs() }
 
     /** 压缩并落盘，返回本地绝对路径；解码失败返回 null */
     fun importFrom(ctx: Context, uri: Uri): String? {

@@ -5,7 +5,7 @@ import b.ai.core.cfg.io.Store
 import b.ai.R
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import org.json.JSONArray
 import org.json.JSONObject
@@ -102,14 +102,14 @@ object Personas {
     )
 
     private val cache = mutableStateOf<List<Persona>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
     private var app: Context? = null
 
     val list: List<Persona> get() = cache.value
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         app = c.applicationContext
         //文件优先；没有文件就迁移旧配置并写出去

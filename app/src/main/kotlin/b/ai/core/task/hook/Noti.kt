@@ -1,5 +1,5 @@
 package b.ai.core.task.hook
-import b.ai.core.data.io.Store
+import b.ai.core.data.io.Layout
 import b.ai.net.api.llm.text
 
 import android.content.Context
@@ -18,7 +18,7 @@ object Noti {
     /** 注入时的字符上限：条数不限时靠它兜底，防止一次请求被刷爆 */
     private const val CAP_CHARS = 8000
 
-    private fun dir(c: Context): File = Store.dir(c, Store.USER + "/noti").apply { mkdirs() }
+    private fun dir(c: Context): File = Layout.dir(c, Layout.USER + "/noti").apply { mkdirs() }
 
     private fun day(ms: Long = System.currentTimeMillis()): String =
         SimpleDateFormat("yyyyMMdd", Locale.US).format(Date(ms))

@@ -1,7 +1,7 @@
 package b.ai.native.security
 import b.ai.core.cfg.secret.Secret
+import b.ai.core.cfg.io.Prefs
 
-import android.content.Context
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
@@ -33,7 +33,7 @@ object Guard {
     private const val K_COST = "cost"
     private const val ALIAS = "bai.guard.r"
 
-    private val sp by lazy { App.self.getSharedPreferences(SP, Context.MODE_PRIVATE) }
+    private val sp by lazy { Prefs.get(App.self, SP) }
     private val ok: Boolean by lazy { runCatching { System.loadLibrary("baicodex") }.isSuccess }
 
     /** 开关开着不等于解开了：Keystore 拿不到 R 时 ready 仍然是 false，文件只会解不开，不会被覆盖 */
@@ -105,14 +105,15 @@ object Guard {
         Vault.loadAll()
         //先落盘标记再重写：中途被杀，下次开机也认这个开关，旧 v1 文件照样能读
         onStep(3)
+        //标记必须同步落盘：异步写盘还没落地就被杀的话，密文已经重写、开关却是关的，下次开机就不会解锁
         sp.edit()
             .putBoolean(K_ON, true)
             .putString(K_IV, b64(sealed.first))
             .putString(K_CT, b64(sealed.second))
             .putString(K_DEV, deviceTag())
-            .apply()
+            .commit()
         Vault.flushAll()
-        sp.edit().putLong(K_COST, SystemClock.elapsedRealtime() - t0).apply()
+        sp.edit().putLong(K_COST, SystemClock.elapsedRealtime() - t0).commit()
         onStep(4)
         return true
     } //开启数据超强加密
@@ -123,7 +124,8 @@ object Guard {
         wipenative()
         Vault.wipeAll()
         deleteKey()
-        sp.edit().clear().apply()
+        //同步清：开关没清掉而密钥已删，下次开机会把加密库当成解不开直接锁掉
+        sp.edit().clear().commit()
         return true
     } //强制关闭并清空
 

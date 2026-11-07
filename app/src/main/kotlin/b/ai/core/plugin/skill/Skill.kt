@@ -3,7 +3,7 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.io.Store
 
 import android.content.Context
-import android.content.SharedPreferences
+import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.mutableStateOf
 import b.ai.R
 import org.json.JSONArray
@@ -28,14 +28,14 @@ object Skills {
     const val PRESET_SEED = 2
 
     private val cache = mutableStateOf<List<Skill>>(emptyList())
-    private var sp: SharedPreferences? = null
+    private var sp: Prefs? = null
 
     val list: List<Skill> get() = cache.value
     val enabled: List<Skill> get() = cache.value.filter { it.on }
 
     fun init(c: Context) {
         if (sp != null) return
-        val p = c.applicationContext.getSharedPreferences("bai_cfg", Context.MODE_PRIVATE)
+        val p = Prefs.get(c)
         sp = p
         //文件优先：用户手改过就以文件为准；文件不在则迁移旧配置或写预置技能
         val fromFile = Store.read(FILE)
