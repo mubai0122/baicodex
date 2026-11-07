@@ -18,7 +18,7 @@
 
 | 手机 · 浅色 | 手机 · 深色 |
 |:---:|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png" width="280" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png" width="280" alt="手机 深色"> |
+| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="手机 深色"> |
 
 | 桌面 · 浅色 |
 |:---:|
