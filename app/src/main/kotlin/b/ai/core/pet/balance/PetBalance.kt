@@ -1,5 +1,5 @@
 package b.ai.core.pet.balance
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.os.Handler
 import android.os.Looper

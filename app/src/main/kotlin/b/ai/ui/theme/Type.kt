@@ -1,5 +1,5 @@
 package b.ai.ui.theme
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

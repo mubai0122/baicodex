@@ -5,7 +5,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.Tag
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

@@ -6,7 +6,7 @@ import b.ai.ui.widget.IcStop4
 import b.ai.ui.widget.MdText
 import b.ai.ui.widget.tap
 import b.ai.MainActivity
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.Intent
 import androidx.compose.foundation.background

@@ -1,5 +1,5 @@
 package b.ai.core.media.wall
-import b.ai.native.Blur
+import b.ai.native.media.Blur
 
 import android.content.Context
 import android.graphics.Bitmap

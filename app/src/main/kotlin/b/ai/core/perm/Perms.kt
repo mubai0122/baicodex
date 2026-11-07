@@ -1,7 +1,7 @@
 package b.ai.core.perm
 import b.ai.core.model.chat.WorkMode
-import b.ai.device.sys.A11y
-import b.ai.device.sys.A11yService
+import b.ai.device.sys.a11y.A11y
+import b.ai.device.sys.a11y.A11yService
 
 import b.ai.R
 
@@ -118,8 +118,8 @@ object Perms {
     } //本地化权限名
     /** 无障碍服务是否已开启：系统设置里勾上了才算，光装服务没用 */
     fun a11yOn(c: Context): Boolean {
-        if (b.ai.device.sys.A11y.ready()) return true
-        val want = c.packageName + "/" + b.ai.device.sys.A11yService::class.java.name
+        if (b.ai.device.sys.a11y.A11y.ready()) return true
+        val want = c.packageName + "/" + b.ai.device.sys.a11y.A11yService::class.java.name
         val cur = runCatching {
             Settings.Secure.getString(c.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
         }.getOrNull().orEmpty()

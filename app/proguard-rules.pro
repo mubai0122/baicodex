@@ -3,8 +3,8 @@
 -renamesourcefileattribute S
 -keep class b.ai.MainActivity { *; }
 -keep class b.ai.App { *; }
--keep class b.ai.device.shell.ShizukuShell { *; }
--keep class b.ai.device.sys.TaskReceiver { *; }
+-keep class b.ai.device.shell.root.ShizukuShell { *; }
+-keep class b.ai.device.sys.alarm.TaskReceiver { *; }
 -keep class rikka.shizuku.ShizukuProvider { *; }
 -keep class androidx.core.content.FileProvider { *; }
 -keep class com.vapro.vae.stringfog.** { *; }
@@ -16,7 +16,7 @@
 -keepclasseswithmembernames class * {
     native <methods>;
 }
--keep class b.ai.native.Js$Bridge { *; }
+-keep class b.ai.native.script.Js$Bridge { *; }
 -keepclassmembers class **$Bridge {
     public java.lang.String call(java.lang.String, java.lang.String);
 }

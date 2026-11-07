@@ -2,8 +2,8 @@ package b.ai.ui.screen.settings
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
-import b.ai.device.sys.AutoA11y
-import b.ai.net.api.text
+import b.ai.device.sys.a11y.AutoA11y
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -50,7 +50,7 @@ fun A11ySetupDialog(onDone: () -> Unit) {
     //有 Shizuku / Root 时把手动四步换成一键激活：探测放后台，别在组合里跑 su
     var canAuto by remember { mutableStateOf(false) }
     LaunchedEffect(on) {
-        canAuto = if (on) false else withContext(Dispatchers.IO) { b.ai.device.sys.AutoA11y.quickChannel(ctx) != null }
+        canAuto = if (on) false else withContext(Dispatchers.IO) { b.ai.device.sys.a11y.AutoA11y.quickChannel(ctx) != null }
     }
     //轮询：从系统设置页回来不用手动刷新
     LaunchedEffect(Unit) {

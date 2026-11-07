@@ -16,7 +16,7 @@ import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.tap
 import b.ai.core.model.chat.Route
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.os.Environment
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -70,7 +70,7 @@ import b.ai.core.pet.balance.PetBalance
 import b.ai.core.pet.say.PetLines
 import b.ai.core.pet.sound.PetSound
 import b.ai.device.pet.Pet
-import b.ai.device.sys.PetGrant
+import b.ai.device.sys.host.PetGrant
 import b.ai.device.pet.PetSvc
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft

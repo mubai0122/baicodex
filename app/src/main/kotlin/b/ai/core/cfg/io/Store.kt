@@ -1,5 +1,5 @@
 package b.ai.core.cfg.io
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import java.io.File
 

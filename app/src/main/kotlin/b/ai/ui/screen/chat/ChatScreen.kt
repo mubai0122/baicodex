@@ -56,7 +56,7 @@ import b.ai.ui.input.AttachPanel
 import b.ai.ui.overlay.Ime
 import b.ai.ui.screen.settings.IntentInbox
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -607,7 +607,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
-            sumMenu != null || sumNote || b.ai.device.sys.A11y.needPerm.value || ImgView.path.value != null ||
+            sumMenu != null || sumNote || b.ai.device.sys.a11y.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
         val d = detail
@@ -621,11 +621,11 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
             petIntro -> ModelIntroDialog(
                 onClose = {
                     Cfg.petModelTip = true
-                    Cfg.petSeen = b.ai.net.api.Update.clientCode()
+                    Cfg.petSeen = b.ai.net.api.update.Update.clientCode()
                     petIntro = false
                 }
             )
-            b.ai.device.sys.A11y.needPerm.value -> A11yPermDialog { b.ai.device.sys.A11y.permHandled() }
+            b.ai.device.sys.a11y.A11y.needPerm.value -> A11yPermDialog { b.ai.device.sys.a11y.A11y.permHandled() }
             modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,

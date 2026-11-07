@@ -1,8 +1,8 @@
 package b.ai.core.cfg.app
 import b.ai.core.cfg.io.Store
 import b.ai.core.model.chat.WorkMode
-import b.ai.native.Vault
-import b.ai.net.api.text
+import b.ai.native.security.Vault
+import b.ai.net.api.llm.text
 
 import android.content.Context
 import android.content.SharedPreferences

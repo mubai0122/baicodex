@@ -4,7 +4,7 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column

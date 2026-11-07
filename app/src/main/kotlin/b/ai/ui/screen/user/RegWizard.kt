@@ -3,7 +3,7 @@ import b.ai.ui.widget.AvatarView
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import b.ai.ui.theme.OkGreen
 
 import android.content.Context
@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.core.media.img.Avatar
-import b.ai.net.api.Auth
+import b.ai.net.api.account.Auth
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray

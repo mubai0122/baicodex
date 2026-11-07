@@ -21,7 +21,7 @@ std::string pack(const dsl::Result &r) {
 extern "C" {
 
 JNIEXPORT jstring JNICALL
-Java_b_ai_native_Dsl_nativeLint(JNIEnv *env, jobject, jstring tpl, jstring kind, jstring params) {
+Java_b_ai_native_script_Dsl_nativeLint(JNIEnv *env, jobject, jstring tpl, jstring kind, jstring params) {
     dsl::Table p;
     if (!dsl::parseFlatJson(jstr(env, params), p)) return back(env, "ERR\n参数表不是合法 JSON");
     const dsl::Result r = dsl::lint(jstr(env, tpl), jstr(env, kind), p, nullptr);
@@ -30,7 +30,7 @@ Java_b_ai_native_Dsl_nativeLint(JNIEnv *env, jobject, jstring tpl, jstring kind,
 
 /** 工具结果治理：超预算直接截止，返回 "OK\n<处理后文本>"；引擎未就绪由 Kotlin 侧兜底 */
 JNIEXPORT jstring JNICALL
-Java_b_ai_native_Dsl_nativeGovern(JNIEnv *env, jobject, jstring text, jint maxChars) {
+Java_b_ai_native_script_Dsl_nativeGovern(JNIEnv *env, jobject, jstring text, jint maxChars) {
     std::string t = jstr(env, text);
     std::string out;
     baicore::govern(t, static_cast<size_t>(maxChars), out);
@@ -38,7 +38,7 @@ Java_b_ai_native_Dsl_nativeGovern(JNIEnv *env, jobject, jstring text, jint maxCh
 } //工具结果治理
 
 JNIEXPORT jstring JNICALL
-Java_b_ai_native_Dsl_nativeRender(JNIEnv *env, jobject, jstring tpl, jstring kind, jstring params,
+Java_b_ai_native_script_Dsl_nativeRender(JNIEnv *env, jobject, jstring tpl, jstring kind, jstring params,
                                 jstring secrets, jstring args) {
     dsl::Table p, s, a;
     if (!dsl::parseFlatJson(jstr(env, params), p)) return back(env, "ERR\n参数表不是合法 JSON");

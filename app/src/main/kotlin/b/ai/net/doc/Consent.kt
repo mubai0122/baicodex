@@ -1,6 +1,6 @@
 package b.ai.net.doc
-import b.ai.net.api.Usage
-import b.ai.net.api.text
+import b.ai.net.api.site.Usage
+import b.ai.net.api.llm.text
 
 import android.os.Handler
 import android.os.Looper

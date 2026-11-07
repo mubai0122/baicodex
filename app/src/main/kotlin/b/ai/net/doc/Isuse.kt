@@ -1,5 +1,5 @@
 package b.ai.net.doc
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.util.Log
 import b.ai.core.cfg.app.Bai

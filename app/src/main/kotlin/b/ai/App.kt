@@ -1,18 +1,18 @@
 package b.ai
-import b.ai.device.shell.Root
+import b.ai.device.shell.root.Root
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.data.io.Pastes
 import b.ai.core.data.profile.Prices
 import b.ai.core.media.wall.Wallpaper
-import b.ai.device.sys.Capsule
+import b.ai.device.sys.host.Capsule
 import b.ai.device.app.FChat
 import b.ai.device.pet.Pet
 import b.ai.device.pet.PetSvc
-import b.ai.native.Guard
-import b.ai.native.Mask
-import b.ai.native.Vault
+import b.ai.native.security.Guard
+import b.ai.native.security.Mask
+import b.ai.native.security.Vault
 import b.ai.net.doc.MaskRules
-import b.ai.net.api.A2aNodes
+import b.ai.net.api.a2a.A2aNodes
 import b.ai.ui.glass.GlassPerf
 import b.ai.ui.overlay.PerfProbe
 
@@ -23,7 +23,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Process
 import b.ai.core.cfg.app.Cfg
-import b.ai.native.Js
+import b.ai.native.script.Js
 import b.ai.core.data.io.Backup
 import b.ai.core.model.provider.Brands
 import b.ai.core.plugin.skill.Providers
@@ -39,11 +39,11 @@ import b.ai.core.task.hook.Triggers
 import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.data.db.Repo
 import b.ai.core.model.chat.WorkMode
-import b.ai.net.api.A2aSrv
-import b.ai.device.sys.Alarms
-import b.ai.device.sys.Router
+import b.ai.net.api.a2a.A2aSrv
+import b.ai.device.sys.alarm.Alarms
+import b.ai.device.sys.probe.Router
 import b.ai.device.fs.Workspace
-import b.ai.net.api.Usage
+import b.ai.net.api.site.Usage
 
 class App : Application() {
     /**
@@ -86,7 +86,7 @@ class App : Application() {
         //:exec 进程只跑 Shizuku 命令，不做应用初始化，否则会多挂一个胶囊、白扫一遍库
         if (procName() != packageName) return
         //胶囊的兜底宿主：没有无障碍时靠悬浮窗权限显示
-        b.ai.device.sys.Capsule.attachApp(this)
+        b.ai.device.sys.host.Capsule.attachApp(this)
         //桌宠的兜底宿主：没有无障碍时靠悬浮窗权限显示
         b.ai.device.pet.Pet.attachApp(this)
         //悬浮聊天窗的宿主：WindowManager 里挂 ComposeView，靠 applicationContext 活着
@@ -95,8 +95,8 @@ class App : Application() {
         //导入的备份在这里换上去：必须排在 Cfg.init / Repo.init 之前
         runCatching { Backup.applyPending(this) }
         //数据保障必须在 Cfg.init 之前解锁：否则加密库读不出 v2 密文，会把整个桶当「解不开」锁掉
-        val guardOk = runCatching { b.ai.native.Guard.boot() }.getOrDefault(false)
-        android.util.Log.w("Boot", "Guard.boot=" + guardOk + " on=" + b.ai.native.Guard.on)
+        val guardOk = runCatching { b.ai.native.security.Guard.boot() }.getOrDefault(false)
+        android.util.Log.w("Boot", "Guard.boot=" + guardOk + " on=" + b.ai.native.security.Guard.on)
         Cfg.init(this)
         android.util.Log.w("Boot", "Cfg.init done +" + (android.os.SystemClock.uptimeMillis() - t0) + "ms")
         //背景图：缩略图同步读进内存 + 真图后台读盘缓存，首帧就有对色的底，不会先白一下
@@ -121,12 +121,12 @@ class App : Application() {
             //老版本明文 secrets.json 先搬进加密库，技能执行时才能读到 $secret.xxx
             runCatching { b.ai.core.cfg.secret.Secret.migrate() }
             //数据保障开着就把还是旧版的密文重写一遍：中途被杀的迁移在这里收尾
-            runCatching { if (b.ai.native.Guard.ready) b.ai.native.Vault.rewriteAll() }
+            runCatching { if (b.ai.native.security.Guard.ready) b.ai.native.security.Vault.rewriteAll() }
             runCatching { Skills.init(self) }
             runCatching { Personas.init(self) }
             runCatching { Schedules.init(self) }
             runCatching { Flows.init(self) }
-            runCatching { b.ai.net.api.A2aNodes.init(self) }
+            runCatching { b.ai.net.api.a2a.A2aNodes.init(self) }
             runCatching { b.ai.core.data.profile.Prices.init(self) }
             runCatching { Triggers.init(self) }
             runCatching { Mcp.init(self) }
@@ -155,7 +155,7 @@ class App : Application() {
             //每次进程起来上报一次使用计数：失败静默
             runCatching { Usage.reportOnce() }
             //脱敏：先把上次缓存的服务端规则装回 native，再按有效期后台换一份新的
-            runCatching { b.ai.native.Mask.boot() }
+            runCatching { b.ai.native.security.Mask.boot() }
             runCatching { if (Cfg.maskOut) b.ai.net.doc.MaskRules.sync() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发

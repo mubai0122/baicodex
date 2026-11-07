@@ -9,7 +9,7 @@ import b.ai.core.model.chat.MsgMeta
 import b.ai.core.model.chat.SessionRow
 import b.ai.core.model.chat.StarHit
 import b.ai.core.model.chat.ToolCall
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.ContentValues
 import android.content.Context

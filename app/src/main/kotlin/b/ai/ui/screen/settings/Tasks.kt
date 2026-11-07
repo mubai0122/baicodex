@@ -4,7 +4,7 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.Manifest
 import androidx.compose.foundation.background
@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.core.perm.Perms
 import b.ai.core.task.alarm.Schedules
 import b.ai.core.task.alarm.Task
-import b.ai.device.sys.Alarms
+import b.ai.device.sys.alarm.Alarms
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

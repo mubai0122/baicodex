@@ -1,5 +1,5 @@
 package b.ai.ui.screen.misc
-import b.ai.device.shell.Root
+import b.ai.device.shell.root.Root
 import b.ai.ui.dialog.Overlay
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
@@ -13,7 +13,7 @@ import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.IcTick
 import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.Manifest
 import android.app.Activity
@@ -63,9 +63,9 @@ import b.ai.core.perm.Perms
 import b.ai.net.doc.Consent
 import b.ai.core.model.chat.WorkMode
 import b.ai.core.plugin.skill.Workflows
-import b.ai.device.shell.Linux
-import b.ai.device.sys.Router
-import b.ai.device.shell.Shiz
+import b.ai.device.shell.local.Linux
+import b.ai.device.sys.probe.Router
+import b.ai.device.shell.root.Shiz
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.OkGreen

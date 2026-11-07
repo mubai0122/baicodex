@@ -7,7 +7,7 @@ import b.ai.ui.widget.tap
 import b.ai.App
 import b.ai.core.cfg.app.Lang
 import b.ai.net.doc.TosDoc
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

@@ -9,7 +9,7 @@ import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.WsPickerBody
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

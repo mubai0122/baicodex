@@ -1,6 +1,6 @@
 package b.ai.core.cfg.secret
 import b.ai.core.cfg.io.Store
-import b.ai.native.Vault
+import b.ai.native.security.Vault
 
 import org.json.JSONObject
 

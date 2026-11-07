@@ -11,7 +11,7 @@ import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.tap
 import b.ai.App
 import b.ai.core.data.io.Attach
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.Context
 import android.graphics.BitmapFactory
@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
-import b.ai.net.api.Feedback
+import b.ai.net.api.site.Feedback
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

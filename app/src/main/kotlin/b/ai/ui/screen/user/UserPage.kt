@@ -9,7 +9,7 @@ import b.ai.ui.glass.pageBg
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.IcBack
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.Intent
 import android.net.Uri
@@ -52,8 +52,8 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import b.ai.R
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.api.Auth
-import b.ai.net.api.Plugins
+import b.ai.net.api.account.Auth
+import b.ai.net.api.plugin.Plugins
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

@@ -42,9 +42,9 @@ import b.ai.ui.widget.WsPurgeDialog
 import b.ai.ui.widget.tap
 import b.ai.core.cfg.app.Bai
 import b.ai.core.task.hook.Noti
-import b.ai.device.sys.AutoA11y
+import b.ai.device.sys.a11y.AutoA11y
 import b.ai.device.pet.PetSvc
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -128,11 +128,11 @@ import b.ai.core.media.img.Avatar
 import b.ai.core.model.voice.Audio
 import b.ai.core.model.voice.AsrPresets
 import b.ai.core.data.io.Backup
-import b.ai.native.Guard
+import b.ai.native.security.Guard
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
 import b.ai.net.mcp.Mcp
-import b.ai.native.Mask
+import b.ai.native.security.Mask
 import b.ai.net.mcp.McpServer
 import b.ai.core.cfg.env.Env
 import b.ai.core.model.voice.Speak
@@ -140,9 +140,9 @@ import b.ai.core.perm.Perms
 import b.ai.agent.persona.Persona
 import b.ai.agent.persona.Personas
 import b.ai.core.data.profile.Profiles
-import b.ai.net.api.A2aNodes
+import b.ai.net.api.a2a.A2aNodes
 import b.ai.agent.flow.Flows
-import b.ai.net.api.A2aSrv
+import b.ai.net.api.a2a.A2aSrv
 import b.ai.core.task.alarm.Schedules
 import b.ai.core.task.hook.Triggers
 import b.ai.net.search.Search
@@ -153,16 +153,16 @@ import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.SkillPack
 import b.ai.core.media.wall.Wallpaper
 import b.ai.core.model.chat.WorkMode
-import b.ai.device.shell.Shiz
-import b.ai.device.sys.Alarms
+import b.ai.device.shell.root.Shiz
+import b.ai.device.sys.alarm.Alarms
 import b.ai.device.app.FChat
-import b.ai.device.shell.Linux
+import b.ai.device.shell.local.Linux
 import b.ai.device.pet.Pet
-import b.ai.device.sys.PetGrant
-import b.ai.device.sys.Router
-import b.ai.device.shell.Toolchain
+import b.ai.device.sys.host.PetGrant
+import b.ai.device.sys.probe.Router
+import b.ai.device.shell.local.Toolchain
 import b.ai.device.fs.Workspace
-import b.ai.net.api.Update
+import b.ai.net.api.update.Update
 import b.ai.net.doc.MaskRules
 import b.ai.MainActivity
 import b.ai.ui.theme.AccentBlue
@@ -1432,7 +1432,7 @@ private fun LazyListScope.permTab() {
                 msg = null
                 note = null
                 Thread({
-                    val ok = b.ai.device.sys.AutoA11y.run(ctx)
+                    val ok = b.ai.device.sys.a11y.AutoA11y.run(ctx)
                     val doneText = ctx.getString(R.string.se_357)
                     val failText = ctx.getString(R.string.se_363)
                     st = Shiz.probe(ctx)

@@ -1,5 +1,5 @@
 package b.ai.net.search
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import b.ai.agent.run.Agent
 
 import org.xmlpull.v1.XmlPullParser

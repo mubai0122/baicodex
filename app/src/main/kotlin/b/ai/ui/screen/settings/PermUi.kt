@@ -1,6 +1,6 @@
 package b.ai.ui.screen.settings
 import b.ai.ui.widget.GhostButton
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

@@ -1,5 +1,5 @@
 package b.ai.net.search
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import b.ai.agent.run.Agent
 
 import b.ai.core.place.rail.Stations

@@ -1,5 +1,5 @@
 package b.ai.device.fs
-import b.ai.device.sys.Router
+import b.ai.device.sys.probe.Router
 
 import android.content.Context
 

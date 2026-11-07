@@ -1,6 +1,6 @@
 package b.ai.core.model.voice
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.speech.tts.TextToSpeech
 import b.ai.App

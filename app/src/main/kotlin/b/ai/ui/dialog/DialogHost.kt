@@ -5,7 +5,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Tag
 import b.ai.ui.widget.ToolIcon
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import android.content.Context
 
 import androidx.compose.animation.core.animateFloatAsState

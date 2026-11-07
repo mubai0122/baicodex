@@ -5,7 +5,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.tap
 import b.ai.App
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -37,11 +37,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.net.api.A2aNode
-import b.ai.net.api.A2aNodes
+import b.ai.net.api.a2a.A2aNode
+import b.ai.net.api.a2a.A2aNodes
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.api.A2aSrv
-import b.ai.net.api.A2A
+import b.ai.net.api.a2a.A2aSrv
+import b.ai.net.api.a2a.A2A
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

@@ -2,7 +2,7 @@ package b.ai.ui.screen.chat
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.ClipData
 import android.content.ClipboardManager

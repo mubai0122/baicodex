@@ -1,6 +1,6 @@
 package b.ai.device.web
 import b.ai.App
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap

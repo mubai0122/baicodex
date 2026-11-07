@@ -1,7 +1,7 @@
 package b.ai.core.plugin.skill
 import b.ai.core.cfg.io.Paths
-import b.ai.native.Dsl
-import b.ai.net.api.text
+import b.ai.native.script.Dsl
+import b.ai.net.api.llm.text
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf

@@ -3,7 +3,7 @@ import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.app.Activity
 import android.content.Context
@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import b.ai.core.misc.apk.ApkInstall
-import b.ai.net.api.Update
+import b.ai.net.api.update.Update
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.SurfaceMuted

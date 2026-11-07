@@ -3,8 +3,8 @@ import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.widget.CircleIconBox
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
-import b.ai.device.sys.AutoA11y
-import b.ai.net.api.text
+import b.ai.device.sys.a11y.AutoA11y
+import b.ai.net.api.llm.text
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -122,7 +122,7 @@ fun A11yPermCard(desc: String) {
     //高权限探测放后台：root 模式要跑一次 su，不能在组合里干等
     var ch by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(tick, on) {
-        ch = if (on) null else withContext(Dispatchers.IO) { b.ai.device.sys.AutoA11y.quickChannel(ctx) }
+        ch = if (on) null else withContext(Dispatchers.IO) { b.ai.device.sys.a11y.AutoA11y.quickChannel(ctx) }
     }
     val canAuto = ch != null
     Column(Modifier.fillMaxWidth()) {

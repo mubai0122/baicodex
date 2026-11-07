@@ -1,6 +1,6 @@
 package b.ai.agent.memory
 import b.ai.core.data.db.Repo
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

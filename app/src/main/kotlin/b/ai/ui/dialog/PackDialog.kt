@@ -4,7 +4,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
-import b.ai.native.Dsl
+import b.ai.native.script.Dsl
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.plugin.skill.SkillFn
 import b.ai.core.plugin.skill.SkillPack

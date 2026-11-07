@@ -1,7 +1,7 @@
 package b.ai.ui.widget
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.PolicyChip
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.App
 import b.ai.R
 import b.ai.core.cfg.io.Paths
-import b.ai.device.sys.Router
+import b.ai.device.sys.probe.Router
 import b.ai.device.fs.Workspace
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary

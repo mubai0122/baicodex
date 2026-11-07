@@ -1,6 +1,6 @@
 package b.ai.ui.widget
 import b.ai.ui.glass.liquidBg
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.content.ClipData
 import android.content.ClipboardManager

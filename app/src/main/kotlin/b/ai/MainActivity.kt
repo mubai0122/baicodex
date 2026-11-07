@@ -1,10 +1,10 @@
 package b.ai
-import b.ai.device.sys.AutoA11y
+import b.ai.device.sys.a11y.AutoA11y
 import b.ai.device.app.FChat
 import b.ai.device.pet.Pet
-import b.ai.device.sys.PetGrant
+import b.ai.device.sys.host.PetGrant
 import b.ai.device.pet.PetSvc
-import b.ai.net.api.Announce
+import b.ai.net.api.site.Announce
 import b.ai.ui.screen.settings.AnnounceUi
 import b.ai.ui.overlay.Ime
 
@@ -45,11 +45,11 @@ import b.ai.agent.run.Agent
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
 import b.ai.core.perm.Perms
-import b.ai.device.sys.Alarms
-import b.ai.net.api.Auth
+import b.ai.device.sys.alarm.Alarms
+import b.ai.net.api.account.Auth
 import b.ai.net.doc.Consent
 import b.ai.net.doc.Isuse
-import b.ai.net.api.Update
+import b.ai.net.api.update.Update
 import b.ai.ui.screen.user.AccDialogs
 import b.ai.ui.screen.user.AccUi
 import b.ai.ui.screen.settings.AnnounceDialog
@@ -165,8 +165,8 @@ class MainActivity : ComponentActivity() {
         Rate.check()
         //悬浮聊天窗：开关开着就补挂一次，进程重启后窗口是会丢的
         if (Cfg.fcOn) runCatching { b.ai.device.app.FChat.show(this) }
-        if (!b.ai.device.sys.AutoA11y.need(this)) return
-        Thread({ runCatching { b.ai.device.sys.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
+        if (!b.ai.device.sys.a11y.AutoA11y.need(this)) return
+        Thread({ runCatching { b.ai.device.sys.a11y.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
     } //自动补无障碍
 
     //通知点开而不是冷启动时也会走这里，重新把任务内容送进输入框
@@ -253,7 +253,7 @@ private fun Root() {
         if (info != null && info.updateEnabled && info.hasUpdate) UpdateUi.prompt = info
         updChecked = true
         //公告：always=true 的每次都弹，否则同一 id 只弹一次；拉不到就当没有
-        val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.Announce.check() }.getOrNull() }
+        val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.site.Announce.check() }.getOrNull() }
         if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.screen.settings.AnnounceUi.cur = annItem
     }
 
@@ -418,13 +418,13 @@ private fun Root() {
                             onClose = { petPerm = false },
                             onGrant = {
                                 petPerm = false
-                                b.ai.device.sys.PetGrant.grant(ctx) { r ->
+                                b.ai.device.sys.host.PetGrant.grant(ctx) { r ->
                                     if (r.ok && Cfg.petGlobal) b.ai.device.pet.PetSvc.start(ctx)
                                 }
                             },
                             onOpen = {
                                 petPerm = false
-                                b.ai.device.sys.PetGrant.openOverlaySetting(ctx)
+                                b.ai.device.sys.host.PetGrant.openOverlaySetting(ctx)
                             }
                         )
                         permNotice -> PermNoticeDialog(

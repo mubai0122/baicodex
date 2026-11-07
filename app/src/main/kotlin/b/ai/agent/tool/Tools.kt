@@ -1,15 +1,15 @@
 package b.ai.agent.tool
-import b.ai.device.shell.Root
-import b.ai.net.api.text
+import b.ai.device.shell.root.Root
+import b.ai.net.api.llm.text
 import b.ai.ui.widget.tap
 
-import b.ai.net.api.A2aNode
-import b.ai.net.api.A2aNodes
+import b.ai.net.api.a2a.A2aNode
+import b.ai.net.api.a2a.A2aNodes
 import b.ai.core.misc.apk.Apk
 import b.ai.core.cfg.app.AgentMode
 import b.ai.core.cfg.app.Cfg
-import b.ai.native.Dsl
-import b.ai.native.Js
+import b.ai.native.script.Dsl
+import b.ai.native.script.Js
 import b.ai.net.mcp.Mcp
 import b.ai.agent.memory.Memory
 import b.ai.core.model.chat.Route
@@ -21,15 +21,15 @@ import b.ai.core.plugin.skill.SkillPacks
 import b.ai.App
 import b.ai.agent.flow.Flows
 import b.ai.core.model.chat.WorkMode
-import b.ai.device.sys.Alarms
+import b.ai.device.sys.alarm.Alarms
 import b.ai.device.fs.FileOps
-import b.ai.device.shell.Linux
-import b.ai.device.sys.Router
-import b.ai.device.shell.Shell
-import b.ai.device.shell.Shiz
+import b.ai.device.shell.local.Linux
+import b.ai.device.sys.probe.Router
+import b.ai.device.shell.local.Shell
+import b.ai.device.shell.root.Shiz
 import b.ai.device.fs.Workspace
-import b.ai.net.api.A2A as A2aClient
-import b.ai.net.api.A2aRes
+import b.ai.net.api.a2a.A2A as A2aClient
+import b.ai.net.api.a2a.A2aRes
 import b.ai.net.search.Bing
 import b.ai.net.search.GoogleCse
 import b.ai.net.search.Rail
@@ -1266,7 +1266,7 @@ object Tools {
     private fun sshTool(name: String, args: JSONObject): ToolOutcome {
         fun need(v: String, what: String): ToolOutcome? =
             if (v.isBlank()) ToolOutcome(false, "$name 需要 $what 参数", Route.SANDBOX) else null
-        fun out(r: b.ai.device.shell.ShellResult) =
+        fun out(r: b.ai.device.shell.local.ShellResult) =
             ToolOutcome(r.ok, r.out.ifBlank { if (r.ok) "完成" else "失败（退出码 ${r.code}）" }, Route.SANDBOX)
         val path = args.optString("path").trim()
         val local = args.optString("local").trim()
@@ -1282,24 +1282,24 @@ object Tools {
                     user.isBlank() -> ToolOutcome(false, "ssh_connect 需要 user", Route.SANDBOX)
                     pass.isBlank() -> ToolOutcome(false, "ssh_connect 需要 pass", Route.SANDBOX)
                     else -> {
-                        val r = b.ai.device.shell.Ssh.save(host, args.optInt("port", 22), user, pass)
+                        val r = b.ai.device.shell.remote.Ssh.save(host, args.optInt("port", 22), user, pass)
                         out(r.copy(out = if (r.ok) "连接已保存并验证通过：$user@$host\n" + r.out else r.out))
                     }
                 }
             }
-            SSH_LS -> need(path, "path") ?: out(b.ai.device.shell.Ssh.ls(path, args.optInt("depth", 1)))
-            SSH_READ -> need(path, "path") ?: out(b.ai.device.shell.Ssh.read(path, args.optInt("max_lines", 0)))
+            SSH_LS -> need(path, "path") ?: out(b.ai.device.shell.remote.Ssh.ls(path, args.optInt("depth", 1)))
+            SSH_READ -> need(path, "path") ?: out(b.ai.device.shell.remote.Ssh.read(path, args.optInt("max_lines", 0)))
             SSH_WRITE -> need(path, "path") ?: run {
                 if (!args.has("content")) {
                     ToolOutcome(false, "ssh_write 需要 content（写空文件就传空字符串）", Route.SANDBOX)
                 } else {
-                    out(b.ai.device.shell.Ssh.write(path, args.optString("content")))
+                    out(b.ai.device.shell.remote.Ssh.write(path, args.optString("content")))
                 }
             }
-            SSH_SUDO -> need(cmd, "command") ?: out(b.ai.device.shell.Ssh.sudo(cmd, timeout))
-            SSH_EXEC -> need(cmd, "command") ?: out(b.ai.device.shell.Ssh.exec(cmd, timeout))
-            SSH_GET -> need(path, "path") ?: need(local, "local") ?: out(b.ai.device.shell.Ssh.pull(path, local))
-            SSH_PUT -> need(local, "local") ?: need(path, "path") ?: out(b.ai.device.shell.Ssh.push(local, path))
+            SSH_SUDO -> need(cmd, "command") ?: out(b.ai.device.shell.remote.Ssh.sudo(cmd, timeout))
+            SSH_EXEC -> need(cmd, "command") ?: out(b.ai.device.shell.remote.Ssh.exec(cmd, timeout))
+            SSH_GET -> need(path, "path") ?: need(local, "local") ?: out(b.ai.device.shell.remote.Ssh.pull(path, local))
+            SSH_PUT -> need(local, "local") ?: need(path, "path") ?: out(b.ai.device.shell.remote.Ssh.push(local, path))
             else -> ToolOutcome(false, "未知 SSH 工具：$name", Route.SANDBOX)
         }
     } //ssh 分发
@@ -1385,7 +1385,7 @@ object Tools {
         if (act == "start" || act == "begin") {
             val given = a.optString("text").trim()
             val t = given.ifEmpty { b.ai.App.self.getString(b.ai.R.string.ag_capsule_fmt, label(SCREEN)) }
-            b.ai.device.sys.Capsule.begin(t)
+            b.ai.device.sys.host.Capsule.begin(t)
             return ToolOutcome(
                 true,
                 "胶囊已常驻：「$t」。接着一步步操作，全部做完再调 screen action=quiet 收起。",
@@ -1393,11 +1393,11 @@ object Tools {
             )
         }
         if (act == "quiet" || act == "stop" || act == "end") {
-            b.ai.device.sys.Capsule.end()
+            b.ai.device.sys.host.Capsule.end()
             return ToolOutcome(true, "胶囊已收起。", Route.SANDBOX)
         }
-        if (!b.ai.device.sys.A11y.ready()) {
-            b.ai.device.sys.A11y.askPerm()
+        if (!b.ai.device.sys.a11y.A11y.ready()) {
+            b.ai.device.sys.a11y.A11y.askPerm()
             return ToolOutcome(
                 false,
                 "无障碍服务没开，屏幕操作跑不通。已经给用户弹了引导弹窗，等用户开启后再试。" +
@@ -1406,19 +1406,19 @@ object Tools {
             )
         }
         val t = when (act) {
-            "see", "shot2" -> b.ai.device.sys.A11y.dump(400, a.optBoolean("all", false)) + "\n截图: " + b.ai.device.sys.A11y.shot(shotFile())
-            "tree", "dump" -> b.ai.device.sys.A11y.dump(400, a.optBoolean("all", false))
-            "shot", "screenshot" -> "截图: " + b.ai.device.sys.A11y.shot(shotFile())
-            "tap", "click" -> b.ai.device.sys.A11y.tap(a.optInt("x", -1), a.optInt("y", -1))
-            "long", "longpress" -> b.ai.device.sys.A11y.longPress(
+            "see", "shot2" -> b.ai.device.sys.a11y.A11y.dump(400, a.optBoolean("all", false)) + "\n截图: " + b.ai.device.sys.a11y.A11y.shot(shotFile())
+            "tree", "dump" -> b.ai.device.sys.a11y.A11y.dump(400, a.optBoolean("all", false))
+            "shot", "screenshot" -> "截图: " + b.ai.device.sys.a11y.A11y.shot(shotFile())
+            "tap", "click" -> b.ai.device.sys.a11y.A11y.tap(a.optInt("x", -1), a.optInt("y", -1))
+            "long", "longpress" -> b.ai.device.sys.a11y.A11y.longPress(
                 a.optInt("x", -1), a.optInt("y", -1), a.optInt("dur", 800).toLong()
             )
-            "swipe" -> b.ai.device.sys.A11y.swipe(
+            "swipe" -> b.ai.device.sys.a11y.A11y.swipe(
                 a.optInt("x", -1), a.optInt("y", -1), a.optInt("x2", -1), a.optInt("y2", -1),
                 a.optInt("dur", 300).toLong()
             )
-            "text", "input" -> b.ai.device.sys.A11y.input(a.optString("text"))
-            "key" -> b.ai.device.sys.A11y.global(a.optString("key", "back"))
+            "text", "input" -> b.ai.device.sys.a11y.A11y.input(a.optString("text"))
+            "key" -> b.ai.device.sys.a11y.A11y.global(a.optString("key", "back"))
             "launch", "open" -> launchApp(a.optString("app"))
             "apps", "list" -> apps(a.optString("app"))
             else -> "不支持的 action：$act（可用 see / tree / shot / tap / long / swipe / text / key / launch / apps / start / quiet）"
@@ -1499,16 +1499,16 @@ object Tools {
     /** 剪贴板：get 读、set 写，失败统一以「失败」开头由调用方判 ok */
     private fun clip(a: JSONObject): ToolOutcome {
         val act = a.optString("action", "get").lowercase()
-        val t = if (act == "set") b.ai.device.sys.Device.clipSet(a.optString("text"))
-        else b.ai.device.sys.Device.clipGet()
+        val t = if (act == "set") b.ai.device.sys.probe.Device.clipSet(a.optString("text"))
+        else b.ai.device.sys.probe.Device.clipGet()
         return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
     } //剪贴板
 
     /** 打开链接 / 分享：url 走浏览器，share 走系统分享面板 */
     private fun openLink(a: JSONObject): ToolOutcome {
         val act = a.optString("action", "url").lowercase()
-        val t = if (act == "share") b.ai.device.sys.Device.shareText(a.optString("text"))
-        else b.ai.device.sys.Device.openUrl(a.optString("url"))
+        val t = if (act == "share") b.ai.device.sys.probe.Device.shareText(a.optString("text"))
+        else b.ai.device.sys.probe.Device.openUrl(a.optString("url"))
         return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
     } //打开或分享
 
@@ -1516,10 +1516,10 @@ object Tools {
     private fun noti(a: JSONObject): ToolOutcome {
         val act = a.optString("action", "list").lowercase()
         if (act == "send") {
-            val t = b.ai.device.sys.Device.sendNoti(a.optString("title"), a.optString("text"))
+            val t = b.ai.device.sys.probe.Device.sendNoti(a.optString("title"), a.optString("text"))
             return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
         }
-        return ToolOutcome(true, b.ai.device.sys.Device.notiList(a.optInt("limit", 30), a.optString("app")), Route.SANDBOX)
+        return ToolOutcome(true, b.ai.device.sys.probe.Device.notiList(a.optInt("limit", 30), a.optString("app")), Route.SANDBOX)
     } //通知
 
     /** 直发 HTTP：不依赖 curl，headers 每行一个「名: 值」，返回状态码与正文前 8000 字 */

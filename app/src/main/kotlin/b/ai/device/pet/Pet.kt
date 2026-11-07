@@ -1,5 +1,5 @@
 package b.ai.device.pet
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import b.ai.ui.widget.tap
 
 import android.annotation.SuppressLint

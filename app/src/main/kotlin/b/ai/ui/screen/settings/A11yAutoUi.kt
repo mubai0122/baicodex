@@ -3,7 +3,7 @@ import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,8 +42,8 @@ import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.perm.Perms
-import b.ai.device.sys.A11y
-import b.ai.device.sys.AutoA11y
+import b.ai.device.sys.a11y.A11y
+import b.ai.device.sys.a11y.AutoA11y
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

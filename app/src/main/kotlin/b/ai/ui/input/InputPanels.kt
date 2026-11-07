@@ -9,7 +9,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.glass.vibrancy
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -79,7 +79,7 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import b.ai.core.cfg.app.Cfg
-import b.ai.net.api.LlmClient
+import b.ai.net.api.llm.LlmClient
 import b.ai.core.model.chat.Effort
 import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers

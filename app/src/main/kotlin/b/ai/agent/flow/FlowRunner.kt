@@ -3,8 +3,8 @@ import b.ai.agent.run.Agent
 import b.ai.agent.sub.SubAgents
 import b.ai.agent.sub.SubOut
 import b.ai.agent.sub.SubTask
-import b.ai.device.sys.Alarms
-import b.ai.net.api.text
+import b.ai.device.sys.alarm.Alarms
+import b.ai.net.api.llm.text
 
 import b.ai.agent.flow.Flow
 import b.ai.agent.flow.FlowStep
@@ -74,13 +74,13 @@ object FlowRunner {
             val out = runCatching {
                 run(
                     flow,
-                    { s -> b.ai.device.sys.Alarms.notifyFlowText(flow, s) },
+                    { s -> b.ai.device.sys.alarm.Alarms.notifyFlowText(flow, s) },
                     // 后台跑没人点确认：三分钟不回就当拒绝，否则整条流会一直挂在这里
                     { n, a, id -> withTimeoutOrNull(CONFIRM_MS) { Agent.confirmFromSub(n, a, id) } ?: false }
                 )
             }.getOrElse { FlowOut(false, "工作流出错：" + (it.message ?: it.javaClass.simpleName), emptyList()) }
             runCatching { Flows.mark(flow.id, out.ok, out.text) }
-            runCatching { b.ai.device.sys.Alarms.notifyFlowDone(flow, out.ok, out.text) }
+            runCatching { b.ai.device.sys.alarm.Alarms.notifyFlowDone(flow, out.ok, out.text) }
         }
     } //定时触发
 

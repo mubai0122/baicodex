@@ -3,7 +3,7 @@ import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,7 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import b.ai.net.api.Announce
+import b.ai.net.api.site.Announce
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.TextPrimary

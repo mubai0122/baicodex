@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import b.ai.net.Net
+import b.ai.native.net.Net
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URI

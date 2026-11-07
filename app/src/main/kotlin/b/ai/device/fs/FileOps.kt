@@ -1,16 +1,16 @@
 package b.ai.device.fs
-import b.ai.device.shell.Root
-import b.ai.device.shell.Shell
-import b.ai.device.shell.ShellResult
-import b.ai.device.shell.Shiz
-import b.ai.device.sys.Router
-import b.ai.net.api.text
+import b.ai.device.shell.root.Root
+import b.ai.device.shell.local.Shell
+import b.ai.device.shell.local.ShellResult
+import b.ai.device.shell.root.Shiz
+import b.ai.device.sys.probe.Router
+import b.ai.net.api.llm.text
 
 import android.util.Base64
 import b.ai.App
 import b.ai.core.model.chat.Route
 import b.ai.core.model.chat.Sum
-import b.ai.native.TextEdit
+import b.ai.native.text.TextEdit
 import java.io.File
 import java.security.MessageDigest
 import java.text.SimpleDateFormat

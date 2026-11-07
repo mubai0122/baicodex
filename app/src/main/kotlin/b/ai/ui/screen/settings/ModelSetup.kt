@@ -13,7 +13,7 @@ import b.ai.ui.widget.FieldBox
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.SquareIconBox
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -61,7 +61,7 @@ import b.ai.core.data.profile.ModelProfile
 import b.ai.core.model.chat.Provider
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.data.profile.Profiles
-import b.ai.net.api.LlmClient
+import b.ai.net.api.llm.LlmClient
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.AccentBlueSoft

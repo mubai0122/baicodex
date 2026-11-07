@@ -9,7 +9,7 @@ std::string gErr; //最近一次失败原因，Kotlin 侧想看就看
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_b_ai_native_Net_nativeGet(JNIEnv* env, jobject, jstring url, jint timeoutMs) {
+Java_b_ai_native_net_Net_nativeGet(JNIEnv* env, jobject, jstring url, jint timeoutMs) {
     if (url == nullptr) return nullptr;
     const char* raw = env->GetStringUTFChars(url, nullptr);
     if (raw == nullptr) return nullptr;
@@ -30,6 +30,6 @@ Java_b_ai_native_Net_nativeGet(JNIEnv* env, jobject, jstring url, jint timeoutMs
 } //C层 HTTPS GET：成功给字节，失败给 null
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_b_ai_native_Net_nativeErr(JNIEnv* env, jobject) {
+Java_b_ai_native_net_Net_nativeErr(JNIEnv* env, jobject) {
     return env->NewStringUTF(gErr.c_str());
 } //最近一次失败原因

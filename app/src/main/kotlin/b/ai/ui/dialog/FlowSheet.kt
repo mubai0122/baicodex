@@ -6,7 +6,7 @@ import b.ai.ui.widget.Field
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.tap
 import b.ai.core.task.alarm.Schedules
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +42,7 @@ import b.ai.agent.flow.FlowRunner
 import b.ai.agent.flow.Flow
 import b.ai.agent.flow.FlowStep
 import b.ai.agent.flow.Flows
-import b.ai.device.sys.Alarms
+import b.ai.device.sys.alarm.Alarms
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed

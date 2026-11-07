@@ -4,7 +4,7 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import b.ai.ui.theme.AccentBlueSoft
 
 import androidx.compose.foundation.layout.Arrangement

@@ -1,5 +1,5 @@
 package b.ai.core.misc.apk
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import java.io.ByteArrayInputStream
 import java.io.File

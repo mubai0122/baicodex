@@ -22,7 +22,7 @@ import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.Tag
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -77,8 +77,8 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.io.Paths
 import b.ai.core.plugin.install.PluginInstall
 import b.ai.core.plugin.install.PluginNote
-import b.ai.net.api.Auth
-import b.ai.net.api.Plugins
+import b.ai.net.api.account.Auth
+import b.ai.net.api.plugin.Plugins
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

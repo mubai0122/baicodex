@@ -1,6 +1,6 @@
 package b.ai.ui.dialog
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background

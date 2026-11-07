@@ -1,5 +1,5 @@
 package b.ai.core.misc.refactor
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import b.ai.device.fs.Workspace
 import java.io.File

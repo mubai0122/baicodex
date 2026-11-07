@@ -1,5 +1,5 @@
 package b.ai.core.data.io
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import b.ai.App
 import b.ai.device.fs.Workspace

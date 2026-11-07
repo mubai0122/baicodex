@@ -1,7 +1,7 @@
 package b.ai.ui.dialog
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row

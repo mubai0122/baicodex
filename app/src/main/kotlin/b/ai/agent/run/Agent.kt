@@ -20,7 +20,7 @@ import b.ai.core.cfg.env.Env
 import b.ai.agent.flow.Flow
 import b.ai.agent.flow.Flows
 import b.ai.agent.memory.Memory
-import b.ai.native.Mask
+import b.ai.native.security.Mask
 import b.ai.core.model.chat.MsgMeta
 import b.ai.core.perm.Perms
 import b.ai.agent.persona.Personas
@@ -37,12 +37,12 @@ import b.ai.core.model.chat.ToolCall
 import b.ai.core.pet.say.Waifu
 import b.ai.core.model.chat.WorkMode
 import b.ai.core.plugin.skill.Workflows
-import b.ai.device.shell.Linux
-import b.ai.device.sys.Router
+import b.ai.device.shell.local.Linux
+import b.ai.device.sys.probe.Router
 import b.ai.device.fs.Workspace
-import b.ai.net.api.LlmClient
-import b.ai.net.api.LlmException
-import b.ai.net.api.text
+import b.ai.net.api.llm.LlmClient
+import b.ai.net.api.llm.LlmException
+import b.ai.net.api.llm.text
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -333,7 +333,7 @@ object Agent {
         busy = false
                 runSid = null
                 runHistory = emptyList()
-        b.ai.device.sys.Capsule.end()
+        b.ai.device.sys.host.Capsule.end()
         clearTools()
     }
 
@@ -387,7 +387,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
-                b.ai.device.sys.Capsule.end()
+                b.ai.device.sys.host.Capsule.end()
                 clearTools()
             }
         }
@@ -414,7 +414,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
-                b.ai.device.sys.Capsule.end()
+                b.ai.device.sys.host.Capsule.end()
                 clearTools()
             }
         }
@@ -448,7 +448,7 @@ object Agent {
                 busy = false
                 runSid = null
                 runHistory = emptyList()
-                b.ai.device.sys.Capsule.end()
+                b.ai.device.sys.host.Capsule.end()
                 clearTools()
             }
         }
@@ -744,12 +744,12 @@ object Agent {
                     //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限。
                     //screen start 之后胶囊已常驻，这里只改文案；quiet 那一次干脆别先亮。
                     if (!quietCall(c.name, args)) {
-                        b.ai.device.sys.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                        b.ai.device.sys.host.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
                     }
                     val out = try {
                         withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
                     } finally {
-                        b.ai.device.sys.Capsule.hide()
+                        b.ai.device.sys.host.Capsule.hide()
                     }
                     appendToolMsg(c, out.text, out.route, !out.ok)
                 } finally {

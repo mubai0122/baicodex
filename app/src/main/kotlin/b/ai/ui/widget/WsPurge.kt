@@ -1,7 +1,7 @@
 package b.ai.ui.widget
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.liquidBg
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

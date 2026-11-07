@@ -7,8 +7,8 @@ import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.perm.Perms
 import b.ai.core.plugin.skill.Providers
-import b.ai.net.api.LlmClient
-import b.ai.net.api.text
+import b.ai.net.api.llm.LlmClient
+import b.ai.net.api.llm.text
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

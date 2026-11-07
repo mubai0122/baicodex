@@ -5,7 +5,7 @@ import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.tap
 import b.ai.ui.widget.tapLong
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,7 +65,7 @@ import b.ai.agent.run.Agent
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.db.Repo
 import b.ai.core.model.chat.SessionRow
-import b.ai.net.api.Auth
+import b.ai.net.api.account.Auth
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

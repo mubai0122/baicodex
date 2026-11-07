@@ -1,5 +1,5 @@
 package b.ai.net.search
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import org.json.JSONObject
 import java.io.IOException

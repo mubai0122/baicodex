@@ -1,7 +1,7 @@
 package b.ai.ui.screen.chat
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 import android.content.Context
 
 import androidx.compose.foundation.background

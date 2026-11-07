@@ -2,7 +2,7 @@ package b.ai.ui.screen.pet
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing

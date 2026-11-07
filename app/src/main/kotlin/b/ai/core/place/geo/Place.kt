@@ -1,7 +1,7 @@
 package b.ai.core.place.geo
 import b.ai.core.cfg.app.Bai
 import b.ai.core.cfg.app.Cfg
-import b.ai.native.Vault
+import b.ai.native.security.Vault
 
 import android.Manifest
 import android.content.Context

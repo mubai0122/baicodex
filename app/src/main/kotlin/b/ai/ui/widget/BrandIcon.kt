@@ -1,5 +1,5 @@
 package b.ai.ui.widget
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

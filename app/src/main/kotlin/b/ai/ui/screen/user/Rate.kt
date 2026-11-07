@@ -5,7 +5,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.openUrl
 import b.ai.ui.widget.IcTick
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image

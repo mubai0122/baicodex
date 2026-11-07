@@ -6,7 +6,7 @@ import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.tap
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

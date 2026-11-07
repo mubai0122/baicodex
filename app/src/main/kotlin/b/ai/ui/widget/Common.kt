@@ -2,7 +2,7 @@ package b.ai.ui.widget
 import b.ai.ui.glass.LiquidCard
 import b.ai.ui.glass.LocalCardBackdrop
 import b.ai.ui.glass.liquidBg
-import b.ai.net.api.text
+import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
