@@ -50,7 +50,7 @@ import b.ai.net.api.site.Usage
 class App : Application() {
     /**
      * 这里比 onCreate 更早：先把配置库从盘里读进内存。
-     * data/prefs/bai_cfg.json 几百个键，第一次还要从老的 SharedPreferences 导一遍，正好跟 ContentProvider 初始化并行跑完
+     * data/prefs/bai_cfg/ 下 8 个分片，第一次还要从老的 SharedPreferences 导一遍，正好跟 ContentProvider 初始化并行跑完
      */
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)

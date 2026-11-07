@@ -9,7 +9,7 @@ import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 
-/** 全局配置：data/prefs/bai_cfg.json 落盘 + Compose 状态镜像 */
+/** 全局配置：data/prefs/bai_cfg/ 下 8 个加密分片落盘 + Compose 状态镜像 */
 object Cfg {
     /** 自定义系统提示在数据根里的文件名 */
     const val SYSTEM_PROMPT_FILE = "system_prompt.md"

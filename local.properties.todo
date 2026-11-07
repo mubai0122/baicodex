@@ -3,3 +3,4 @@ cmake.dir=
 stringfog.key=
 baicodex.aes.key=
 baicodex.host=
+baicodex.backup.key=

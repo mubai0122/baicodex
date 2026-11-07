@@ -12,10 +12,10 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /**
- * 整库备份：bai.db + bai_stat.db + bai_cfg.json + baicode 根下的小文件 + 头像，打成一个 zip。
+ * 整库备份：bai.db + bai_stat.db + 配置库分片 + baicode 根下的小文件 + 头像，打成一个 zip。
  * 导入不直接覆盖（运行中 SQLite 正持有库），先落到 data/compress/restore，下次进程启动时替换。
  * zip 里的条目名保持 avatars/ 不变：备份格式不跟内部目录布局一起改，老备份还能导入。
- * 配置条目老备份叫 bai_cfg.xml、新备份叫 bai_cfg.json，两个都认。
+ * 配置条目三版都认：最老 bai_cfg.xml、上一版单文件 bai_cfg.json、现在 prefs/0..7.json 分片。
  */
 object Backup {
     private const val RESTORE = "restore"
@@ -23,7 +23,8 @@ object Backup {
     private const val CFG_XML = "bai_cfg.xml"
     private fun dbFile(ctx: Context) = ctx.getDatabasePath("bai.db")
     private fun statFile(ctx: Context) = ctx.getDatabasePath("bai_stat.db")
-    private fun prefsFile(ctx: Context) = Layout.file(ctx, Layout.PREFS, CFG_JSON)
+    /** 配置库目录：键散在 8 个分片里，整个目录一起备份 */
+    private fun prefsDir(ctx: Context) = File(Layout.dir(ctx, Layout.PREFS), Prefs.MAIN)
     private fun restoreDir(ctx: Context) = Layout.dir(ctx, Layout.COMPRESS + "/" + RESTORE)
 
     /** 有没有等着换上去的备份：有就别预热配置库，否则会挡住老 XML 备份的导入 */
@@ -50,7 +51,9 @@ object Backup {
             }
             put("bai.db", dbFile(ctx))
             put("bai_stat.db", statFile(ctx))
-            put(CFG_JSON, prefsFile(ctx))
+            //配置库：8 个分片全收，条目名带 prefs/ 前缀，跟老备份的裸 bai_cfg.json 区分开
+            prefsDir(ctx).listFiles()?.filter { it.isFile && it.name.endsWith(".json") }
+                ?.sortedBy { it.name }?.forEach { put("prefs/" + it.name, it) }
             //baicode 根下只收文件：哈希目录是工作区，可能很大，不备份
             Paths.base().listFiles()?.filter { it.isFile }?.sortedBy { it.name }?.forEach {
                 put("baicode/" + it.name, it)
@@ -108,6 +111,13 @@ object Backup {
                             File(dir, name).outputStream().use { z.copyTo(it) }
                             onLog("+ $name")
                         }
+                        name.startsWith("prefs/") -> {
+                            //分片原样落回 restore/prefs/，启动时整目录换上去
+                            val f = File(dir, name)
+                            f.parentFile?.mkdirs()
+                            f.outputStream().use { z.copyTo(it) }
+                            onLog("+ $name")
+                        }
                         name.startsWith("baicode/") -> {
                             val f = File(Paths.ensure(), name.removePrefix("baicode/"))
                             f.parentFile?.mkdirs()
@@ -163,24 +173,34 @@ object Backup {
             ps.delete()
             changed = true
         }
-        //配置：新备份是 json，直接换上去；老备份是 xml，落回系统目录再让配置库从 SP 重新导一遍
+        //配置：新备份是 8 个分片、整目录换；上一版是单文件 json，落到老位置让库自己拆片；更老是 xml，落回系统目录再重导
+        val pd = File(restoreDir(ctx), "prefs")
         val pj = File(restoreDir(ctx), CFG_JSON)
         val px = File(restoreDir(ctx), CFG_XML)
-        if (pj.isFile) {
-            val target = prefsFile(ctx)
-            target.parentFile?.mkdirs()
-            runCatching { pj.copyTo(target, overwrite = true) }
-            pj.delete()
+        val pdir = prefsDir(ctx)
+        if (pd.isDirectory) {
             Prefs.reset()
+            runCatching { pdir.deleteRecursively() }
+            runCatching { pd.copyRecursively(pdir, overwrite = true) }
+            pd.deleteRecursively()
+            changed = true
+        } else if (pj.isFile) {
+            //库只在「分片一个都没有」时才看老单文件，所以先清干净分片目录
+            Prefs.reset()
+            runCatching { pdir.deleteRecursively() }
+            val legacy = File(Layout.dir(ctx, Layout.PREFS), Prefs.MAIN + ".json")
+            legacy.parentFile?.mkdirs()
+            runCatching { pj.copyTo(legacy, overwrite = true) }
+            pj.delete()
             changed = true
         } else if (px.isFile) {
             val target = File(ctx.applicationInfo.dataDir + "/shared_prefs/" + CFG_XML)
             target.parentFile?.mkdirs()
             runCatching { px.copyTo(target, overwrite = true) }
             px.delete()
-            //把新格式文件删掉，下次读库时从这份 XML 重新导一遍
-            runCatching { prefsFile(ctx).delete() }
+            //分片清掉，下次读库时从这份 XML 重新导一遍
             Prefs.reset()
+            runCatching { pdir.deleteRecursively() }
             changed = true
         }
         return changed
