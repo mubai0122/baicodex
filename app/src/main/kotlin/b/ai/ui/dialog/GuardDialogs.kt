@@ -249,17 +249,18 @@ private fun RowScope.HoldButton(
         }
     }
     val ready = left <= 0
+    //倒计时态原来是白字压浅灰底，alpha 0.55 的白基本看不见：改成深灰字 + 极淡底，读得清也不刺眼
+    val tint = if (ready) (if (danger) DangerRed else AccentBlue) else TextSecondary.copy(alpha = 0.10f)
+    val fg = if (ready) Color.White else TextSecondary
     Text(
         if (ready) label else waitLabel(left),
         fontSize = 12.sp,
-        color = if (danger) Color.White else Color.White.copy(alpha = 0.55f),
+        fontWeight = if (ready) FontWeight.Medium else FontWeight.Normal,
+        color = fg,
         textAlign = TextAlign.Center,
         modifier = Modifier
             .weight(1f)
-            .liquidBg(
-                RoundedCornerShape(10.dp),
-                tint = if (ready) (if (danger) DangerRed else AccentBlue) else SurfaceMuted
-            )
+            .liquidBg(RoundedCornerShape(10.dp), tint = tint)
             .tap(enabled = ready) { onDone() }
             .padding(vertical = 11.dp)
     )

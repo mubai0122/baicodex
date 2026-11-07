@@ -19,6 +19,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import b.ai.core.cfg.app.Cfg
+import b.ai.device.sys.host.SecureWin
 import b.ai.ui.overlay.FChatUi
 import b.ai.ui.theme.BaiTheme
 
@@ -103,6 +104,8 @@ object FChat {
         cv.setViewTreeSavedStateRegistryOwner(o)
         cv.setContent { BaiTheme { FChatUi(onClose = { hide() }) } }
         val p = build(cc)
+        //独立窗口不跟 Activity 的 FLAG_SECURE 走，「禁止截图」开着要自己带标记
+        SecureWin.open(wm, cv, p)
         runCatching { wm.addView(cv, p) }.onFailure { return }
         host = wm
         view = cv
@@ -147,6 +150,7 @@ object FChat {
     private fun remove() {
         val v = view ?: return
         runCatching { host?.removeView(v) }
+        SecureWin.close(v)
         view = null
         lp = null
         owner = null

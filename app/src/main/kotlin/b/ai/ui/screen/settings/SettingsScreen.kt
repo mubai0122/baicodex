@@ -159,6 +159,7 @@ import b.ai.device.app.FChat
 import b.ai.device.shell.local.Linux
 import b.ai.device.pet.Pet
 import b.ai.device.sys.host.PetGrant
+import b.ai.device.sys.host.SecureWin
 import b.ai.device.sys.probe.Router
 import b.ai.device.shell.local.Toolchain
 import b.ai.device.fs.Workspace
@@ -2600,6 +2601,8 @@ private fun ProtectSection() {
                     Cfg.noShot = want
                     shot = want
                     (ctx as? MainActivity)?.applySecure(want)
+                    //悬浮聊天窗、桌宠、气泡是独立窗口，Activity 的标记管不到它们
+                    SecureWin.apply()
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
             )

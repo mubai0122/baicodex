@@ -26,6 +26,7 @@ import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.pet.say.PetSay
 import b.ai.core.pet.sound.PetSound
+import b.ai.device.sys.host.SecureWin
 
 /**
  * 桌宠悬浮窗。位置默认固定，动画都做在 View 自己身上：
@@ -220,6 +221,7 @@ object Pet {
             lp.x = (m.widthPixels - size - dp(c, 8)).coerceAtLeast(0)
             lp.y = (m.heightPixels / 2).coerceAtLeast(0)
         }
+        SecureWin.open(wm, box, lp)
         if (runCatching { wm.addView(box, lp) }.isFailure) return
         host = wm
         petView = box
@@ -363,6 +365,7 @@ object Pet {
                 lp.y = (pl.y + padTop - tv.measuredHeight - dp(c, 6)).coerceAtLeast(0)
             }
         }
+        SecureWin.open(wm, tv, lp)
         if (runCatching { wm.addView(tv, lp) }.isFailure) return
         bubbleView = tv
         bubbleLp = lp
@@ -396,7 +399,7 @@ object Pet {
     private fun dismissBubble() {
         bubbleHide?.let { main.removeCallbacks(it) }
         bubbleHide = null
-        bubbleView?.let { runCatching { host?.removeView(it) } }
+        bubbleView?.let { runCatching { host?.removeView(it) }; SecureWin.close(it) }
         bubbleView = null
         bubbleLp = null
     } //收气泡
@@ -481,7 +484,7 @@ object Pet {
         floatAnim?.cancel()
         floatAnim = null
         dismissBubble()
-        petView?.let { runCatching { host?.removeView(it) } }
+        petView?.let { runCatching { host?.removeView(it) }; SecureWin.close(it) }
         petView = null
         petLp = null
         inner = null
