@@ -58,6 +58,7 @@ object Tools {
     const val MEMORY = "memory_save"
     /** 记忆检索：记忆条目多时模型拿不全，靠它按关键词回查 */
     const val MEMORY_READ = "memory_search"
+    const val MEMORY_DEL = "memory_delete" //删永久记忆：按 id 删一条；关键词命中多条只列出来，避免一句话删掉一堆
     /** SSH：拆成一整组专用工具（连接 / 列目录 / 读 / 写 / 提权 / 执行 / 下载 / 上传），模型不用再拿 exec 拼 ssh 命令 */
     const val SSH_CONNECT = "ssh_connect"
     const val SSH_LS = "ssh_ls"
@@ -117,7 +118,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, ASK, SCREEN))
+            l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, MEMORY_DEL, ASK, SCREEN))
             l.addAll(
                 listOf(
                     LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB, JS,
@@ -138,7 +139,7 @@ object Tools {
 
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
     private val PLAN_OFF = setOf(
-        WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
+        WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, MEMORY_DEL, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
         FLOW_RUN, FLOW_SAVE, A2A,
         SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT
     )
@@ -174,6 +175,7 @@ object Tools {
         RAIL -> "火车票查询"
         MEMORY -> "记住这件事"
         MEMORY_READ -> "搜记忆"
+        MEMORY_DEL -> "删记忆"
         ASK -> "向用户提问"
         SKILL_READ -> "查技能用法"
         SCREEN -> "操作屏幕"
@@ -424,6 +426,19 @@ object Tools {
                         .put("query", str("关键词，空格分隔多个，例如「服务器 密码」"))
                         .put("limit", JSONObject().put("type", "integer").put("description", "最多返回几条，默认 20，上限 50"))
                 ).put("required", JSONArray().put("query"))
+            )
+        )
+        //永久记忆：删除。命中多条一律不直接删，先列候选让模型按 id 逐条删
+        arr.put(
+            fn(
+                MEMORY_DEL,
+                "删除永久记忆。传 id 删指定一条（id 从 memory_search 结果里拿）；只传 query 时，" +
+                    "命中唯一一条才直接删，命中多条会把候选列出来，需要你再按 id 逐条删。" +
+                    "动手前先跟用户确认要删哪条，删完把删掉的内容告诉用户。",
+                params(
+                    "id" to JSONObject().put("type", "integer").put("description", "要删的记忆 id"),
+                    "query" to str("按关键词找要删的记忆，只在能唯一定位时才删")
+                )
             )
         )
         //JS：QuickJS 脚本，能调工具也能注册工具，能力等于任意代码执行，归高危
@@ -928,6 +943,7 @@ object Tools {
         RAIL -> rail(args).governed()
         MEMORY -> memorySave(args).governed()
         MEMORY_READ -> memorySearch(args).governed()
+        MEMORY_DEL -> memoryDelete(args).governed()
         //ask_user 由 Agent 直接拦下弹面板，走到这里说明调用链不对
         ASK -> ToolOutcome(false, "ask_user 需要界面交互，无法在后台执行", Route.SANDBOX)
         SCREEN -> screen(args).governed()
@@ -1219,6 +1235,30 @@ object Tools {
         hit.forEach { sb.append("[id=").append(it.id).append("] ").append(it.text).append('\n') }
         return ToolOutcome(true, sb.toString().trimEnd(), Route.SANDBOX)
     } //搜记忆
+
+    /** 删一条永久记忆：给 id 直接删；只给关键词时命中唯一一条才删，多条只列候选 */
+    private fun memoryDelete(args: JSONObject): ToolOutcome {
+        val id = args.optLong("id", 0L)
+        if (id > 0L) {
+            val hit = Memory.rows.firstOrNull { it.id == id }
+                ?: return ToolOutcome(false, "没有 id=$id 的记忆，先用 memory_search 查一下 id", Route.SANDBOX)
+            Memory.delete(id)
+            return ToolOutcome(true, "已删除 [id=$id] ${hit.text}（还剩 ${Memory.rows.size} 条）", Route.SANDBOX)
+        }
+        val q = args.optString("query").trim()
+        if (q.isEmpty()) return ToolOutcome(false, "memory_delete 需要 id 或 query 参数", Route.SANDBOX)
+        val total = Memory.rows.size
+        if (total == 0) return ToolOutcome(true, "永久记忆是空的，没有可删的内容。", Route.SANDBOX)
+        val hit = Memory.search(q, 50)
+        if (hit.isEmpty()) return ToolOutcome(true, "没有匹配「$q」的记忆（共 $total 条），无需删除。", Route.SANDBOX)
+        if (hit.size > 1) {
+            val sb = StringBuilder("「$q」命中 ${hit.size} 条，没有直接删，避免误删。确认删哪几条后按 id 逐条调用：\n")
+            hit.forEach { sb.append("[id=").append(it.id).append("] ").append(it.text).append('\n') }
+            return ToolOutcome(true, sb.toString().trimEnd(), Route.SANDBOX)
+        }
+        Memory.delete(hit[0].id)
+        return ToolOutcome(true, "已删除 [id=${hit[0].id}] ${hit[0].text}（还剩 ${Memory.rows.size} 条）", Route.SANDBOX)
+    } //删记忆
 
     /** SSH 专用工具分发：每个动作一个独立工具名，远端路径转义全在 Ssh 里做 */
     private fun sshTool(name: String, args: JSONObject): ToolOutcome {

@@ -255,6 +255,10 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var petIntro by remember { mutableStateOf(!Cfg.petModelTip) }
     //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
     val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
+    //键盘兜底高度：官方上报 ime insets 时是 0；鸿蒙 4 这类不上报的 ROM 才有值，避免输入框被键盘盖住
+    val imeDp = with(LocalDensity.current) { Ime.fallback.toDp() }
+    //键盘弹起时再留 8dp 缝隙，别让输入框贴死在键盘边上
+    val imePad = if (imeDp.value > 0f) imeDp + 8.dp else 0.dp
      //只在消息列表变了才重算上下文占用，免得输入框每敲一个字都扫一遍全量消息；顶栏和小卡片共用
      val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
     //外层 Box 只为了给「应用内桌宠」一个右下角锚点
@@ -262,8 +266,8 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     //纯背景一层，卡片玻璃只采它
     Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     ProvideCardBackdrop(cardBackdrop) {
-    //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glassPageLayer(pageBackdrop)) {
+//safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白；imeDp 只补不上报 ime 的 ROM
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = imePad).glassPageLayer(pageBackdrop)) {
          TopBar(
              onOpenDrawer,
              onOpenWorkspace = { wsPanel = true },
@@ -494,7 +498,7 @@ Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glas
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(bottom = inputDp),
+                .padding(bottom = inputDp + imePad),
             enter = fadeIn(tween(90)) + slideInVertically(tween(150)) { it / 2 },
             exit = fadeOut(tween(80)) + slideOutVertically(tween(120)) { it / 2 }
         ) {
@@ -1467,10 +1471,12 @@ private fun FullInputDialog(
     onSend: () -> Unit
 ) {
     val fr = remember { FocusRequester() }
+    //键盘兜底：不上报 ime insets 的 ROM 靠它把输入区顶出键盘
+    val imePad = with(LocalDensity.current) { Ime.fallback.toDp() }
     //进来就抢焦点，键盘自动弹；抢不到（极少数机型）不影响手动点
     LaunchedEffect(Unit) { runCatching { fr.requestFocus() } }
     //根弹窗层本身透明，这里必须自己铺底色，否则会透出底下的聊天内容
-    Box(Modifier.fillMaxSize().background(BgGray).windowInsetsPadding(WindowInsets.safeDrawing)) {
+    Box(Modifier.fillMaxSize().background(BgGray).windowInsetsPadding(WindowInsets.safeDrawing).padding(bottom = imePad)) {
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 6.dp),

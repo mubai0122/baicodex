@@ -127,6 +127,8 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         )
+        //键盘高度兜底：部分 ROM（鸿蒙 4）不上报 ime insets，靠它把输入框顶上来
+        b.ai.ui.Ime.attach(this)
         setContent {
             BaiTheme {
                 Root()
