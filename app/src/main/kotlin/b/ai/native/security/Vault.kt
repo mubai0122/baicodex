@@ -23,8 +23,10 @@ object Vault {
     const val SSH = "ssh.baicodex"
     /** 数据输出脱敏的关键词表：服务端下发，本地只做缓存，不算凭据但一并不外露 */
     const val MASK = "maskrules.baicodex"
+    /** 摘要正文：对话被压缩掉的那段历史，正文只以密文落盘，DB 里只留覆盖范围标记 */
+    const val SUM = "sums.baicodex"
     /** 全部桶：备份与指纹对账都按这张表遍历 */
-    val buckets = listOf(API, USER, SECRET, PLACE, SSH, MASK)
+    val buckets = listOf(API, USER, SECRET, PLACE, SSH, MASK, SUM)
 
     /** 文件名 -> 该文件的全量明文，只在进程内存里存在 */
     private val cache = HashMap<String, HashMap<String, String>>()

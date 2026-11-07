@@ -9,6 +9,7 @@ import b.ai.core.model.chat.MsgMeta
 import b.ai.core.model.chat.SessionRow
 import b.ai.core.model.chat.StarHit
 import b.ai.core.model.chat.ToolCall
+import b.ai.native.security.Vault
 import b.ai.net.api.llm.text
 
 import android.content.ContentValues
@@ -228,12 +229,14 @@ object Repo {
     }
 
     fun deleteSession(sessionId: String) {
+        Sums.drop(sessionId)
         w().delete("message", "session_id=?", arrayOf(sessionId))
         w().delete("session", "id=?", arrayOf(sessionId))
     } //删会话连同记录
 
     /** 只清消息、保留会话本身：快捷指令 /清空 用 */
     fun clearMessages(sessionId: String) {
+        Sums.drop(sessionId)
         w().delete("message", "session_id=?", arrayOf(sessionId))
     } //清空会话记录
 
@@ -264,6 +267,14 @@ object Repo {
         r().rawQuery("SELECT id FROM session WHERE title LIKE ?", arrayOf(like)).use { c ->
             while (c.moveToNext()) out.add(c.getString(0))
         }
+        //摘要正文只在加密桶里，库里剩标记：命中要看桶里的正文，键形如 sum:<会话id>:<覆盖上界>
+        runCatching {
+            Vault.snapshot(Vault.SUM).forEach { (k, v) ->
+                if (v.contains(key) && k.startsWith("sum:")) {
+                    out.add(k.removePrefix("sum:").substringBeforeLast(':'))
+                }
+            }
+        }
         return out
     } //会话搜索
 
@@ -284,11 +295,14 @@ object Repo {
             "WHERE _id IN (SELECT id FROM path WHERE id>0) ORDER BY _id ASC"
         r().rawQuery(sql, arrayOf(sessionId, sessionId)).use { c ->
             while (c.moveToNext()) {
+                val role = c.getString(1)
+                val raw = c.getString(2) ?: ""
                 out.add(
                     ChatMsg(
                         id = c.getLong(0),
-                        role = c.getString(1),
-                        content = c.getString(2) ?: "",
+                        role = role,
+                        //摘要正文不在库里：按覆盖上界去加密桶取回来
+                        content = if (role == "summary") Sums.open(sessionId, raw) else raw,
                         toolCalls = parseCalls(c.getString(3)),
                         toolCallId = c.getString(4),
                         toolName = c.getString(5),

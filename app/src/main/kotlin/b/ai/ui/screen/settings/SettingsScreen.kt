@@ -922,14 +922,20 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             onSelect = { Cfg.ctxMsgCount = it }
         )
         Spacer(Modifier.height(8.dp))
-        //摘要字数：0 表示不限；提示词里的 {limit}/{words} 会被换成这个值
+        //摘要档位：字数上限跟着档位走，具体写多少由总结模型按内容自己控
         SelectField(
-            "摘要字数",
-            if (Cfg.summaryWords > 0) "${Cfg.summaryWords} 字" else "不限",
-            listOf(0, 150, 300, 500, 800, 1200),
-            optionLabel = { if (it > 0) "$it 字" else "不限" },
-            isSelected = { Cfg.summaryWords == it },
-            onSelect = { Cfg.summaryWords = it }
+            "摘要档位",
+            b.ai.core.model.chat.Sum.levelName(Cfg.summaryLevel),
+            listOf(0, 1, 2),
+            optionLabel = { b.ai.core.model.chat.Sum.levelName(it) },
+            isSelected = { Cfg.summaryLevel == it },
+            onSelect = { Cfg.summaryLevel = it }
+        )
+        Text(
+            "简洁：上限 1000 字，可能跟随轮次丢失关键；详细：上限 2000 字，推荐；全面：不限字数，最推荐。" +
+                "当前 " + b.ai.core.model.chat.Sum.levelHint(Cfg.summaryLevel),
+            fontSize = 10.sp,
+            color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
         //总结用模型：留空跟随聊天选中的那条配置，选了就单独走它的 base_url / Key / 模型

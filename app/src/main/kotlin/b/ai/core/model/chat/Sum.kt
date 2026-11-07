@@ -13,6 +13,20 @@ object Sum {
     /** 喂给总结模型的输入上限：再长就在末尾截断，避免把整份搜索结果原样灌进去 */
     const val MAX_IN = 16_000
 
+    /** 摘要档位名：0 简洁 / 1 详细 / 2 全面，设置页与压缩提示词共用一份 */
+    fun levelName(level: Int): String = when (level.coerceIn(0, 2)) {
+        0 -> "简洁"
+        1 -> "详细"
+        else -> "全面"
+    } //档位名
+
+    /** 档位的人话说明：字数上限由 Cfg.summaryWords 给，这里只讲取舍 */
+    fun levelHint(level: Int): String = when (level.coerceIn(0, 2)) {
+        0 -> "上限 1000 字，可能跟随轮次丢失关键"
+        1 -> "上限 2000 字，推荐"
+        else -> "不限字数，最推荐"
+    } //档位说明
+
     /** 返回 baseUrl / apiKey / providerId / model：与聊天用的压缩器同一个来源 */
     fun llm(): Array<String> {
         val p = Profiles.list.firstOrNull { it.id == Cfg.summaryProfileId && it.model.isNotBlank() }

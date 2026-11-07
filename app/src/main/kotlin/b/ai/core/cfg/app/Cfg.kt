@@ -103,7 +103,18 @@ object Cfg {
         mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
         mem("summary_prompt", "").value = p.getString("summary_prompt", "")!!
-        mem("summary_words", 300).value = p.getInt("summary_words", 300)
+        //摘要档位：老版本存的是具体字数，按 ≤150→简洁 / ≤800→详细 / 其余→全面 折算一次
+        if (p.contains("summary_level")) {
+            mem("summary_level", 1).value = p.getInt("summary_level", 1).coerceIn(0, 2)
+        } else {
+            val old = p.getInt("summary_words", 300)
+            mem("summary_level", 1).value = when {
+                old <= 0 -> 2
+                old <= 150 -> 0
+                old <= 800 -> 1
+                else -> 2
+            }
+        }
         mem("summary_profile", "").value = p.getString("summary_profile", "")!!
         mem("tool_budget_tokens", 0).value = p.getInt("tool_budget_tokens", 0)
         mem("think", false).value = p.getBoolean("think", false)
@@ -463,10 +474,21 @@ object Cfg {
     var summaryPrompt: String
         get() = mem("summary_prompt", "").value
         set(v) { mem("summary_prompt", "").value = v; put("summary_prompt", v) }
-    /** 摘要目标字数：提示词里的 {words} 会被替换成它，0 = 不限 */
-    var summaryWords: Int
-        get() = mem("summary_words", 300).value
-        set(v) { mem("summary_words", 300).value = v; put("summary_words", v) }
+    /** 摘要档位：0 = 简洁 / 1 = 详细 / 2 = 全面；具体写多少字由总结模型按内容自己控，这里只给上限 */
+    var summaryLevel: Int
+        get() = mem("summary_level", 1).value
+        set(v) {
+            val n = v.coerceIn(0, 2)
+            mem("summary_level", 1).value = n
+            put("summary_level", n)
+        }
+    /** 档位对应的字数上限：0 = 不限（与档位一一对应，别在别处另写一份） */
+    val summaryWords: Int
+        get() = when (summaryLevel.coerceIn(0, 2)) {
+            0 -> 1000
+            1 -> 2000
+            else -> 0
+        }
     /** 总结用的模型配置 id：空 = 跟随当前聊天选中的那条 */
     var summaryProfileId: String
         get() = mem("summary_profile", "").value

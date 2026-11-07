@@ -27,6 +27,7 @@ import b.ai.agent.persona.Personas
 import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.data.db.Repo
+import b.ai.core.data.db.Sums
 import b.ai.core.model.chat.Route
 import b.ai.net.search.Search
 import b.ai.core.model.chat.SessionRow
@@ -89,8 +90,12 @@ data class RunningTool(val seq: Long, val name: String, val args: String, val fr
 object Agent {
     //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     private const val SUMMARY_PROMPT =
-        "你是上下文压缩器。把给你的对话记录压成要点摘要，保留：用户目标、已执行的动作与关键路径/命令、" +
-            "已得结论、未完成事项。不要编造，不要客套，直接输出摘要，字数{limit}。"
+        "你是长对话的上下文压缩器。输出两段，段首标题原样照抄，不要序号、不要解释、不要前言：\n" +
+            "【最重要】跨轮次永不缩减的部分：用户到底要什么、已经拍板的关键决策、已经确认的事实与硬信息" +
+            "（版本号、路径、地址、字段名、接口名、命令名）。此前摘要里这部分的每一条都必须原样留住，" +
+            "只允许补充新的，不许删减、不许合并概括、不许因为后面轮次而缩短。\n" +
+            "【当前任务】这份对话总体在做什么、现在进行到哪一步、下一步要做什么、已经执行过的主要命令与关键路径。\n" +
+            "不许编造，不许客套，不要复述工具原始输出，字数{limit}。"
     private const val TITLE_PROMPT =
         "你是会话命名助手。看用户这一句需求，回一行：标题|描述。" +
             "标题 4-12 个字，名词性短语，不带标点和引号；描述一句话，不超过 24 个字，说这份对话在做什么。" +
@@ -1215,7 +1220,10 @@ object Agent {
         }.getOrNull() ?: return false
         val text = resp.text("content").trim()
         if (text.isBlank()) return false
-        appendLocal(ChatMsg(role = "summary", content = "[[upto:${old.last().id}]]" + text))
+        //正文进加密桶，库里只留覆盖范围标记；桶不可用时 Sums 自己降级成明文入库
+        val marker = "[[upto:${old.last().id}]]"
+        val saved = withContext(Dispatchers.IO) { Sums.put(sid, marker, text) }
+        appendLocal(ChatMsg(role = "summary", content = saved))
         budgetScale = (budgetScale + 0.5f).coerceAtMost(3f)
         status = host.getString(R.string.ag_think_again)
         return true
@@ -1241,12 +1249,13 @@ object Agent {
         return (head + list.joinToString("\n") { oneLine(it, 120) }).take(12_000)
     } //渲染待压缩历史
 
-    /** 总结用的 system 提示词：用户在设置里填了就用用户的，再把 {words}/{limit}/{keep}/{budget} 换成当前配置 */
+    /** 总结用的 system 提示词：用户在设置里填了就用用户的，再把 {words}/{limit}/{level}/{keep}/{budget} 换成当前配置 */
     private fun summaryText(): String {
         val w = Cfg.summaryWords
         return Cfg.summaryPrompt.trim().ifBlank { SUMMARY_PROMPT }
+            .replace("{level}", b.ai.core.model.chat.Sum.levelName(Cfg.summaryLevel))
             .replace("{words}", w.coerceAtLeast(0).toString())
-            .replace("{limit}", if (w > 0) "${w}字以内" else "不限")
+            .replace("{limit}", if (w > 0) "${w}字以内" else "不限，按内容需要充分展开")
             .replace("{keep}", Cfg.ctxKeep.toString())
             .replace("{budget}", Cfg.ctxCharBudget.toString())
     } //总结提示词（注入变量）
@@ -1301,7 +1310,9 @@ object Agent {
         val text = resp.text("content").trim()
         if (text.isBlank()) return false
         //覆盖范围沿用旧摘要的：重总结只换文字，不动它负责的那一段历史
-        withContext(Dispatchers.IO) { Repo.updateSummary(last.id, "[[upto:$upto]]" + text) }
+        val marker = "[[upto:$upto]]"
+        val saved = withContext(Dispatchers.IO) { Sums.put(sid, marker, text) }
+        withContext(Dispatchers.IO) { Repo.updateSummary(last.id, saved) }
         messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
         return true
     } //重写摘要
