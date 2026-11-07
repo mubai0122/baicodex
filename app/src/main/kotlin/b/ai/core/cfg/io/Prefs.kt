@@ -44,6 +44,8 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
         private const val VER = 1
         private const val NONCE = 12
         private const val TAG_BITS = 128
+        /** 迁移完成标记：分片是逐片写的，写一半被杀时靠它重来一遍 */
+        private const val DONE = ".done"
         private val libs = HashMap<String, Prefs>()
 
         /** 取一个库：一库一个目录，name 就是目录名 */
@@ -87,29 +89,34 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
         migrate()
     }
 
-    /** 第一次进来：分片文件一个都没有时，依次尝试老单文件、老 SharedPreferences */
+    /** 第一次进来：没有完成标记时按「老单文件 → 老 SharedPreferences」的顺序搬一次，搬完落标记 */
     private fun migrate() {
         synchronized(lock) {
             if (loaded.isNotEmpty()) return
-            if ((0 until SHARDS).any { shardFile(it).isFile }) return
+            //认标记文件而不是「有分片」：分片逐片写，写一半被杀时下次还能重来，否则剩下几片的键静默丢光
+            if (File(dir, DONE).isFile) return
             //上一版留下的单文件整库 json
             val legacy = File(dir.parentFile, "$name.json")
             if (legacy.isFile) {
                 runCatching {
                     val o = JSONObject(legacy.readText())
                     o.keys().forEach { k -> dec(o.getString(k))?.let { v -> map[k] = v } }
-                }.onFailure { android.util.Log.w("Prefs", "老 json 读不出 $name：" + it.message) }
-                loaded.addAll(0 until SHARDS)
-                dirty.addAll(0 until SHARDS)
-                writeDirty()
-                runCatching { legacy.delete() }
+                    loaded.addAll(0 until SHARDS)
+                    dirty.addAll(0 until SHARDS)
+                    writeDirty()
+                    legacy.delete()
+                    markDone()
+                }.onFailure { android.util.Log.w("Prefs", "老 json 迁不动 $name：" + it.message) }
                 android.util.Log.w("Prefs", "$name 已从老单文件迁到分片：${map.size} 个键")
                 return
             }
             //再往前：同名 SharedPreferences
             importFromSp()
+            markDone()
         }
     } //首次迁移
+
+    private fun markDone() = runCatching { File(dir, DONE).writeText(VER.toString()) }
 
     private fun shardOf(k: String): Int = Math.floorMod(k.hashCode(), SHARDS)
 
