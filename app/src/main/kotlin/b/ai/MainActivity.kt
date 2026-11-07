@@ -26,6 +26,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import b.ai.agent.run.Agent
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
@@ -364,7 +366,10 @@ private fun Root() {
             )
         }
     ) {
-        Box(Modifier.fillMaxSize().background(BgGray)) {
+        //键盘兜底下沉到根：不上报 ime insets 的 ROM（鸿蒙 4 这类）靠 Ime.fallback 撑出底部，
+        //所有页面与根弹窗层一起吃到，不用每个页面各接一次（以前只有聊天页接了，设置页/弹窗里的输入框照样被盖住）
+        val imeFallbackDp = with(LocalDensity.current) { b.ai.ui.overlay.Ime.fallback.toDp() }
+        Box(Modifier.fillMaxSize().background(BgGray).padding(bottom = imeFallbackDp)) {
             BackdropHost(
                 active = anyOverlay,
                 scrim = dialogOn,

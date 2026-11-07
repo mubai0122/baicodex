@@ -20,6 +20,8 @@ object Ime {
     /** 兜底键盘高度（px）。官方上报 ime insets 时恒为 0 */
     var fallback by mutableStateOf(0)
         private set
+    //上一次的诊断串：数值没变就不重复打日志，否则键盘动画期间每帧一条
+    private var lastLog = ""
 
     fun attach(act: Activity) {
         val root = act.window?.decorView ?: return
@@ -35,6 +37,7 @@ object Ime {
         //官方给了就别叠加，否则键盘高度会被算两遍
         if (imePx > 0) {
             fallback = 0
+            log("官方上报", root, imePx, navPx, 0, 0)
             return
         }
         val r = Rect()
@@ -44,11 +47,22 @@ object Ime {
         //可见区底边被顶掉的高度，减掉导航条那一段才是键盘本身
         val covered = root.height - r.bottom - navPx
         val h = root.height
-        //太小是状态栏抖动，超过四分之三屏是整屏面板，都不当作键盘
-        fallback = when {
+        //太小是状态栏抖动，接近整屏的是整屏面板（全屏看图、分屏拖拽）都不当键盘；
+        //上限放到 0.9：横屏和大键盘能占掉大半屏，原来的 3/4 会把这类判成「不是键盘」而不上移
+        val fb = when {
             covered < h / 8 -> 0
-            covered > h * 3 / 4 -> 0
+            covered > h * 9 / 10 -> 0
             else -> covered
         }
+        fallback = fb
+        log("可见区域差", root, imePx, navPx, covered, fb)
     } //按可见区域差算键盘高度
+
+    private fun log(how: String, root: View, ime: Int, nav: Int, covered: Int, fb: Int) {
+        //只在数值变化时记一条：ROM 到底是「不报 insets」还是「可见区域也不变」，靠这一行分辨
+        val s = "$how root=${root.height} ime=$ime nav=$nav covered=$covered fb=$fb"
+        if (s == lastLog) return
+        lastLog = s
+        android.util.Log.w("Ime", s)
+    } //诊断日志
 }
