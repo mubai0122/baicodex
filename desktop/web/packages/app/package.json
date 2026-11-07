@@ -1,0 +1,18 @@
+{
+  "name": "@baicodex/app",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "业务界面：会话、消息流、工具卡、输入区、设置",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@baicodex/bridge": "workspace:*",
+    "@baicodex/liquid": "workspace:*",
+    "@baicodex/tokens": "workspace:*",
+    "@baicodex/ui": "workspace:*"
+  }
+}

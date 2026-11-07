@@ -38,3 +38,17 @@ app/.cxx/
 .cxx/
 #第三方库源码（体积大，按需本地放入）
 app/src/main/cpp/_third_party/
+
+# Rust 内核（cargo 产物；源码在 app/src/main/rust/，产物一律不进库）
+app/src/main/rust/target/
+app/src/main/rust/baiguard/target/
+app/src/main/rust/android/app/build/
+
+# 桌面端：前端依赖与产物、旧 Kotlin 方案的 Gradle 产物
+desktop/web/node_modules/
+desktop/web/*/dist/
+desktop/web/*/*/dist/
+desktop/dist/
+desktop/legacy-kotlin/build/
+desktop/legacy-kotlin/.gradle/
+desktop/legacy-kotlin/.kotlin/

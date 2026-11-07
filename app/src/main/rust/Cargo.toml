@@ -1,0 +1,98 @@
+[package]
+name = "baicodex"
+version = "2.0.0"
+edition = "2021"
+rust-version = "1.78"
+description = "本地 AI Agent 内核：模型直连、工具调用、文件系统、命令执行、加密存储，一套 Rust 逻辑层，多端复用"
+license = "GPL-3.0-only"
+repository = "https://github.com/mubai0122/baicodex"
+
+# 多端共用同一套内核：
+#
+#   baicodex            内核（本 crate）—— 逻辑层，不认识任何界面
+#   baicodex-proto      跨语言契约的生成器 —— 把 ffi 的 op 表变成 TS 类型
+#   baicodex-host-win   Windows 原生宿主 —— 窗口 / DWM 毛玻璃 / WebView2
+#
+# 依赖方向是单向的：两个 crate 依赖内核，内核不依赖它们。
+[workspace]
+members = ["crates/proto", "crates/host-win"]
+resolver = "2"
+
+# 一个 crate 三种产物：
+#   rlib      —— 给 TUI / 测试 / 其它 Rust crate 用
+#   cdylib    —— Android 侧 System.loadLibrary 直接加载
+#   staticlib —— C++ 层静态链接，JNI 入口留在 C++ 也可以
+[lib]
+name = "baicodex"
+crate-type = ["rlib", "cdylib", "staticlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "baicodex"
+path = "src/main.rs"
+required-features = ["tui"]
+
+[features]
+default = ["tui", "js"]
+# 终端界面。关掉后 lib 只留逻辑层，适合嵌到 Android / 服务端
+tui = ["dep:ratatui", "dep:crossterm"]
+# 技能包里的 JS 函数。rquickjs 打包了 quickjs 源码，不依赖系统库
+js = ["dep:rquickjs"]
+# JNI 导出（Java_b_ai_native_*），Android 构建时打开
+jni-bridge = ["dep:jni"]
+
+[dependencies]
+# 异步运行时与网络
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time", "fs", "io-util", "signal"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip"] }
+futures-util = "0.3"
+
+# 序列化
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+# 持久化
+# 必须带 bundled：Android 上没有系统 libsqlite3，靠它把 SQLite 源码编进去
+rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
+
+# 基础工具
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+regex = "1"
+base64 = "0.22"
+sha2 = "0.10"
+md-5 = "0.10"
+hkdf = "0.12"
+aes-gcm = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+rand = "0.8"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+walkdir = "2"
+dirs = "5"
+shell-words = "1"
+libc = "0.2"
+
+# 日志：库内只发事件，不强制装 subscriber
+tracing = "0.1"
+
+# 终端界面
+ratatui = { version = "0.28", optional = true }
+crossterm = { version = "0.28", optional = true }
+unicode-width = "0.1"
+pulldown-cmark = { version = "0.11", optional = true }
+
+# 技能包 JS 运行时
+rquickjs = { version = "0.6", features = ["full-async"], optional = true }
+
+# Android JNI 导出
+jni = { version = "0.21", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

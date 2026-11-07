@@ -1,0 +1,15 @@
+[package]
+name = "baicodex-proto"
+version = "2.0.0"
+edition = "2021"
+rust-version = "1.78"
+publish = false
+description = "把内核的 FFI 契约表生成成 TypeScript 类型，杜绝前后端漂移"
+
+[[bin]]
+name = "proto-gen"
+path = "src/main.rs"
+
+[dependencies]
+# 只要内核的 rlib。关掉 tui / js，省一半编译时间，也不把终端库拖进来。
+baicodex = { path = "../..", default-features = false }

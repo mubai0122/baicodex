@@ -14,3 +14,7 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# 自成 workspace：内核的 workspace 根在上一级（app/src/main/rust/Cargo.toml），
+# 不显式声明的话 cargo 会顺着父目录找到那个 workspace，然后报「baiguard 不在 members 里」。
+[workspace]

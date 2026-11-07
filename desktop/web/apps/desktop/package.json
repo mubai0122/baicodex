@@ -1,0 +1,20 @@
+{
+  "name": "@baicodex/desktop",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "桌面端入口：把 @baicodex/app 挂到页面上，产出一份能被 WebView2 直接加载的静态资源",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@baicodex/app": "workspace:*",
+    "@baicodex/bridge": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
+  }
+}
