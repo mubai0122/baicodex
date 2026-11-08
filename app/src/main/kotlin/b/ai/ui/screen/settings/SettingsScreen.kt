@@ -337,7 +337,7 @@ fun SettingsScreen(
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
-                        .liquidBg(RoundedCornerShape(9.dp), tint = if (find) AccentBlueSoft else SurfaceWhite)
+                        .liquidBg(RoundedCornerShape(9.dp), tint = if (find) AccentBlueSoft else SurfaceWhite, gate = 0.dp)
                         .tap { find = !find; fq = "" }
                         .padding(8.dp)
                 ) {
@@ -351,7 +351,7 @@ fun SettingsScreen(
                 Spacer(Modifier.width(8.dp))
                 Row(
                     Modifier
-                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                        .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
                         .tap { onBack() }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -372,7 +372,7 @@ fun SettingsScreen(
                     Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .liquidBg(RoundedCornerShape(12.dp))
+                        .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -435,7 +435,7 @@ fun SettingsScreen(
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
-                                        .liquidBg(RoundedCornerShape(12.dp))
+                                        .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
                                         .tap { GlassPerf.switched(); tab = tabIndex(e.tabRes); find = false; fq = "" }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -781,6 +781,14 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
                 onValueChange = { Cfg.asrLang = it },
                 placeholder = "zh-CN"
             )
+            Spacer(Modifier.height(6.dp))
+            //离线优先只对「系统识别」那一路有效：接口模式本来就是录完上传转写
+            CapSwitch(
+                "离线模式",
+                if (Cfg.asrOffline) "只在本机识别，音频不出设备"
+                else "允许识别服务联网（本机模型不全时更准）",
+                Cfg.asrOffline
+            ) { Cfg.asrOffline = it }
             Spacer(Modifier.height(6.dp))
             Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
         }
@@ -1291,7 +1299,7 @@ private fun WsSection() {
                         fontSize = 11.sp,
                         color = TextSecondary,
                         modifier = Modifier
-                            .liquidBg(RoundedCornerShape(8.dp))
+                            .liquidBg(RoundedCornerShape(8.dp), gate = 0.dp)
                             .tap { confirm = null }
                             .padding(horizontal = 9.dp, vertical = 5.dp)
                     )
@@ -1750,6 +1758,24 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             )
             Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
+            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
+            if (Cfg.glassCard) {
+                Spacer(Modifier.height(10.dp))
+                GlassSlider("折射强度", "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
+                    Cfg.glassLens = it.toInt()
+                }
+                Text("0 = 边缘不做透镜变形；越大边缘弯曲越明显", fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider("高光强度", "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
+                    Cfg.glassHi = it.toInt()
+                }
+                Text("卡片上沿那道亮边的浓度，50% 是默认", fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider("乳白遮罩", "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
+                    Cfg.glassVeil = it.toInt()
+                }
+                Text("压住背景保住文字可读，0% 完全透明", fontSize = 10.sp, color = TextSecondary)
+            }
         }
     }
     item {
@@ -2166,7 +2192,7 @@ private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { onEdit(p) }
                     .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
@@ -2220,7 +2246,7 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
             Box(
                 Modifier
                     .size(38.dp)
-                    .liquidBg(RoundedCornerShape(11.dp), tint = AccentBlueSoft),
+                    .liquidBg(RoundedCornerShape(11.dp), tint = AccentBlueSoft, gate = 0.dp),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Filled.Info, null, tint = AccentBlue, modifier = Modifier.size(20.dp)) }
             Spacer(Modifier.width(10.dp))
@@ -2325,7 +2351,7 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
             Box(
                 Modifier
                     .size(34.dp)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft),
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlueSoft, gate = 0.dp),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Filled.Email, null, tint = AccentBlue, modifier = Modifier.size(18.dp)) }
             Spacer(Modifier.width(10.dp))
@@ -2363,7 +2389,7 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted, gate = 0.dp)
                 .tap { Rate.askManual() }
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -2946,7 +2972,7 @@ private fun SkillRow(s: Skill, onEdit: () -> Unit) {
             fontSize = 11.sp,
             color = AccentBlue,
             modifier = Modifier
-                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
                 .tap { onEdit() }
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         )
@@ -3005,7 +3031,7 @@ private fun SkillDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -3016,7 +3042,7 @@ private fun SkillDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue, gate = 0.dp)
                     .tap { onSave(name, desc, body) }
                     .padding(vertical = 11.dp)
             )
@@ -3030,7 +3056,7 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
         Modifier
             .fillMaxWidth()
             .padding(vertical = 5.dp)
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceMuted)
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
             .tap { onSelect() }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -3060,7 +3086,7 @@ private fun PersonaRow(p: Persona, selected: Boolean, onSelect: () -> Unit, onEd
             fontSize = 11.sp,
             color = TextSecondary,
             modifier = Modifier
-                .liquidBg(RoundedCornerShape(8.dp))
+                .liquidBg(RoundedCornerShape(8.dp), gate = 0.dp)
                 .tap { onEdit() }
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         )
@@ -3161,7 +3187,7 @@ private fun PersonaDialog(
                         fontSize = 11.sp,
                         color = AccentBlue,
                         modifier = Modifier
-                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
+                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
                             .tap { profileId = "" }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -3197,7 +3223,7 @@ private fun PersonaDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { onClose() }
                     .padding(vertical = 11.dp)
             )
@@ -3208,7 +3234,7 @@ private fun PersonaDialog(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue, gate = 0.dp)
                     .tap {
                         onSave(
                             persona.copy(
@@ -3238,7 +3264,7 @@ internal fun PolicyChip(label: String, selected: Boolean, onClick: () -> Unit) {
         color = if (selected) AccentBlue else TextSecondary,
         modifier = Modifier
             .liquidBg(RoundedCornerShape(8.dp)
-            , tint = if (selected) AccentBlueSoft else SurfaceMuted)
+            , tint = if (selected) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
             .tap { onClick() }
             .padding(horizontal = 8.dp, vertical = 6.dp)
     )
@@ -3284,7 +3310,7 @@ private fun NotiLimitRow() {
             Modifier
                 .width(52.dp)
                 .height(32.dp)
-                .liquidBg(RoundedCornerShape(9.dp))
+                .liquidBg(RoundedCornerShape(9.dp), gate = 0.dp)
                 .border(1.dp, BorderGray, RoundedCornerShape(9.dp)),
             contentAlignment = Alignment.Center
         ) {
@@ -3510,7 +3536,7 @@ private fun TerminalBox(
     Column(
         modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(12.dp))
+            .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
             .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
     ) {
         Row(
@@ -3571,7 +3597,7 @@ private fun BgImagePick() {
             fontSize = 11.sp,
             color = AccentBlue,
             modifier = Modifier
-                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
                 .tap { pick.launch("image/*") }
                 .padding(horizontal = 9.dp, vertical = 5.dp)
         )
@@ -3583,7 +3609,7 @@ private fun BgImagePick() {
                 fontSize = 11.sp,
                 color = TextSecondary,
                 modifier = Modifier
-                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { Cfg.bgImg = "" }
                     .padding(horizontal = 9.dp, vertical = 5.dp)
             )
@@ -3608,7 +3634,7 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(14.dp))
+            .liquidBg(RoundedCornerShape(14.dp), gate = 0.dp)
             .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -3624,7 +3650,7 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
         }
         Box(
             Modifier
-                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft)
+                .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
                 .tap { onOpenPet() }
                 .padding(7.dp)
         ) {
@@ -3651,3 +3677,28 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
         )
     }
 } //桌宠入口
+
+/** 玻璃参数滑杆：标题 + 右侧当前值 + 带档位的滑杆 */
+@Composable
+private fun GlassSlider(
+    label: String,
+    valueText: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    step: Float,
+    onChange: (Float) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontSize = 14.sp, color = TextPrimary)
+        Spacer(Modifier.weight(1f))
+        Text(valueText, fontSize = 11.sp, color = TextSecondary)
+    }
+    val steps = (((range.endInclusive - range.start) / step) - 1).toInt().coerceAtLeast(0)
+    androidx.compose.material3.Slider(
+        value = value,
+        onValueChange = onChange,
+        valueRange = range,
+        steps = steps,
+        modifier = Modifier.fillMaxWidth()
+    )
+} //玻璃参数滑杆

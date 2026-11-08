@@ -4,7 +4,6 @@ import b.ai.BuildConfig
 
 /**
  * 服务端根地址：值由构建期从 local.properties 的 baicodex.host 注入（BuildConfig.BAI_HOST），
- * 仓库里不放真值。拿不到就退回不可解析的占位域名——相关功能自然失效，也不会误连到别人的服务。
  */
 object Bai {
     /** 真地址：末尾不带斜杠 */

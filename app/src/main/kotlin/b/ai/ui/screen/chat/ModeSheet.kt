@@ -1,8 +1,8 @@
 package b.ai.ui.screen.chat
-import b.ai.ui.dialog.ScrimCard
+import b.ai.ui.input.SheetHead
+import b.ai.ui.input.SheetShell
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
 import b.ai.ui.theme.AccentBlueSoft
@@ -40,12 +40,11 @@ import b.ai.ui.theme.TextSecondary
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-/** 运行模式选择面板：一档一行，带一句说明，点中即存盘并关面板 */
+/** 运行模式卡片：一档一行，带一句说明，点中即存盘并关面板；贴在输入区上沿，跟其他面板同一套外壳 */
 @Composable
-internal fun ModeSheet(onClose: () -> Unit) {
-    ScrimCard(onDismiss = onClose) {
-        Text(stringResource(R.string.mode_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-        Spacer(Modifier.height(8.dp))
+internal fun ModeCard(onClose: () -> Unit) {
+    SheetShell {
+        SheetHead(stringResource(R.string.mode_title), onClose)
         Column(
             Modifier
                 .heightIn(max = 420.dp)
@@ -91,9 +90,5 @@ internal fun ModeSheet(onClose: () -> Unit) {
                 }
             }
         }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            GhostButton(stringResource(R.string.se_142), modifier = Modifier.height(36.dp), onClick = onClose)
-        }
     }
-} //运行模式面板
+} //运行模式卡片

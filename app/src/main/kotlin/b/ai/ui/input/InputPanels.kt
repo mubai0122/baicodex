@@ -1,12 +1,8 @@
 package b.ai.ui.input
 import b.ai.ui.dialog.BottomSheetCard
 import b.ai.ui.widget.BrandIcon
-import b.ai.ui.glass.GlassPerf
-import b.ai.ui.glass.LocalPageBackdrop
 import b.ai.ui.glass.glassScrollState
-import b.ai.ui.glass.lens
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.glass.vibrancy
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
@@ -98,11 +94,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import b.ai.ui.theme.DangerRed
 import b.ai.R
-import b.ai.ui.theme.DarkColors
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.Shadow
 import kotlinx.coroutines.isActive
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.layout.Layout
@@ -115,40 +106,15 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Animatable
 import kotlin.math.roundToInt
 
-/** 输入区上方的内联面板外壳：白卡 + 阴影，高度封顶可滚动；玻璃开关打开时改成真 backdrop 模糊 */
+/** 输入区面板外壳：固定实色卡 + 阴影，不跟随液态玻璃开关；宽与位置全交给外面那层槽位，自己不缩边 */
 @Composable
 internal fun SheetShell(content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(16.dp)
-    val bd = LocalPageBackdrop.current
-    val glass = Cfg.glassCard && bd != null && GlassPerf.heavy
     val outer = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp)
-        .padding(bottom = 6.dp)
-        .then(
-            if (glass) {
-                Modifier.drawBackdrop(
-                    backdrop = bd!!,
-                    shape = { shape },
-                    effects = {
-                        padding = maxOf(padding, 40.dp.toPx())
-                        vibrancy()
-                        //模糊强度可在设置里调，0 就是只折射不糊
-                        if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
-                        lens(24.dp.toPx(), 24.dp.toPx())
-                    },
-                    highlight = { Highlight.Default.copy(alpha = 0.75f) },
-                    shadow = {
-                        Shadow.Default.copy(radius = 10.dp, alpha = if (DarkColors) 0.20f else 0.10f)
-                    },
-                    onDrawSurface = {
-                        drawRect(SurfaceWhite.copy(alpha = if (DarkColors) 0.12f else 0.50f))
-                    }
-                )
-            } else {
-                Modifier.shadow(10.dp, shape).liquidBg(shape).border(1.dp, BorderGray, shape)
-            }
-        )
+        .shadow(10.dp, shape)
+        .background(SurfaceWhite, shape)
+        .border(1.dp, BorderGray, shape)
     Column(outer) {
         Column(
             Modifier

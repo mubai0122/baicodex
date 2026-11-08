@@ -196,6 +196,9 @@ object Cfg {
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
         mem("glass_blur", 4).value = p.getInt("glass_blur", 4)
+        mem("glass_lens", 8).value = p.getInt("glass_lens", 8)
+        mem("glass_hi", 50).value = p.getInt("glass_hi", 50)
+        mem("glass_veil", 12).value = p.getInt("glass_veil", 12)
         mem("theme_tint", 0).value = p.getInt("theme_tint", 0)
         mem("bg_style", 0).value = p.getInt("bg_style", 0)
         //背景图路径可能因清数据/换机失效，失效就清掉，免得设置页对着一条死路径
@@ -267,6 +270,7 @@ object Cfg {
         mem("asr_vendor", "openai").value = p.getString("asr_vendor", "openai")!!
         mem("asr_rate", 16000).value = p.getInt("asr_rate", 16000)
         mem("asr_max_sec", 60).value = p.getInt("asr_max_sec", 60)
+        mem("asr_offline", false).value = p.getBoolean("asr_offline", false)
         mem("plg_installed", "").value = p.getString("plg_installed", "")!!
         mem("pl_email", "").value = p.getString("pl_email", "")!!
         mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
@@ -687,6 +691,21 @@ object Cfg {
         get() = mem("glass_blur", 4).value
         set(v) { mem("glass_blur", 4).value = v; put("glass_blur", v) }
 
+    /** 玻璃折射强度（dp）：边缘透镜变形量，0 = 关掉折射 */
+    var glassLens: Int
+        get() = mem("glass_lens", 8).value
+        set(v) { mem("glass_lens", 8).value = v; put("glass_lens", v) }
+
+    /** 玻璃高光强度（%）：卡片上沿那道亮边的浓度，50 = 默认 */
+    var glassHi: Int
+        get() = mem("glass_hi", 50).value
+        set(v) { mem("glass_hi", 50).value = v; put("glass_hi", v) }
+
+    /** 玻璃乳白遮罩（%）：压住底图保住文字可读，0 = 纯透 */
+    var glassVeil: Int
+        get() = mem("glass_veil", 12).value
+        set(v) { mem("glass_veil", 12).value = v; put("glass_veil", v) }
+
     /** 色系主题：0 默认蓝 / 1 冰川 / 2 春野 / 3 紫罗兰 / 4 珊瑚 / 5 石墨 / 6 玫红 / 7 青柠 */
     var themeTint: Int
         get() = mem("theme_tint", 0).value
@@ -1071,6 +1090,11 @@ object Cfg {
     var asrMaxSec: Int
         get() = mem("asr_max_sec", 60).value
         set(v) { mem("asr_max_sec", 60).value = v; put("asr_max_sec", v) }
+
+    /** 本机识别离线优先：只让识别服务在设备上跑，不去联网 */
+    var asrOffline: Boolean
+        get() = mem("asr_offline", false).value
+        set(v) { mem("asr_offline", false).value = v; put("asr_offline", v) }
 
     var ttsMode: String
         get() = mem("tts_mode", "sys").value

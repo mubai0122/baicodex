@@ -137,6 +137,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -193,6 +194,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -235,7 +237,6 @@ fun ChatScreen(
     //随机 placeholder：候选来自设置（默认「请输入问题」），发送后重抽一次
     val hintWords = hintPool(LocalContext.current)
     var hint by remember(hintWords) { mutableStateOf(hintWords.random()) }
-    var modelPanel by remember { mutableStateOf(false) }
     var fullInput by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ChatMsg?>(null) }
     var menuFor by remember { mutableStateOf<ChatMsg?>(null) }
@@ -248,11 +249,17 @@ fun ChatScreen(
     //预算环在根坐标系里的右下角，小卡片按它锚定
     var ctxRingX by remember { mutableIntStateOf(0) }
     var ctxRingY by remember { mutableIntStateOf(0) }
-    var attachPanel by remember { mutableStateOf(false) }
-    var cfgPanel by remember { mutableStateOf(false) }
-    var modePanel by remember { mutableStateOf(false) }
-    var skillPanel by remember { mutableStateOf(false) }
-    var personaPanel by remember { mutableStateOf(false) }
+    //信息面板只允许开一个：六个布尔量各自为政会让「点模型却弹出运行模式」这类串台必然发生
+    var panel by remember { mutableStateOf(InfoPanel.None) }
+    //面板锚点：只在点下去那一刻写入，绝不能在布局回调里写，否则页面一重排就会把锚点冲掉
+    var panelAnchor by remember { mutableStateOf(Rect.Zero) }
+    //顶栏角色胶囊自己的矩形：布局回调只写这一份，点它时再搬进 panelAnchor
+    var rPersona by remember { mutableStateOf(Rect.Zero) }
+    //整页在根坐标系里的上下边（像素）：面板往上顶 / 往下翻都按这两个值算，容器不在 (0,0) 也不会偏
+    var rootTop by remember { mutableIntStateOf(0) }
+    var rootBottom by remember { mutableIntStateOf(0) }
+    //输入区实测高度：点空白收起的遮罩只铺到输入区上沿，胶囊还要能继续点
+    var inputH by remember { mutableIntStateOf(0) }
     //附件分类：同一个选择器按这里的 mime 与标签区分图片 / 音频 / 视频 / 音乐
     var attachKind by remember { mutableStateOf(ctx.getString(R.string.cs_attach)) }
     var pendingImgs by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -273,8 +280,6 @@ fun ChatScreen(
         drawRect(BgGray)
         drawContent()
     }
-    //输入区实测高度，面板浮层贴它上沿
-    var inputH by remember { mutableIntStateOf(0) }
     //相册多选：压缩进私有目录，发送时按 base64 内联给模型
     val pickImgs = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
         if (uris.isNotEmpty()) {
@@ -353,11 +358,17 @@ fun ChatScreen(
     var petIntro by remember { mutableStateOf(!Cfg.petModelTip) }
     //输入区上方的内联面板：+ / 三条横线 / 技能包，跟 @ 面板同一位置
     //键盘兜底已下沉到 Root 的根容器，这里不再重复补（重复补会多留一段空白）
-    val panelOpen = attachPanel || cfgPanel || skillPanel || modelPanel || personaPanel
+    val panelOpen = panel != InfoPanel.None
      //只在消息列表变了才重算上下文占用，免得输入框每敲一个字都扫一遍全量消息；顶栏和小卡片共用
      val cst = remember(Agent.messages) { ctxStat(Agent.messages) }
     //外层 Box 只为了给「应用内桌宠」一个右下角锚点
-    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier.fillMaxSize().onGloballyPositioned {
+            val r = it.boundsInRoot()
+            rootTop = r.top.roundToInt()
+            rootBottom = r.bottom.roundToInt()
+        }
+    ) {
     //纯背景一层，卡片玻璃只采它
     Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     ProvideCardBackdrop(cardBackdrop) {
@@ -366,7 +377,8 @@ fun ChatScreen(
          TopBar(
              onOpenDrawer,
              onOpenWorkspace = onOpenWorkspace,
-             onPersona = { personaPanel = !personaPanel },
+             onPersona = { panelAnchor = rPersona; panel = if (panel == InfoPanel.Persona) InfoPanel.None else InfoPanel.Persona },
+            onPersonaPos = { rPersona = it },
              onOpenCtx = { ctxOpen = true },
              onCtxPos = { x, y -> ctxRingX = x; ctxRingY = y },
              ctxTok = cst[0],
@@ -376,11 +388,7 @@ fun ChatScreen(
 
         //面板开着时返回键先收面板，别直接退出应用
         BackHandler(enabled = panelOpen) {
-            attachPanel = false
-            cfgPanel = false
-            skillPanel = false
-            modelPanel = false
-            personaPanel = false
+            panel = InfoPanel.None
         }
         Box(
             Modifier
@@ -391,11 +399,7 @@ fun ChatScreen(
                     if (panelOpen) {
                         Modifier.pointerInput(Unit) {
                             detectTapGestures {
-                                attachPanel = false
-                                cfgPanel = false
-                                skillPanel = false
-                                modelPanel = false
-                                personaPanel = false
+                                panel = InfoPanel.None
                             }
                         }
                     } else {
@@ -505,7 +509,7 @@ fun ChatScreen(
         if (si != null && !panelOpen) {
             SlashPanel(si) { cmd ->
                 input = ""
-                val msg = execSlash(cmd, ctx, onOpenSettings, persona = { personaPanel = true })
+                val msg = execSlash(cmd, ctx, onOpenSettings, persona = { panel = InfoPanel.Persona })
                 if (msg.isNotEmpty()) hint = msg
             }
         }
@@ -519,41 +523,14 @@ fun ChatScreen(
             hint = hint,
             modelLabel = modelLabel,
             modeLabel = stringResource(Cfg.agentMode.labelRes),
-            onOpenMode = { modePanel = true },
+            onOpenMode = { panel = if (panel == InfoPanel.Mode) InfoPanel.None else InfoPanel.Mode },
             onChange = { v -> input = pasteGuard(input, v) { p -> pendingFiles = pendingFiles + p } },
             images = pendingImgs,
             files = pendingFiles,
-            //三条杠 / 加号都能再点一次关掉，与其他面板互斥
-            onOpenConfig = {
-                val on = !cfgPanel
-                cfgPanel = on
-                if (on) {
-                    attachPanel = false
-                    skillPanel = false
-                    modelPanel = false
-                    personaPanel = false
-                }
-            },
-            onOpenAttach = {
-                val on = !attachPanel
-                attachPanel = on
-                if (on) {
-                    cfgPanel = false
-                    skillPanel = false
-                    modelPanel = false
-                    personaPanel = false
-                }
-            },
-            onOpenModel = {
-                val on = !modelPanel
-                modelPanel = on
-                if (on) {
-                    cfgPanel = false
-                    attachPanel = false
-                    skillPanel = false
-                    personaPanel = false
-                }
-            },
+            //三条杠 / 加号 / 模型都能再点一次关掉；面板状态只有一个字段，天然互斥
+            onOpenConfig = { panel = if (panel == InfoPanel.Cfg) InfoPanel.None else InfoPanel.Cfg },
+            onOpenAttach = { panel = if (panel == InfoPanel.Attach) InfoPanel.None else InfoPanel.Attach },
+            onOpenModel = { panel = if (panel == InfoPanel.Model) InfoPanel.None else InfoPanel.Model },
             onExpand = { fullInput = true },
             onRemoveImage = { p ->
                 pendingImgs = pendingImgs - p
@@ -566,6 +543,7 @@ fun ChatScreen(
             },
             voiceMode = voiceMode,
             onToggleVoice = { voiceMode = !voiceMode; Cfg.voiceInput = voiceMode },
+            onAnchor = { panelAnchor = it },
             onHoldStart = { holdStart() },
             onHoldEnd = { c -> holdEnd(c) },
             onSend = { sendNow() }
@@ -573,65 +551,93 @@ fun ChatScreen(
         }
     }
 
-    //底部面板浮层：贴在输入区上沿，玻璃采样 pageBackdrop（自己不在采样层里，不会糊到自己）
-    val inputDp = with(LocalDensity.current) { inputH.toDp() }
+    //底部面板：跟预算卡同一套跟手逻辑；横向贴被点胶囊，纵向顶在它上沿，太靠上（顶栏角色胶囊）就翻到它下面
+    val den = LocalDensity.current
+    val inputDp = with(den) { inputH.toDp() }
+    val scrW = with(den) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+    //卡片宽度：左右各留 12dp 撑到屏宽，只有很宽的屏幕才封顶 480dp
+    val fullW = scrW - with(den) { 24.dp.toPx() }
+    val cardW = minOf(with(den) { 480.dp.toPx() }, fullW)
+    //右侧那排（三条杠 / 加号）右边缘对齐，左侧那排（模型 / 模式）左边缘对齐
+    val rawX = if (panelAnchor.center.x > scrW / 2f) panelAnchor.right - cardW else panelAnchor.left
+    //撑满屏宽时锚点对齐没意义，直接左右各 12dp，跟 SheetShell 的内容内边距对上
+    val cardX = if (cardW >= fullW) with(den) { 12.dp.toPx() }
+    else rawX.coerceIn(with(den) { 8.dp.toPx() }, (scrW - cardW - with(den) { 8.dp.toPx() }).coerceAtLeast(0f))
+    //锚点在容器上半就翻到控件下方，下半屏一律顶在控件上沿，中间留 6dp
+    val pageH = (rootBottom - rootTop).toFloat()
+    val placeAbove = pageH > 0f && (panelAnchor.top - rootTop) > pageH * 0.4f
+    val gapPx = with(den) { 6.dp.toPx() }
+    //夹一层保险：padding 一旦超过容器高度，Compose 会把内容顶到最上面，绝不能让它出现这种值
+    val maxPad = (pageH - with(den) { 8.dp.toPx() }).coerceAtLeast(0f)
+    val padBottomPx = if (placeAbove) (rootBottom - panelAnchor.top + gapPx).coerceIn(0f, maxPad) else 0f
+    val padTopPx = if (placeAbove) 0f else (panelAnchor.bottom - rootTop + gapPx).coerceIn(0f, maxPad)
     CompositionLocalProvider(LocalPageBackdrop provides pageBackdrop) {
+        //点面板外的空白收起；下沿卡在输入区上，输入区里的胶囊还能继续点
+        if (panelOpen) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(bottom = inputDp)
+                    .tap { panel = InfoPanel.None }
+            )
+        }
         AnimatedVisibility(
             visible = panelOpen,
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(bottom = inputDp),
+                .align(if (placeAbove) Alignment.BottomStart else Alignment.TopStart)
+                .padding(top = with(den) { padTopPx.toDp() }, bottom = with(den) { padBottomPx.toDp() })
+                .offset { IntOffset(cardX.roundToInt(), 0) }
+                .width(with(den) { cardW.toDp() }),
             enter = fadeIn(tween(90)) + slideInVertically(tween(150)) { it / 2 },
             exit = fadeOut(tween(80)) + slideOutVertically(tween(120)) { it / 2 }
         ) {
-            when {
-                attachPanel -> AttachPanel(
-                    onClose = { attachPanel = false },
+            when (panel) {
+                InfoPanel.Mode -> ModeCard(onClose = { panel = InfoPanel.None })
+                InfoPanel.Attach -> AttachPanel(
+                    onClose = { panel = InfoPanel.None },
                     onPickImage = {
-                        attachPanel = false
+                        panel = InfoPanel.None
                         pickImgs.launch("image/*")
                     },
                     onPickFile = { kind, mime ->
-                        attachPanel = false
+                        panel = InfoPanel.None
                         attachKind = kind
                         pickFile.launch(arrayOf(mime))
                     },
-                    onSkill = {
-                        attachPanel = false
-                        skillPanel = true
-                    }
+                    onSkill = { panel = InfoPanel.Skill }
                 )
-                skillPanel -> SkillPanel(
-                    onClose = { skillPanel = false },
+                InfoPanel.Skill -> SkillPanel(
+                    onClose = { panel = InfoPanel.None },
                     onInsert = { txt ->
-                        skillPanel = false
+                        panel = InfoPanel.None
                         input = if (input.isBlank()) txt else "$input\n$txt"
                     }
                 )
-                modelPanel -> ModelPanel(
-                    onClose = { modelPanel = false },
+                InfoPanel.Model -> ModelPanel(
+                    onClose = { panel = InfoPanel.None },
                     onOpenSettings = {
-                        modelPanel = false
+                        panel = InfoPanel.None
                         onOpenSettings(0)
                     }
                 )
-                personaPanel -> PersonaPanel(
-                    onClose = { personaPanel = false },
+                InfoPanel.Persona -> PersonaPanel(
+                    onClose = { panel = InfoPanel.None },
                     onManage = {
-                        personaPanel = false
+                        panel = InfoPanel.None
                         //扩展是第 4 个 tab（索引 3）：模型 / 对话 / 外观 / 扩展 / 统计 / 关于
                         onOpenSettings(3)
                     }
                 )
-                else -> CfgPanel(onClose = { cfgPanel = false })
+                InfoPanel.Cfg -> CfgPanel(onClose = { panel = InfoPanel.None })
+                InfoPanel.None -> Unit
             }
         }
     }
 
     //工具详情、长按菜单、重发/重生成输入框统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
-        detail != null || menuFor != null || promptReq != null || fullInput || modePanel ||
+        detail != null || menuFor != null || promptReq != null || fullInput ||
             sumMenu != null || sumNote || b.ai.device.sys.a11y.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
@@ -651,7 +657,6 @@ fun ChatScreen(
                 }
             )
             b.ai.device.sys.a11y.A11y.needPerm.value -> A11yPermDialog { b.ai.device.sys.a11y.A11y.permHandled() }
-            modePanel -> ModeSheet { modePanel = false }
             fullInput -> FullInputDialog(
                 value = input,
                 onChange = { v -> input = pasteGuard(input, v) { p -> pendingFiles = pendingFiles + p } },
@@ -776,6 +781,7 @@ private fun TopBar(
     onOpenDrawer: () -> Unit,
     onOpenWorkspace: () -> Unit,
     onPersona: () -> Unit,
+    onPersonaPos: (Rect) -> Unit,
     onOpenCtx: () -> Unit,
     onCtxPos: (Int, Int) -> Unit,
     ctxTok: Int,
@@ -814,6 +820,7 @@ private fun TopBar(
                     modifier = Modifier
                         .liquidBg(RoundedCornerShape(10.dp)
                         , tint = if (role == null) SurfaceMuted else AccentBlueSoft, gate = 0.dp)
+                        .onGloballyPositioned { onPersonaPos(it.boundsInRoot()) }
                         .tap { onPersona() }
                         .padding(start = 3.dp, end = 7.dp, top = 2.dp, bottom = 2.dp)
                 ) {
@@ -1295,11 +1302,18 @@ private fun InputBar(
     //语音模式：整条输入行换成长按说话，语音位换键盘位
     voiceMode: Boolean = false,
     onToggleVoice: () -> Unit = {},
+    //面板锚点上报：点哪个胶囊就把它的屏幕矩形交给页面，面板卡片按它定位
+    onAnchor: (Rect) -> Unit = {},
     onHoldStart: () -> Unit = {},
     onHoldEnd: (Boolean) -> Unit = {},
     onSend: () -> Unit
 ) {
     val ctx = LocalContext.current
+    //四个入口胶囊各自的屏幕矩形：点的时候交给页面，面板卡片按它贴边弹出
+    var rModel by remember { mutableStateOf(Rect.Zero) }
+    var rMode by remember { mutableStateOf(Rect.Zero) }
+    var rCfg by remember { mutableStateOf(Rect.Zero) }
+    var rAttach by remember { mutableStateOf(Rect.Zero) }
     //长按输入框直接开语音识别：450ms 内抬手就交给文本框正常放光标，按住不放才算长按
     val latestInput by rememberUpdatedState(input)
     val longPressVoice = Modifier.pointerInput(ctx) {
@@ -1470,7 +1484,8 @@ private fun InputBar(
                         Row(
                             Modifier
                                 .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
-                                .tap { onOpenModel() }
+                                .onGloballyPositioned { rModel = it.boundsInRoot() }
+                                .tap { onAnchor(rModel); onOpenModel() }
                                 .padding(start = 7.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1493,7 +1508,8 @@ private fun InputBar(
                             Modifier
                                 .liquidBg(RoundedCornerShape(8.dp)
                                 , tint = if (Cfg.agentMode == AgentMode.STANDARD) SurfaceMuted else AccentBlueSoft)
-                                .tap { onOpenMode() }
+                                .onGloballyPositioned { rMode = it.boundsInRoot() }
+                                .tap { onAnchor(rMode); onOpenMode() }
                                 .padding(start = 7.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -1514,7 +1530,7 @@ private fun InputBar(
                         Spacer(Modifier.weight(1f))
                         //配置 / 附件两个图标：触点 32dp 等距，图标统一 18dp（全屏入口挪到上面语音右侧）
                         Box(
-                            Modifier.size(32.dp).tap { onOpenConfig() },
+                            Modifier.size(32.dp).onGloballyPositioned { rCfg = it.boundsInRoot() }.tap { onAnchor(rCfg); onOpenConfig() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -1525,7 +1541,7 @@ private fun InputBar(
                             )
                         }
                         Box(
-                            Modifier.size(32.dp).tap { onOpenAttach() },
+                            Modifier.size(32.dp).onGloballyPositioned { rAttach = it.boundsInRoot() }.tap { onAnchor(rAttach); onOpenAttach() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -2411,3 +2427,6 @@ private fun PromptDialog(
         }
     }
 } //编辑重发 / 带提示重生成的输入弹窗
+
+//输入区上方那排信息面板同一时刻只能有一个；用枚举代替一堆布尔量，避免「点模型弹出运行模式」这类串台
+enum class InfoPanel { None, Attach, Cfg, Skill, Model, Mode, Persona }

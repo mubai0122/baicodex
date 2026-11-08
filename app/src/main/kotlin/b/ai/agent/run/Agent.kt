@@ -200,11 +200,13 @@ object Agent {
     } //当前会话换工作区
 
     fun newSession() {
-        if (messages.isEmpty() && sessionId != null) {
-            status = ""
-            return
-        }
         scope.launch {
+            //已经有没用过的新会话就不再建第二个：直接切过去，抽屉里不留一排空会话
+            val blank = withContext(Dispatchers.IO) { Repo.blankSession() }
+            if (blank != null) {
+                if (blank.id != sessionId) openSession(blank.id) else status = ""
+                return@launch
+            }
             val s = withContext(Dispatchers.IO) { Repo.newSession() }
             sessionId = s.id
             //先挂会话 id 再分配目录：分配结果要写回这一行，别落到上一个会话上
@@ -232,6 +234,8 @@ object Agent {
             val list = withContext(Dispatchers.IO) { Repo.messages(id) }
             val row = withContext(Dispatchers.IO) { Repo.session(id) }
             android.util.Log.d("BaiDBG", "openSession id=${id.take(8)} msgs=${list.size}")
+            //打开也算一次交互：列表按最近交互排序，刚看的会话要浮上来
+            withContext(Dispatchers.IO) { Repo.touch(id) }
             sessionId = id
             if (row != null) adopt(row) else Workspace.attachSession(id)
             messages = list

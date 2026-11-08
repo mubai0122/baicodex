@@ -231,14 +231,17 @@ fun LiquidCard(
                 effects = {
                     padding = maxOf(padding, 24.dp.toPx())
                     vibrancy()
-                    //提饱和与离屏模糊只在「没在滑 + 过了首帧 + 卡片够高」时做，其余降档
-                    val big = heavy && size.minDimension >= 96.dp.toPx()
-                    if (big && Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                    //矮卡片同样要模糊：色系那种单行卡只有 80dp 高，卡在 96dp 门槛下就只剩乳白平涂，看着就是毛玻璃
+                    if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
                     //边缘折射是 RuntimeShader，只有真·大卡才值得开
-                    if (big && size.minDimension >= 140.dp.toPx()) lens(12.dp.toPx(), 14.dp.toPx())
+                    if (size.minDimension >= 140.dp.toPx() && Cfg.glassLens > 0) {
+                        lens(Cfg.glassLens.dp.toPx(), (Cfg.glassLens * 1.2f).dp.toPx())
+                    }
                 },
                 highlight = {
-                    Highlight.Default.copy(alpha = 0.25f + 0.5f * press.progress.value)
+                    //高光滑杆按 50% 为基准等比缩放，0% 就是完全没高光
+                    val hi = (0.25f + 0.5f * press.progress.value) * (Cfg.glassHi / 50f)
+                    Highlight.Default.copy(alpha = hi.coerceIn(0f, 1f))
                 },
                 layerBlock = {
                     //按住时整块微微长大，像一层水膜被压下去
@@ -250,7 +253,8 @@ fun LiquidCard(
                     //浅色下什么都不叠：玻璃直接透出页面背景（有背景图就是背景图，没有就是背景的模糊）
                     drawRect(if (DarkColors) Color.Black.copy(alpha = 0.10f) else Color.Transparent)
                     //矮卡片或者降档期间没有模糊，补一层乳白，既能看出是玻璃又不丢文字对比度
-                    if (!heavy || size.minDimension < 96.dp.toPx()) {
+                    //只按降档判定，不再按尺寸判：单行卡（色系那种 80dp 高）以前被这层白盖成毛玻璃
+                    if (!heavy) {
                         drawRect(
                             if (DarkColors) Color.White.copy(alpha = 0.08f)
                             else Color.White.copy(alpha = 0.55f)
@@ -316,9 +320,14 @@ fun Modifier.liquidBg(
     //白/灰底不叠色，直接透背景；主色底（选中态、发送键）在玻璃上叠一层同色，保住"这个是开着的"
     val overlay = if (tint == AccentBlue || tint == AccentBlueSoft) tint.copy(alpha = 0.55f)
     else Color.Transparent
-    //veil 只在弹窗这类需要压住底下的地方用：玻璃照做，再盖一层半透底保住文字可读
-    val sheet = if (veil <= 0f) Color.Transparent
-    else if (DarkColors) Color.Black.copy(alpha = veil) else Color.White.copy(alpha = veil)
+    //veil 只在弹窗这类需要压住底下的地方手写；普通卡片跟设置里的「乳白遮罩」滑杆
+    val veilEff = when {
+        veil <= 0f -> 0f
+        veil >= 0.30f -> veil
+        else -> Cfg.glassVeil / 100f
+    }
+    val sheet = if (veilEff <= 0f) Color.Transparent
+    else if (DarkColors) Color.Black.copy(alpha = veilEff) else Color.White.copy(alpha = veilEff)
     return drawBackdrop(
         backdrop = bd,
         shape = { shape },
@@ -327,9 +336,11 @@ fun Modifier.liquidBg(
             vibrancy()
             if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
             //气泡、输入框这类小元素默认不折射，边缘变形会显得脏；矮控件也不值得开 shader
-            if (refract && size.minDimension >= 160.dp.toPx()) lens(6.dp.toPx(), 10.dp.toPx())
+            if (refract && size.minDimension >= 160.dp.toPx() && Cfg.glassLens > 0) {
+                lens(Cfg.glassLens.dp.toPx(), 10.dp.toPx())
+            }
         },
-        highlight = { Highlight.Default.copy(alpha = highlightAlpha) },
+        highlight = { Highlight.Default.copy(alpha = (highlightAlpha * (Cfg.glassHi / 50f)).coerceIn(0f, 1f)) },
         onDrawSurface = {
             drawRect(if (DarkColors) Color.Black.copy(alpha = 0.10f) else Color.Transparent)
             if (overlay.alpha > 0f) drawRect(overlay)

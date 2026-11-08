@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import b.ai.ui.theme.BgGray
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -78,6 +79,8 @@ class DrawerCtl(
     internal val anim: Animatable<Float, AnimationVector1D>,
     private val scope: CoroutineScope
 ) {
+    //拖拽期间的 snapTo 任务：新的拖拽帧来了就掐掉旧的，避免协程排队把手势拖慢
+    private var dragJob: Job? = null
     val progress: Float get() = anim.value
     /** 关着且没有动画在排队才为 false：驱动模糊层与返回键 */
     val active: Boolean get() = anim.value > 0.001f || anim.targetValue > 0.001f
@@ -90,14 +93,16 @@ class DrawerCtl(
         scope.launch { anim.animateTo(0f, tween(CLOSE_MS, easing = DrawerEase)) }
     }
 
-    /** 拖拽跟手：直接改当前进度，正在跑的动画会被取消（动画中途按下拖动也能接手） */
+    /** 拖拽跟手：直接改当前进度；先掐掉上一帧还在跑的 snapTo，否则每帧一个协程会排队，手感发涩 */
     internal fun drag(dx: Float, widthPx: Float) {
-        scope.launch { anim.snapTo((anim.value + dx / widthPx).coerceIn(0f, 1f)) }
+        dragJob?.cancel()
+        dragJob = scope.launch { anim.snapTo((anim.value + dx / widthPx).coerceIn(0f, 1f)) }
     }
 
     /** 预测性返回手势跟手：系统给的进度直接落到抽屉上，手势自己带节奏，这里不再插动画 */
     internal fun follow(p: Float) {
-        scope.launch { anim.snapTo(p.coerceIn(0f, 1f)) }
+        dragJob?.cancel()
+        dragJob = scope.launch { anim.snapTo(p.coerceIn(0f, 1f)) }
     }
 
     internal fun settle(velocity: Float) {
@@ -107,6 +112,11 @@ class DrawerCtl(
             else -> anim.value > 0.5f
         }
         if (goOpen) open() else close()
+    }
+
+    /** 关态召唤的收尾：手指动过就展开，只有明显往左甩才收回；按 0.5 进度判会「滑一点出来又消失」 */
+    internal fun settleOpen(velocity: Float) {
+        if (velocity < -FLING) close() else open()
     }
 } //抽屉控制器
 
@@ -125,6 +135,8 @@ fun DrawerHost(
     val widthPx = with(LocalDensity.current) { panelWidth.toPx() }
     val shiftPx = with(LocalDensity.current) { PushShift.toPx() }
     val density = LocalDensity.current.density
+    //顶栏那一条（系统栏 + 顶栏按钮行）不参与右滑召唤，点按钮就不会被拖拽手势抢走
+    val topGuardPx = with(LocalDensity.current) { 104.dp.toPx() }
     //卡片圆角只建一次：graphicsLayer 里每帧都要用，不能每次 new
     val cardShape = remember { RoundedCornerShape(PushCorner) }
     //正文虚化半径固定：跟着进度每帧重建 RenderEffect 太贵，只建一次；31 以下没有 RenderEffect，只走压暗
@@ -167,7 +179,7 @@ fun DrawerHost(
                 }
                 //整页右滑召唤：起手在屏幕左三分之一才认，纵向滚动和左滑都不抢
                 .then(
-                    if (gestures) Modifier.pointerInput(widthPx) { dragToOpen(ctl, widthPx) } else Modifier
+                    if (gestures) Modifier.pointerInput(widthPx, topGuardPx) { dragToOpen(ctl, widthPx, topGuardPx) } else Modifier
                 )
         ) { content() }
         if (open) {
@@ -204,14 +216,14 @@ fun DrawerHost(
                     )
             ) { CompositionLocalProvider(LocalDrawerWidth provides panelWidth) { panel() } }
         }
-        //关闭态才铺左边缘热区：往外拖直接跟手拉开
+        //关闭态才铺左边缘热区：往外拖直接跟手拉开（这里以前错绑了 dragToClose，边缘起手要过半才留得住）
         if (gestures && !open) {
             Box(
                 Modifier
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
                     .width(32.dp)
-                    .pointerInput(widthPx) { dragToClose(ctl, widthPx) }
+                    .pointerInput(widthPx, topGuardPx) { dragToOpen(ctl, widthPx, topGuardPx) }
             )
         }
     }
@@ -231,14 +243,21 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.dragToCl
     )
 } //拖拽手势
 
-/** 整页右滑召唤：屏幕任何位置起手都认，只认「向右」这一下——左滑和纵向滚动仍然交给列表和输入框 */
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.dragToOpen(ctl: DrawerCtl, widthPx: Float) {
+/** 整页右滑召唤：只认「向右」这一下——左滑和纵向滚动仍然交给列表和输入框；顶部按钮条不参与，免得点按钮被当成拖动 */
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.dragToOpen(
+    ctl: DrawerCtl,
+    widthPx: Float,
+    topGuardPx: Float
+) {
     val vt = VelocityTracker()
+    //起手落在顶栏那一条就整段忽略：按钮区不该有抽屉手势，否则点按会被拖拽抢走
+    var ignore = false
     detectHorizontalDragGestures(
-        onDragStart = { vt.resetTracking() },
-        onDragCancel = { ctl.settle(0f) },
-        onDragEnd = { ctl.settle(vt.calculateVelocity().x) },
+        onDragStart = { off -> vt.resetTracking(); ignore = off.y < topGuardPx },
+        onDragCancel = { if (!ignore) ctl.settleOpen(0f) },
+        onDragEnd = { if (!ignore) ctl.settleOpen(vt.calculateVelocity().x) },
         onHorizontalDrag = { change, dx ->
+            if (ignore) return@detectHorizontalDragGestures
             //关着的时候只认右滑，往左拖一律还给列表
             if (ctl.progress <= 0.001f && dx < 0f) return@detectHorizontalDragGestures
             change.consume()

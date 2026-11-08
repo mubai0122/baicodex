@@ -77,6 +77,28 @@ object Repo {
         return SessionRow(id, title, category)
     } //新建会话
 
+    /** 还没有用过的新会话：里面一条 user 消息都没有（可能只有开场白），全库最多认最近的那个 */
+    fun blankSession(): SessionRow? {
+        r().query(
+            "session",
+            arrayOf("id", "title", "category", "descr", "persona", "workspace"),
+            "NOT EXISTS(SELECT 1 FROM message x WHERE x.session_id=session.id AND x.role='user')",
+            null, null, null, "updated_at DESC", "1"
+        ).use { c ->
+            if (c.moveToFirst()) {
+                return SessionRow(
+                    c.getString(0),
+                    c.getString(1),
+                    c.getString(2),
+                    descr = c.getString(3) ?: "",
+                    persona = c.getString(4) ?: "",
+                    workspace = c.getString(5) ?: ""
+                )
+            }
+        }
+        return null
+    } //还没用过的新会话
+
     fun latestSession(): SessionRow? {
         r().query(
             "session",
@@ -167,14 +189,16 @@ object Repo {
     fun sessions(): List<SessionRow> {
         val out = ArrayList<SessionRow>()
         //条数与最后一条先按会话折一遍，再按主键回查内容：整表只扫一次，会话再多也不卡
+        //新会话（一条用户消息都没有）永远排最上面，其次置顶，其余按最近交互时间
         val sql = "SELECT s.id,s.title,s.category,s.descr,s.updated_at," +
             "IFNULL(m.content,''),IFNULL(g.cnt,0)," +
-            "s.pinned,s.persona,s.workspace " +
+            "s.pinned,s.persona,s.workspace," +
+            "CASE WHEN EXISTS(SELECT 1 FROM message x WHERE x.session_id=s.id AND x.role='user') THEN 1 ELSE 0 END AS used " +
             "FROM session s " +
             "LEFT JOIN (SELECT session_id,COUNT(1) cnt,MAX(_id) maxid FROM message GROUP BY session_id) g " +
             "ON g.session_id=s.id " +
             "LEFT JOIN message m ON m._id=g.maxid " +
-            "ORDER BY s.pinned DESC, s.updated_at DESC"
+            "ORDER BY used ASC, s.pinned DESC, s.updated_at DESC"
         r().rawQuery(sql, null).use { c ->
             while (c.moveToNext()) {
                 out.add(
@@ -199,7 +223,8 @@ object Repo {
     fun renameSession(sessionId: String, title: String) {
         w().update(
             "session",
-            ContentValues().apply { put("title", title) },
+            //改名也是一次交互：列表按最近交互排，改完要浮到前面
+            ContentValues().apply { put("title", title); put("updated_at", System.currentTimeMillis()) },
             "id=?",
             arrayOf(sessionId)
         )

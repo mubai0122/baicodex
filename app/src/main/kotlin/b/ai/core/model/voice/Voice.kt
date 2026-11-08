@@ -3,6 +3,7 @@ import b.ai.core.cfg.app.Cfg
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -89,7 +90,15 @@ object Voice {
         }
         //上一轮的识别器可能停在 error/结果状态，先彻底销毁再建新的；复用一个脏实例是 ERROR_CLIENT 的常见来源
         release()
-        val r = runCatching { SpeechRecognizer.createSpeechRecognizer(ctx) }.getOrNull()
+        //离线优先：13 起有专门的本机识别器；更老的系统只能靠 EXTRA_PREFER_OFFLINE 提示服务别联网
+        val offline = Cfg.asrOffline
+        val r = runCatching {
+            if (offline && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(ctx)
+            } else {
+                SpeechRecognizer.createSpeechRecognizer(ctx)
+            }
+        }.getOrNull()
         if (r == null) {
             Log.w(TAG, "createSpeechRecognizer 返回 null")
             sysError = ctx.getString(R.string.vo_init_fail)
@@ -139,6 +148,8 @@ object Voice {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Cfg.asrLang.ifBlank { "zh-CN" })
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            //老系统没有本机识别器，只能靠这个开关求服务别把音频上传
+            if (offline) putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
         }
         //startListening 必须在主线程；不在主线程时系统会直接回 ERROR_CLIENT
         if (Looper.myLooper() != Looper.getMainLooper()) {
