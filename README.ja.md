@@ -98,7 +98,8 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 - 内蔵ツール：ファイル 5 点セット（読み / 書き / 部分編集 / ディレクトリ作成 / 削除）、`exec_shell`、`linux_shell`、`screen`（画面操作）、`browser`、`http_fetch`、`apk`（署名証明書と dex の調査）、`js`（QuickJS でスクリプト実行、新しいツールの登録も可能）、12306 の残席 / 乗換 / 停車駅、記憶の書き込み、定期タスク
 - SSH 8 点セット：`ssh_connect` / `ssh_ls` / `ssh_read` / `ssh_write` / `ssh_sudo` / `ssh_exec` / `ssh_get` / `ssh_put`。ホストと認証情報は一度保存すれば再利用。内蔵 Ubuntu に openssh-client がなければ自動で導入。sudo のパスワードは `sudo -S` に流し込み、コマンドには書きません
 - GitHub スキルパッケージ：REST API 経由でリポジトリ / issue / PR の調査、リポジトリ内ファイルの読み取り、単一ファイルの新規作成・更新。トークンは `$secret.github_token` から供給され、ローカル git も gh も不要
-- Web 取得の 3 経路：`web_search`（Tavily・Bing・Google CSE から選択、キーは自分で設定。未選択ならモデルに検索ツールを渡さない）、`http_fetch`（生の HTTP、ステータスコード + 本文先頭 8000 文字を返す）、`browser`（内蔵 WebView：open / text / links / find / click / input / scroll / eval）
+- Web 取得の 2 経路：`web_search`（Tavily・Bing・Google CSE から選択、キーは自分で設定。未選択ならモデルに検索ツールを渡さない）、`http_fetch`（生の HTTP、ステータスコード + 本文先頭 8000 文字を返す）
+- 内蔵ブラウザ：`browser` は本物の WebView でクローラーではない。読むのはレンダリング後のページ——`open` で開いて本文を返し、`text` / `links` / `find` で内容取得・リンク列挙・文字からの要素特定、`click` / `input` / `scroll` で文字指定のクリック・入力・スクロール、`eval` で JS を直接実行、他に `back` / `forward` / `reload` / `url` / `close`。ログインが必要なページや JS で描画されるページはこの経路で扱う
 - 実行チャネル 3 段階（通常 / Shizuku / Root）。ツール内部で自動選択し、ポップアップに実際の経路を表示
 - ツール権限を 1 件ずつ設定：確認 / 許可 / 拒否。危険度の高いツールは別途表示。最小モードでは 5 つのツールだけ残し、弱いモデルでも破綻しない
 - プランモード：読み取り専用コマンドは通し、`exec_shell` 内の書き込みは一律で拒否。「ちょっと見るだけ」が「もう消した」にならない

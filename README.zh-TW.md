@@ -98,7 +98,8 @@
 - 內建工具：檔案五件套（讀 / 寫 / 局部改 / 建目錄 / 刪）、`exec_shell`、`linux_shell`、`screen`（螢幕操作）、`browser`、`http_fetch`、`apk`（反查簽章與 dex）、`js`（QuickJS 跑腳本，還能註冊新工具）、12306 餘票 / 中轉 / 經停、記憶寫入、定時任務
 - SSH 一組八件：`ssh_connect` / `ssh_ls` / `ssh_read` / `ssh_write` / `ssh_sudo` / `ssh_exec` / `ssh_get` / `ssh_put`——主機與憑證存一次重用；內建 Ubuntu 缺 openssh-client 會自動補裝；sudo 密碼由工具餵給 `sudo -S`，不必也不許寫進命令
 - GitHub 技能包：走 REST API 查倉庫 / issue / PR、讀倉庫檔案、新建或更新單一檔案，token 走 `$secret.github_token`，不需要本機 git、不用裝 gh
-- Web 抓取三條路：`web_search`（搜尋來源三家可選：Tavily、Bing、Google CSE，Key 自己填，沒選就不把搜尋工具交給模型）、`http_fetch`（直發 HTTP，回傳狀態碼 + 正文前 8000 字）、`browser`（內建 WebView：open / text / links / find / click / input / scroll / eval）
+- Web 抓取兩條路：`web_search`（搜尋來源三家可選：Tavily、Bing、Google CSE，Key 自己填，沒選就不把搜尋工具交給模型）、`http_fetch`（直發 HTTP，回傳狀態碼 + 正文前 8000 字）
+- 內建瀏覽器：`browser` 是真 WebView，不是爬蟲，讀的就是瀏覽器渲染完的頁面——`open` 開啟並回正文，`text` / `links` / `find` 取內容、列連結、按文字找元素，`click` / `input` / `scroll` 按文字點按、填表、翻頁，`eval` 直接跑 JS，外加 `back` / `forward` / `reload` / `url` / `close`；要登入、要跑 JS 才出內容的頁面走這一條
 - 執行通道三檔（一般 / Shizuku / Root），工具內部自動選路，彈窗標出實際路徑
 - 工具權限逐條設定：詢問 / 允許 / 拒絕，高風險工具單獨標記；極簡模式只留五個工具給弱模型兜底
 - 計畫模式：唯讀命令放行，`exec_shell` 裡的寫入一律判死，防止「先看看」變成「已經刪了」
