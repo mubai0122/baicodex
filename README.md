@@ -4,122 +4,83 @@
 
 **简体中文** · [English](README.en.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md)
 
-**把 Android 当成自己身体的 AI Agent。** 普通身份就能零宽穿透读写任何 App 的 data，挂上 Shizuku 或 Root 直接进系统底层，Linux 想跑什么跑什么——全是真执行，不是演示。
+**把 Android 当成自己身体的 AI Agent。** 它不只是聊天：你说「把后台清一下」「这个报错帮我定位」「写个脚本跑一下」，它会自己看屏幕、拆步骤、调工具、写代码、编译构建，做完再把结果交回来。全是真执行，不是演示。
 
-它不止会聊天。你说「把后台清一下」「查明天去上海的余票」「这个报错帮我定位」，它自己看屏幕、拆步骤、调工具，做完再把结果交回来。模型直连，对话、文件、密钥都留在本机，不经过任何中转服务器。
+模型直连，对话、文件、密钥都留在本机，不经过任何中转服务器。
 
 一套 Rust 内核，三种前端：**Android**、**Windows**、**终端**。
 
 - 官网：<https://agent.ai.baiccb.cn>
 - 下载：<https://github.com/mubai0122/baicodex/releases/latest>
-- 开源免费：GPL-3.0，无内购、无广告、无次数限制，代码全在这里
+- 开源免费：GPL-3.0，无内购、无广告、无次数限制
 
 > `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
 
-## 一眼看完的几个重点
+---
 
-| 能力 | 一句话 |
-|---|---|
-| **三档模式** | 普通 App 身份 / Shizuku / Root 是同一张工具表下的三条通道，工具自己选路并在弹窗里标出这次实际走了哪条 |
-| **零宽绕过** | 受限目录映射成虚拟路径，`read_file` / `write_file` / `make_dir` / `delete_file` 普通身份就能读写别的 App 的 data，不用先 root |
-| **虚拟沙箱** | 内置 proot Linux + 路径沙箱双闸：rootfs 搞坏了随时重置，软链和敏感系统文件在动手前就拦下，宿主机一点不脏 |
-| **SSH 工具** | 连服务器拆成一整组专用工具（连接 / 列目录 / 读 / 写 / 提权 / 执行 / 上传 / 下载），sudo 密码由工具喂给 `sudo -S`，不进命令行、不进远端 ps |
-| **GitHub** | 内置技能包走 REST API：查仓库与 issue / PR、读仓库文件、提交单处文件改动，不用本地 git、不用装 gh |
-| **密钥加密** | 凭据 AES-256-GCM 落盘（文件头魔数 `baicodexencryption`），API Key、账号、SSH 与 GitHub 凭据、技能密钥各存一份密文，配置也拆片加密 |
-| **Web 抓取** | 三条路：`web_search`（Tavily / Bing / Google CSE 任选）、`http_fetch`（直发请求不拼 curl）、`browser`（内置 WebView，能点链接、填表单、跑 JS） |
-| **角色卡** | 人设、场景、示例对话、开场白、绑定模型，头像可跟角色走；换角色等于换一个人格和一套说话方式 |
-| **技能与插件** | 自己写工具的 Skill 包、插件市场、MCP 接入三条路，能力装进去就有，不用等 App 发版 |
-| **上下文压缩** | 摘要切点退到安全边界、不破工具配对，摘要里留结论与文件路径；省不到 15% 就不压，长期记忆另存一份不随压缩丢 |
-| **流式输出** | SSE 增量：正文、思考段、工具调用参数都边收边渲染；服务端忽略 `stream=true` 时自动按整包解析，不报错 |
-| **UI** | 液态玻璃贯穿卡片、输入区、悬浮底栏与弹窗，深色、壁纸、全局字号、圆角与胶囊两套版面都能调 |
-| **可玩性** | MCP 标准 JSON-RPC 与 REST 桥都吃（`termux-mcp`、`mt-mcp` 这类直接连），A2A 能跟别的 Agent 互相派活，再加桌宠与悬浮聊天窗 |
+## 亮点
+
+1. **Android 上的真 Agent，三档权限发挥最强**
+   普通 App 身份装完就能用，挂 Shizuku 免 Root 拿系统级能力，上 Root 彻底解锁。三档不是互斥开关，是同一张工具表下的三条通道，工具内部自动选路，弹窗标出这次实际走了哪条。
+   <sub>普通身份的零宽文件通道（读写任意 App 的 data）并非所有机型都支持，装机后在 App 内实测为准。</sub>
+
+2. **内置虚拟 Linux 沙箱，真能跑东西**
+   proot + 自解包 Ubuntu 24.04 rootfs，装在应用私有目录，不动宿主机，跑坏了重置就是干净的。apt 装依赖、gcc / node 直接编译，C / C++ / Rust / Go 都能跑；跑 Windows exe 也不用另找源——arm64 仓库自带 `box64` 与 `wine 9.0`，装完就能起，图形程序再补 Xvfb / VNC 看画面。手机上性能有限，跑 Android Studio 这类重型 IDE 是设想——但「能跑」这件事本身是真的。
+   <sub>当前实现里执行 guest 程序要 Root 通道：targetSdk 34 下 SELinux 禁止从应用私有目录 execve。Shizuku 通道还没接。</sub>
+
+3. **多智能体，可切换**
+   角色卡换人设、场景、开场白、绑定模型，换角色等于换一个人格和一套说话方式；A2A 能跟别的 Agent 互相派活。
+   <sub>3.1 大肥鱼桌宠：常驻应用内的浮动形象，动画 30fps 节流，不会一开就把整页拖卡。</sub>
+
+4. **绝对的安全**
+   凭据 AES-256-GCM 落盘，设备密钥由 Android Keystore（TEE / StrongBox）包裹，明文不出硬件；模型读不到密钥原文，出口统一脱敏，`sk-` / `ghp_` / PEM / Bearer 在写日志、回灌模型、导出诊断包前全部抹掉。
+
+5. **屏幕操作，无需 Root**
+   无障碍服务直连：dump 节点树、点击、长按、滑动、输入、按键、开应用、列应用，不需要 Shizuku 也能截图。视觉 + 节点树双路，模型认不准就换一条。
+
+6. **MCP 可玩性高**
+   标准 JSON-RPC 2.0 over HTTP + REST 桥两路都吃，Termux 里的 termux-mcp、本机 mt-mcp、任何标准 MCP 服务直接连；反过来，别人也能把 baicodex 当 MCP 用。
+
+7. **SSH / GitHub / Skill，扩展性拉满**
+   SSH 八件套（连接 / 列目录 / 读 / 写 / 提权 / 执行 / 上传 / 下载），sudo 密码由工具喂给 `sudo -S` 不进命令行；GitHub 技能包走 REST API 查仓库、issue / PR、读文件、提交改动；私有协议 skill 配独立 JS 引擎（QuickJS），通用 skill 也兼容。
+
+8. **上下文压缩，不降智不丢记忆**
+   摘要切点退到「工具调用与其结果之间」的安全边界，强制保留结论与文件路径；窗口比例 + 条数双阈值才触发，省不到 15% 就不压；长期记忆单独入库，不随压缩消失。
+
+9. **长期记忆**
+   模型自己判断值得长期记住的偏好与结论存进「记忆」，每轮随系统提示下发，侧边栏可逐条删。
+
+10. **技术栈广**
+    Rust 内核 + C++ 原生层 + Kotlin / Compose 界面 + TypeScript / WebView2 桌面端，一套内核三端跑。
+
+---
 
 ## 界面预览
 
-| 手机 · 浅色 | 手机 · 深色 |
-|:---:|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="手机 浅色"> | <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="手机 深色"> |
+**手机 · 浅色**　　**手机 · 深色**
 
-| 桌面 · 浅色 |
-|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/laptop-light.png" width="860" alt="桌面 浅色"> |
+<img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="手机 浅色"> <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="手机 深色">
 
-| 桌面 · 深色 |
-|:---:|
-| <img src="https://agent.ai.baiccb.cn/show/laptop-dark.png" width="860" alt="桌面 深色"> |
+**桌面 · 浅色**
+
+<img src="https://agent.ai.baiccb.cn/show/laptop-light.png" width="860" alt="桌面 浅色">
+
+**桌面 · 深色**
+
+<img src="https://agent.ai.baiccb.cn/show/laptop-dark.png" width="860" alt="桌面 深色">
+
+---
 
 ## 它和普通 AI App 差在哪
 
 - **真的动手，不只是回话**：Agent 循环带工具调用，读文件、写文件、跑 shell、跑 Linux、点屏幕都是真执行，结果回灌给模型再走下一步
 - **权限三档自选**：普通 App 身份就能用（无障碍 + 零宽文件通道），要系统级能力挂 Shizuku，要彻底解锁上 Root，工具内部自动选路并在弹窗里标出实际走了哪条
-- **零宽绕过**（零宽文件通道）：`read_file` / `write_file` / `make_dir` / `delete_file` 把受限目录映射成虚拟路径，能穿透到其他 App 的 data 目录，不用先 root；`exec_shell` 走原路径，不受这个变换影响
+- **零宽绕过**：`read_file` / `write_file` / `make_dir` / `delete_file` 把受限目录映射成虚拟路径，能穿透到其他 App 的 data 目录，不用先 root；`exec_shell` 走原路径，不受这个变换影响
 - **数据不出门**：会话、角色、技能、用量全落本地 SQLite，不上云；只有你配的模型接口和你主动用的搜索、12306 会出网
 - **一套内核多端跑**：Rust 内核同时喂 Android、Windows 和终端，界面各自写，逻辑不分叉
 - **可拆开改**：模型、搜索源、工具权限、技能包、思考档位全都能在设置里换，源码改完自己编
 
-## 为什么它更强
-
-不是为了把功能列表堆长，而是几处关键取舍做得更彻底：
-
-- **上下文是真在管，不是攒够了就砍**：摘要分简洁 / 详细 / 全面三档，提示词分「最重要」与「当前任务」两段——跨轮次不缩减的那段永远在，可压缩的那段才动；压缩要同时满足窗口比例与条数双阈值才触发，长对话不会越聊越傻
-- **答复可以分支**：重新生成、编辑重发都不删旧回答，长成第二支，聊天里 `‹ 1/2 ›` 来回切，正确答案留在原处
-- **执行走真通道**：工具内部自动在 普通 / Shizuku / Root 三档里选路，并在弹窗里标出实际走了哪条；判不清就不糊弄，直接告诉你原因
-- **弱模型也能用**：工具权限逐条可设，极简模式只留五个工具，配合思考档位，小模型不至于被工具表压垮
-- **密钥与配置分开加密存**：API Key、账号与 SSH、技能密钥各存一份密文，配置也拆片加密，改一项只重写一片；换机器导出备份也是加密的
-- **一套内核跑三端**：Android、Windows、终端共用同一套逻辑，不存在「手机修了电脑没修」
-- **流畅是抠出来的**：玻璃质感只在真弹窗打开时降档（抽屉不算），桌宠动画按 30fps 节流，离屏渲染节点错峰建立——这些不是文案，是代码里的硬约束
-
-## 架构
-
-```
-app/src/main/rust/                Rust 内核（Cargo workspace，bin + cdylib + staticlib 都叫 baicodex）
-  src/app.rs                      应用服务层：把下面几层装配成「一次会话」
-  src/core/base/                  错误 / 时间 / 文本 / ID / 路径 / 原子文件 / JSON / 字节 / 系统
-  src/core/security/              策略 / 数据保障 / 加密落盘 / 凭据 / 权限 / 零宽路由 / 沙箱 / 脱敏 / 审计
-  src/core/feature/               模型 / 配置 / 存储 / 记忆 / 上下文 / Agent / 工具 / 技能 / MCP /
-                                  工作流 / 子智能体 / 人设 / 用量 / 图片 / 插件 / JS
-  src/exec/                       系统执行：shell / 文件 / 工作区 / root / shizuku / linux / ssh /
-                                  无障碍 / 剪贴板 / 通知 / 闹钟 / 浏览器 / APK
-  src/net/                        HTTP / LLM / 搜索 / 12306 / A2A
-  src/ffi/                        跨语言契约：进出一律 JSON 字符串，失败也回 JSON
-  src/ui/                         终端前端（关掉 tui feature 后内核不依赖任何终端库）
-  crates/proto/                   前后端共享协议与代码生成
-  crates/host-win/                Windows 宿主：无边框窗口 + DWM 液态玻璃 + WebView2
-  android/                        Android 胶水（迁移中）
-
-app/src/main/cpp/                 Android 侧 .so：CMake → libbaicodex.so
-  core/base | core/security       与 Rust 同构的基础层与安全层
-  ffi/                            JNI 导出（mask / guard / vault / edit / net / blur / js / dsl）
-  image/ js/ net/ runtime/ tools/ 历史实现，正在迁往 Rust
-
-app/src/main/kotlin/b/ai/         Android 界面与平台层
-  agent/{run,tool,flow,memory,persona,sub}   Agent 循环、工具定义、工作流、记忆、人设、子智能体
-  core/{cfg,data,media,misc,model,perm,pet,place,plugin,task}
-  device/{shell(local,remote,root),fs,sys,web,app,pet}
-  native/{media,net,script,security,text}    JNI 门面，失败一律退回 Kotlin 实现
-  net/{api,doc,mcp,search}
-  ui/{screen(chat,settings,stat,market,user,pet,misc),dialog,glass,input,overlay,theme,widget}
-
-desktop/web/                      pnpm workspace
-  apps/desktop                    Vite 入口，产出 WebView2 直接加载的静态资源
-  packages/{app,ui,liquid,tokens,bridge}   界面、玻璃材质、设计变量、内核桥
-
-desktop/legacy-kotlin/            旧 Compose 桌面端，仅作回退参考，不进构建
-
-app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
-```
-
-三条硬规则，写在 `src/lib.rs` 里也写在代码里：`core/base` 不认识业务；`core/security` 不认识模型；`core/feature` 不直接碰平台——要执行找 `exec`，要发请求找 `net`。
-
-## 三种运行模式（Android）
-
-| 模式 | 需要什么 | 能干什么 |
-|---|---|---|
-| 普通 App 身份 | 装完就能用 | 对话、文件读写、`exec_shell`（应用身份）、无障碍截屏 / 点击 / 滑动 / 输入、零宽读 data、联网工具 |
-| Shizuku | 装 Shizuku 并授权 | 免 Root 执行系统级 shell、`uiautomator dump`、`screencap`、后台应用管理、深读 data |
-| Root（su） | 设备已 root | 系统目录读写、pm 静默安装卸载、全局操作，工具内部优先走 su |
-
-三种模式不是互斥开关，是同一个工具表下的三档通道，随时切，切完下一次调用就生效。
+---
 
 ## 能力
 
@@ -129,7 +90,7 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 - 思考档位（low / medium / high）、最大模式、温度与附加参数；SSE 流式输出，正文、思考段（`reasoning_content`）与 `tool_calls` 参数都是边收边渲染，思考段可折叠；服务端忽略 `stream=true` 返回整包时自动降级解析，不报错
 - 消息分支：重新生成 / 编辑重发都不删旧回答，长成第二支，聊天里 `‹ 1/2 ›` 来回切（库 v11 消息树）
 - 永久记忆：模型自己判断值得长期记住的偏好与结论存进「记忆」，侧边栏可逐条删；没删就每轮随系统提示下发（库 v12）
-- 上下文压缩不丢记忆：窗口比例（默认 70%）+ 未压缩条数双阈值触发，切点退到「工具调用与其结果之间」的安全边界（切中间请求体会非法），摘要里强制留结论与改动过的文件路径；省不到 15% 就不压（摘要本身也要花 token）；长期记忆单独入库，不跟着摘要一起消失
+- 上下文压缩不丢记忆：窗口比例（默认 70%）+ 未压缩条数双阈值触发，切点退到「工具调用与其结果之间」的安全边界（切中间请求体会非法），摘要里强制留结论与改动过的文件路径；省不到 15% 就不压；长期记忆单独入库，不跟着摘要一起消失
 - 语音输入，说完直接发；每次回答下方显示 token、tok/s、首响耗时、供应商与模型
 
 ### 工具与执行
@@ -142,7 +103,7 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 - 工具权限逐条设置：询问 / 允许 / 拒绝，高危工具单独标记；极简模式只留五个工具给弱模型兜底
 - 计划模式：只读命令放行，`exec_shell` 里的写操作一律判死，防止「先看看」变成「已经删了」
 - 自定义技能包：自己写工具塞进去，模型按描述自己挑
-- MCP 客户端：标准 JSON-RPC 2.0 over HTTP（`tools/list` + `tools/call`），另有一路 REST 桥（`GET /tools` + `run`）——Termux 里的 `termux-mcp`、本机 `mt-mcp`、以及任何标准 MCP 服务都能直接接；连上的能力并入工具表与 @ 面板，名字前缀 `mcp_服务_能力`
+- MCP 客户端：标准 JSON-RPC 2.0 over HTTP（`tools/list` + `tools/call`），另有一路 REST 桥（`GET /tools` + `run`）——Termux 里的 termux-mcp、本机 mt-mcp、以及任何标准 MCP 服务都能直接接；连上的能力并入工具表与 @ 面板，名字前缀 `mcp_服务_能力`
 - 工作流：多步任务串成一条流，每步跑一个分智能体，步骤之间不共享上下文
 - A2A：按 1.0 规范实现 SendMessage / GetTask / ListTasks / CancelTask，方法名与状态码与规范一致——别的 Agent 能给你派活，你的 Agent 也能把活派出去
 
@@ -154,16 +115,16 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 
 ### 内置 Linux
 
-- **虚拟沙盒**：proot + 自解包 rootfs，首次启动自动装好，不用 root、不动宿主机，跑坏了重开就是干净的
-- `apt` 装依赖、`gcc` / `node` 直接编译，C / C++ / Rust / Go 都能在手机上跑
+- **虚拟沙盒**：proot + 自解包 Ubuntu 24.04 rootfs，装在应用私有目录，不动宿主机，跑坏了重开就是干净的
+- `apt` 装依赖、`gcc` / `node` 直接编译，C / C++ / Rust / Go 都能在手机上跑；arm64 的 noble 仓库自带 `box64` 与 `wine 9.0`，装完可以跑 Windows exe，图形程序再补 Xvfb / VNC 看画面
 - 与 Android 文件系统双向互通，`/sdcard` 和 `/storage` 直接挂进去
 - 跟路径沙箱是两道闸：沙箱管「这个路径准不准动」（敏感系统文件、`..`、软链都在动手前拦），proot 管「动坏了也伤不到系统」
+- **现状**：执行 guest 程序需要 Root 通道（targetSdk 34 下 SELinux 禁止从应用私有目录 `execve`）；Shizuku 通道尚未接入
 
 ### 桌面端（Windows）
 
 - 无边框窗口 + DWM 液态玻璃 + WebView2 渲染面，界面是 `desktop/web` 那套 TypeScript + Vite 代码
 - 与手机同一份 Rust 内核，同一个版本号，工具表与配置结构一致
-- 出包脚本 `scripts/desktop-build.sh`，产物 `desktop/dist/BaiAgent/{baicodex-desktop.exe, web/}`
 
 ### 界面与个性化
 
@@ -178,15 +139,6 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 - **插件广场**：浏览、安装、上传、版本历史、评论、点赞收藏
 - **五语界面**：简体中文 / 繁體中文 / English / 日本語 / Français
 
-### 安全
-
-- **三层密钥**：设备密钥 R 由 Android Keystore（TEE / StrongBox）包裹，明文不出硬件；半密钥 K2 = HKDF(seed2, 设备因子)；数据密钥 K = R ⊕ K2，解锁后常驻内存
-- **凭据 AES-256-GCM 落盘**（v2 文件，头部魔数 `baicodexencryption`）：API Key、账号、SSH 与 GitHub 凭据、技能密钥各存一份密文，配置也拆片加密，改一项只重写一片
-- **模型读不到密钥原文**：技能里写 `${secret:github_token}`，由执行层按需取出、用完即弃，不进提示词、不进消息、不进日志
-- **没开加密会明说**：未解锁时凭据退到明文 JSON + 0600，界面直接标注「未加密」，不假装安全
-- **出口统一脱敏**：`sk-` / `ghp_` / PEM / Bearer 与 `/home/<user>` 在写日志、回灌模型、导出诊断包前统一抹掉
-- **发版加固**：R8 混淆（自造短名字典 + `-repackageclasses`）、StringFog 逐串 AES 独立 key、release 里 `Log` / `println` 全是空语句
-
 ### 数据与发布
 
 - 会话、角色、技能、工作区绑定、用量账本全部落本地 SQLite（`bai.db` + `bai_stat.db` 双库），不走云
@@ -194,10 +146,32 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 - 整库备份与恢复：一键导出库 / 配置 / 数据根小文件 / 头像为一个文件，导入后下次启动自动替换
 - 应用内检查更新（`agent.ai.baiccb.cn/api/update`），直链下载后拉起系统安装器
 
+---
+
+## 三种运行模式（Android）
+
+| 模式 | 需要什么 | 能干什么 |
+|---|---|---|
+| 普通 App 身份 | 装完就能用 | 对话、文件读写、`exec_shell`（应用身份）、无障碍截屏 / 点击 / 滑动 / 输入、零宽读 data、联网工具 |
+| Shizuku | 装 Shizuku 并授权 | 免 Root 执行系统级 shell、`uiautomator dump`、`screencap`、后台应用管理、深读 data |
+| Root（su） | 设备已 root | 系统目录读写、pm 静默安装卸载、全局操作，工具内部优先走 su |
+
+三种模式不是互斥开关，是同一个工具表下的三档通道，随时切，切完下一次调用就生效。
+
+<sub>注：普通身份的零宽文件通道受机型 / 系统限制，部分机型可用、部分不行，以 App 内实测为准。内置 Linux 沙箱目前需要 Root 通道。</sub>
+
+---
+
+## 安全
+
+三层密钥（Keystore 包裹 + HKDF 半密钥 + 数据密钥），凭据 AES-256-GCM 落盘（文件头魔数 `baicodexencryption`），API Key、账号、SSH 与 GitHub 凭据、技能密钥各存一份密文；模型读不到密钥原文，出口统一脱敏；未解锁时凭据退到明文 JSON + 0600，界面直接标注「未加密」，不假装安全。
+
+---
+
 ## 常见问题
 
 **需要 Root 吗？**
-不需要。普通 App 身份就能用绝大部分功能；要系统级 shell 挂 Shizuku（建议 Android 11+），要改系统目录才需要 Root。
+不需要。普通 App 身份就能用绝大部分功能；要系统级 shell 挂 Shizuku（建议 Android 11+），要改系统目录才需要 Root。内置 Linux 沙箱是例外——目前要 Root 通道才能执行里面的程序。
 
 **真的免费吗？**
 是。GPL-3.0 开源，没有内购、订阅、广告或次数限制，也可以自己编一份。
@@ -208,12 +182,41 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 **支持哪些 Android 版本？**
 Android 7.0（API 24）及以上，targetSdk 34，编译用 SDK 37。APK 含 `arm64-v8a` 与 `armeabi-v7a`。
 
-**桌面端在哪？**
-Windows 版由 `rust/crates/host-win` + `desktop/web` 构建，产物挂在 Releases 里；Android 与 Windows 用同一份内核、同一个版本号。
+---
 
-## 构建
+## 开发者
 
-### Android
+### 扩展方式
+
+- **技能包（Skill）**：自己写工具塞进去，模型按描述自己挑；配独立 JS 引擎（QuickJS），能跑脚本、也能注册新工具
+- **插件市场**：浏览、安装、上传、版本历史、评论、点赞收藏
+- **MCP**：标准 JSON-RPC 2.0 over HTTP + REST 桥两路，termux-mcp / mt-mcp / 任意标准 MCP 服务直接连
+- **A2A**：按 1.0 规范实现 SendMessage / GetTask / ListTasks / CancelTask，与别的 Agent 互相派活
+- **工作流**：多步任务串成一条流，每步跑一个分智能体
+
+### 目录速查
+
+```
+app/src/main/kotlin/b/ai/   Android 界面与平台层（agent / core / device / native / net / ui）
+app/src/main/cpp/           Android 原生层（JNI、QuickJS、图像、原生执行）
+app/src/main/rust/          Rust 内核（core / exec / net / ffi / crates / android）
+app/src/main/assets/linux/  内置 Linux 的 rootfs 与 proot
+desktop/web/                桌面端前端（pnpm workspace）
+scripts/                    构建与发版脚本
+```
+
+### 协议
+
+GNU General Public License v3.0，全文见 LICENSE。
+
+Copyright (C) 2026 沐白 (mubai0122)
+
+---
+
+<details>
+<summary><b>构建（开发者展开）</b></summary>
+
+**Android**
 
 需要 JDK 17、Android SDK 37（`local.properties` 里写 `sdk.dir`）。
 
@@ -221,12 +224,6 @@ Windows 版由 `rust/crates/host-win` + `desktop/web` 构建，产物挂在 Rele
 ./gradlew assembleDebug     # debug：不混淆、不加密，日志可看
 ./gradlew assembleRelease   # release：R8 混淆 + 资源裁剪 + 字符串加密
 ```
-
-release 会做三件事，都在 `app/proguard-rules.pro` 与 `app/build.gradle.kts` 里：
-
-1. **R8 混淆**：除 `MainActivity` 与清单入口、第三方库必需项外全部改名，字典是自造的短名（`app/obfuscation_dict.txt`），并用 `-repackageclasses` 把包名也抹掉
-2. **字符串加密**：StringFog，算法 AES，每条字符串独立随机 key
-3. **日志清零**：release 里 `Log` / `println` 全部是空语句
 
 字符串加密的密钥不进仓库，从 `local.properties` 读：
 
@@ -237,15 +234,13 @@ baicodex.aes.key=凭据加密用的种子
 
 没配也能构建，会退到占位串（占位串等于没加密，别用占位串发版）。
 
-原生部分走 `externalNativeBuild` + CMake（`app/src/main/cpp/CMakeLists.txt`），不单独跑 cmake。
-
-### 内核与桌面端
+**内核与桌面端**
 
 ```bash
 cd app/src/main/rust
 cargo build --bin baicodex                 # 内核 + 终端前端
 
-cd baiguard && cargo test                   # 数据保障层单测（独立 crate）
+cd baiguard && cargo test                  # 数据保障层单测（独立 crate）
 
 cd ../../../..                             # 回到仓库根
 bash scripts/desktop-build.sh release      # Windows 出包
@@ -259,20 +254,4 @@ pnpm install
 pnpm --filter @baicodex/desktop dev
 ```
 
-## 目录速查
-
-```
-app/src/main/kotlin/b/ai/   Android 界面与平台层（agent / core / device / native / net / ui）
-app/src/main/cpp/           Android 原生层（JNI、QuickJS、图像、原生执行）
-app/src/main/rust/          Rust 内核（core / exec / net / ffi / crates / android）
-app/src/main/assets/linux/  内置 Linux 的 rootfs 与 proot
-desktop/web/                桌面端前端（pnpm workspace）
-desktop/legacy-kotlin/      旧 Compose 桌面端，仅参考
-scripts/                    构建与发版脚本
-```
-
-## 协议
-
-GNU General Public License v3.0，全文见 [LICENSE](LICENSE)。
-
-Copyright (C) 2026 沐白 (mubai0122)
+</details>
