@@ -248,14 +248,13 @@ internal fun WorkspaceScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                                     picking = true
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                Workspace.quickPicks().chunked(2).forEach { row ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        row.forEach { (label, p) ->
-                                            PolicyChip(label, Workspace.path() == p) { draft = p }
-                                        }
+                                //快捷胶囊一行铺开：四条标签加起来不到一行宽，别硬拆两行
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Workspace.quickPicks().forEach { (label, p) ->
+                                        PolicyChip(label, Workspace.path() == p) { draft = p }
                                     }
-                                    Spacer(Modifier.height(6.dp))
                                 }
+                                Spacer(Modifier.height(6.dp))
                                 GhostButton(stringResource(R.string.wp_reindex), modifier = Modifier.fillMaxWidth()) {
                                     scope.launch {
                                         busy = true

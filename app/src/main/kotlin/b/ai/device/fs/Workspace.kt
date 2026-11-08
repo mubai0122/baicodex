@@ -269,10 +269,10 @@ object Workspace {
         cachedTree = null
     } //解除本会话绑定
 
-    /** 常用目录候选：设置页与绑定弹窗的快捷胶囊 */
+    /** 常用目录候选：设置页与绑定页的快捷胶囊；当前工作区排第一个 */
     fun quickPicks(): List<Pair<String, String>> = listOf(
-        "数据根" to Paths.base().absolutePath,
         "当前工作区" to path().ifBlank { Paths.base().absolutePath },
+        "数据根" to Paths.base().absolutePath,
         "下载" to Router.normalize("/sdcard/Download"),
         "文档" to Router.normalize("/sdcard/Documents")
     )

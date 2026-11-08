@@ -277,6 +277,34 @@ fun IcMic(color: Color, side: Dp = 15.dp, stroke: Dp = 1.6.dp) {
     }
 } //矢量话筒
 
+/** 自绘键盘（语音模式里切回文字的入口） */
+@Composable
+fun IcKeyboard(color: Color, side: Dp = 15.dp, stroke: Dp = 1.4.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = androidx.compose.ui.geometry.CornerRadius(size.width * 0.14f)
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.06f, size.height * 0.26f),
+            size = androidx.compose.ui.geometry.Size(size.width * 0.88f, size.height * 0.48f),
+            cornerRadius = r,
+            style = Stroke(w)
+        )
+        //三颗按键点 + 底部空格条，小尺寸下也能认出是键盘
+        val dot = size.width * 0.07f
+        listOf(0.24f, 0.5f, 0.76f).forEach { fx ->
+            drawCircle(color, dot, Offset(size.width * fx, size.height * 0.42f), style = Stroke(w * 0.9f))
+        }
+        drawLine(
+            color,
+            Offset(size.width * 0.32f, size.height * 0.6f),
+            Offset(size.width * 0.68f, size.height * 0.6f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量键盘
+
 /** 自绘文件（折角纸） */
 @Composable
 fun IcFile(color: Color, side: Dp = 15.dp, stroke: Dp = 1.6.dp) {

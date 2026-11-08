@@ -133,6 +133,8 @@ object Cfg {
         mem("default_workspace", "").value = p.getString("default_workspace", "")!!
         mem("font_scale", 1f).value = p.getFloat("font_scale", 1f)
         mem("float_input", false).value = p.getBoolean("float_input", false)
+        //语音输入模式记下来：上次点的是语音，下次进来默认还是语音
+        mem("voice_input", false).value = p.getBoolean("voice_input", false)
         mem("predictive_back", true).value = p.getBoolean("predictive_back", true)
         mem("auto_bind_workspace", true).value = p.getBoolean("auto_bind_workspace", true)
         mem("session_workspace", "").value = p.getString("session_workspace", "")!!
@@ -644,6 +646,11 @@ object Cfg {
     var floatInput: Boolean
         get() = mem("float_input", false).value
         set(v) { mem("float_input", false).value = v; put("float_input", v) }
+
+    /** 输入区是语音模式还是文字模式：点一次语音就记下来，下次进对话页照旧 */
+    var voiceInput: Boolean
+        get() = mem("voice_input", false).value
+        set(v) { mem("voice_input", false).value = v; put("voice_input", v) }
 
     /** 全新的全屏输入逻辑：输入超 700 字才在语音右侧出现全屏入口，关掉则入口常驻 */
     var fullInputNew: Boolean

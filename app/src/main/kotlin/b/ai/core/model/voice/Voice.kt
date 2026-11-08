@@ -39,12 +39,7 @@ object Voice {
     private var sysBroken = false
 
     fun toggle(ctx: Context, onText: (String) -> Unit) {
-        if (Cfg.asrMode == "api") {
-            Audio.toggleAsr(onText)
-            return
-        }
-        if (sysBroken && hasApi()) {
-            sysError = ""
+        if (apiFirst()) {
             Audio.toggleAsr(onText)
             return
         }
@@ -52,6 +47,40 @@ object Voice {
             stop()
             return
         }
+        startSys(ctx, onText)
+    } //点按开关听写
+
+    /** 长按开始：系统识别器直接开听，接口模式开始录音 */
+    fun holdStart(ctx: Context, onText: (String) -> Unit) {
+        sysError = ""
+        if (apiFirst()) {
+            Audio.toggleAsr(onText)
+            return
+        }
+        startSys(ctx, onText)
+    } //长按开始
+
+    /** 松手：系统识别器收尾等结果，接口模式停录并上传转写 */
+    fun holdEnd() {
+        if (apiFirst()) {
+            Audio.toggleAsr { }
+            return
+        }
+        stop()
+    } //松手收尾
+
+    /** 上滑取消：这一段直接丢弃，不回调任何文本 */
+    fun holdCancel() {
+        Audio.cancelRec()
+        runCatching { sr?.cancel() }
+        release()
+        sysError = ""
+    } //上滑取消
+
+    /** 走录音转写这条路：显式配了接口模式，或者系统识别器已被证实绑不上且填了接口配置 */
+    private fun apiFirst(): Boolean = Cfg.asrMode == "api" || (sysBroken && hasApi())
+
+    private fun startSys(ctx: Context, onText: (String) -> Unit) {
         sysError = ""
         if (!SpeechRecognizer.isRecognitionAvailable(ctx)) {
             Log.w(TAG, "isRecognitionAvailable=false，系统里没有可用的识别服务")
@@ -125,7 +154,7 @@ object Voice {
             return
         }
         sysOn = true
-    } //开始/结束听写
+    } //系统识别器开听
 
     fun stop() {
         runCatching { sr?.stopListening() }

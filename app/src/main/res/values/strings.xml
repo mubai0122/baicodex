@@ -240,6 +240,10 @@
     <string name="cs_max">最大</string>
     <string name="cs_listening">识别中</string>
     <string name="cs_voice">语音</string>
+    <string name="cs_voice_hold">长按说话</string>
+    <string name="cs_voice_end">松开结束</string>
+    <string name="cs_voice_cancel">松开取消</string>
+    <string name="cs_keyboard">键盘</string>
     <string name="cs_config">配置</string>
     <string name="cs_fullscreen">全屏输入</string>
     <string name="cs_think_proc">思考过程</string>

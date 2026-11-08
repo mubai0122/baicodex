@@ -28,6 +28,8 @@ import b.ai.ui.widget.IcExpand
 import b.ai.ui.widget.IcGrid
 import b.ai.ui.widget.IcLayers
 import b.ai.ui.widget.IcMenu
+import b.ai.ui.widget.IcKeyboard
+import b.ai.ui.widget.EdgeGlow
 import b.ai.ui.widget.IcMic
 import b.ai.ui.widget.IcPlus
 import b.ai.ui.widget.IcSearch
@@ -69,6 +71,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -292,6 +295,39 @@ fun ChatScreen(
             }
         }
     }
+
+    //语音模式：点语音按钮把输入行整条换成「长按说话」，语音位同时换成键盘位；开关状态记忆在 Cfg
+    var voiceMode by remember { mutableStateOf(Cfg.voiceInput) }
+    //长按光效进度：按下 0→1 沿边框走一圈，松手回 0
+    val glow = remember { Animatable(0f) }
+
+    //把当前输入与附件发出去：手打和语音识别回来走同一条路
+    fun sendNow(extra: String = "") {
+        val t = (input + extra).trim()
+        val imgs = pendingImgs
+        val fs = pendingFiles
+        if (t.isEmpty() && imgs.isEmpty() && fs.isEmpty()) return
+        input = ""
+        pendingImgs = emptyList()
+        pendingFiles = emptyList()
+        hint = hintWords.random()
+        fullInput = false
+        val fallback = if (imgs.isNotEmpty()) ctx.getString(R.string.cs_see_images)
+        else ctx.getString(R.string.cs_see_files)
+        Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
+    } //发送当前输入
+
+    //长按开始：点火光效 + 开听；识别回来的文本直接发出去
+    fun holdStart() {
+        Voice.holdStart(ctx) { t -> if (t.isNotBlank()) sendNow(t) }
+        scope.launch { glow.animateTo(1f, tween(650, easing = FastOutSlowInEasing)) }
+    } //长按说话
+
+    //松手：上滑取消就丢掉这段，否则等识别结果自动发送；光效一起退场
+    fun holdEnd(cancelled: Boolean) {
+        if (cancelled) Voice.holdCancel() else Voice.holdEnd()
+        scope.launch { glow.animateTo(0f, tween(200)) }
+    } //松手结束
 
     //定时任务通知点开：把内容填进输入框，等用户看过再发
     LaunchedEffect(IntentInbox.prompt) {
@@ -528,23 +564,11 @@ fun ChatScreen(
                 //粘贴转存的文件跟着一起清；用户自己选的文件不动原件
                 if (p.startsWith(Pastes.dir().absolutePath)) Pastes.forget(p)
             },
-            onSend = {
-                val t = input.trim()
-                val imgs = pendingImgs
-                val fs = pendingFiles
-                if (t.isNotEmpty() || imgs.isNotEmpty() || fs.isNotEmpty()) {
-                    input = ""
-                    pendingImgs = emptyList()
-                    pendingFiles = emptyList()
-                    hint = hintWords.random()
-                    fullInput = false
-                    val fallback = when {
-                        imgs.isNotEmpty() -> ctx.getString(R.string.cs_see_images)
-                        else -> ctx.getString(R.string.cs_see_files)
-                    }
-                    Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
-                }
-            }
+            voiceMode = voiceMode,
+            onToggleVoice = { voiceMode = !voiceMode; Cfg.voiceInput = voiceMode },
+            onHoldStart = { holdStart() },
+            onHoldEnd = { c -> holdEnd(c) },
+            onSend = { sendNow() }
         )
         }
     }
@@ -739,6 +763,8 @@ fun ChatScreen(
         Box(Modifier.fillMaxSize().tap { ctxOpen = false })
         CtxCard(cst[0], Cfg.ctxTokenBudget, cst[1], cst[2], ctxRingX, ctxRingY)
     }
+        //语音长按的边框光效：画在最外层，压在整页之上，只看得到贴着机身边缘的一条
+        EdgeGlow(glow.value)
         //应用内桌宠：只在「仅应用内展示」时出现，压在输入区右上，不挡发送键
         PetInApp(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = 96.dp))
     }
@@ -1266,6 +1292,11 @@ private fun InputBar(
     onExpand: () -> Unit,
     onRemoveImage: (String) -> Unit,
     onRemoveFile: (String) -> Unit,
+    //语音模式：整条输入行换成长按说话，语音位换键盘位
+    voiceMode: Boolean = false,
+    onToggleVoice: () -> Unit = {},
+    onHoldStart: () -> Unit = {},
+    onHoldEnd: (Boolean) -> Unit = {},
     onSend: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -1331,22 +1362,27 @@ private fun InputBar(
                 )
             }
             Spacer(Modifier.width(6.dp))
-            //语音：走系统识别，说完的文本追加进输入框
+            //语音：点一下进语音模式（话筒换成键盘），再点一下回文字输入；听写本身改成按住说话
             BarChip(
-                active = Voice.listening,
+                active = voiceMode || Voice.listening,
                 accent = DangerRed,
                 flatActive = DangerRedSoft,
-                onTap = { Voice.toggle(ctx) { t -> onChange((input + t).trim()) } }
+                onTap = onToggleVoice
             ) {
-                IcMic(if (Voice.listening) DangerRed else TextSecondary, side = 12.dp)
+                if (voiceMode) IcKeyboard(TextSecondary, side = 12.dp)
+                else IcMic(if (Voice.listening) DangerRed else TextSecondary, side = 12.dp)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    if (Voice.listening) {
-                        //接口模式显示已录秒数与上限，看着数字知道还要说多久
-                        val sec = Audio.recSec
-                        if (Cfg.asrMode == "api" && sec > 0) "$sec s / ${Cfg.asrMaxSec} s"
-                        else stringResource(R.string.cs_listening)
-                    } else stringResource(R.string.cs_voice),
+                    when {
+                        voiceMode -> stringResource(R.string.cs_keyboard)
+                        Voice.listening -> {
+                            //接口模式显示已录秒数与上限，看着数字知道还要说多久
+                            val sec = Audio.recSec
+                            if (Cfg.asrMode == "api" && sec > 0) "$sec s / ${Cfg.asrMaxSec} s"
+                            else stringResource(R.string.cs_listening)
+                        }
+                        else -> stringResource(R.string.cs_voice)
+                    },
                     fontSize = 10.sp,
                     color = if (Voice.listening) DangerRed else TextSecondary
                 )
@@ -1388,6 +1424,14 @@ private fun InputBar(
         //悬浮模式：输入框和发送键各自带投影浮起来，周围仍是页面底色，不再铺整块白卡
         val floatShadow = if (floating) Modifier.shadow(12.dp, RoundedCornerShape(14.dp)) else Modifier
         val canSend = !Agent.busy && (input.isNotBlank() || images.isNotEmpty() || files.isNotEmpty())
+        //语音模式：整条输入行换成一个「长按说话」条，键盘 / 发送都让位
+        if (voiceMode) {
+            VoiceHoldBar(
+                onStart = onHoldStart,
+                onEnd = onHoldEnd,
+                modifier = Modifier.fillMaxWidth().then(floatShadow)
+            )
+        } else {
         //输入框和纸飞机键同一个白卡：小圈内嵌右侧，不再单独立 66dp 大按钮
         Row(
             Modifier
@@ -1497,8 +1541,67 @@ private fun InputBar(
             //纸飞机小圈：内嵌在输入框右侧，禁用时灰底灰图标
             SendButton(canSend = canSend, onSend = onSend)
         }
+        }
     }
 } //输入区：图片 / 文件 / 语音 / 发送
+
+/** 按住说话的条子：按下开听、上滑取消、松手收尾；光效由外部按回调驱动 */
+@Composable
+private fun VoiceHoldBar(
+    onStart: () -> Unit,
+    onEnd: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var holding by remember { mutableStateOf(false) }
+    var cancel by remember { mutableStateOf(false) }
+    val cancelPx = with(LocalDensity.current) { 56.dp.toPx() }
+    Row(
+        modifier
+            .heightIn(min = 44.dp)
+            .liquidBg(RoundedCornerShape(14.dp), gate = 0.dp)
+            .border(1.dp, BorderGray, RoundedCornerShape(14.dp))
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = true)
+                    holding = true
+                    cancel = false
+                    onStart()
+                    while (true) {
+                        val e = awaitPointerEvent()
+                        val c = e.changes.firstOrNull { it.id == down.id } ?: break
+                        //上滑超过 56dp 就算取消：松手时这段识别结果直接丢掉
+                        val up = down.position.y - c.position.y > cancelPx
+                        if (up != cancel) cancel = up
+                        if (!c.pressed) break
+                        c.consume()
+                    }
+                    holding = false
+                    onEnd(cancel)
+                    cancel = false
+                }
+            }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IcMic(if (holding) AccentBlue else TextSecondary, side = 15.dp)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            when {
+                cancel -> stringResource(R.string.cs_voice_cancel)
+                holding -> stringResource(R.string.cs_voice_end)
+                else -> stringResource(R.string.cs_voice_hold)
+            },
+            fontSize = 13.sp,
+            fontWeight = if (holding) FontWeight.SemiBold else FontWeight.Normal,
+            color = when {
+                cancel -> DangerRed
+                holding -> AccentBlue
+                else -> TextSecondary
+            }
+        )
+    }
+} //长按说话条
 
 /** 粘贴超长文本：自动转存成文件并直接挂成待发送附件，输入框里不留任何文字 */
 private fun pasteGuard(old: String, v: String, onFile: (String) -> Unit): String {
