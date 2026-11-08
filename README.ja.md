@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" width="128" alt="BaiAgent logo"></p>
+
 # BaiAgent / baicodex
 
 [简体中文](README.md) · [English](README.en.md) · [繁體中文](README.zh-TW.md) · **日本語**
