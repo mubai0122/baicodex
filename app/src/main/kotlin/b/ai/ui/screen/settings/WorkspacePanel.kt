@@ -88,7 +88,8 @@ internal fun WorkspaceSection(onBrowse: () -> Unit = {}) {
             Cfg.autoBindWorkspace
         ) { on ->
             Cfg.autoBindWorkspace = on
-            if (!on) Cfg.sessionWorkspace = ""
+            //关掉时连会话行一起清，否则下次 adopt 会把目录从 DB 读回来
+            if (!on) Workspace.unbind()
             Workspace.invalidate()
             draft = Workspace.path()
             reload()

@@ -46,44 +46,49 @@ object Workspace {
     /** 本会话记着的目录，Cfg.sessionWorkspace 就是它的缓存 */
     private fun stored(): String = Cfg.sessionWorkspace.trim()
 
-    /** 目录能用就归一化返回，不能用返回 null */
+    /** 目录已在就归一化返回；只给认领旧绑定用，这里绝不造目录 */
     private fun usable(raw: String): String? {
         val p = raw.trim().trimEnd('/')
         if (p.isEmpty()) return null
-        val f = File(p)
-        if (f.isDirectory || runCatching { f.mkdirs() }.getOrDefault(false)) return p
-        return null
-    } //可用目录
+        return if (File(p).isDirectory) p else null
+    } //已存在的目录
 
-    /** 给当前会话开一个新目录：记住并写回会话行，绝不复用上一个会话的目录 */
+    /** 给当前会话开一个新目录：没挂会话就不建，免得建完没人落库、下次启动再建一个 */
     private fun assign(): String {
+        val id = sid ?: return ""
         val dir = Paths.newDir()
         Cfg.sessionWorkspace = dir.absolutePath
         Cfg.sessionWsManual = false
-        sid?.let { runCatching { Repo.setWorkspace(it, dir.absolutePath) } }
+        runCatching { Repo.setWorkspace(id, dir.absolutePath) }
         cachedTree = null
         return dir.absolutePath
     } //给当前会话新开目录
 
-    /** 当前工作区：本会话记的目录 → 老全局绑定认领一次 → 关掉自动绑定就空 → 兜底新开一个 */
+    /**
+     * 当前工作区：只返回本会话已记下的目录，没有就是空。
+     * 这里是纯读——以前末尾兜底 assign()，任何 UI / 提示词顺手读一下就会多建一个空目录，
+     * 冷启动时 Cfg 里还是空的，于是每进一次 App 就多一个；分配一律走 adopt()。
+     */
     fun path(): String {
-        usable(stored())?.let { return it }
-        //老版本那个全局绑定只认领一次，认领完清掉，免得又变成所有会话共用一个目录
-        if (!Cfg.wsMigrated) {
+        val cur = stored()
+        if (cur.isNotEmpty()) return cur
+        if (Cfg.wsMigrated) return ""
+        //老版本那个全局绑定只认领一次；还没有会话就先别消化掉，等会话挂上来再认领
+        val old = Cfg.workspace.trim().trimEnd('/')
+        if (old.isEmpty()) {
             Cfg.wsMigrated = true
-            val old = Cfg.workspace.trim()
-            Cfg.workspace = ""
-            usable(old)?.let {
-                Cfg.sessionWorkspace = it
-                Cfg.sessionWsManual = true
-                sid?.let { s -> runCatching { Repo.setWorkspace(s, it) } }
-                return it
-            }
+            return ""
         }
-        //关掉「新会话自动绑定」= 空工作区：不给默认目录兜底，模型只能用绝对路径
-        if (!Cfg.autoBindWorkspace) return ""
-        return assign()
-    } //当前工作区路径
+        val id = sid ?: return ""
+        Cfg.wsMigrated = true
+        Cfg.workspace = ""
+        val hit = usable(old) ?: return ""
+        Cfg.sessionWorkspace = hit
+        Cfg.sessionWsManual = true
+        runCatching { Repo.setWorkspace(id, hit) }
+        cachedTree = null
+        return hit
+    } //当前工作区路径：空 = 没绑
 
     /** 新会话分配工作区：一律各开一个新目录，用户手动绑的目录只作用于原来那个会话 */
     fun newSessionWorkspace(): String {
@@ -193,10 +198,11 @@ object Workspace {
         return list.size
     } //写索引文件
 
-    /** 启动时补索引：绑了工作区但没有 workspace.json 就后台写一份 */
+    /** 启动时补索引：只认本会话已记下的目录，没记就不动（不能走 path() 那套） */
     fun warmIndex() {
-        if (!bound()) return
-        if (File(path(), INDEX).isFile) return
+        val p = stored()
+        if (p.isEmpty()) return
+        if (File(p, INDEX).isFile) return
         Thread {
             runCatching { index() }
         }.start()

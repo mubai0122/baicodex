@@ -207,10 +207,8 @@ internal fun WorkspaceScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                                     Cfg.autoBindWorkspace
                                 ) { on ->
                                     Cfg.autoBindWorkspace = on
-                                    if (!on) {
-                                        Cfg.sessionWorkspace = ""
-                                        Cfg.sessionWsManual = false
-                                    }
+                                    //关掉时连会话行一起清：只清内存的话下次 adopt 又从 DB 读回来，开关看着关了其实没关
+                                    if (!on) Workspace.unbind()
                                     Workspace.invalidate()
                                     ver++
                                 }

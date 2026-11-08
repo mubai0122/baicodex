@@ -173,13 +173,20 @@ object Agent {
         }
     } //重进 App 落在最新会话
 
-    private fun adopt(s: SessionRow) {
+    private suspend fun adopt(s: SessionRow) {
         Cfg.personaId = s.persona
         Personas.current()?.profileId?.trim()?.takeIf { it.isNotEmpty() }?.let { Cfg.profileId = it }
-        Cfg.sessionWorkspace = s.workspace.trim()
-        //会话行里存的是哈希目录就是自动分配的，其余都算用户自己挑的
-        Cfg.sessionWsManual = s.workspace.trim().isNotEmpty() && !Workspace.isAutoDir(s.workspace)
+        //先挂会话 id 再判工作区：自动分配的结果要写回这一行，绝不能落到别的会话上
         Workspace.attachSession(s.id)
+        var ws = s.workspace.trim()
+        //这个会话还没有工作区就分配一次并落库：以前靠 path() 兜底新建，结果每次冷启动都多一个空目录
+        if (ws.isEmpty() && Cfg.autoBindWorkspace) {
+            ws = withContext(Dispatchers.IO) { Workspace.newSessionWorkspace() }
+            if (ws.isNotEmpty()) withContext(Dispatchers.IO) { Repo.setWorkspace(s.id, ws) }
+        }
+        Cfg.sessionWorkspace = ws
+        //会话行里存的是哈希目录就是自动分配的，其余都算用户自己挑的
+        Cfg.sessionWsManual = ws.isNotEmpty() && !Workspace.isAutoDir(ws)
         Workspace.invalidate()
     } //套用会话自己的角色与工作区
 
@@ -289,13 +296,8 @@ object Agent {
                 if (next == null) {
                     val s = withContext(Dispatchers.IO) { Repo.newSession() }
                     sessionId = s.id
-                    Workspace.attachSession(s.id)
-                    //新建的会话也要有自己的工作区，否则还指在被删掉那条的目录上
-                    withContext(Dispatchers.IO) {
-                        val dir = Workspace.newSessionWorkspace()
-                        Repo.setWorkspace(s.id, dir)
-                        Cfg.sessionWorkspace = dir
-                    }
+                    //新建的会话也要有自己的工作区，adopt 里统一分配并落库
+                    adopt(s)
                     messages = emptyList()
                 } else {
                     sessionId = next.id
