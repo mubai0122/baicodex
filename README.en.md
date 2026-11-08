@@ -26,7 +26,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 
 2. **A built-in virtual Linux sandbox that really runs things**
    proot plus a self-extracting Ubuntu 24.04 rootfs, unpacked into the app's private directory; the host system stays untouched, and a broken sandbox resets to a clean one. `apt` for dependencies, `gcc` / `node` compile directly, C / C++ / Rust / Go all run on the phone. Windows `.exe` needs no third-party repo either — the arm64 `noble` archive ships `box64` and `wine 9.0`, so it installs and runs; for GUI programs add Xvfb / VNC to see the screen. Performance on a phone is limited — running Android Studio is a thought experiment — but "it runs" is literally true.
-   <sub>In the current implementation, executing guest programs requires the Root channel: under targetSdk 34 SELinux forbids `execve` from the app's private directory. The Shizuku channel is not wired up yet.</sub>
+   <sub>Executing guest programs needs the Root / Shizuku channel (under targetSdk 34 SELinux forbids `execve` from the app's private directory).</sub>
 
 3. **Multiple agents, switchable**
    Character cards change the persona, scenario, opening line and bound model — switching a card is switching a personality and a way of speaking. A2A lets agents hand tasks to each other.
@@ -119,7 +119,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 - `apt` for dependencies, `gcc` / `node` compile directly, C / C++ / Rust / Go run on the phone; the arm64 `noble` archive ships `box64` and `wine 9.0`, so Windows `.exe` runs too, with Xvfb / VNC added for GUI programs
 - Two-way access to the Android filesystem: `/sdcard` and `/storage` are mounted in
 - Two gates together with the path sandbox: the sandbox decides whether a path may be touched at all (sensitive system files, `..`, symlinks are stopped before any action), while proot makes sure breaking things cannot damage the host
-- **Status**: executing guest programs requires the Root channel (under targetSdk 34 SELinux forbids `execve` from the app's private directory); the Shizuku channel is not connected yet
+- **Status**: executing guest programs needs the Root / Shizuku channel (under targetSdk 34 SELinux forbids `execve` from the app's private directory)
 
 ### Desktop (Windows)
 
@@ -158,7 +158,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 
 The three modes are not exclusive switches — they are three channels behind one tool table, switchable at any time and effective from the next call.
 
-<sub>Note: the zero-width file channel as a normal app depends on the device and OS build — some work, some do not; verify inside the app. The built-in Linux sandbox currently requires the Root channel.</sub>
+<sub>Note: the zero-width file channel as a normal app depends on the device and OS build — some work, some do not; verify inside the app. The built-in Linux sandbox needs the Root / Shizuku channel.</sub>
 
 ---
 
@@ -171,7 +171,7 @@ Three key layers (Keystore-wrapped + HKDF half-key + data key), credentials stor
 ## FAQ
 
 **Do I need root?**
-No. A normal app identity covers most features; add Shizuku for a system-level shell (Android 11+ recommended), and Root only to modify system directories. The built-in Linux sandbox is the exception — executing programs inside it currently needs the Root channel.
+No. A normal app identity covers most features; add Shizuku for a system-level shell (Android 11+ recommended), and Root only to modify system directories. The built-in Linux sandbox is the exception — it needs the Root / Shizuku channel to execute programs inside it.
 
 **Is it really free?**
 Yes. GPL-3.0, no IAP, subscriptions, ads or usage limits, and you can build your own copy.

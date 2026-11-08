@@ -26,7 +26,7 @@
 
 2. **内置虚拟 Linux 沙箱，真能跑东西**
    proot + 自解包 Ubuntu 24.04 rootfs，装在应用私有目录，不动宿主机，跑坏了重置就是干净的。apt 装依赖、gcc / node 直接编译，C / C++ / Rust / Go 都能跑；跑 Windows exe 也不用另找源——arm64 仓库自带 `box64` 与 `wine 9.0`，装完就能起，图形程序再补 Xvfb / VNC 看画面。手机上性能有限，跑 Android Studio 这类重型 IDE 是设想——但「能跑」这件事本身是真的。
-   <sub>当前实现里执行 guest 程序要 Root 通道：targetSdk 34 下 SELinux 禁止从应用私有目录 execve。Shizuku 通道还没接。</sub>
+   <sub>执行 guest 程序需要 Root / Shizuku 通道（targetSdk 34 下 SELinux 禁止从应用私有目录 execve）。</sub>
 
 3. **多智能体，可切换**
    角色卡换人设、场景、开场白、绑定模型，换角色等于换一个人格和一套说话方式；A2A 能跟别的 Agent 互相派活。
@@ -119,7 +119,7 @@
 - `apt` 装依赖、`gcc` / `node` 直接编译，C / C++ / Rust / Go 都能在手机上跑；arm64 的 noble 仓库自带 `box64` 与 `wine 9.0`，装完可以跑 Windows exe，图形程序再补 Xvfb / VNC 看画面
 - 与 Android 文件系统双向互通，`/sdcard` 和 `/storage` 直接挂进去
 - 跟路径沙箱是两道闸：沙箱管「这个路径准不准动」（敏感系统文件、`..`、软链都在动手前拦），proot 管「动坏了也伤不到系统」
-- **现状**：执行 guest 程序需要 Root 通道（targetSdk 34 下 SELinux 禁止从应用私有目录 `execve`）；Shizuku 通道尚未接入
+- **现状**：执行 guest 程序需要 Root / Shizuku 通道（targetSdk 34 下 SELinux 禁止从应用私有目录 `execve`）
 
 ### 桌面端（Windows）
 
@@ -158,7 +158,7 @@
 
 三种模式不是互斥开关，是同一个工具表下的三档通道，随时切，切完下一次调用就生效。
 
-<sub>注：普通身份的零宽文件通道受机型 / 系统限制，部分机型可用、部分不行，以 App 内实测为准。内置 Linux 沙箱目前需要 Root 通道。</sub>
+<sub>注：普通身份的零宽文件通道受机型 / 系统限制，部分机型可用、部分不行，以 App 内实测为准。内置 Linux 沙箱需要 Root / Shizuku 通道。</sub>
 
 ---
 
@@ -171,7 +171,7 @@
 ## 常见问题
 
 **需要 Root 吗？**
-不需要。普通 App 身份就能用绝大部分功能；要系统级 shell 挂 Shizuku（建议 Android 11+），要改系统目录才需要 Root。内置 Linux 沙箱是例外——目前要 Root 通道才能执行里面的程序。
+不需要。普通 App 身份就能用绝大部分功能；要系统级 shell 挂 Shizuku（建议 Android 11+），要改系统目录才需要 Root。内置 Linux 沙箱是例外——需要 Root / Shizuku 通道才能执行里面的程序。
 
 **真的免费吗？**
 是。GPL-3.0 开源，没有内购、订阅、广告或次数限制，也可以自己编一份。
