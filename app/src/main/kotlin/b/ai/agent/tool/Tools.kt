@@ -9,6 +9,7 @@ import b.ai.net.api.a2a.A2aNodes
 import b.ai.core.misc.apk.Apk
 import b.ai.core.cfg.app.AgentMode
 import b.ai.core.cfg.app.Cfg
+import b.ai.native.net.Net
 import b.ai.native.script.Dsl
 import b.ai.native.script.Js
 import b.ai.net.mcp.Mcp
@@ -97,6 +98,10 @@ object Tools {
     const val OPEN = "open_link"
     const val NOTI = "notification"
     const val HTTP = "http_fetch"
+    /** 网络三件套：TCP 测延迟 / 通用 curl / 抓网页正文，走 cpp/net 的原生实现 */
+    const val PING = "net_ping"
+    const val CURL = "net_curl"
+    const val PAGE = "net_page"
 
     /** APK 逆向：签名证书 / 二进制清单 / 权限与组件 / dex 字符串 / 包内文件 */
     const val APKTOOL = "apk"
@@ -124,7 +129,8 @@ object Tools {
             l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, MEMORY_DEL, ASK, SCREEN))
             l.addAll(
                 listOf(
-                    LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, APKTOOL, BROWSE, SUB, JS,
+                    LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, PING, CURL, PAGE, APKTOOL,
+                    BROWSE, SUB, JS,
                     FLOW_RUN, FLOW_SAVE, FLOW_LIST, A2A
                 )
             )
@@ -191,6 +197,9 @@ object Tools {
         OPEN -> "打开/分享"
         NOTI -> "通知"
         HTTP -> "发 HTTP 请求"
+        PING -> "测网络延迟"
+        CURL -> "发 curl 请求"
+        PAGE -> "抓网页正文"
         APKTOOL -> "看安装包"
         BROWSE -> "浏览网页"
         SUB -> "分智能体"
@@ -725,6 +734,52 @@ object Tools {
         )
         arr.put(
             fn(
+                PING,
+                "测网络延迟：对域名或 IP 的端口做 TCP 建连计时（普通权限就能跑，不依赖 ICMP），" +
+                    "返回每次耗时与最小/平均/最大值。判断网络通不通、哪个环节慢时先跑它。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("host", str("域名或 IP，例如 agent.ai.baiccb.cn"))
+                        .put("port", JSONObject().put("type", "integer").put("description", "端口，默认 443；测 HTTP 用 80"))
+                        .put("count", JSONObject().put("type", "integer").put("description", "测几次，1-10，默认 3"))
+                        .put("timeout", JSONObject().put("type", "integer").put("description", "单次超时毫秒，默认 3000"))
+                ).put("required", JSONArray().put("host"))
+            )
+        )
+        arr.put(
+            fn(
+                CURL,
+                "发一次任意方法的 HTTP 请求（原生实现，比 http_fetch 快）：返回状态码、原始响应头与正文；" +
+                    "默认跟 30x 跳转。要看响应头、要发 PUT/PATCH/DELETE、要精确控超时用它。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("method", str("GET（默认）/ POST / PUT / DELETE / HEAD"))
+                        .put("url", str("完整 URL，带 https://"))
+                        .put("headers", str("可选：每行一个「名: 值」"))
+                        .put("body", str("可选：请求体，JSON 或纯文本"))
+                        .put("timeout", JSONObject().put("type", "integer").put("description", "超时毫秒，默认 15000"))
+                        .put("max", JSONObject().put("type", "integer").put("description", "正文最多返多少字，默认 20000"))
+                ).put("required", JSONArray().put("url"))
+            )
+        )
+        arr.put(
+            fn(
+                PAGE,
+                "抓网页正文：原生下载 HTML 后直接去标签、去脚本与样式、解 HTML 实体，只回纯文本，" +
+                    "比 browser 快得多。只读文章/文档/公告用它；要点链接、要登录态、要跑 JS 才用 browser。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("url", str("完整网址，可省略 https://"))
+                        .put("timeout", JSONObject().put("type", "integer").put("description", "超时毫秒，默认 15000"))
+                        .put("max", JSONObject().put("type", "integer").put("description", "正文最多返多少字，默认 20000"))
+                ).put("required", JSONArray().put("url"))
+            )
+        )
+        arr.put(
+            fn(
                 APKTOOL,
                 "看 APK 安装包（纯本地解析，不用装 apktool）：action=info 概览（包名/版本/SDK/签名指纹/权限/组件）；" +
                     "sign 签名证书详情；permissions 权限清单；components 组件清单；" +
@@ -968,6 +1023,9 @@ object Tools {
         OPEN -> openLink(args).governed()
         NOTI -> noti(args).governed()
         HTTP -> httpFetch(args).governed()
+        PING -> netPing(args).governed()
+        CURL -> netCurl(args).governed()
+        PAGE -> netPage(args).governed()
         APKTOOL -> apk(args).governed()
         BROWSE -> browse(args).governed()
         SKILL_READ -> skillRead(args.optString("name")).governed()
@@ -1524,6 +1582,37 @@ object Tools {
     } //通知
 
     /** 直发 HTTP：不依赖 curl，headers 每行一个「名: 值」，返回状态码与正文前 8000 字 */
+    /** net_ping：native TCP 建连计时，普通权限可跑 */
+    private fun netPing(a: JSONObject): ToolOutcome {
+        val host = a.optString("host").trim()
+        if (host.isEmpty()) return ToolOutcome(false, "缺少 host", Route.SANDBOX)
+        val port = a.optInt("port", 443).coerceIn(1, 65535)
+        val count = a.optInt("count", 3).coerceIn(1, 10)
+        val ms = a.optInt("timeout", 3000).coerceIn(500, 30_000)
+        val r = Net.ping(host, port, count, ms)
+        return ToolOutcome(!r.startsWith("失败"), r, Route.SANDBOX)
+    } //测延迟
+    /** net_curl：任意方法 + 自定义头，回状态码、原始响应头与正文 */
+    private fun netCurl(a: JSONObject): ToolOutcome {
+        val url = a.optString("url").trim()
+        if (url.isEmpty()) return ToolOutcome(false, "缺少 url", Route.SANDBOX)
+        val method = a.optString("method", "GET").trim().uppercase().ifEmpty { "GET" }
+        val ms = a.optInt("timeout", 15_000).coerceIn(1_000, 120_000)
+        val max = a.optInt("max", 20_000).coerceIn(200, 1_000_000)
+        val r = Net.curl(method, url, a.optString("headers"), a.optString("body"), ms, max)
+        val code = r.removePrefix("HTTP ").substringBefore('\n').trim().toIntOrNull()
+        return ToolOutcome(code != null && code < 400, r, Route.SANDBOX)
+    } //发 curl
+    /** net_page：native 抓 HTML 后转纯文本 */
+    private fun netPage(a: JSONObject): ToolOutcome {
+        val url = a.optString("url").trim()
+        if (url.isEmpty()) return ToolOutcome(false, "缺少 url", Route.SANDBOX)
+        val ms = a.optInt("timeout", 15_000).coerceIn(1_000, 120_000)
+        val max = a.optInt("max", 20_000).coerceIn(200, 200_000)
+        val r = Net.page(url, ms, max)
+        return ToolOutcome(!r.startsWith("失败"), r, Route.SANDBOX)
+    } //抓正文
+
     private fun httpFetch(a: JSONObject): ToolOutcome {
         val url = a.optString("url").trim()
         if (url.isEmpty()) return ToolOutcome(false, "缺少 url", Route.SANDBOX)

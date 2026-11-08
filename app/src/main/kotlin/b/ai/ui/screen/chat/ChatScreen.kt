@@ -1959,7 +1959,7 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
     val body = split.first
     val diff = split.second
     var diffOpen by remember(m.id) { mutableStateOf(false) }
-    val first = body.lineSequence().firstOrNull()?.take(80) ?: ""
+    val first = summaryLine(body)
     //工具卡片跟 AI 气泡同宽：左边让出头像占的 34dp，右边不再留缺口
     Column(
         Modifier
@@ -1989,22 +1989,6 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(7.dp))
-            //状态与耗时都前移到名字之前：先看成败与花了多久，再看干了什么
-            Text(
-                if (m.isError) stringResource(R.string.cs_fail) else stringResource(R.string.cs_done),
-                fontSize = 10.sp,
-                color = if (m.isError) DangerRed else OkGreen
-            )
-            if (m.toolMs > 0) {
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    msText(m.toolMs),
-                    fontSize = 9.sp,
-                    color = TextSecondary,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     Tools.label(m.toolName ?: ""),
@@ -2019,9 +2003,22 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                     maxLines = 1
                 )
             }
+            //失败才挂徽标：成功的卡片不需再确认一次，省出的宽度留给摘要
+            if (m.isError) {
+                Text(stringResource(R.string.cs_fail), fontSize = 10.sp, color = DangerRed)
+                Spacer(Modifier.width(6.dp))
+            }
+            if (m.toolMs > 0) {
+                Text(
+                    msText(m.toolMs),
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(Modifier.width(6.dp))
+            }
             Text(stringResource(R.string.cs_detail), fontSize = 11.sp, color = AccentBlue)
         }
-
         //有 diff 就多一行「部分修改 +N −M」，点开就地看改动
         if (diff.isNotEmpty()) {
             val plus = diff.count { it.startsWith("+") }
@@ -2057,6 +2054,20 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
         }
     }
 } //工具结果：点开看详情弹窗，有改动就展开红绿行
+
+/** 摘要首行：跳过「[通道] exit=0」这种纯路由行，并把行内的 exit=N 抹掉 */
+private fun summaryLine(body: String): String {
+    for (raw in body.lineSequence()) {
+        val t = raw.trim()
+        if (t.isEmpty()) continue
+        if (ROUTE_EXIT.matches(t)) continue
+        return t.replace(EXIT_PART, "").take(80)
+    }
+    return ""
+} //摘要首行
+
+private val ROUTE_EXIT = Regex("^\\[(root|Shizuku|沙箱|Ubuntu)]\\s*exit=-?\\d+$")
+private val EXIT_PART = Regex("\\s*exit=-?\\d+")
 
 /** 工具结果拆成「摘要 / diff 行」：没有标记就整段当摘要 */
 private fun splitDiff(content: String): Pair<String, List<String>> {
