@@ -177,6 +177,9 @@ object Agent {
         Cfg.personaId = s.persona
         Personas.current()?.profileId?.trim()?.takeIf { it.isNotEmpty() }?.let { Cfg.profileId = it }
         Cfg.sessionWorkspace = s.workspace.trim()
+        //会话行里存的是哈希目录就是自动分配的，其余都算用户自己挑的
+        Cfg.sessionWsManual = s.workspace.trim().isNotEmpty() && !Workspace.isAutoDir(s.workspace)
+        Workspace.attachSession(s.id)
         Workspace.invalidate()
     } //套用会话自己的角色与工作区
 
@@ -190,6 +193,7 @@ object Agent {
 
     fun setSessionWorkspace(path: String) {
         Cfg.sessionWorkspace = path
+        Cfg.sessionWsManual = path.isNotBlank() && !Workspace.isAutoDir(path)
         Workspace.invalidate()
         val sid = runSid ?: sessionId ?: return
         scope.launch { withContext(Dispatchers.IO) { Repo.setWorkspace(sid, path) } }
@@ -203,6 +207,8 @@ object Agent {
         scope.launch {
             val s = withContext(Dispatchers.IO) { Repo.newSession() }
             sessionId = s.id
+            //先挂会话 id 再分配目录：分配结果要写回这一行，别落到上一个会话上
+            Workspace.attachSession(s.id)
             messages = emptyList()
             status = ""
             val ws = withContext(Dispatchers.IO) {
@@ -227,7 +233,7 @@ object Agent {
             val row = withContext(Dispatchers.IO) { Repo.session(id) }
             android.util.Log.d("BaiDBG", "openSession id=${id.take(8)} msgs=${list.size}")
             sessionId = id
-            if (row != null) adopt(row)
+            if (row != null) adopt(row) else Workspace.attachSession(id)
             messages = list
             reloadSessions()
         }
@@ -279,9 +285,18 @@ object Agent {
                 if (next == null) {
                     val s = withContext(Dispatchers.IO) { Repo.newSession() }
                     sessionId = s.id
+                    Workspace.attachSession(s.id)
+                    //新建的会话也要有自己的工作区，否则还指在被删掉那条的目录上
+                    withContext(Dispatchers.IO) {
+                        val dir = Workspace.newSessionWorkspace()
+                        Repo.setWorkspace(s.id, dir)
+                        Cfg.sessionWorkspace = dir
+                    }
                     messages = emptyList()
                 } else {
                     sessionId = next.id
+                    //接着别的会话就要套用它的角色与工作区，不然工作区还停在被删掉的那条上
+                    adopt(next)
                     messages = withContext(Dispatchers.IO) { Repo.messages(next.id) }
                 }
             }
@@ -364,6 +379,7 @@ object Agent {
                 if (sessionId == null) {
                     val s = withContext(Dispatchers.IO) { Repo.latestSession() ?: Repo.newSession() }
                     sessionId = s.id
+                    Workspace.attachSession(s.id)
                     if (s.workspace.isNotBlank() || s.persona.isNotBlank()) {
                         adopt(s)
                     } else {

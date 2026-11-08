@@ -15,7 +15,7 @@ import b.ai.ui.input.SkillPanel
 import b.ai.ui.screen.pet.ModelIntroDialog
 import b.ai.ui.screen.pet.PetInApp
 import b.ai.ui.screen.settings.A11yPermDialog
-import b.ai.ui.screen.settings.WorkspaceDialog
+
 import b.ai.ui.widget.AvatarView
 import b.ai.ui.widget.ChoiceRow
 import b.ai.ui.widget.FileChips
@@ -211,7 +211,12 @@ private fun hintPool(ctx: Context): List<String> {
 
 /** 对话主界面 */
 @Composable
-fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
+fun ChatScreen(
+    onOpenDrawer: () -> Unit,
+    onOpenSettings: (Int) -> Unit = {},
+    //工作区绑定已经改成独立页面，这里只发跳转信号
+    onOpenWorkspace: () -> Unit = {}
+) {
     val ctx = LocalContext.current
     var input by remember { mutableStateOf("") }
     //会话切换：把输入框换成这个会话自己的草稿，切走再回来不丢
@@ -235,7 +240,6 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     var sumMenu by remember { mutableStateOf<ChatMsg?>(null) }
     var sumNote by remember { mutableStateOf(false) }
     var promptReq by remember { mutableStateOf<PromptReq?>(null) }
-    var wsPanel by remember { mutableStateOf(false) }
     //上下文用量小卡片：原来走根弹窗层是一张居中大卡，现在改成贴顶栏预算环的小卡片
     var ctxOpen by remember { mutableStateOf(false) }
     //预算环在根坐标系里的右下角，小卡片按它锚定
@@ -325,7 +329,7 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glassPageLayer(pageBackdrop)) {
          TopBar(
              onOpenDrawer,
-             onOpenWorkspace = { wsPanel = true },
+             onOpenWorkspace = onOpenWorkspace,
              onPersona = { personaPanel = !personaPanel },
              onOpenCtx = { ctxOpen = true },
              onCtxPos = { x, y -> ctxRingX = x; ctxRingY = y },
@@ -601,9 +605,9 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
         }
     }
 
-    //工具详情、长按菜单、重发/重生成输入框、工作区绑定统一走根弹窗层，卡片本身不会被录进模糊背景
+    //工具详情、长按菜单、重发/重生成输入框统一走根弹窗层，卡片本身不会被录进模糊背景
     HostInOverlay(
-        detail != null || menuFor != null || promptReq != null || wsPanel || fullInput || modePanel ||
+        detail != null || menuFor != null || promptReq != null || fullInput || modePanel ||
             sumMenu != null || sumNote || b.ai.device.sys.a11y.A11y.needPerm.value || ImgView.path.value != null ||
             petIntro
     ) {
@@ -658,7 +662,6 @@ fun ChatScreen(onOpenDrawer: () -> Unit, onOpenSettings: (Int) -> Unit = {}) {
                     }
                 }
             )
-            wsPanel -> WorkspaceDialog { wsPanel = false }
             d != null -> ToolDetailDialog(d) { detail = null }
             sm != null -> SummaryMenuDialog(
                 onRegen = {

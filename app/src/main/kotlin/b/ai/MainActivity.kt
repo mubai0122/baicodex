@@ -79,6 +79,7 @@ import b.ai.ui.dialog.PermNoticeDialog
 import b.ai.ui.screen.pet.PetPermAsk
 import b.ai.ui.screen.pet.PetScreen
 import b.ai.ui.screen.settings.SettingsScreen
+import b.ai.ui.screen.settings.WorkspaceScreen
 import b.ai.ui.screen.settings.MemorySheet
 import b.ai.ui.screen.misc.MigrateGate
 import b.ai.ui.screen.chat.PlanSheet
@@ -326,12 +327,12 @@ private fun Root() {
     //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
     BackHandler(enabled = starsOpen) { starsOpen = false }
     BackHandler(enabled = memOpen) { memOpen = false }
-    //关掉预测性手势时退回普通返回，不做跟手动画
-    BackHandler(enabled = !Cfg.predictiveBack && (screen == "settings" || screen == "pet")) {
+    //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页
+    BackHandler(enabled = !Cfg.predictiveBack && (screen == "settings" || screen == "pet" || screen == "workspace")) {
         screen = if (screen == "pet") "settings" else "chat"
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet") && !drawerActive) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet" || screen == "workspace") && !drawerActive) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
             screen = if (screen == "pet") "settings" else "chat"
@@ -397,6 +398,7 @@ private fun Root() {
                                 onOpenMemory = { memOpen = true }
                             )
                             "pet" -> PetScreen(backProgress = backFx, onBack = { screen = "settings" })
+                            "workspace" -> WorkspaceScreen(backProgress = backFx, onBack = { screen = "chat" })
                             "feedback" -> FeedbackScreen(
                                 onBack = { screen = "settings" },
                                 onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
@@ -408,7 +410,8 @@ private fun Root() {
                                 onOpenSettings = { t ->
                                     settingsTab = t
                                     screen = "settings"
-                                }
+                                },
+                                onOpenWorkspace = { screen = "workspace" }
                             )
                         }
                     }

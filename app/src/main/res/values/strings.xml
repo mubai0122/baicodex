@@ -385,7 +385,7 @@
     <string name="wp_title">工作区</string>
     <string name="wp_title_d">相对路径都落在工作区里，命令也默认在这里执行</string>
     <string name="wp_auto">新会话自动绑定工作区</string>
-    <string name="wp_auto_d">开启后所有新会话共用默认工作区；关闭则不绑定，变成空工作区</string>
+    <string name="wp_auto_d">开启后每个新会话各自开一个独立目录；关闭则不绑定，变成空工作区</string>
     <string name="wp_unbound">未绑定（空工作区）</string>
     <string name="wp_none">现在不绑任何目录：相对路径不生效，模型只能用绝对路径；想绑定就填下面的路径再点「绑定」</string>
     <string name="wp_path">工作区路径</string>
@@ -393,7 +393,7 @@
     <string name="wp_bound_ok">已绑定，索引已生成</string>
     <string name="wp_bind_fail">绑定失败：路径为空、建不出目录，或选的是数据根 / 外部存储根</string>
     <string name="wp_reset">恢复默认</string>
-    <string name="wp_reset_ok">已回到默认工作区</string>
+    <string name="wp_reset_ok">已解绑，改回自动分配的目录</string>
     <string name="wp_reset_unbound">已解绑，当前是空工作区</string>
     <string name="wp_reindex">重建索引</string>
     <string name="wp_reindex_none">没有可索引的内容</string>
@@ -422,6 +422,7 @@
     <string name="wp_pick_err">读不出这个目录：%1$s</string>
     <string name="wp_pick_here">选这个目录</string>
     <string name="wp_pick_cancel">返回</string>
+    <string name="wp_pick_hint">选中的目录只绑到本会话</string>
     <string name="wp_rt_ws">默认工作区</string>
     <string name="wp_rt_app">应用目录</string>
     <string name="wp_rt_base">数据根</string>

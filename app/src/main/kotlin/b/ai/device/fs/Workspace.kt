@@ -32,53 +32,80 @@ object Workspace {
 
     private fun sq(s: String) = "'" + s.replace("'", "'\\''") + "'"
 
-    /** 当前工作区绝对路径：用户显式绑过用它；关掉自动绑定就是空串（空工作区）；否则用本会话自动目录或数据根兜底 */
-    fun path(): String {
-        val raw = Cfg.workspace.trim()
-        if (raw.isNotEmpty()) return Router.normalize(raw).trimEnd('/')
-        //关掉「新会话自动绑定」= 空工作区：不给默认目录兜底，模型只能用绝对路径
-        if (!Cfg.autoBindWorkspace) return ""
-        val sess = Cfg.sessionWorkspace.trim()
-        if (sess.isNotEmpty() && File(sess).isDirectory) return sess.trimEnd('/')
-        val def = Cfg.defaultWorkspace.trim()
-        if (def.isNotEmpty() && File(def).isDirectory) return def.trimEnd('/')
-        val made = Paths.newDir()
-        Cfg.defaultWorkspace = made.absolutePath
-        return made.absolutePath
-    } //当前工作区路径
+    /** 当前会话 id：由 Agent 切会话时同步，工作区判定一律按它走 */
+    @Volatile
+    var sid: String? = null
+        private set
 
-    /** 新会话沿用默认工作区：第一次分配一个目录并记住，之后所有会话共用，不再每次新开目录 */
-    fun newSessionWorkspace(): String {
-        //用户显式绑了固定目录就直接用它
-        if (Cfg.workspace.trim().isNotEmpty()) return Cfg.workspace
-        if (!Cfg.autoBindWorkspace) {
-            Cfg.sessionWorkspace = ""
-            cachedTree = null
-            return ""
-        }
-        val def = Cfg.defaultWorkspace.trim()
-        if (def.isNotEmpty()) {
-            val f = File(def)
-            if (f.isDirectory || f.mkdirs()) {
-                Cfg.sessionWorkspace = def
-                cachedTree = null
-                return def
-            }
-        }
+    /** 切会话时挂上 id：缓存一起清掉，免得还拿上一份目录树 */
+    fun attachSession(id: String?) {
+        sid = id
+        cachedTree = null
+    } //挂当前会话
+
+    /** 本会话记着的目录，Cfg.sessionWorkspace 就是它的缓存 */
+    private fun stored(): String = Cfg.sessionWorkspace.trim()
+
+    /** 目录能用就归一化返回，不能用返回 null */
+    private fun usable(raw: String): String? {
+        val p = raw.trim().trimEnd('/')
+        if (p.isEmpty()) return null
+        val f = File(p)
+        if (f.isDirectory || runCatching { f.mkdirs() }.getOrDefault(false)) return p
+        return null
+    } //可用目录
+
+    /** 给当前会话开一个新目录：记住并写回会话行，绝不复用上一个会话的目录 */
+    private fun assign(): String {
         val dir = Paths.newDir()
-        Cfg.defaultWorkspace = dir.absolutePath
         Cfg.sessionWorkspace = dir.absolutePath
+        Cfg.sessionWsManual = false
+        sid?.let { runCatching { Repo.setWorkspace(it, dir.absolutePath) } }
         cachedTree = null
         return dir.absolutePath
-    } //新会话沿用默认工作区
+    } //给当前会话新开目录
+
+    /** 当前工作区：本会话记的目录 → 老全局绑定认领一次 → 关掉自动绑定就空 → 兜底新开一个 */
+    fun path(): String {
+        usable(stored())?.let { return it }
+        //老版本那个全局绑定只认领一次，认领完清掉，免得又变成所有会话共用一个目录
+        if (!Cfg.wsMigrated) {
+            Cfg.wsMigrated = true
+            val old = Cfg.workspace.trim()
+            Cfg.workspace = ""
+            usable(old)?.let {
+                Cfg.sessionWorkspace = it
+                Cfg.sessionWsManual = true
+                sid?.let { s -> runCatching { Repo.setWorkspace(s, it) } }
+                return it
+            }
+        }
+        //关掉「新会话自动绑定」= 空工作区：不给默认目录兜底，模型只能用绝对路径
+        if (!Cfg.autoBindWorkspace) return ""
+        return assign()
+    } //当前工作区路径
+
+    /** 新会话分配工作区：一律各开一个新目录，用户手动绑的目录只作用于原来那个会话 */
+    fun newSessionWorkspace(): String {
+        //上一个会话的缓存必须清掉，否则会把它的目录沿用给新会话
+        Cfg.sessionWorkspace = ""
+        Cfg.sessionWsManual = false
+        cachedTree = null
+        //关掉「新会话自动绑定」= 空工作区，不给默认目录兜底
+        if (!Cfg.autoBindWorkspace) return ""
+        return assign()
+    } //新会话分配工作区
 
     /** 设置项切换后清缓存，避免还拿旧目录的树 */
     fun invalidate() {
         cachedTree = null
     } //清目录树缓存
 
+    /** 目录是不是自动分配的哈希工作区（false = 用户自己挑的） */
+    fun isAutoDir(p: String): Boolean = HASH.matches(File(p.trimEnd('/')).name)
+
     /** 是不是用户自己绑的目录（false = 自动哈希工作区） */
-    fun custom(): Boolean = Cfg.workspace.trim().isNotEmpty()
+    fun custom(): Boolean = Cfg.sessionWsManual && stored().isNotEmpty()
 
     fun bound(): Boolean = path().isNotEmpty()
 
@@ -218,23 +245,29 @@ object Workspace {
         else -> "${n}B"
     } //体积可读化
 
-    /** 绑定目录：不存在就建，成功后顺手写一次索引；空 / 根目录 / 外部存储根一律拒绝 */
+    /** 绑定目录到当前会话：不存在就建，成功后写回会话行并重写索引；空 / 根目录 / 外部存储根一律拒绝 */
     fun bind(raw: String): Boolean {
         val abs = Router.normalize(raw.trim()).trimEnd('/')
         if (abs.isBlank() || abs == "/sdcard" || abs == Paths.base().absolutePath) return false
         val f = File(abs)
         if (!f.isDirectory && !f.mkdirs()) return false
-        Cfg.workspace = abs
+        Cfg.workspace = ""
+        Cfg.sessionWorkspace = abs
+        Cfg.sessionWsManual = true
+        sid?.let { s -> runCatching { Repo.setWorkspace(s, abs) } }
         cachedTree = null
         index()
         return true
-    } //绑定并建目录
+    } //绑定并建目录到当前会话
 
-    /** 解绑：回到数据根下的自动工作区，目录本身保留不动 */
+    /** 解绑：这个会话回到自动分配的工作区，目录本身保留不动 */
     fun unbind() {
         Cfg.workspace = ""
+        Cfg.sessionWorkspace = ""
+        Cfg.sessionWsManual = false
+        sid?.let { s -> runCatching { Repo.setWorkspace(s, "") } }
         cachedTree = null
-    } //解除绑定
+    } //解除本会话绑定
 
     /** 常用目录候选：设置页与绑定弹窗的快捷胶囊 */
     fun quickPicks(): List<Pair<String, String>> = listOf(

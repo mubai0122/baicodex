@@ -136,6 +136,9 @@ object Cfg {
         mem("predictive_back", true).value = p.getBoolean("predictive_back", true)
         mem("auto_bind_workspace", true).value = p.getBoolean("auto_bind_workspace", true)
         mem("session_workspace", "").value = p.getString("session_workspace", "")!!
+        //会话级工作区的两个标记：人工挑选 / 老全局绑定已认领过
+        mem("session_ws_manual", false).value = p.getBoolean("session_ws_manual", false)
+        mem("ws_migrated", false).value = p.getBoolean("ws_migrated", false)
         //输入框占位提示：老配置没有这个键就留空，用默认的「请输入问题」
         mem("hint_text", "").value = p.getString("hint_text", "")!!
         mem("profile_id", "default").value = p.getString("profile_id", "default")!!
@@ -723,10 +726,18 @@ object Cfg {
         get() = mem("auto_bind_workspace", true).value
         set(v) { mem("auto_bind_workspace", true).value = v; put("auto_bind_workspace", v) }
 
-    /** 本会话自动绑定的工作区路径（用户显式绑的 Cfg.workspace 优先） */
+    /** 本会话的工作区路径缓存，跟着会话行 workspace 字段走；老全局 Cfg.workspace 已废弃 */
     var sessionWorkspace: String
         get() = mem("session_workspace", "").value
         set(v) { mem("session_workspace", "").value = v; put("session_workspace", v) }
+    /** 本会话的工作区是用户自己挑的（true）还是自动分配的哈希目录（false） */
+    var sessionWsManual: Boolean
+        get() = mem("session_ws_manual", false).value
+        set(v) { mem("session_ws_manual", false).value = v; put("session_ws_manual", v) }
+    /** 老版本的全局绑定已经认领过一次，不再参与工作区判定 */
+    var wsMigrated: Boolean
+        get() = mem("ws_migrated", false).value
+        set(v) { mem("ws_migrated", false).value = v; put("ws_migrated", v) }
 
     /** 当前选中的模型配置 id（Profiles 里的条目），切换它会把提供商 / Key / 模型整套换上 */
     var profileId: String
