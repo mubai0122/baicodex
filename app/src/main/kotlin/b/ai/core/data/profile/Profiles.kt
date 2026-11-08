@@ -56,13 +56,13 @@ object Profiles {
         val exists = f.isFile
         val raw = if (exists) runCatching { f.readText() }.getOrNull() else null
         val parsed = raw?.let { runCatching { parse(it) }.getOrNull() }
-        //文件在却读不出来（坏档 / 没读权限）：留一份 .bad，本次会话一个字节都不写回磁盘。
-        //内存里只用当前 Cfg 撑一条给界面，绝不用这条假表把磁盘上的好档冲掉
-        broken = exists && parsed == null
-        if (broken) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
+        //两种异常分开：内容坏了解析不出来（已备份 .bad，允许覆盖）/ 根本读不出来（不许覆盖，等权限修好）
+        corrupt = exists && raw != null && parsed == null
+        unreadable = exists && raw == null
+        if (corrupt || unreadable) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
         cache.value = when {
             parsed != null && parsed.isNotEmpty() -> parsed
-            broken -> cache.value.ifEmpty { listOf(legacy()) }
+            corrupt || unreadable -> cache.value.ifEmpty { listOf(legacy()) }
             else -> listOf(legacy()) //文件本来就没有：全新安装，或从单条配置升级上来
         }
         if (cache.value.none { it.id == Cfg.profileId }) Cfg.profileId = cache.value.first().id
@@ -88,8 +88,11 @@ object Profiles {
         }
     } //读盘、迁 Key 到私有 SP、落盘
 
-    /** 磁盘档读不出来（坏档 / 没读权限）：本次会话只读，一个字节都不许写回去 */
-    private var broken = false
+    /** 磁盘档内容解析不出来（坏档）：已备份成 .bad，下一次保存允许覆盖 */
+    private var corrupt = false
+
+    /** 磁盘档能 stat 到却读不出来（不归本应用所有 / 无读权限）：本次会话只读，绝不覆盖 */
+    private var unreadable = false
 
     /** 外部存储还没挂上就起进程：读盘延后，等界面回来再补一次 */
     private var deferred = false
@@ -98,12 +101,13 @@ object Profiles {
     var lastError: String = ""
         private set
 
-    private fun blocked(): Boolean = broken || deferred
+    private fun blocked(): Boolean = unreadable || deferred
 
     /** 外部存储晚挂载（开机自启 / 后台起进程）时补一次读盘：界面回来后调，幂等 */
     fun retry() {
-        if (deferred && Paths.externalOk()) init()
-    } //延后读盘的重试
+        //延后读盘与读不出来都要能救回来：权限/属主修好后回到应用就自动恢复，不用重启
+        if (blocked() && Paths.externalOk()) init()
+    } //延后读盘与只读状态的重试
 
     private fun legacy(): ModelProfile = ModelProfile(
         id = "default",
@@ -152,10 +156,13 @@ object Profiles {
     } //从 JSON 还原（Key 从私有 SP 取）
 
     private fun save() {
-        //只读状态（外部存储没挂上 / 磁盘档读不出来）一个字节都不写：宁可这次改的丢，
-        //也不能拿内存里撑场面的假表把磁盘上的多条配置冲掉
+        //真正不能写的只剩两种：文件读不出来（不归本应用所有）/ 外部存储还没挂上。
+        //坏档在 init 里已备份成 .bad，不再挡着保存
         if (blocked()) {
-            lastError = "没写进磁盘：外部存储不可用或 models.json 读不出来，重启后这条会丢"
+            lastError = if (unreadable)
+                "没写进磁盘：${Paths.file(FILE).absolutePath} 读不出来（文件不归本应用所有或无读权限）；权限修好后回到应用会自动重试"
+            else
+                "没写进磁盘：外部存储还没挂上，挂上后回到应用会自动重试"
             return
         }
         val arr = JSONArray()
@@ -177,7 +184,8 @@ object Profiles {
             )
         }
         //写失败不许当成功：以前这里返回值直接丢掉，界面照样提示「已保存」，重启才发现没了
-        lastError = if (Store.write(FILE, arr.toString(2))) "" else "没写进磁盘：models.json 不可写（外部存储目录被占用或无权限）"
+        lastError = if (Store.write(FILE, arr.toString(2))) ""
+        else "没写进磁盘：${Paths.file(FILE).absolutePath} 不可写（目录被占用或无权限）"
     } //整表落盘
 
     /** 切换配置：整组提供商 / Key / 模型 / 能力一起换掉 */
