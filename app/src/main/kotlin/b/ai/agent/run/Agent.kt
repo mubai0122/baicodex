@@ -707,6 +707,7 @@ object Agent {
                         }
                         status = host.getString(R.string.ag_sub_start, tasks.size)
                         busySince = System.currentTimeMillis()
+                        val tExec = System.currentTimeMillis()
                         val text = SubAgents.run(
                             tasks, qa.optInt("rounds", SubAgents.DEFAULT_ROUNDS),
                             onStatus = { s -> status = s },
@@ -714,7 +715,7 @@ object Agent {
                         )
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
-                        appendToolMsg(c, text, Route.SANDBOX, false)
+                        appendToolMsg(c, text, Route.SANDBOX, false, System.currentTimeMillis() - tExec)
                         return@forEachIndexed
                     }
                     //工作流：按步骤顺序跑，每步一个分智能体，失败按每步策略重试或跳过
@@ -727,6 +728,7 @@ object Agent {
                         }
                         status = "工作流「" + flow.name + "」开始，共 " + flow.steps.size + " 步"
                         busySince = System.currentTimeMillis()
+                        val tExec = System.currentTimeMillis()
                         val out = FlowRunner.run(
                             flow,
                             onStatus = { s -> status = s },
@@ -735,7 +737,7 @@ object Agent {
                         if (flow.id.isNotBlank()) Flows.mark(flow.id, out.ok, out.text)
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
-                        appendToolMsg(c, out.text, Route.SANDBOX, !out.ok)
+                        appendToolMsg(c, out.text, Route.SANDBOX, !out.ok, System.currentTimeMillis() - tExec)
                         return@forEachIndexed
                     }
                     //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
@@ -774,12 +776,13 @@ object Agent {
                     if (!quietCall(c.name, args)) {
                         b.ai.device.sys.host.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
                     }
+                    val tTool = System.currentTimeMillis()
                     val out = try {
                         withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
                     } finally {
                         b.ai.device.sys.host.Capsule.hide()
                     }
-                    appendToolMsg(c, out.text, out.route, !out.ok)
+                    appendToolMsg(c, out.text, out.route, !out.ok, System.currentTimeMillis() - tTool)
                 } finally {
                     endTool(rs)
                 }
@@ -1460,7 +1463,7 @@ object Agent {
         scope.launch { appendLocal(m) }
     } //给非协程调用点的入口
 
-    private suspend fun appendToolMsg(c: ToolCall, text: String, route: Route, isError: Boolean) {
+    private suspend fun appendToolMsg(c: ToolCall, text: String, route: Route, isError: Boolean, ms: Long = 0L) {
         append(
             ChatMsg(
                 role = "tool",
@@ -1468,7 +1471,9 @@ object Agent {
                 content = Mask.text(text),
                 toolCallId = c.id,
                 toolName = c.name,
-                isError = isError
+                isError = isError,
+                //0 = 这条不是真执行（拒绝、缺权限、等用户作答），界面就不显示耗时
+                toolMs = ms.coerceAtLeast(0L)
             )
         )
     } //工具结果回传记录

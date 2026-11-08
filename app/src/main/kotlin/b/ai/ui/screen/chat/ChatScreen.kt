@@ -1917,6 +1917,9 @@ private fun tokText(n: Int): String =
 private fun secText(ms: Long): String =
     if (ms < 10_000L) String.format(Locale.US, "%.1f", ms / 1000.0) else (ms / 1000L).toString() //秒数
 
+/** 工具执行耗时：固定两位整数 + 三位小数，等宽字体下不会随数值跳动 */
+private fun msText(ms: Long): String = String.format(Locale.US, "%.3f ms", ms / 1000.0)
+
 @Composable
 private fun ThinkBlock(m: ChatMsg) {
     var open by remember(m.id) { mutableStateOf(false) }
@@ -1986,6 +1989,22 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(7.dp))
+            //状态与耗时都前移到名字之前：先看成败与花了多久，再看干了什么
+            Text(
+                if (m.isError) stringResource(R.string.cs_fail) else stringResource(R.string.cs_done),
+                fontSize = 10.sp,
+                color = if (m.isError) DangerRed else OkGreen
+            )
+            if (m.toolMs > 0) {
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    msText(m.toolMs),
+                    fontSize = 9.sp,
+                    color = TextSecondary,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     Tools.label(m.toolName ?: ""),
@@ -2000,12 +2019,6 @@ private fun ToolMsg(m: ChatMsg, onOpen: () -> Unit) {
                     maxLines = 1
                 )
             }
-            Text(
-                if (m.isError) stringResource(R.string.cs_fail) else stringResource(R.string.cs_done),
-                fontSize = 10.sp,
-                color = if (m.isError) DangerRed else OkGreen
-            )
-            Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.cs_detail), fontSize = 11.sp, color = AccentBlue)
         }
 
@@ -2170,6 +2183,16 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                     DiffView(split.second, scroll = false)
                 }
             }
+        }
+        //耗时放在输出之后：先看结果，再看这条花了多久
+        if (m.toolMs > 0) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.cs_elapsed) + msText(m.toolMs),
+                fontSize = 11.sp,
+                color = TextSecondary,
+                fontFamily = FontFamily.Monospace
+            )
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -134,6 +134,8 @@ data class ChatMsg(
     val toolCallId: String? = null,
     val toolName: String? = null,
     val isError: Boolean = false,
+    /** 工具执行耗时（毫秒），只对 tool 消息有意义；0 = 没记到（老记录或非执行路径） */
+    val toolMs: Long = 0L,
     /** 模型思考过程（reasoning_content），仅展示，不回传给模型 */
     val reasoning: String = "",
     /** 附带的图片（本应用私有目录里的绝对路径），仅用户消息使用 */
