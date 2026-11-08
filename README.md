@@ -23,9 +23,14 @@
 | **三档模式** | 普通 App 身份 / Shizuku / Root 是同一张工具表下的三条通道，工具自己选路并在弹窗里标出这次实际走了哪条 |
 | **零宽绕过** | 受限目录映射成虚拟路径，`read_file` / `write_file` / `make_dir` / `delete_file` 普通身份就能读写别的 App 的 data，不用先 root |
 | **虚拟沙箱** | 内置 proot Linux + 路径沙箱双闸：rootfs 搞坏了随时重置，软链和敏感系统文件在动手前就拦下，宿主机一点不脏 |
+| **SSH 工具** | 连服务器拆成一整组专用工具（连接 / 列目录 / 读 / 写 / 提权 / 执行 / 上传 / 下载），sudo 密码由工具喂给 `sudo -S`，不进命令行、不进远端 ps |
+| **GitHub** | 内置技能包走 REST API：查仓库与 issue / PR、读仓库文件、提交单处文件改动，不用本地 git、不用装 gh |
+| **密钥加密** | 凭据 AES-256-GCM 落盘（文件头魔数 `baicodexencryption`），API Key、账号、SSH 与 GitHub 凭据、技能密钥各存一份密文，配置也拆片加密 |
+| **Web 抓取** | 三条路：`web_search`（Tavily / Bing / Google CSE 任选）、`http_fetch`（直发请求不拼 curl）、`browser`（内置 WebView，能点链接、填表单、跑 JS） |
 | **角色卡** | 人设、场景、示例对话、开场白、绑定模型，头像可跟角色走；换角色等于换一个人格和一套说话方式 |
 | **技能与插件** | 自己写工具的 Skill 包、插件市场、MCP 接入三条路，能力装进去就有，不用等 App 发版 |
-| **上下文总结** | 摘要分简洁 / 详细 / 全面三档，提示词分「最重要」与「当前任务」两段，长对话不越聊越傻 |
+| **上下文压缩** | 摘要切点退到安全边界、不破工具配对，摘要里留结论与文件路径；省不到 15% 就不压，长期记忆另存一份不随压缩丢 |
+| **流式输出** | SSE 增量：正文、思考段、工具调用参数都边收边渲染；服务端忽略 `stream=true` 时自动按整包解析，不报错 |
 | **UI** | 液态玻璃贯穿卡片、输入区、悬浮底栏与弹窗，深色、壁纸、全局字号、圆角与胶囊两套版面都能调 |
 | **可玩性** | MCP 标准 JSON-RPC 与 REST 桥都吃（`termux-mcp`、`mt-mcp` 这类直接连），A2A 能跟别的 Agent 互相派活，再加桌宠与悬浮聊天窗 |
 
@@ -121,16 +126,18 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 ### 模型与对话
 
 - 多套模型配置：一条 = 提供商 + Base URL + Key + 模型 + 能力标记（视觉 / 工具调用 / 推理），随时切，OpenAI 兼容接口都能接
-- 思考档位（low / medium / high）、最大模式、温度与附加参数；SSE 流式输出，思考段可折叠
-- 消息分支：重新生成 / 编辑重发不删旧回答，长成第二支，聊天里 `‹ 1/2 ›` 来回切（库 v11 消息树）
+- 思考档位（low / medium / high）、最大模式、温度与附加参数；SSE 流式输出，正文、思考段（`reasoning_content`）与 `tool_calls` 参数都是边收边渲染，思考段可折叠；服务端忽略 `stream=true` 返回整包时自动降级解析，不报错
+- 消息分支：重新生成 / 编辑重发都不删旧回答，长成第二支，聊天里 `‹ 1/2 ›` 来回切（库 v11 消息树）
 - 永久记忆：模型自己判断值得长期记住的偏好与结论存进「记忆」，侧边栏可逐条删；没删就每轮随系统提示下发（库 v12）
-- 上下文压缩：窗口比例（默认 70%）+ 未压缩条数双阈值触发，长对话不爆窗口
+- 上下文压缩不丢记忆：窗口比例（默认 70%）+ 未压缩条数双阈值触发，切点退到「工具调用与其结果之间」的安全边界（切中间请求体会非法），摘要里强制留结论与改动过的文件路径；省不到 15% 就不压（摘要本身也要花 token）；长期记忆单独入库，不跟着摘要一起消失
 - 语音输入，说完直接发；每次回答下方显示 token、tok/s、首响耗时、供应商与模型
 
 ### 工具与执行
 
-- 内置工具：文件四件套、`exec_shell`、`exec_linux`、`screen`（屏幕操作）、`web_search`、12306 余票 / 中转 / 经停、记忆写入、定时任务
-- 搜索源三家可选：Tavily、Bing、Google CSE，Key 自己填，没选就不把搜索工具交给模型
+- 内置工具：文件五件套（读 / 写 / 局部改 / 建目录 / 删）、`exec_shell`、`linux_shell`、`screen`（屏幕操作）、`browser`、`http_fetch`、`apk`（反查签名与 dex）、`js`（QuickJS 跑脚本，还能注册新工具）、12306 余票 / 中转 / 经停、记忆写入、定时任务
+- SSH 一组八件：`ssh_connect` / `ssh_ls` / `ssh_read` / `ssh_write` / `ssh_sudo` / `ssh_exec` / `ssh_get` / `ssh_put`——主机与凭据存一次复用；内置 Ubuntu 缺 openssh-client 会自动补装；sudo 密码由工具喂给 `sudo -S`，不许也不必要写进命令
+- GitHub 技能包：走 REST API 查仓库 / issue / PR、读仓库文件、新建或更新单个文件，token 走 `$secret.github_token`，不需要本地 git、不用装 gh
+- Web 抓取三条路：`web_search`（搜索源三家可选：Tavily、Bing、Google CSE，Key 自己填，没选就不把搜索工具交给模型）、`http_fetch`（直发 HTTP，返回状态码 + 正文前 8000 字）、`browser`（内置 WebView：open / text / links / find / click / input / scroll / eval）
 - 执行通道三档（普通 / Shizuku / Root），工具内部自动选路，弹窗标出实际路径
 - 工具权限逐条设置：询问 / 允许 / 拒绝，高危工具单独标记；极简模式只留五个工具给弱模型兜底
 - 计划模式：只读命令放行，`exec_shell` 里的写操作一律判死，防止「先看看」变成「已经删了」
@@ -170,6 +177,15 @@ app/src/main/assets/linux/        内置 Linux 的 rootfs 与 proot
 - **会话管理**：置顶、长按多选、改名 / 删除、跨会话收藏、每会话独立草稿
 - **插件广场**：浏览、安装、上传、版本历史、评论、点赞收藏
 - **五语界面**：简体中文 / 繁體中文 / English / 日本語 / Français
+
+### 安全
+
+- **三层密钥**：设备密钥 R 由 Android Keystore（TEE / StrongBox）包裹，明文不出硬件；半密钥 K2 = HKDF(seed2, 设备因子)；数据密钥 K = R ⊕ K2，解锁后常驻内存
+- **凭据 AES-256-GCM 落盘**（v2 文件，头部魔数 `baicodexencryption`）：API Key、账号、SSH 与 GitHub 凭据、技能密钥各存一份密文，配置也拆片加密，改一项只重写一片
+- **模型读不到密钥原文**：技能里写 `${secret:github_token}`，由执行层按需取出、用完即弃，不进提示词、不进消息、不进日志
+- **没开加密会明说**：未解锁时凭据退到明文 JSON + 0600，界面直接标注「未加密」，不假装安全
+- **出口统一脱敏**：`sk-` / `ghp_` / PEM / Bearer 与 `/home/<user>` 在写日志、回灌模型、导出诊断包前统一抹掉
+- **发版加固**：R8 混淆（自造短名字典 + `-repackageclasses`）、StringFog 逐串 AES 独立 key、release 里 `Log` / `println` 全是空语句
 
 ### 数据与发布
 
