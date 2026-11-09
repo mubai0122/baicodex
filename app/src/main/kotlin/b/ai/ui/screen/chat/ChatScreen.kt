@@ -35,7 +35,7 @@ import b.ai.ui.widget.IcPlus
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.IcSend
 import b.ai.ui.widget.IcSpark
-import b.ai.ui.widget.IcStop4
+import b.ai.ui.widget.IcStopSquare
 import b.ai.ui.widget.IcTap
 import b.ai.ui.widget.IcTrain
 import b.ai.ui.widget.ImgFull
@@ -517,6 +517,10 @@ fun ChatScreen(
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
+        //发送队列：发送中又敲进去的内容排在这儿，上一轮收工按序自动发
+        if (Agent.queue.isNotEmpty()) {
+            QueueBar(Agent.queue) { Agent.dropQueued(it) }
+        }
         Box(Modifier.fillMaxWidth().onSizeChanged { inputH = it.height }) {
         InputBar(
             input = input,
@@ -1069,10 +1073,11 @@ private fun BarChip(
     }
 } //输入区小胶囊
 
-/** 发送键：忙的时候变身红色终止键（2×2 四方块图标，点一下 Agent.stop()），闲时才是发送 */
+/** 发送键三态：空闲=发送；发送中=红底白方块终止；发送中又有内容=半透明发送，点了进队列 */
 @Composable
-private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
-    if (Agent.busy) {
+private fun SendButton(hasContent: Boolean, onSend: () -> Unit) {
+    //忙且手上没东西可排：只能是终止键
+    if (Agent.busy && !hasContent) {
         Box(
             Modifier
                 .size(36.dp)
@@ -1080,40 +1085,81 @@ private fun SendButton(canSend: Boolean, onSend: () -> Unit) {
                 .tap { Agent.stop() },
             contentAlignment = Alignment.Center
         ) {
-            IcStop4(Color.White, side = 13.dp)
+            IcStopSquare(Color.White, side = 14.dp)
         }
         return
     }
+    //忙但输入区有内容：半透明发送，点一下排进队列
+    val queued = Agent.busy && hasContent
+    val tint = if (hasContent) AccentBlue else SurfaceMuted
+    val iconColor = if (hasContent) Color.White else TextSecondary
     //玻璃开着就走玻璃，质感的 3D 圆钮只在没玻璃时用
     val glassOn = Cfg.glassCard && (LocalCardBackdrop.current ?: CardBackdropHolder.current) != null
-    if (glassOn) {
-        Box(
-            Modifier
-                .size(36.dp)
-                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted, highlightAlpha = 0.85f, gate = 0.dp)
-                .tap(enabled = canSend) { onSend() },
-            contentAlignment = Alignment.Center
-        ) {
-            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+    Box(Modifier.graphicsLayer { alpha = if (queued) 0.5f else 1f }) {
+        if (glassOn) {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .liquidBg(CircleShape, tint = tint, highlightAlpha = 0.85f, gate = 0.dp)
+                    .tap(enabled = hasContent) { onSend() },
+                contentAlignment = Alignment.Center
+            ) {
+                IcSend(iconColor, side = 15.dp)
+            }
+        } else if (Cfg.tactileBtn) {
+            TactileCircle(active = hasContent, enabled = hasContent, onClick = onSend) {
+                IcSend(iconColor, side = 15.dp)
+            }
+        } else {
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .liquidBg(CircleShape, tint = tint)
+                    .tap(enabled = hasContent) { onSend() },
+                contentAlignment = Alignment.Center
+            ) {
+                IcSend(iconColor, side = 15.dp)
+            }
         }
-        return
     }
-    if (Cfg.tactileBtn) {
-        TactileCircle(active = canSend, enabled = canSend, onClick = onSend) {
-            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+} //发送键 / 终止键 / 排队键
+
+/** 发送队列：一行一条，右侧 × 撤掉；行序就是发送顺序 */
+@Composable
+private fun QueueBar(items: List<Agent.QueuedMsg>, onDrop: (Long) -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 2.dp)
+            .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        //最多露 3 条，再多只报个数，别把消息区挤没
+        items.take(3).forEachIndexed { i, q ->
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("${i + 1}", fontSize = 10.sp, color = AccentBlue, modifier = Modifier.width(14.dp))
+                Text(
+                    q.text.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty(),
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(6.dp))
+                Box(Modifier.size(20.dp).tap { onDrop(q.id) }, contentAlignment = Alignment.Center) {
+                    IcClose(TextSecondary, side = 11.dp, stroke = 1.6.dp)
+                }
+            }
         }
-    } else {
-        Box(
-            Modifier
-                .size(36.dp)
-                .liquidBg(CircleShape, tint = if (canSend) AccentBlue else SurfaceMuted)
-                .tap(enabled = canSend) { onSend() },
-            contentAlignment = Alignment.Center
-        ) {
-            IcSend(if (canSend) Color.White else TextSecondary, side = 15.dp)
+        if (items.size > 3) {
+            Text("+${items.size - 3}", fontSize = 10.sp, color = TextSecondary)
         }
     }
-} //发送键 / 终止键
+} //发送队列条
 
 /** 工具执行中的占位卡：宽度、圆角、缩进与执行完的结果行完全一致，只是右侧挂个转圈 */
 @Composable
@@ -1437,7 +1483,8 @@ private fun InputBar(
         //输入容器与发送键都从 44dp 起算，单行时严格等高；多行时发送键贴底
         //悬浮模式：输入框和发送键各自带投影浮起来，周围仍是页面底色，不再铺整块白卡
         val floatShadow = if (floating) Modifier.shadow(12.dp, RoundedCornerShape(14.dp)) else Modifier
-        val canSend = !Agent.busy && (input.isNotBlank() || images.isNotEmpty() || files.isNotEmpty())
+        //忙的时候也允许「发送」：点下去进排队队列，按钮自己切半透明态
+        val hasContent = input.isNotBlank() || images.isNotEmpty() || files.isNotEmpty()
         //语音模式：整条输入行换成一个「长按说话」条，键盘 / 发送都让位
         if (voiceMode) {
             VoiceHoldBar(
@@ -1555,7 +1602,7 @@ private fun InputBar(
                 }
             Spacer(Modifier.width(6.dp))
             //纸飞机小圈：内嵌在输入框右侧，禁用时灰底灰图标
-            SendButton(canSend = canSend, onSend = onSend)
+            SendButton(hasContent = hasContent, onSend = onSend)
         }
         }
     }

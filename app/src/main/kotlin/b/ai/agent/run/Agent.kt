@@ -132,10 +132,21 @@ object Agent {
     var sessionTitle by mutableStateOf("")
         private set
 
+    /**排队中的一条：内容和附件在这里冻结，轮到时原样发出 */
+    data class QueuedMsg(val id: Long, val sid: String?, val text: String, val images: List<String>, val files: List<String>)
+
+    /**发送排队：忙的时候进来的消息按顺序等着，上一轮收工自动发下一条 */
+    var queue by mutableStateOf<List<QueuedMsg>>(emptyList())
+        private set
+    private var qid = 0L
+
     /**取资源文案用；不叫 ctx 是因为 runLoop 里有同名局部变量 */
     private val host: Context get() = App.self
 
     private var job: Job? = null
+    /// 运行代际：停手或开新一轮就 +1，旧循环靠它自杀，别再往会话里写
+    private var gen = 0L
+    private var runGen = 0L
     private var runSid: String? = null
     private var runHistory: List<ChatMsg> = emptyList()
     private var budgetScale = 1f
@@ -247,6 +258,8 @@ object Agent {
             if (row != null) adopt(row) else Workspace.attachSession(id)
             messages = list
             reloadSessions()
+            //切回某个会话时，属于它的排队消息接着发
+            pump()
         }
     }
 
@@ -347,6 +360,10 @@ object Agent {
     }
 
     fun stop() {
+        //先清队列再取消：否则收尾的 pump 会把排队的第一条立刻又发出去
+        queue = emptyList()
+        //代际 +1：旧循环即便卡在阻塞 IO 里回不来，回来后也写不进会话
+        gen++
         job?.cancel()
         Speak.stop()
         pending?.let { if (!it.deferred.isCompleted) it.deferred.complete(false) }
@@ -374,12 +391,19 @@ object Agent {
     } //弹窗结果回填
 
     fun send(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
-        if (busy) return
+        //忙的时候不丢消息：排进队列，等这一轮收工再发
+        if (busy) {
+            enqueue(text, images, files)
+            return
+        }
         if (!Cfg.ready) {
             appendLocalAsync(ChatMsg(role = "assistant", content = host.getString(R.string.ag_no_model), isError = true))
             return
         }
         busy = true
+        //新一轮：代际 +1，旧循环拿到旧值会自己退出
+        val g = ++gen
+        runGen = g
         job = scope.launch {
             try {
                 if (sessionId == null) {
@@ -414,19 +438,46 @@ object Agent {
                 appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
-                busy = false
-                runSid = null
-                runHistory = emptyList()
-                b.ai.device.sys.host.Capsule.end()
-                clearTools()
+                //只有最新那一轮才收尾：停手后用户可能已经开了新一轮，旧的收尾会把新状态清掉
+                if (gen == g) {
+                    busy = false
+                    runSid = null
+                    runHistory = emptyList()
+                    b.ai.device.sys.host.Capsule.end()
+                    clearTools()
+                    //放在最后：send 内部是 Main.immediate，先 pump 会把新一轮的字段又清一遍
+                    pump()
+                }
             }
         }
     } //发送并驱动循环
+
+    fun enqueue(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        queue = queue + QueuedMsg(++qid, sessionId, text, images, files)
+    } //压入发送队列
+
+    fun dropQueued(id: Long) {
+        queue = queue.filterNot { it.id == id }
+    } //撤掉队列里的一条
+
+    fun clearQueue() {
+        queue = emptyList()
+    } //清空队列
+
+    /**收工后接着发下一条：只发属于当前会话的，别把消息串到别的会话里 */
+    private fun pump() {
+        if (busy || queue.isEmpty()) return
+        val n = queue.firstOrNull { it.sid == sessionId } ?: return
+        queue = queue.filterNot { it.id == n.id }
+        send(n.text, n.images, n.files)
+    } //队列推进
 
     fun editResend(msgId: Long, text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
         val t = text.trim()
         if (busy || t.isEmpty()) return
         busy = true
+        val g = ++gen
+        runGen = g
         job = scope.launch {
             try {
                 runSid = sessionId
@@ -441,11 +492,14 @@ object Agent {
                 appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
-                busy = false
-                runSid = null
-                runHistory = emptyList()
-                b.ai.device.sys.host.Capsule.end()
-                clearTools()
+                if (gen == g) {
+                    busy = false
+                    runSid = null
+                    runHistory = emptyList()
+                    b.ai.device.sys.host.Capsule.end()
+                    clearTools()
+                    pump()
+                }
             }
         }
     } //编辑重发
@@ -459,6 +513,8 @@ object Agent {
         busy = true
                 runSid = sessionId
                 runHistory = messages
+        val g = ++gen
+        runGen = g
         job = scope.launch {
             try {
                 rollbackTo(msgId)
@@ -475,11 +531,14 @@ object Agent {
                 appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
                 status = ""
             } finally {
-                busy = false
-                runSid = null
-                runHistory = emptyList()
-                b.ai.device.sys.host.Capsule.end()
-                clearTools()
+                if (gen == g) {
+                    busy = false
+                    runSid = null
+                    runHistory = emptyList()
+                    b.ai.device.sys.host.Capsule.end()
+                    clearTools()
+                    pump()
+                }
             }
         }
     } //重新生成
@@ -550,6 +609,8 @@ object Agent {
         compact(false)
         //无限轮：模型给完最终答案（本轮无工具调用）或用户点停止才退出
         while (ctx.isActive) {
+            //代际变了（停手或已开新一轮）就立刻退，别把这一轮的结果写回去
+            if (gen != runGen) throw CancellationException("superseded")
             val payload = withContext(Dispatchers.IO) { buildPayload() }
             val t0 = System.currentTimeMillis()
             val firstAt = java.util.concurrent.atomic.AtomicLong(0L)
@@ -1435,6 +1496,8 @@ object Agent {
     } //导出 Markdown
 
     private suspend fun append(m: ChatMsg) {
+        //停手或已经被新一轮顶替的旧循环不许再落库：否则界面显示「已停止」，几秒后又冒出半截回复
+        if (runGen != 0L && gen != runGen) throw CancellationException("superseded")
         val sid = runSid ?: sessionId ?: return
         val saved = withContext(Dispatchers.IO) { Repo.append(sid, m) }
         //归属会话不是眼前这个就别动界面列表，否则新会话里会冒出别人会话的回复

@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Parcel
 import android.provider.Settings
+import android.util.Log
 import b.ai.App
 import b.ai.R
 import rikka.shizuku.Shizuku
@@ -23,9 +24,10 @@ import java.util.concurrent.TimeUnit
 object Shiz {
     const val PKG = "moe.shizuku.privileged.api"
     const val REQ_CODE = 4210
-    internal const val DESC = "b.ai.exec.IExec"
-    internal const val TX_EXEC = 1
-    internal const val TX_UID = 2
+    private const val TAG = "BaiShiz"
+    internal const val DESC = ExecProto.DESC
+    internal const val TX_EXEC = ExecProto.TX_EXEC
+    internal const val TX_UID = ExecProto.TX_UID
 
     enum class State { NOT_INSTALLED, NOT_RUNNING, NO_PERMISSION, READY }
 
@@ -68,13 +70,31 @@ object Shiz {
     private val svcConn = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             remote = service
+            if (service == null) bindErr = "用户服务返回空 binder"
+            Log.i(TAG, "onServiceConnected binder=" + (service != null))
             latch.countDown()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            Log.i(TAG, "onServiceDisconnected")
             remote = null
             bound = false
             latch = CountDownLatch(1)
+        }
+
+        //服务进程起来但 onBind 给不出 binder / binder 中途死掉：这两种回调以前没接，于是只能干等到超时
+        override fun onNullBinding(name: ComponentName?) {
+            bindErr = "用户服务进程起来了但 onBind 返回空（onNullBinding）"
+            Log.w(TAG, "onNullBinding " + name)
+            latch.countDown()
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            bindErr = "用户服务 binder 已失效（onBindingDied）"
+            Log.w(TAG, "onBindingDied " + name)
+            remote = null
+            bound = false
+            latch.countDown()
         }
     }
 
@@ -192,7 +212,7 @@ object Shiz {
         runCatching { Shizuku.unbindUserService(svcArgs, svcConn, false) }
     } //清连接状态
 
-    private fun connect(timeoutMs: Long = 10_000L): IBinder? {
+    private fun connect(timeoutMs: Long = 5_000L): IBinder? {
         remote?.let { if (it.isBinderAlive) return it else remote = null }
         if (!Shizuku.pingBinder()) return null
         if (!bound) {
@@ -212,6 +232,16 @@ object Shiz {
         return remote
     } //只绑一次：每次新建 args/conn 会让 Shizuku 侧连接累积
 
+    /** 用户服务起不来：root 设备直接走 su，别把本来能用的通道一起封死 */
+    private fun rootFallback(cmd: String, timeoutMs: Long): ShellResult {
+        val why = bindErr ?: "原因未知"
+        Log.w(TAG, "user service unavailable: " + why)
+        val r = runCatching { Root.run(cmd, timeoutMs) }.getOrNull()
+        if (r != null && r.code != -1) return ShellResult(r.code, r.out)
+        val extra = if (r == null) "" else "；root 兜底也失败：" + r.out
+        return ShellResult(-1, "[Shizuku] 用户服务连接失败：" + why + extra)
+    } //root 兜底
+
     fun run(cmd: String, input: String? = null, timeoutMs: Long = 120_000L): ShellResult {
         if (!Shizuku.pingBinder()) {
             return ShellResult(-1, "[Shizuku] 服务未运行：先在 Shizuku App 里启动服务")
@@ -225,7 +255,8 @@ object Shiz {
         val b = connect() ?: run {
             resetConn()
             connect(5_000L)
-        } ?: return ShellResult(-1, "[Shizuku] 用户服务连接失败：" + (bindErr ?: "原因未知"))
+        } ?: return rootFallback(cmd, timeoutMs)
+        Log.i(TAG, "exec via user service, cmd=" + cmd.take(40))
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {

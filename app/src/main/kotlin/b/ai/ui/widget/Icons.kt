@@ -132,6 +132,18 @@ fun IcStop4(color: Color, side: Dp = 13.dp) {
         }
     }
 } //四方块终止图标
+/** 终止图标：单个实心圆角方块，比 2×2 拼块更像标准停止键 */
+@Composable
+fun IcStopSquare(color: Color, side: Dp = 13.dp) {
+    Canvas(Modifier.size(side)) {
+        val s = size.minDimension
+        drawRoundRect(
+            color = color,
+            size = androidx.compose.ui.geometry.Size(s, s),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(s * 0.16f)
+        )
+    }
+} //方块终止图标
 
 /** 自绘思考灯泡（实心圆 + 底座），用于思考过程标记 */
 @Composable
