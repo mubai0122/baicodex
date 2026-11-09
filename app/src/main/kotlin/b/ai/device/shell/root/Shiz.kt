@@ -1,6 +1,6 @@
 package b.ai.device.shell.root
 import b.ai.device.shell.local.ShellResult
-
+import b.ai.device.shell.local.drainProcess
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.Parcel
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import b.ai.App
@@ -25,6 +26,10 @@ object Shiz {
     const val PKG = "moe.shizuku.privileged.api"
     const val REQ_CODE = 4210
     private const val TAG = "BaiShiz"
+    /** 单次等用户服务回调的上限：这个值是"每条命令的固定开销"，5s×2 就是原来那 10s */
+    private const val BIND_TIMEOUT = 3_500L
+    /** 连不上之后多久内不再试用户服务、直接走 root */
+    private const val BAD_QUIET = 60_000L
     internal const val DESC = ExecProto.DESC
     internal const val TX_EXEC = ExecProto.TX_EXEC
     internal const val TX_UID = ExecProto.TX_UID
@@ -212,6 +217,10 @@ object Shiz {
         runCatching { Shizuku.unbindUserService(svcArgs, svcConn, false) }
     } //清连接状态
 
+    /** 用户服务确诊坏掉的静默期：这段时间直接用 root，别再每条命令都白等一轮超时 */
+    @Volatile
+    private var badUntil = 0L
+
     private fun connect(timeoutMs: Long = 5_000L): IBinder? {
         remote?.let { if (it.isBinderAlive) return it else remote = null }
         if (!Shizuku.pingBinder()) return null
@@ -232,31 +241,77 @@ object Shiz {
         return remote
     } //只绑一次：每次新建 args/conn 会让 Shizuku 侧连接累积
 
-    /** 用户服务起不来：root 设备直接走 su，别把本来能用的通道一起封死 */
-    private fun rootFallback(cmd: String, timeoutMs: Long): ShellResult {
-        val why = bindErr ?: "原因未知"
-        Log.w(TAG, "user service unavailable: " + why)
-        val r = runCatching { Root.run(cmd, timeoutMs) }.getOrNull()
-        if (r != null && r.code != -1) return ShellResult(r.code, r.out)
-        val extra = if (r == null) "" else "；root 兜底也失败：" + r.out
-        return ShellResult(-1, "[Shizuku] 用户服务连接失败：" + why + extra)
-    } //root 兜底
-
-    fun run(cmd: String, input: String? = null, timeoutMs: Long = 120_000L): ShellResult {
-        if (!Shizuku.pingBinder()) {
-            return ShellResult(-1, "[Shizuku] 服务未运行：先在 Shizuku App 里启动服务")
-        }
-        val granted = runCatching { Shizuku.checkSelfPermission() }
-            .getOrDefault(PackageManager.PERMISSION_DENIED)
-        if (granted != PackageManager.PERMISSION_GRANTED) {
-            return ShellResult(-1, "[Shizuku] 未授权：先到权限步骤点「申请 Shizuku 授权」")
-        }
-        //首次连不上就清干净再试一次：用户服务刚重启时第一次 bind 常常空跑
-        val b = connect() ?: run {
+    //拿 binder：一次短超时 + 失败静默期。以前是 connect() 5s 超时再 connect(5s)，串行就是每条命令白等 10s
+    private fun binder(): IBinder? {
+        if (SystemClock.elapsedRealtime() < badUntil) return null
+        val t0 = SystemClock.elapsedRealtime()
+        connect(BIND_TIMEOUT)?.let { badUntil = 0; return it }
+        //只有绑定阶段"立刻"报错才值得清干净补试一次；等满超时说明服务进程根本不在，重试纯浪费
+        if (SystemClock.elapsedRealtime() - t0 < 600L) {
             resetConn()
-            connect(5_000L)
-        } ?: return rootFallback(cmd, timeoutMs)
-        Log.i(TAG, "exec via user service, cmd=" + cmd.take(40))
+            connect(BIND_TIMEOUT)?.let { badUntil = 0; return it }
+        }
+        badUntil = SystemClock.elapsedRealtime() + BAD_QUIET
+        Log.w(TAG, "user service marked bad for " + BAD_QUIET + "ms: " + (bindErr ?: ""))
+        return null
+    } //取用户服务 binder
+
+
+    /** 用户服务起不来就直说，不再偷偷换 root：换通道会把真正的原因埋掉 */
+    private fun whyFail(): ShellResult = ShellResult(-1, "[Shizuku] 用户服务连不上：" + (bindErr ?: "原因未知"))
+
+    //服务端直接起进程：不经过用户服务。用户服务在改过 LoadedApk.makeApplicationInner 的 ROM（Xiaomi/HyperOS/MediaTek）上必崩：Application.getProcessName() 为 null → NPE；newProcess 是 Shizuku 自带的私有静态方法，反射调它
+    private val newProc by lazy {
+        runCatching {
+            Shizuku::class.java
+                .getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+                .apply { isAccessible = true }
+        }.getOrNull()
+    }
+
+    private fun execDirect(cmd: String, input: String?, timeoutMs: Long): ShellResult {
+        val m = newProc ?: return ShellResult(-1, "[Shizuku]直连执行失败：当前 Shizuku 版本没有 newProcess")
+        return try {
+            val p = m.invoke(null, arrayOf("/system/bin/sh", "-c", cmd), null, null) as Process
+            val r = drainRemote(p, timeoutMs, input)
+            Log.i(TAG, "direct ok code=" + r.code + " cmd=" + cmd.take(40))
+            r
+        } catch (e: Throwable) {
+            val cause = (e as? java.lang.reflect.InvocationTargetException)?.targetException ?: e
+            Log.w(TAG, "direct exec failed: " + cause + " cmd=" + cmd.take(40))
+            ShellResult(-1, "[Shizuku]直连执行失败：" + (cause.message ?: cause.javaClass.simpleName))
+        }
+    } //服务端起进程执行
+
+    //收 ShizukuRemoteProcess 的输出：它的 exitValue 会抛 IllegalArgumentException，不能用通用的 drainProcess（那套靠 waitFor(超时) 轮询 exitValue）
+    private fun drainRemote(p: Process, timeoutMs: Long, input: String?): ShellResult {
+        val sb = StringBuilder()
+        fun pump(s: java.io.InputStream?) {
+            Thread {
+                runCatching { s?.bufferedReader()?.forEachLine { l -> synchronized(sb) { sb.appendLine(l) } } }
+            }.apply { isDaemon = true }.start()
+        }
+        pump(p.inputStream)
+        pump(p.errorStream)
+        runCatching {
+            if (input != null) p.outputStream.use { it.write(input.toByteArray()) } else p.outputStream.close()
+        }
+        var code = -1
+        val waiter = Thread { runCatching { code = p.waitFor() } }.apply { isDaemon = true }
+        waiter.start()
+        waiter.join(timeoutMs)
+        val timeout = waiter.isAlive
+        if (timeout) {
+            runCatching { p.destroy() }
+            waiter.join(1500)
+        }
+        Thread.sleep(60)
+        val text = synchronized(sb) { sb.toString() }.trim()
+        return if (timeout) ShellResult(-1, "$text\n[超时 ${timeoutMs}ms，已强制结束]") else ShellResult(code, text)
+    } //收远端进程输出
+
+    /** 经用户服务事务执行：直连不可用时的老通道 */
+    private fun transact(b: IBinder, cmd: String, input: String?, timeoutMs: Long): ShellResult {
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
@@ -277,5 +332,23 @@ object Shiz {
             reply.recycle()
             data.recycle()
         }
-    } //经用户服务以 shell/root 身份执行命令
+    } //用户服务事务
+
+    fun run(cmd: String, input: String? = null, timeoutMs: Long = 120_000L): ShellResult {
+        if (!Shizuku.pingBinder()) {
+            return ShellResult(-1, "[Shizuku] 服务未运行：先在 Shizuku App 里启动服务")
+        }
+        val granted = runCatching { Shizuku.checkSelfPermission() }
+            .getOrDefault(PackageManager.PERMISSION_DENIED)
+        if (granted != PackageManager.PERMISSION_GRANTED) {
+            return ShellResult(-1, "[Shizuku] 未授权：先到权限步骤点「申请 Shizuku 授权」")
+        }
+        //首选直连：不握手、不等人，也就绕开用户服务在 OEM 系统上的崩溃
+        val direct = execDirect(cmd, input, timeoutMs)
+        if (!direct.out.startsWith("[Shizuku]直连执行失败")) return direct
+        //退路：用户服务（老版本 Shizuku 才走到这儿）
+        val b = binder() ?: return ShellResult(-1, direct.out + "；" + whyFail().out)
+        Log.i(TAG, "exec via user service, cmd=" + cmd.take(40))
+        return transact(b, cmd, input, timeoutMs)
+    } //以 shell/root 身份执行命令
 }

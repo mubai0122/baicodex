@@ -406,6 +406,12 @@ object Repo {
         touch(sessionId)
     } //回滚到某条之前
 
+    /** 把头挪到某条已存在的消息上：同文本重发时用，用户消息本身不动，只让后面的回复长出新版本 */
+    fun headTo(sessionId: String, id: Long) {
+        setHead(sessionId, id)
+        touch(sessionId)
+    } //把头挪到指定消息
+
     /** 删掉 fromId 及其整棵子树：留下孤儿子节点会让分支指向不存在的父节点 */
     fun deleteFrom(sessionId: String, fromId: Long): Int {
         val ids = subtreeIds(sessionId, fromId)

@@ -31,6 +31,7 @@ import b.ai.ui.widget.IcMenu
 import b.ai.ui.widget.IcKeyboard
 import b.ai.ui.widget.EdgeGlow
 import b.ai.ui.widget.IcMic
+import b.ai.ui.widget.IcPencil
 import b.ai.ui.widget.IcPlus
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.IcSend
@@ -422,9 +423,9 @@ fun ChatScreen(
                 ) {
                     items(Agent.messages) { m ->
                         Column(Modifier.fillMaxWidth()) {
-                            //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›
+                            //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›，靠向自己那一侧
                             if (m.bTotal > 1) {
-                                BranchBar(m.bIdx, m.bTotal) { d -> Agent.switchBranch(m.id, d) }
+                                BranchBar(m.bIdx, m.bTotal, m.role == "user") { d -> Agent.switchBranch(m.id, d) }
                             }
                             MessageItem(
                                 m,
@@ -519,7 +520,19 @@ fun ChatScreen(
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
         //发送队列：发送中又敲进去的内容排在这儿，上一轮收工按序自动发
         if (Agent.queue.isNotEmpty()) {
-            QueueBar(Agent.queue) { Agent.dropQueued(it) }
+            QueueBar(
+                items = Agent.queue,
+                onEdit = { id ->
+                    //取回编辑：从队列摘掉，正文与附件原样放回输入区
+                    Agent.pullQueued(id)?.let { q ->
+                        input = q.text
+                        pendingImgs = pendingImgs + q.images.filterNot { it in pendingImgs }
+                        pendingFiles = pendingFiles + q.files.filterNot { it in pendingFiles }
+                    }
+                },
+                onSendNow = { Agent.promoteQueued(it) },
+                onDrop = { Agent.dropQueued(it) }
+            )
         }
         Box(Modifier.fillMaxWidth().onSizeChanged { inputH = it.height }) {
         InputBar(
@@ -1124,9 +1137,14 @@ private fun SendButton(hasContent: Boolean, onSend: () -> Unit) {
     }
 } //发送键 / 终止键 / 排队键
 
-/** 发送队列：一行一条，右侧 × 撤掉；行序就是发送顺序 */
+/** 发送队列：一条一行，行序就是发送顺序；每条左铅笔（取回编辑）右发送（提到最前）最右取消（撤掉） */
 @Composable
-private fun QueueBar(items: List<Agent.QueuedMsg>, onDrop: (Long) -> Unit) {
+private fun QueueBar(
+    items: List<Agent.QueuedMsg>,
+    onEdit: (Long) -> Unit,
+    onSendNow: (Long) -> Unit,
+    onDrop: (Long) -> Unit
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -1134,13 +1152,30 @@ private fun QueueBar(items: List<Agent.QueuedMsg>, onDrop: (Long) -> Unit) {
             .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.cs_queue_title), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                stringResource(R.string.cs_queue_tip),
+                fontSize = 9.sp,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
         //最多露 3 条，再多只报个数，别把消息区挤没
         items.take(3).forEachIndexed { i, q ->
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                Modifier.fillMaxWidth().padding(top = 3.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("${i + 1}", fontSize = 10.sp, color = AccentBlue, modifier = Modifier.width(14.dp))
+                //铅笔：取回输入框改完自己发
+                Box(Modifier.size(18.dp).tap { onEdit(q.id) }, contentAlignment = Alignment.Center) {
+                    IcPencil(AccentBlue, side = 12.dp, stroke = 1.4.dp)
+                }
+                Spacer(Modifier.width(4.dp))
+                Text("${i + 1}", fontSize = 10.sp, color = TextSecondary, modifier = Modifier.width(11.dp))
                 Text(
                     q.text.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty(),
                     fontSize = 11.sp,
@@ -1149,8 +1184,13 @@ private fun QueueBar(items: List<Agent.QueuedMsg>, onDrop: (Long) -> Unit) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
-                Spacer(Modifier.width(6.dp))
-                Box(Modifier.size(20.dp).tap { onDrop(q.id) }, contentAlignment = Alignment.Center) {
+                Spacer(Modifier.width(4.dp))
+                //发送：空闲即刻发，正忙提到队首
+                Box(Modifier.size(20.dp).tap { onSendNow(q.id) }, contentAlignment = Alignment.Center) {
+                    IcSend(AccentBlue, side = 12.dp)
+                }
+                Spacer(Modifier.width(2.dp))
+                Box(Modifier.size(18.dp).tap { onDrop(q.id) }, contentAlignment = Alignment.Center) {
                     IcClose(TextSecondary, side = 11.dp, stroke = 1.6.dp)
                 }
             }
@@ -1807,37 +1847,44 @@ private fun StreamingMsg(text: String, reason: String) {
     }
 } //流式输出中的临时气泡
 
-/**分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head就跟到哪条 */
+/**分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head 就跟到哪条；end=true 时贴右边（用户消息） */
 @Composable
-private fun BranchBar(idx: Int, total: Int, onSwitch: (Int) -> Unit) {
+private fun BranchBar(idx: Int, total: Int, end: Boolean, onSwitch: (Int) -> Unit) {
     Row(
-        Modifier.padding(start = 42.dp, top = 3.dp, bottom = 3.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(
+                start = if (end) 0.dp else 42.dp,
+                end = if (end) 16.dp else 0.dp,
+                top = 1.dp,
+                bottom = 1.dp
+            ),
+        horizontalArrangement = if (end) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
         BranchArrow("‹") { onSwitch(-1) }
         Text(
             "$idx/$total",
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             color = TextSecondary,
-            modifier = Modifier.padding(horizontal = 6.dp)
+            modifier = Modifier.padding(horizontal = 3.dp)
         )
         BranchArrow("›") { onSwitch(1) }
     }
 } //分支切换条
 
-/** 箭头小块：34dp 圆角方块，按下变实心，别再让手指去抠二十来像素的小字 */
+/** 箭头小块：只留一个透明点击区，按下变蓝，不再套背景方块 */
 @Composable
 private fun BranchArrow(glyph: String, onClick: () -> Unit) {
     val src = remember { MutableInteractionSource() }
     val press by src.collectIsPressedAsState()
     Box(
         Modifier
-            .size(34.dp)
-            .liquidBg(RoundedCornerShape(10.dp), tint = if (press) AccentBlue else AccentBlueSoft)
+            .size(20.dp)
             .clickable(interactionSource = src, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(glyph, fontSize = 18.sp, color = if (press) SurfaceWhite else AccentBlue)
+        Text(glyph, fontSize = 14.sp, color = if (press) AccentBlue else TextSecondary)
     }
 } //分支箭头
 

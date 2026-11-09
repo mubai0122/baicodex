@@ -50,13 +50,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -131,6 +136,9 @@ object Agent {
         private set
     var sessionTitle by mutableStateOf("")
         private set
+
+    /** 一个回合里工具并发执行的上限：再多也不会更快，反而抢 IO 与内存 */
+    private const val PARALLEL_TOOLS = 4
 
     /**排队中的一条：内容和附件在这里冻结，轮到时原样发出 */
     data class QueuedMsg(val id: Long, val sid: String?, val text: String, val images: List<String>, val files: List<String>)
@@ -464,6 +472,29 @@ object Agent {
         queue = emptyList()
     } //清空队列
 
+    /** 取出一条给别人编辑：从队列里摘掉，内容交给调用方回填输入框 */
+    fun pullQueued(id: Long): QueuedMsg? {
+        val n = queue.firstOrNull { it.id == id } ?: return null
+        queue = queue.filterNot { it.id == id }
+        return n
+    } //取出队列条目
+
+    /** 立刻优先发这一条：空闲就直接发；正忙就挪到队首，本轮收工第一批发它 */
+    fun promoteQueued(id: Long) {
+        val n = queue.firstOrNull { it.id == id } ?: return
+        if (n.sid != sessionId) {
+            status = host.getString(R.string.ag_queue_other)
+            return
+        }
+        queue = queue.filterNot { it.id == id }
+        if (!busy) {
+            send(n.text, n.images, n.files)
+            return
+        }
+        queue = listOf(n) + queue
+        status = host.getString(R.string.ag_queue_next)
+    } //队列条目提到最前
+
     /**收工后接着发下一条：只发属于当前会话的，别把消息串到别的会话里 */
     private fun pump() {
         if (busy || queue.isEmpty()) return
@@ -475,6 +506,11 @@ object Agent {
     fun editResend(msgId: Long, text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
         val t = text.trim()
         if (busy || t.isEmpty()) return
+        //一个字都没动就点重发：不该再长出一条一模一样的用户消息，只让它引出的回复出新版本
+        if (messages.firstOrNull { it.id == msgId }?.content?.trim() == t) {
+            rerunReply(msgId)
+            return
+        }
         busy = true
         val g = ++gen
         runGen = g
@@ -503,6 +539,48 @@ object Agent {
             }
         }
     } //编辑重发
+
+    /** 同文本重发：用户消息留在原地，只把这条引出的回复重新生成一份，观感就是回复上多一版 ‹ n/m › */
+    private fun rerunReply(msgId: Long) {
+        if (busy) return
+        val sid = sessionId ?: return
+        val i = messages.indexOfFirst { it.id == msgId }
+        //下面已经有一条回复：直接对它重新生成，用户消息一个字节都不动
+        if (i >= 0) {
+            val nxt = messages.getOrNull(i + 1)
+            if (nxt != null && nxt.role == "assistant") {
+                regenerate(nxt.id)
+                return
+            }
+        }
+        busy = true
+        val g = ++gen
+        runGen = g
+        job = scope.launch {
+            try {
+                runSid = sid
+                //head 就停在这条用户消息上：跑出来的回复挂在它下面，成了旧回复的兄弟
+                withContext(Dispatchers.IO) { Repo.headTo(sid, msgId) }
+                messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+                runHistory = messages
+                runLoop()
+            } catch (e: CancellationException) {
+                status = host.getString(R.string.ag_stopped)
+            } catch (e: Exception) {
+                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
+                status = ""
+            } finally {
+                if (gen == g) {
+                    busy = false
+                    runSid = null
+                    runHistory = emptyList()
+                    b.ai.device.sys.host.Capsule.end()
+                    clearTools()
+                    pump()
+                }
+            }
+        }
+    } //同文本重发
 
     fun regenerate(msgId: Long, note: String? = null) {
         if (busy) return
@@ -747,18 +825,20 @@ object Agent {
             }
             //模型一返回调用就先把卡片全摆出来转圈：排队里的、等确认的、等作答的都看得见
             val seqs = calls.map { beginTool(it.name, it.arguments) }
-            calls.forEachIndexed { i, c ->
+            //单条调用：要交互或抢独占资源的走这里
+            suspend fun one(i: Int) {
+                val c = calls[i]
                 //每张卡跟自己的调用绑定：这一条一出结果就收掉，跟结果行无缝接上
                 val rs = seqs[i]
                 try {
-                    if (!ctx.isActive) return@forEachIndexed
+                    if (!ctx.isActive) return
                     //提问工具先接住：不弹工具确认框，直接把面板推给用户并等作答
                     if (c.name == Tools.ASK) {
                         status = host.getString(R.string.ag_ask_fmt, i + 1, calls.size)
                         busySince = System.currentTimeMillis()
                         val qa = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
                         appendToolMsg(c, askUser(qa), Route.SANDBOX, false)
-                        return@forEachIndexed
+                        return
                     }
                     //分智能体：免确认，直接并行跑完把合并结果当一次工具输出回灌
                     if (c.name == Tools.SUB) {
@@ -766,7 +846,7 @@ object Agent {
                         val tasks = subTasks(qa)
                         if (tasks.isEmpty()) {
                             appendToolMsg(c, "没有可执行的子任务（tasks 为空）。", Route.SANDBOX, true)
-                            return@forEachIndexed
+                            return
                         }
                         status = host.getString(R.string.ag_sub_start, tasks.size)
                         busySince = System.currentTimeMillis()
@@ -779,7 +859,7 @@ object Agent {
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
                         appendToolMsg(c, text, Route.SANDBOX, false, System.currentTimeMillis() - tExec)
-                        return@forEachIndexed
+                        return
                     }
                     //工作流：按步骤顺序跑，每步一个分智能体，失败按每步策略重试或跳过
                     if (c.name == Tools.FLOW_RUN) {
@@ -787,7 +867,7 @@ object Agent {
                         val flow = flowOf(qa)
                         if (flow == null) {
                             appendToolMsg(c, "没有可执行的工作流：要么给 flow_id，要么给 name + steps。", Route.SANDBOX, true)
-                            return@forEachIndexed
+                            return
                         }
                         status = "工作流「" + flow.name + "」开始，共 " + flow.steps.size + " 步"
                         busySince = System.currentTimeMillis()
@@ -801,7 +881,7 @@ object Agent {
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
                         appendToolMsg(c, out.text, Route.SANDBOX, !out.ok, System.currentTimeMillis() - tExec)
-                        return@forEachIndexed
+                        return
                     }
                     //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
                     if (!Tools.allowed(c.name)) {
@@ -811,7 +891,7 @@ object Agent {
                             Route.SANDBOX,
                             true
                         )
-                        return@forEachIndexed
+                        return
                     }
                     //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
                     if (!Perms.ok(App.self)) {
@@ -822,14 +902,14 @@ object Agent {
                             Route.SANDBOX,
                             true
                         )
-                        return@forEachIndexed
+                        return
                     }
                     status = host.getString(R.string.ag_wait_fmt, Tools.label(c.name), i + 1, calls.size)
                     busySince = System.currentTimeMillis()
                     val allowed = decide(c)
                     if (!allowed) {
                         appendToolMsg(c, "用户拒绝执行该工具调用，未做任何改动。", Route.SANDBOX, true)
-                        return@forEachIndexed
+                        return
                     }
                     status = host.getString(R.string.ag_run_fmt, Tools.label(c.name), i + 1, calls.size)
                     busySince = System.currentTimeMillis()
@@ -849,11 +929,110 @@ object Agent {
                 } finally {
                     endTool(rs)
                 }
+            } //单条调用
+            //相邻的独立调用合成一批并发跑；要交互或抢独占资源的仍串行，混排时按段处理
+            var ci = 0
+            val sem = Semaphore(PARALLEL_TOOLS)
+            while (ci < calls.size) {
+                if (serialOnly(calls[ci])) {
+                    one(ci)
+                    ci++
+                    continue
+                }
+                val batch = ArrayList<Int>()
+                while (ci < calls.size && !serialOnly(calls[ci])) {
+                    batch.add(ci)
+                    ci++
+                }
+                if (batch.size == 1) {
+                    one(batch[0])
+                    continue
+                }
+                try {
+                    //确认弹窗只有一份：先一条条把权限与确认过完，再并发执行
+                    val ready = ArrayList<Int>()
+                    for (i in batch) {
+                        val c = calls[i]
+                        if (!ctx.isActive) break
+                        //当前模式禁掉的工具直接回绝：定义没下发，模型仍可能凭记忆硬调
+                        if (!Tools.allowed(c.name)) {
+                            appendToolMsg(
+                                c,
+                                "当前运行模式不允许调用「" + Tools.label(c.name) + "」，本次没有执行。",
+                                Route.SANDBOX,
+                                true
+                            )
+                            continue
+                        }
+                        //缺系统权限时工具一律直接拒：不弹确认框，也别让模型反复试同一调用
+                        if (!Perms.ok(App.self)) {
+                            val lack = Perms.missing(App.self).joinToString("、") { Perms.label(it) }
+                            appendToolMsg(
+                                c,
+                                "缺少系统权限（$lack），已直接拒绝本次工具调用。请到系统设置 → 应用 → 权限里重新开启。",
+                                Route.SANDBOX,
+                                true
+                            )
+                            continue
+                        }
+                        status = host.getString(R.string.ag_wait_fmt, Tools.label(c.name), i + 1, calls.size)
+                        busySince = System.currentTimeMillis()
+                        if (!decide(c)) {
+                            appendToolMsg(c, "用户拒绝执行该工具调用，未做任何改动。", Route.SANDBOX, true)
+                            continue
+                        }
+                        ready.add(i)
+                    }
+                    if (ready.size == 1) {
+                        val o = execOne(calls[ready[0]])
+                        appendToolMsg(calls[ready[0]], o.text, o.route, !o.ok, o.ms)
+                    } else if (ready.size > 1) {
+                        status = host.getString(R.string.ag_par_fmt, ready.size)
+                        busySince = System.currentTimeMillis()
+                        //并发跑完再按原顺序落库：工具结果的顺序必须跟调用顺序一致
+                        val outs = coroutineScope {
+                            ready.map { i -> async { sem.withPermit { execOne(calls[i]) } } }.awaitAll()
+                        }
+                        ready.forEachIndexed { k, i ->
+                            appendToolMsg(calls[i], outs[k].text, outs[k].route, !outs[k].ok, outs[k].ms)
+                        }
+                    }
+                } finally {
+                    batch.forEach { endTool(seqs[it]) }
+                }
             }
             status = host.getString(R.string.ag_think_again)
             busySince = System.currentTimeMillis()
         }
     } //模型 → 工具 → 回传 的主循环
+
+    /** 只许单独跑的工具：要弹问答/计划/子智能体/工作流，或独占屏幕、独占 proot 会话 */
+    private fun serialOnly(c: ToolCall): Boolean =
+        c.name == Tools.ASK || c.name == Tools.SUB || c.name == Tools.FLOW_RUN ||
+            c.name == Tools.SCREEN || c.name == Tools.LINUX
+
+    /** 并行批里一条工具的结果：先收齐再按原顺序落库，顺序才不会和调用顺序错开 */
+    private data class ToolOut(val text: String, val route: Route, val ok: Boolean, val ms: Long)
+
+    /** 跑一条工具：异常收成结果文本，别让一个坏工具把整批带崩 */
+    private suspend fun execOne(c: ToolCall): ToolOut {
+        val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
+        val t0 = System.currentTimeMillis()
+        val r = runCatching { withContext(Dispatchers.IO) { Tools.execute(c.name, args) } }
+        val ms = System.currentTimeMillis() - t0
+        val o = r.getOrNull()
+        return if (o != null) {
+            ToolOut(o.text, o.route, o.ok, ms)
+        } else {
+            val e = r.exceptionOrNull()
+            ToolOut(
+                "工具执行异常：" + (e?.message ?: e?.javaClass?.simpleName.orEmpty()),
+                Route.SANDBOX,
+                false,
+                ms
+            )
+        }
+    } //执行一条工具调用
 
     /** 工具参数 → 一条工作流：给了 flow_id 就取库里的，否则用 name + steps 现拼一条不存盘的 */
     private fun flowOf(args: JSONObject): Flow? {

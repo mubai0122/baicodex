@@ -51,4 +51,6 @@ desktop/web/*/*/dist/
 desktop/dist/
 desktop/legacy-kotlin/build/
 desktop/legacy-kotlin/.gradle/
+# 桌面端整套先不进库（2026-11 按用户要求临时排除）
+desktop/
 desktop/legacy-kotlin/.kotlin/

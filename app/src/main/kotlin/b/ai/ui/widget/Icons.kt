@@ -144,6 +144,20 @@ fun IcStopSquare(color: Color, side: Dp = 13.dp) {
         )
     }
 } //方块终止图标
+/** 自绘铅笔：斜笔杆 + 底端笔尖，队列条上「取回编辑」用 */
+@Composable
+fun IcPencil(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val s = size.minDimension
+        //笔杆两条平行斜线，笔尖在左下角收成一个点，笔尾在右上角留一道平口
+        drawLine(color, Offset(s * 0.24f, s * 0.90f), Offset(s * 0.90f, s * 0.24f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.10f, s * 0.76f), Offset(s * 0.76f, s * 0.10f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.10f, s * 0.76f), Offset(s * 0.09f, s * 0.91f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.24f, s * 0.90f), Offset(s * 0.09f, s * 0.91f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.76f, s * 0.10f), Offset(s * 0.90f, s * 0.24f), w, StrokeCap.Round)
+    }
+} //矢量铅笔
 
 /** 自绘思考灯泡（实心圆 + 底座），用于思考过程标记 */
 @Composable

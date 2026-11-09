@@ -55,7 +55,7 @@ android {
         minSdk = 24
         targetSdk = 34
         versionCode = 40
-        versionName = "1.13.1"
+        versionName = "1.14.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")

@@ -269,7 +269,7 @@
     <string name="cs_this_msg">这条消息</string>
     <string name="cs_this_reply">这条回复</string>
     <string name="cs_no_content">（无内容）</string>
-    <string name="cs_edit_resend_desc">用新文本重发一条，旧消息和它之后的回复都留在分支里</string>
+    <string name="cs_edit_resend_desc">改文字就存成另一个版本；文字没动就只重跑这条的回复</string>
     <string name="cs_regen_desc">从这条开始重新请求，后面已有的内容会被删掉</string>
     <string name="cs_regen_hint_desc2">先补一句要求，再重新生成这条</string>
     <string name="cs_copy_content">复制内容</string>
@@ -1665,4 +1665,9 @@
     <string name="se_gd_pg4_b">密钥与本机硬件绑定，换机与刷机都解不开</string>
     <string name="se_gd_covers">纳入加密：模型 / 语音 / 搜索 / MCP / A2A 密钥、账号与反馈 token、SSH 密码、技能包密钥、位置地名缓存</string>
     <string name="cs_max_on">最大 ·开</string>
+    <string name="cs_queue_title">待发送队列</string>
+    <string name="cs_queue_tip">发送中又敲的内容排在这里，本轮收工按序自动发</string>
+    <string name="ag_queue_next">已提到队首：本轮收工后立刻发送</string>
+    <string name="ag_queue_other">这条属于别的会话，切回去才能发</string>
+    <string name="ag_par_fmt">并行执行 %1$d 个工具</string>
 </resources>
