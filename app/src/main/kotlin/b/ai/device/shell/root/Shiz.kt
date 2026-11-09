@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Handler
@@ -52,12 +53,16 @@ object Shiz {
     private val main = Handler(Looper.getMainLooper())
     private var askSeq = 0
 
+    /** debuggable 必须跟 App 实际的 debuggable 标志一致：写死 false 时 debug 包起不来用户服务，只会一直“连接失败” */
+    private val dbg: Boolean
+        get() = (App.self.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
     private val svcArgs: Shizuku.UserServiceArgs by lazy {
         Shizuku.UserServiceArgs(ComponentName(App.self, ShizukuShell::class.java))
             .daemon(false)
             .version(1)
             .processNameSuffix("exec")
-            .debuggable(false)
+            .debuggable(dbg)
     }
 
     private val svcConn = object : ServiceConnection {
@@ -175,15 +180,35 @@ object Shiz {
         }
     } //打开 Shizuku
 
+    /** 上次连接失败的原因，给界面看，别再只回一句“连接失败” */
+    @Volatile
+    private var bindErr: String? = null
+
+    /** 连接状态归零：超时或断链都要清，否则 bound=true 会让后面每次都干等一个永远不来的回调 */
+    private fun resetConn() {
+        bound = false
+        remote = null
+        latch = CountDownLatch(1)
+        runCatching { Shizuku.unbindUserService(svcArgs, svcConn, false) }
+    } //清连接状态
+
     private fun connect(timeoutMs: Long = 10_000L): IBinder? {
         remote?.let { if (it.isBinderAlive) return it else remote = null }
         if (!Shizuku.pingBinder()) return null
         if (!bound) {
-            val ok = runCatching { Shizuku.bindUserService(svcArgs, svcConn) }.isSuccess
-            if (!ok) return null
+            bindErr = null
+            val r = runCatching { Shizuku.bindUserService(svcArgs, svcConn) }
+            if (r.isFailure) {
+                val e = r.exceptionOrNull()
+                bindErr = "bindUserService 失败：" + (e?.message ?: e?.javaClass?.simpleName.orEmpty())
+                return null
+            }
             bound = true
         }
-        latch.await(timeoutMs, TimeUnit.MILLISECONDS)
+        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+            bindErr = "等用户服务回调超时（${timeoutMs}ms），进程可能没起来"
+            resetConn()
+        }
         return remote
     } //只绑一次：每次新建 args/conn 会让 Shizuku 侧连接累积
 
@@ -196,7 +221,11 @@ object Shiz {
         if (granted != PackageManager.PERMISSION_GRANTED) {
             return ShellResult(-1, "[Shizuku] 未授权：先到权限步骤点「申请 Shizuku 授权」")
         }
-        val b = connect() ?: return ShellResult(-1, "[Shizuku] 用户服务连接失败（服务刚重启？重试一次）")
+        //首次连不上就清干净再试一次：用户服务刚重启时第一次 bind 常常空跑
+        val b = connect() ?: run {
+            resetConn()
+            connect(5_000L)
+        } ?: return ShellResult(-1, "[Shizuku] 用户服务连接失败：" + (bindErr ?: "原因未知"))
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
