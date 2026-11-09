@@ -1114,6 +1114,20 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             Cfg.showMeta
         ) { Cfg.showMeta = it }
         Spacer(Modifier.height(8.dp))
+        //Waifu 模式决定回复怎么切成多条，跟「显示什么」是同一类事，所以归到回复信息里
+        CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
+            Cfg.waifuMode = it
+        }
+        //分句气泡动画依赖上面那条：只有切成多条时才有「一条条弹出来」的画面
+        if (Cfg.waifuMode) {
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(
+                stringResource(R.string.se_wbounce_t),
+                stringResource(R.string.se_wbounce_d),
+                Cfg.waifuBounce
+            ) { Cfg.waifuBounce = it }
+        }
+        Spacer(Modifier.height(8.dp))
         CapSwitch(
             stringResource(R.string.se_ns_t),
             if (Cfg.noStream) stringResource(R.string.se_ns_on) else stringResource(R.string.se_ns_off),
@@ -1637,12 +1651,9 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
                 Cfg.avatarOn = it
             }
             Spacer(Modifier.height(8.dp))
+            //Waifu 已挪到「回复信息」分区，跟关闭流式输出放一起
             CapSwitch(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
                 Cfg.bubbleCapsule = it
-            }
-            Spacer(Modifier.height(8.dp))
-            CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
-                Cfg.waifuMode = it
             }
         }
     }

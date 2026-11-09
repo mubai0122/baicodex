@@ -22,6 +22,9 @@ object Ime {
     /** 兜底键盘高度（px）。官方上报 ime insets 时恒为 0 */
     var fallback by mutableStateOf(0)
         private set
+    /** 当前键盘顶起来的高度（px）：官方上报优先，不上报的 ROM 用可见区域差兜底。只给「绘制阶段平移」读 */
+    var inset by mutableStateOf(0)
+        private set
     //上一次的诊断串：数值没变就不重复打日志，否则键盘动画期间每帧一条
     private var lastLog = ""
     //上一次的键盘高度：键盘动画期间全局布局每帧都触发，值一变就说明正在动
@@ -46,6 +49,7 @@ object Ime {
         //官方给了就别叠加，否则键盘高度会被算两遍
         if (imePx > 0) {
             fallback = 0
+            inset = imePx
             log("官方上报 shown=$shown", root, imePx, navPx, 0, 0)
             return
         }
@@ -64,6 +68,7 @@ object Ime {
             else -> covered
         }
         fallback = fb
+        inset = fb
         log("可见区域差 shown=$shown", root, imePx, navPx, covered, fb)
     } //按可见区域差算键盘高度
     private fun log(how: String, root: View, ime: Int, nav: Int, covered: Int, fb: Int) {

@@ -614,6 +614,8 @@
     <string name="se_173">Force large corners</string>
     <string name="se_174">All bubbles use 16dp corners, slightly squared so text never touches the curve</string>
     <string name="se_175">Waifu mode</string>
+    <string name="se_wbounce_t">Sentence bubble bounce</string>
+    <string name="se_wbounce_d">Each sentence pops in with a springy bounce, like Apple Messages</string>
     <string name="se_176">When on, replies are split by punctuation and sent sentence by sentence for a more natural feel</string>
     <string name="se_177">My avatar</string>
     <string name="se_178">Shown on the right of your messages; defaults to a generic figure</string>

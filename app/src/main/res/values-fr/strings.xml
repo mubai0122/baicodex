@@ -614,6 +614,8 @@
     <string name="se_173">Forcer les grands arrondis</string>
     <string name="se_174">Toutes les bulles en 16dp, légèrement carrées pour que le texte ne touche pas la courbe</string>
     <string name="se_175">Mode Waifu</string>
+    <string name="se_wbounce_t">Rebond des bulles par phrase</string>
+    <string name="se_wbounce_d">Chaque phrase apparait avec un rebond elastique, facon Apple Messages</string>
     <string name="se_176">Activé, les réponses sont découpées par ponctuation et envoyées phrase par phrase</string>
     <string name="se_177">Mon avatar</string>
     <string name="se_178">Affiché à droite de vos messages ; par défaut une silhouette</string>

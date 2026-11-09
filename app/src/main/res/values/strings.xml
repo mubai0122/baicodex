@@ -619,6 +619,8 @@
     <string name="se_173">消息强制高圆角</string>
     <string name="se_174">所有消息气泡用 16dp 大圆角，带一点方形，文字不顶弧线</string>
     <string name="se_175">Waifu模式</string>
+    <string name="se_wbounce_t">分句气泡动画增强</string>
+    <string name="se_wbounce_d">Waifu 模式下的每条小句弹出时带回弹，像苹果 Messages 那样一条条弹出来</string>
     <string name="se_176">启用后，AI 的回复将按标点分割逐句发送，营造更自然的对话体验</string>
     <string name="se_177">我的头像</string>
     <string name="se_178">用户消息右侧显示；没设置就是默认人形</string>

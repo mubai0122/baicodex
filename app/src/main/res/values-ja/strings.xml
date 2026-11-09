@@ -614,6 +614,8 @@
     <string name="se_173">メッセージを大きな角丸に</string>
     <string name="se_174">すべての吹き出しを 16dp の角丸に。少し角ばらせて文字が弧にかからないようにします</string>
     <string name="se_175">Waifu モード</string>
+    <string name="se_wbounce_t">文節バブルのバウンス</string>
+    <string name="se_wbounce_d">Waifu モードで各文節がバネのように弾んで表示されます（Apple メッセージ風）</string>
     <string name="se_176">オンにすると返信が句読点で分割され文ごとに送られ、より自然な会話になります</string>
     <string name="se_177">自分のアイコン</string>
     <string name="se_178">ユーザーメッセージの右側に表示。未設定なら既定のシルエット</string>

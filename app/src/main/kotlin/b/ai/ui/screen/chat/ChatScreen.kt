@@ -91,6 +91,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -135,6 +136,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -148,6 +150,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -195,6 +198,7 @@ import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -347,17 +351,25 @@ fun ChatScreen(
         input = p
     }
 
-    LaunchedEffect(Agent.messages.size) {
+    //进会话只跳到底一次，不要动画：以前每次消息数变化都 animate，分页铺开加流式会让动画反复重启，看着就是疯狂滚动
+    LaunchedEffect(Agent.sessionId) {
+        //等这一帧把列表铺出来，否则 totalItemsCount 还是 0，跳了个空
+        withFrameNanos { }
         val last = Agent.messages.size - 1
-        if (last >= 0) listState.animateScrollToItem(last)
+        if (last >= 0) listState.scrollToItem(last, Int.MAX_VALUE / 2)
     }
-    //流式增量进来时贴底，但只在用户本就停在底部时滚，别抢手动翻阅
-    LaunchedEffect(Agent.streamText.length, Agent.messages.size) {
-        val info = listState.layoutInfo
-        val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-        if (info.totalItemsCount > 0 && last >= info.totalItemsCount - 2) {
-            listState.scrollToItem(info.totalItemsCount - 1)
-        }
+    //流式增量贴底：节流 120ms，别每帧滚（每帧 scroll 就是每帧重新摆放列表，8.3ms 预算撑不住）
+    LaunchedEffect(Agent.sessionId) {
+        snapshotFlow { Agent.streamText.length to Agent.messages.size }
+            .sample(120)
+            .collect {
+                val info = listState.layoutInfo
+                val visibleLast = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+                //只在用户本来就停在底部时贴底，手动翻看历史就别抢
+                if (info.totalItemsCount > 0 && visibleLast >= info.totalItemsCount - 2) {
+                    listState.scrollToItem(info.totalItemsCount - 1, Int.MAX_VALUE / 2)
+                }
+            }
     }
 
     //1.7.0 起只提示一次「全新模型配置」；旧的桌宠引导属于 1.6.0，不再反复弹
@@ -462,6 +474,7 @@ fun ChatScreen(
                     }
                     //key 用消息 id：不给 key 时列表一更新就整段重新组合，滚动也跟着抖
                     items(flat, key = { it.id }) { m ->
+                        BubbleBounce(m.id, m.role == "user") {
                         Column(Modifier.fillMaxWidth()) {
                             //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›，靠向自己那一侧
                             if (m.bTotal > 1) {
@@ -473,6 +486,7 @@ fun ChatScreen(
                                 onLongPress = { menuFor = it },
                                 onSumLong = { sumMenu = it }
                             )
+                        }
                         }
                     }
                     //工具执行中的转圈卡：模型一返回调用就出现，执行完才换成正常结果行
@@ -576,7 +590,8 @@ fun ChatScreen(
                 onDrop = { Agent.dropQueued(it) }
             )
         }
-        //键盘留白只加在输入区这一层：范围小，键盘动画期间不会把上面整页消息一起拖着重排
+        //键盘留白必须走布局：graphicsLayer 平移只改绘制位置，会把列表底和输入区之间裂出一条空白
+        //成本已由「无模糊不进离屏」压下去了，这里不再为省一次 measure 牺牲对齐
         Box(Modifier.fillMaxWidth().padding(bottom = fb).imePadding().onSizeChanged { inputH = it.height }) {
         InputBar(
             input = input,
@@ -1969,6 +1984,38 @@ private fun BranchArrow(glyph: String, onClick: () -> Unit) {
     }
 } //分支箭头
 
+/**
+ * 分句气泡的弹出动画（Waifu 模式的「Q弹」）：只给刚追加的那一条跑一次 spring，
+ * 历史消息一律静态，否则进会话会满屏一起弹。
+ * 动画值只在 graphicsLayer 的 lambda 里读 —— 走绘制阶段，不触发重组、不重新排版。
+ */
+@Composable
+private fun BubbleBounce(id: Long, end: Boolean, content: @Composable () -> Unit) {
+    val on = Cfg.waifuMode && Cfg.waifuBounce
+    //首次组合时就把「这条是不是刚来的」定下来，之后重组不再变，滚动时旧消息不会跟着弹
+    val fresh = remember(id) { on && id == Agent.lastAppendId }
+    if (!fresh) {
+        content()
+        return
+    }
+    //0.84 起弹到 1：damping 0.42 会过头一点点再落回来，就是苹果 Messages 那个手感
+    val a = remember(id) { Animatable(0f) }
+    LaunchedEffect(id) {
+        a.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))
+    }
+    Box(
+        Modifier.graphicsLayer {
+            val p = a.value
+            val s = 0.84f + 0.16f * p
+            scaleX = s
+            scaleY = s
+            //从说话人那一侧冒出来：用户贴右下、AI 贴左下
+            transformOrigin = TransformOrigin(if (end) 1f else 0f, 1f)
+            translationY = (1f - p) * 10.dp.toPx()
+        }
+    ) { content() }
+} //分句气泡 Q弹
+
 @Composable
 private fun MessageItem(
     m: ChatMsg,
@@ -2031,7 +2078,11 @@ private fun MessageItem(
                 }
                 if (m.toolCalls.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    //FlowRow 自动换行：Row 里塞满多个 Tag 会把每个都挤成竖排并溢出屏幕
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         m.toolCalls.forEach { c -> Tag("→ ${Tools.label(c.name)}") }
                     }
                     Spacer(Modifier.height(4.dp))

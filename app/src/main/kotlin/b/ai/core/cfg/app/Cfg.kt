@@ -209,6 +209,7 @@ object Cfg {
         mem("bg_blur", 0).value = p.getInt("bg_blur", 0)
         mem("profile_seed", 0).value = p.getInt("profile_seed", 0)
         mem("waifu_mode", false).value = p.getBoolean("waifu_mode", false)
+        mem("waifu_bounce", true).value = p.getBoolean("waifu_bounce", true)
         //旧版本把自定义提示只存在 SP 里，这里补写到数据根，之后改文件就生效
         if (!Store.exists(SYSTEM_PROMPT_FILE)) {
             val v = p.getString("system_prompt", "")!!
@@ -588,6 +589,10 @@ object Cfg {
     var waifuMode: Boolean
         get() = mem("waifu_mode", false).value
         set(v) { mem("waifu_mode", false).value = v; put("waifu_mode", v) }
+    /** 分句气泡动画：Waifu 切出来的每条小句弹出时带回弹，像苹果 Messages；默认开，只在 Waifu 下生效 */
+    var waifuBounce: Boolean
+        get() = mem("waifu_bounce", true).value
+        set(v) { mem("waifu_bounce", true).value = v; put("waifu_bounce", v) }
 
     /** 自定义系统提示，拼在角色之后；落盘在数据根 system_prompt.md，直接改文件也生效 */
     var systemPrompt: String

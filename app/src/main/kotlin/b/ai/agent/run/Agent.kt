@@ -155,6 +155,9 @@ object Agent {
     /// 运行代际：停手或开新一轮就 +1，旧循环靠它自杀，别再往会话里写
     private var gen = 0L
     private var runGen = 0L
+    /** 最近一次追加的消息 id：气泡只会给这一条播弹出动画，历史一律静态；故意不用 State，免得整列表订阅 */
+    @Volatile
+    var lastAppendId = 0L
     private var runSid: String? = null
     private var runHistory: List<ChatMsg> = emptyList()
     private var budgetScale = 1f
@@ -1677,6 +1680,7 @@ object Agent {
         if (runGen != 0L && gen != runGen) throw CancellationException("superseded")
         val sid = runSid ?: sessionId ?: return
         val saved = withContext(Dispatchers.IO) { Repo.append(sid, m) }
+        lastAppendId = saved.id
         //归属会话不是眼前这个就别动界面列表，否则新会话里会冒出别人会话的回复
         if (sid == sessionId) {
             messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
