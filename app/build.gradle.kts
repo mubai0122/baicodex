@@ -34,7 +34,6 @@ val baiHost: String = run {
     props.getProperty("baicodex.host")?.trim()?.trimEnd('/')?.takeIf { it.startsWith("http") } ?: ""
 }
 
-/** 备份独立密钥：跟加密库的四段种子分开一把，只认 local.properties 里的 baicodex.backup.key */
 val baiBkKey: String = run {
     val f = rootProject.file("local.properties")
     if (!f.exists()) return@run "baicodex-backup-placeholder"
@@ -54,8 +53,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 40
-        versionName = "1.14.0"
+        versionCode = 41
+        versionName = "1.14.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
