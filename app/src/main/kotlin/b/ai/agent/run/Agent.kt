@@ -1621,10 +1621,8 @@ object Agent {
 
     fun compressNow(): String {
         if (busy) return host.getString(R.string.ag_compress_busy)
-        scope.launch {
-            val ok = runCatching { compact(true) }.getOrDefault(false)
-            if (!ok) status = host.getString(R.string.ag_compress_none)
-        }
+        //走 compactNow：它负责置 busy、把状态改成「正在压缩…」并把结果改成完成/跳过；只起协程的话界面一直停在「正在压缩…」
+        compactNow()
         return host.getString(R.string.ag_compressing)
     } //手动压缩
 

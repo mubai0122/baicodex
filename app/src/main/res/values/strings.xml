@@ -1666,6 +1666,7 @@
     <string name="se_gd_covers">纳入加密：模型 / 语音 / 搜索 / MCP / A2A 密钥、账号与反馈 token、SSH 密码、技能包密钥、位置地名缓存</string>
     <string name="cs_max_on">最大 ·开</string>
     <string name="cs_queue_title">待发送队列</string>
+    <string name="cs_more_rounds">展开更早的 %1$d 轮对话</string>
     <string name="cs_queue_tip">发送中又敲的内容排在这里，本轮收工按序自动发</string>
     <string name="ag_queue_next">已提到队首：本轮收工后立刻发送</string>
     <string name="ag_queue_other">这条属于别的会话，切回去才能发</string>

@@ -132,6 +132,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -415,14 +416,47 @@ fun ChatScreen(
                     onPick = { input = it }
                 )
             } else if (Agent.messages.isNotEmpty()) {
+                //进会话只铺最近 12 轮：往上滑或点顶部胶囊再放一批，别一进来就把整段历史排版一遍
+                var shown by remember(Agent.sessionId) { mutableIntStateOf(ROUND_PAGE) }
+                val rounds = remember(Agent.messages) { roundsOf(Agent.messages) }
+                //总结卡不占轮次，永远贴在最上面
+                val sums = remember(Agent.messages) { Agent.messages.filter { it.role == "summary" } }
+                val head = (rounds.size - shown).coerceAtLeast(0)
+                val flat = remember(rounds, head) {
+                    if (head == 0) rounds.flatten() else rounds.drop(head).flatten()
+                }
+                //滑到最顶自动再放一批；列表项都有稳定 key，往前面插内容不会把当前可见位置顶跑
+                LaunchedEffect(Agent.sessionId, head) {
+                    snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                        .collect { (i, off) -> if (i == 0 && off == 0 && head > 0) shown += ROUND_PAGE }
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    //总结卡始终置顶：它压住的是更早那段上下文，跟着一起折叠就再也看不到了
+                    items(sums, key = { "sum" + it.id }) { m ->
+                        Column(Modifier.fillMaxWidth()) {
+                            MessageItem(
+                                m,
+                                onToolDetail = { detail = it },
+                                onLongPress = { menuFor = it },
+                                onSumLong = { sumMenu = it }
+                            )
+                        }
+                    }
+                    //还有更早的轮次没铺开时，最上面中间给一颗胶囊，点它多放一批
+                    if (head > 0) {
+                        item("more-rounds") {
+                            MoreRoundsPill(stringResource(R.string.cs_more_rounds, head)) {
+                                shown += ROUND_PAGE
+                            }
+                        }
+                    }
                     //key 用消息 id：不给 key 时列表一更新就整段重新组合，滚动也跟着抖
-                    items(Agent.messages, key = { it.id }) { m ->
+                    items(flat, key = { it.id }) { m ->
                         Column(Modifier.fillMaxWidth()) {
                             //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›，靠向自己那一侧
                             if (m.bTotal > 1) {
@@ -1847,6 +1881,44 @@ private fun StreamingMsg(text: String, reason: String) {
     }
     }
 } //流式输出中的临时气泡
+
+/**一屏铺多少轮：进会话只组合这么多，往上滑或点胶囊再放一批 */
+private const val ROUND_PAGE = 12
+
+/**按轮分组：一条用户消息开启一轮，后面的助手/工具消息都归这一轮；总结卡不占轮次 */
+private fun roundsOf(list: List<ChatMsg>): List<List<ChatMsg>> {
+    val out = ArrayList<List<ChatMsg>>()
+    var cur = ArrayList<ChatMsg>()
+    for (m in list) {
+        if (m.role == "summary") continue
+        if (m.role == "user" && cur.isNotEmpty()) {
+            out.add(cur)
+            cur = ArrayList()
+        }
+        cur.add(m)
+    }
+    if (cur.isNotEmpty()) out.add(cur)
+    return out
+} //按轮分组
+
+/**展开更多轮次的胶囊：居中最上面，点一下多铺一批 */
+@Composable
+private fun MoreRoundsPill(text: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Box(
+            Modifier
+                .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
+                .tap { onClick() }
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text, fontSize = 11.sp, color = TextSecondary)
+        }
+    }
+} //展开更多轮次胶囊
 
 /**分支切换条：‹ n/m ›，点箭头在同父的几条回答之间翻，翻到哪条 head 就跟到哪条；end=true 时贴右边（用户消息） */
 @Composable
