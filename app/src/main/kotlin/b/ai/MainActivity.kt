@@ -373,12 +373,14 @@ private fun Root() {
         //键盘：官方上报走 WindowInsets.ime，不上报的 ROM（鸿蒙 4 这类）才用 Ime.fallback 补。
         //两者互斥（Ime 里官方有值时 fallback 归零），所以不会叠出双倍留白
         val imeFallbackDp = with(LocalDensity.current) { b.ai.ui.overlay.Ime.fallback.toDp() }
+        //聊天页自己把键盘留白加在输入区上：这里再套一层就是双份，而且键盘动画每秒几十帧改 padding，整页都要重排
+        val imeMod = if (screen == "chat") Modifier
+        else Modifier.padding(bottom = imeFallbackDp).windowInsetsPadding(WindowInsets.ime)
         Box(
             Modifier
                 .fillMaxSize()
                 .background(BgGray)
-                .padding(bottom = imeFallbackDp)
-                .windowInsetsPadding(WindowInsets.ime)
+                .then(imeMod)
         ) {
             BackdropHost(
                 active = anyOverlay,

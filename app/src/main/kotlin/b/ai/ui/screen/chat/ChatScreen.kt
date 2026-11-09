@@ -97,6 +97,8 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -375,7 +377,8 @@ fun ChatScreen(
     Box(Modifier.fillMaxSize().layerBackdrop(cardBackdrop).pageBg())
     ProvideCardBackdrop(cardBackdrop) {
 //safeDrawing = 状态栏/导航条/输入法取并集，只留一份底部间距，不会和 IME 叠出空白
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).glassPageLayer(pageBackdrop)) {
+    //底部键盘不在这里留白：safeDrawing 含 ime，键盘动画期间会让整页（含背景玻璃层）每帧重排
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).glassPageLayer(pageBackdrop)) {
          TopBar(
              onOpenDrawer,
              onOpenWorkspace = onOpenWorkspace,
@@ -553,6 +556,8 @@ fun ChatScreen(
         //左下角 chip 显示当前配置名；没配过就退回模型名
         val modelLabel = Profiles.list.firstOrNull { it.id == Cfg.profileId }?.label
             ?: Cfg.model.ifBlank { stringResource(R.string.cs_pick_model) }
+        //不上报 ime 的 ROM（鸿蒙 4 这类）靠 fallback 补高度；官方上报时它恒为 0
+        val fb = with(LocalDensity.current) { Ime.fallback.toDp() }
         //发送队列：发送中又敲进去的内容排在这儿，上一轮收工按序自动发
         if (Agent.queue.isNotEmpty()) {
             QueueBar(
@@ -569,7 +574,8 @@ fun ChatScreen(
                 onDrop = { Agent.dropQueued(it) }
             )
         }
-        Box(Modifier.fillMaxWidth().onSizeChanged { inputH = it.height }) {
+        //键盘留白只加在输入区这一层：范围小，键盘动画期间不会把上面整页消息一起拖着重排
+        Box(Modifier.fillMaxWidth().padding(bottom = fb).imePadding().onSizeChanged { inputH = it.height }) {
         InputBar(
             input = input,
             hint = hint,
