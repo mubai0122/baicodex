@@ -6,6 +6,10 @@
 -keep class b.ai.device.shell.root.ShizukuShell { *; }
 -keep class b.ai.device.sys.alarm.TaskReceiver { *; }
 -keep class rikka.shizuku.ShizukuProvider { *; }
+-keepclassmembers class rikka.shizuku.Shizuku {
+    private static rikka.shizuku.ShizukuRemoteProcess newProcess(java.lang.String[], java.lang.String[], java.lang.String);
+}
+-keep class rikka.shizuku.ShizukuRemoteProcess { *; }
 -keep class androidx.core.content.FileProvider { *; }
 -keep class com.vapro.vae.stringfog.** { *; }
 -dontwarn com.vapro.vae.stringfog.**

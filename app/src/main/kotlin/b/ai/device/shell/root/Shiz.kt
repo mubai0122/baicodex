@@ -67,7 +67,8 @@ object Shiz {
     private val svcArgs: Shizuku.UserServiceArgs by lazy {
         Shizuku.UserServiceArgs(ComponentName(App.self, ShizukuShell::class.java))
             .daemon(false)
-            .version(1)
+            .version(2)
+            .tag("bai-exec")
             .processNameSuffix("exec")
             .debuggable(dbg)
     }
@@ -343,12 +344,15 @@ object Shiz {
         if (granted != PackageManager.PERMISSION_GRANTED) {
             return ShellResult(-1, "[Shizuku] 未授权：先到权限步骤点「申请 Shizuku 授权」")
         }
-        //首选直连：不握手、不等人，也就绕开用户服务在 OEM 系统上的崩溃
+        //首选用户服务：这是 Shizuku 唯一公开的 shell 通道；拿不到 binder 或事务层失败才退直连
+        val b = binder()
+        if (b != null) {
+            val r = transact(b, cmd, input, timeoutMs)
+            if (!r.out.startsWith("[Shizuku]")) return r
+            return ShellResult(-1, r.out + "；" + execDirect(cmd, input, timeoutMs).out)
+        }
         val direct = execDirect(cmd, input, timeoutMs)
         if (!direct.out.startsWith("[Shizuku]直连执行失败")) return direct
-        //退路：用户服务（老版本 Shizuku 才走到这儿）
-        val b = binder() ?: return ShellResult(-1, direct.out + "；" + whyFail().out)
-        Log.i(TAG, "exec via user service, cmd=" + cmd.take(40))
-        return transact(b, cmd, input, timeoutMs)
+        return ShellResult(-1, whyFail().out + "；" + direct.out)
     } //以 shell/root 身份执行命令
 }
