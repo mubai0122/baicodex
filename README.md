@@ -11,6 +11,7 @@
 一套 Rust 内核，三种前端：**Android**、**Windows**、**终端**。
 
 - 官网：<https://agent.ai.baiccb.cn>
+- 教程（如何精通 AndroidAgent）：<https://agent.ai.baiccb.cn/docs/>
 - 下载：<https://github.com/mubai0122/baicodex/releases/latest>
 - 开源协议：AGPL-3.0，无内购、无广告、无次数限制；闭源集成与 SaaS 部署需商业许可
 
