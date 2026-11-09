@@ -662,6 +662,7 @@
     <string name="se_232">启用后每次请求都会带给模型，不用每次重新解释。</string>
     <string name="se_233">新增技能</string>
     <string name="se_235">永久同意/拒绝与工具弹窗同步</string>
+    <string name="se_tools_more">展开全部 %1$d 个工具</string>
     <string name="se_238">每次确认</string>
     <string name="se_239">永久同意</string>
     <string name="se_240">永久拒绝</string>

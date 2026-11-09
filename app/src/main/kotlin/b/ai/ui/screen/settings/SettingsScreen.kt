@@ -1510,6 +1510,9 @@ private fun LazyListScope.permTab() {
 //字号档位：存的是倍率，1f = 跟随系统
 private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f, R.string.se_165 to 1.15f, R.string.se_166 to 1.3f)
 
+/**工具权限一次先铺多少条：几十个下拉同屏组合是设置页最贵的一帧 */
+private const val TOOL_PAGE = 12
+
 //外观分类：一张卡一个 item，视口外的卡不组合
 private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
     item {
@@ -2137,8 +2140,12 @@ private fun LazyListScope.extTab(
     item {
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
+        //MCP 能力不列在这里：它们由 MCP 服务自己拉取，到「扩展 → MCP 服务」里单独管
+        val tools = Tools.all.filterNot { it.startsWith(Tools.MCP) }
+        //一次只组合前 12 条：几十个下拉挤在同一个 item 里，进页面就要全量测量一遍
+        var more by remember { mutableStateOf(false) }
         CardBox {
-            Tools.all.forEach { tool ->
+            (if (more) tools else tools.take(TOOL_PAGE)).forEach { tool ->
                 val pol = Cfg.policy(tool)
                 SelectField(
                     Tools.label(tool),
@@ -2160,6 +2167,12 @@ private fun LazyListScope.extTab(
                     isSelected = { pol == it },
                     onSelect = { Cfg.setPolicy(tool, it) }
                 )
+            }
+            if (!more && tools.size > TOOL_PAGE) {
+                Spacer(Modifier.height(6.dp))
+                GhostButton(stringResource(R.string.se_tools_more, tools.size - TOOL_PAGE)) {
+                    more = true
+                }
             }
         }
     }
