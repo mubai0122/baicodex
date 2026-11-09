@@ -67,6 +67,8 @@
     <string name="up_prep">準備下載…</string>
     <string name="up_downloading">下載中 %1$d%%</string>
     <string name="up_installer">安裝器已開啟</string>
+    <string name="up_reuse">沿用已下載的安裝檔（%1$dMB），不重複下載</string>
+    <string name="up_bad_pkg">下載的安裝檔校驗不通過，已刪除，請重試</string>
     <string name="up_dl_install">下載並安裝</string>
     <string name="up_open_page">開啟下載頁</string>
     <string name="up_exit">結束應用程式</string>

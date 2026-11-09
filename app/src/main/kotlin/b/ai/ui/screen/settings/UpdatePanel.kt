@@ -89,12 +89,38 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     var msg by remember { mutableStateOf("") }
     val main = remember { Handler(Looper.getMainLooper()) }
 
-    /** 直链下载到私有目录，下完立刻拉系统安装器 */
+    /** 本地已下好且指纹对得上的包：权限页来回一趟、弹窗关掉重开都不该重下 */
+    fun cachedCopy(): File? {
+        val f = File(Layout.dir(ctx, Layout.APK), "bai-${info.latestCode}.apk")
+        if (!f.isFile || f.length() <= 0) return null
+        //服务端给了 sha256 就按它验，没给就看上次下载成功时留下的旁注
+        val want = info.sha256.ifBlank {
+            runCatching { File(f.absolutePath + ".sha").readText().trim() }.getOrDefault("")
+        }.lowercase()
+        if (want.length != 64) return null
+        return if (Update.sha256(f) == want) f else null
+    } //可复用的本地包
+
+    /** 交给安装器：有 root / Shizuku 就静默装，没有才拉系统安装器 */
+    suspend fun installNow(f: File) {
+        msg = ctx.getString(R.string.up_installer)
+        val r = withContext(Dispatchers.IO) { ApkInstall.install(ctx, f) }
+        msg = r.msg
+        pct = if (r.ok) 101 else -1
+    } //装包
+
+    /** 下载并安装：本地已经有完整包就直接装，不重复下载 */
     fun startDownload() {
         if (pct in 0..100) return
         pct = 0
         msg = ctx.getString(R.string.up_startdl)
         scope.launch {
+            val ready = withContext(Dispatchers.IO) { runCatching { cachedCopy() }.getOrNull() }
+            if (ready != null) {
+                msg = ctx.getString(R.string.up_reuse, ready.length() / 1024 / 1024)
+                installNow(ready)
+                return@launch
+            }
             val dest = File(Layout.dir(ctx, Layout.APK), "bai-${info.latestCode}.apk")
             val r = withContext(Dispatchers.IO) {
                 runCatching {
@@ -102,14 +128,19 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 }
             }
             r.onSuccess { f ->
-                msg = ctx.getString(R.string.up_done, f.length() / 1024 / 1024)
-                val err = ApkInstall.install(ctx, f)
-                if (err != null) {
-                    msg = err
+                //下完先算指纹：服务端给了 sha256 就必须对得上，对不上就是包坏了，删掉重试
+                val sum = withContext(Dispatchers.IO) { runCatching { Update.sha256(f) }.getOrDefault("") }
+                if (info.sha256.isNotBlank() && sum != info.sha256) {
+                    runCatching { f.delete() }
+                    msg = ctx.getString(R.string.up_bad_pkg)
                     pct = -1
-                } else {
-                    pct = 101
+                    return@onSuccess
                 }
+                if (sum.isNotBlank()) withContext(Dispatchers.IO) {
+                    runCatching { File(f.absolutePath + ".sha").writeText(sum) }
+                }
+                msg = ctx.getString(R.string.up_done, f.length() / 1024 / 1024)
+                installNow(f)
             }.onFailure {
                 msg = ctx.getString(R.string.up_fail, it.message?.take(80) ?: "")
                 pct = -1
@@ -194,7 +225,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     Text(
                         when {
                             pct in 0..100 -> if (pct <= 0) ctx.getString(R.string.up_prep) else ctx.getString(R.string.up_downloading, pct)
-                            pct == 101 -> ctx.getString(R.string.up_installer)
+                            pct == 101 -> msg.ifBlank { ctx.getString(R.string.up_installer) }
                             else -> ctx.getString(R.string.up_dl_install)
                         },
                         fontSize = 12.sp,

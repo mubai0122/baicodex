@@ -8,6 +8,7 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /** 检查更新：版本判定只看 code（纯数字），version 仅用于展示；域名取自构建期注入的服务端根地址 */
 object Update {
@@ -31,7 +32,9 @@ object Update {
         val hasUpdate: Boolean = false,
         val forceUpdateRequired: Boolean = false,
         val downloadJumpUrl: String = "",
-        val downloadDirectUrl: String = ""
+        val downloadDirectUrl: String = "",
+        /** 服务端给的包指纹：有就按它校验本地已下载的包，没有就退回旁注文件 */
+        val sha256: String = ""
     )
 
     /** 更新历史里的一条记录 */
@@ -76,7 +79,8 @@ object Update {
             hasUpdate = d.optBoolean("hasUpdate", false),
             forceUpdateRequired = d.optBoolean("forceUpdateRequired", false),
             downloadJumpUrl = d.str("downloadJumpUrl"),
-            downloadDirectUrl = d.str("downloadDirectUrl")
+            downloadDirectUrl = d.str("downloadDirectUrl"),
+            sha256 = d.str("sha256").lowercase()
         )
         Log.i(
             TAG,
@@ -94,6 +98,20 @@ object Update {
     } //安全取字符串
 
     /** 下载更新包到指定文件；contentLength 拿不到时（chunked）progress 一律回 -1 = 不定长 */
+    /** 算文件 sha256：判断本地这份安装包是不是已经完整下好了 */
+    fun sha256(f: File): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        f.inputStream().use { ins ->
+            val buf = ByteArray(256 * 1024)
+            while (true) {
+                val n = ins.read(buf)
+                if (n <= 0) break
+                md.update(buf, 0, n)
+            }
+        }
+        return md.digest().joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+    } //安装包指纹
+
     fun download(url: String, dest: File, onProgress: (Int) -> Unit): File {
         var current = url
         //HttpURLConnection 只自动跟随同协议跳转，http→https 这类要自己跟

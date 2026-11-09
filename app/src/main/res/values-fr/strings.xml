@@ -67,6 +67,8 @@
     <string name="up_prep">Préparation…</string>
     <string name="up_downloading">Téléchargement %1$d%%</string>
     <string name="up_installer">Programme d\'installation ouvert</string>
+    <string name="up_reuse">Réutilisation du paquet déjà téléchargé (%1$dMB)</string>
+    <string name="up_bad_pkg">Échec de la vérification du paquet téléchargé, il a été supprimé. Veuillez réessayer</string>
     <string name="up_dl_install">Télécharger et installer</string>
     <string name="up_open_page">Ouvrir la page</string>
     <string name="up_exit">Quitter l\'application</string>

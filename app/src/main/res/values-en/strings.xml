@@ -67,6 +67,8 @@
     <string name="up_prep">Preparing…</string>
     <string name="up_downloading">Downloading %1$d%%</string>
     <string name="up_installer">Installer opened</string>
+    <string name="up_reuse">Reusing the downloaded package (%1$dMB)</string>
+    <string name="up_bad_pkg">Package checksum mismatch, deleted. Please retry</string>
     <string name="up_dl_install">Download and install</string>
     <string name="up_open_page">Open download page</string>
     <string name="up_exit">Quit app</string>
