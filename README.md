@@ -212,6 +212,8 @@ GNU Affero General Public License v3.0（AGPL-3.0），全文见 LICENSE。
 
 Copyright (C) 2026 沐白 (mubai0122)
 
+> 生效说明：v1.14.2 及之后的版本采用 AGPL-3.0；此前发布的版本（含 v1.14.1）按 GPL-3.0 发布，已授予的授权不可撤销。
+
 **商业许可声明**
 
 本项目采用 AGPL-3.0 协议。如需在闭源产品中集成或作为 SaaS 服务部署（豁免 AGPL 开源义务），请联系 <bai@baiccb.cn> 获取商业许可授权。
