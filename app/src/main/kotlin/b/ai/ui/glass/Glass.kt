@@ -75,7 +75,7 @@ fun GlassPanel(
     val dark = DarkColors
     //真玻璃要有采样源：页面没登记背景层就只能平涂
     val bd = LocalCardBackdrop.current ?: CardBackdropHolder.current
-    val gOn = glass && bd != null && GlassPerf.heavy
+    val gOn = glass && bd != null && GlassPerf.heavy && Cfg.glassBlur > 0
     var touch by remember { mutableStateOf(Offset(-1f, -1f)) }
     var pressed by remember { mutableStateOf(false) }
     Column(
@@ -117,9 +117,12 @@ fun GlassPanel(
                         backdrop = bd!!,
                         shape = { shape },
                         effects = {
-                            padding = maxOf(padding, 24.dp.toPx())
-                            vibrancy()
-                            if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                            //模糊才需要往外多采 + 提饱和补偿发灰：glassBlur=0 时白烧一个 pass 和一块面积
+                            if (Cfg.glassBlur > 0) {
+                                padding = maxOf(padding, 24.dp.toPx())
+                                vibrancy()
+                                blur(Cfg.glassBlur.dp.toPx())
+                            }
                         },
                         highlight = { Highlight.Default.copy(alpha = 0.45f) },
                         onDrawSurface = {

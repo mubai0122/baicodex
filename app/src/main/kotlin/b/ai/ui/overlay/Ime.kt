@@ -24,6 +24,8 @@ object Ime {
         private set
     //上一次的诊断串：数值没变就不重复打日志，否则键盘动画期间每帧一条
     private var lastLog = ""
+    //上一次的键盘高度：键盘动画期间全局布局每帧都触发，值一变就说明正在动
+    private var lastIme = -1
     fun attach(act: Activity) {
         val root = act.window?.decorView ?: return
         //全局布局变化包含键盘弹出/收起，用这个比 OnApplyWindowInsets 覆盖面广
@@ -36,6 +38,11 @@ object Ime {
         val navPx = wi?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
         //官方给的可见性单独记：ime 高度为 0 但这里也为 false，多半是悬浮/未停靠键盘，系统规范下就是不上报
         val shown = wi?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        //键盘在动：整页跟着重排，可见气泡每帧都要重做一次离屏模糊 →临时降档，动画停下自动升回
+        if (imePx != lastIme) {
+            lastIme = imePx
+            b.ai.ui.glass.GlassPerf.animWindow(320L)
+        }
         //官方给了就别叠加，否则键盘高度会被算两遍
         if (imePx > 0) {
             fallback = 0

@@ -115,7 +115,8 @@ fun FloatTabBar(
     //降档用的极淡白：只提亮一点，不发白
     val thin = if (DarkColors) Color.White.copy(alpha = 0.06f) else Color.White.copy(alpha = 0.16f)
     //底栏只看"有没有整屏弹窗"：滑动中也必须是真玻璃，一降档整条栏就白一下再变回来
-    val soft = glassOn && !GlassPerf.dialog
+    //模糊和折射都关了就没有可跑的 effect，这时整条栏走极淡白，省掉三层离屏
+    val soft = glassOn && !GlassPerf.dialog && (Cfg.glassBlur > 0 || Cfg.glassLens > 0)
     //选中变化时胶囊弹到目标位置，阻尼 0.75 收尾不抖
     LaunchedEffect(selected) { offset.animateTo(selected.toFloat(), spring(0.75f, 400f)) }
     //按下就鼓、松手就落：响应要快，别等拖动阈值
@@ -142,10 +143,17 @@ fun FloatTabBar(
                 backdrop = bd,
                 shape = { CircleShape },
                 effects = {
-                    padding = maxOf(padding, 40.dp.toPx())
-                    vibrancy()
-                    if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
-                    lens(24.dp.toPx(), 24.dp.toPx())
+                    //模糊才需要往外多采 + 提饱和；折射才需要外采。都没开就不要白烧 padding 和 pass
+                    if (Cfg.glassBlur > 0) {
+                        padding = maxOf(padding, 40.dp.toPx())
+                        vibrancy()
+                        blur(Cfg.glassBlur.dp.toPx())
+                    }
+                    //设置里折射调到 0 就别再跑 RuntimeShader
+                    if (Cfg.glassLens > 0) {
+                        padding = maxOf(padding, 40.dp.toPx())
+                        lens(24.dp.toPx(), 24.dp.toPx())
+                    }
                 },
                 highlight = { Highlight.Default.copy(alpha = 0.75f) },
                 shadow = {
@@ -212,13 +220,15 @@ fun FloatTabBar(
                                 backdrop = combined,
                                 shape = { CircleShape },
                                 effects = {
-                                    //折射参数固定：跟着 press.value 每帧变会每帧重建 RuntimeShader
-                                    lens(
-                                        refractionHeight = 10.dp.toPx(),
-                                        refractionAmount = 14.dp.toPx(),
-                                        depthEffect = true,
-                                        chromaticAberration = 0.5f
-                                    )
+                                    //折射参数固定：跟着 press.value 每帧变会每帧重建 RuntimeShader；设置里关掉折射就整段跳过
+                                    if (Cfg.glassLens > 0) {
+                                        lens(
+                                            refractionHeight = 10.dp.toPx(),
+                                            refractionAmount = 14.dp.toPx(),
+                                            depthEffect = true,
+                                            chromaticAberration = 0.5f
+                                        )
+                                    }
                                 },
                                 highlight = { Highlight.Default.copy(alpha = 0.35f + 0.45f * p) },
                                 //按下时的厚度感用固定内阴影，不再每帧改半径
@@ -309,9 +319,12 @@ fun FloatTabBar(
                             backdrop = bd,
                             shape = { CircleShape },
                             effects = {
-                                vibrancy()
-                                if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
-                                lens(24.dp.toPx(), 24.dp.toPx())
+                                //录制层只负责把图标按最终观感录进 tabsBackdrop：模糊关了就别白烧提饱和
+                                if (Cfg.glassBlur > 0) {
+                                    vibrancy()
+                                    blur(Cfg.glassBlur.dp.toPx())
+                                }
+                                if (Cfg.glassLens > 0) lens(24.dp.toPx(), 24.dp.toPx())
                             },
                             onDrawSurface = {}
                         ),

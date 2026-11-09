@@ -52,6 +52,7 @@ import b.ai.ui.glass.ProvideCardBackdrop
 import b.ai.ui.glass.backdropPageInset
 import b.ai.ui.glass.drawPageBg
 import b.ai.ui.glass.glassPageLayer
+import b.ai.ui.glass.glassLazyListState
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.glass.pageBg
@@ -269,7 +270,8 @@ fun ChatScreen(
     var pendingImgs by remember { mutableStateOf<List<String>>(emptyList()) }
     //待发送文件：选文件 / 超长粘贴进来的，发送前就挂在输入区，跟选完文件是一个形态
     var pendingFiles by remember { mutableStateOf<List<String>>(emptyList()) }
-    val listState = rememberLazyListState()
+    //滑动联动：滑动期间全站玻璃降成平涂，停手 180ms 再升回来（气泡一屏五条，每条一次离屏必掉帧）
+    val listState = glassLazyListState()
     val scope = rememberCoroutineScope()
     //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
     val (pageTop, pageBottom) = backdropPageInset()

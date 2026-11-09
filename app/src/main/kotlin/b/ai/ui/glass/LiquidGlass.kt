@@ -64,8 +64,18 @@ object GlassPerf {
     var anim by mutableStateOf(false)
     /** 带遮罩的真弹窗开着：整屏已经有一次离屏了，底下卡片不许再各做一遍 */
     var dialog by mutableStateOf(false)
-    /** 要不要真玻璃：只有弹窗期间关掉。没有「刚进页面」「正在滑动」这两档，它们都会让画面白一下再变回来 */
+    /**
+     * 要不要真玻璃：只在弹窗期间关掉。滑动/动画期间一律保持真玻璃，降档会看到玻璃变平
+     */
     val heavy: Boolean get() = !dialog
+    //按压/键盘动画的降档窗口：到点自动升回，不用各处自己记 true/false
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private val unAnim = Runnable { anim = false }
+    fun animWindow(ms: Long = 320L) {
+        if (!anim) anim = true
+        ui.removeCallbacks(unAnim)
+        ui.postDelayed(unAnim, ms)
+    }
 
     private var seq = 0
     /**
@@ -151,6 +161,7 @@ fun glassScrollState(): ScrollState {
  */
 @Composable
 fun Modifier.glassPageLayer(bd: LayerBackdrop): Modifier {
+    //滚动/动画期间同样保持真玻璃：降档会看到玻璃变平，用户不接受。只能从离屏面积和 pass 数上省
     return if (GlassPerf.dialog) this else layerBackdrop(bd)
 } //内容层采样纹理
 
@@ -209,7 +220,8 @@ fun LiquidCard(
     val shape = RoundedCornerShape(corner)
     val scope = rememberCoroutineScope()
     //组合期读一次降档开关：滚动到一半 / 首帧期间直接走轻档
-    val heavy = GlassPerf.heavy
+    //模糊和折射都关了就没有可跑的 effect，真玻璃采到的就是背景本身，画出来和轻档一样
+    val heavy = GlassPerf.heavy && (Cfg.glassBlur > 0 || Cfg.glassLens > 0)
     val press = remember(scope, onClick) { PressHighlight(scope, onClick) }
     //轻档：完全不进 drawBackdrop，只留半透底 + 高光边
     if (!heavy) {
@@ -229,12 +241,16 @@ fun LiquidCard(
                 backdrop = backdrop,
                 shape = { shape },
                 effects = {
-                    padding = maxOf(padding, 24.dp.toPx())
-                    vibrancy()
-                    //矮卡片同样要模糊：色系那种单行卡只有 80dp 高，卡在 96dp 门槛下就只剩乳白平涂，看着就是毛玻璃
-                    if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+                    //模糊才需要往外多采 + 提饱和补偿发灰：glassBlur=0 时这两项白烧一个 pass 和一块面积
+                    if (Cfg.glassBlur > 0) {
+                        padding = maxOf(padding, 24.dp.toPx())
+                        vibrancy()
+                        //矮卡片同样要模糊：色系那种单行卡只有 80dp 高，卡在 96dp 门槛下就只剩乳白平涂，看着就是毛玻璃
+                        blur(Cfg.glassBlur.dp.toPx())
+                    }
                     //边缘折射是 RuntimeShader，只有真·大卡才值得开
                     if (size.minDimension >= 140.dp.toPx() && Cfg.glassLens > 0) {
+                        padding = maxOf(padding, 40.dp.toPx())
                         lens(Cfg.glassLens.dp.toPx(), (Cfg.glassLens * 1.2f).dp.toPx())
                     }
                 },
@@ -301,6 +317,10 @@ fun Modifier.liquidBg(
     val scope = rememberCoroutineScope()
     //用普通数组当一次性开关，别用 mutableState：那只会在首帧后再触发一次重组
     val once = remember { booleanArrayOf(gate <= 0.dp || (GlassPerf.ready && !GlassPerf.warming)) }
+    //没有模糊也没有折射时，真玻璃采到的就是背景本身，画出来跟半透白一模一样：这种情形根本不进离屏
+    //消息气泡一屏五六条，每条一次离屏就是每帧五六次合成，8.3ms 的预算全花在这儿
+    val fx = Cfg.glassBlur > 0 || refract
+    if (!fx) return glassLite(shape, tint, veil)
     //小节点在这里就返回，全程不读 GlassPerf：否则全站几百个胶囊都会订阅全局降档开关，
     //一滑动、一点击就让整棵树重组一遍，那才是"点一下卡一秒"
     if (!big || !blur) {
@@ -332,11 +352,15 @@ fun Modifier.liquidBg(
         backdrop = bd,
         shape = { shape },
         effects = {
-            padding = maxOf(padding, 40.dp.toPx())
-            vibrancy()
-            if (Cfg.glassBlur > 0) blur(Cfg.glassBlur.dp.toPx())
+            //模糊才需要往外多采 + 提饱和补偿发灰：glassBlur=0 时这两项既不改变画面，又白烧一个 pass 和 60% 面积
+            if (Cfg.glassBlur > 0) {
+                padding = maxOf(padding, 40.dp.toPx())
+                vibrancy()
+                blur(Cfg.glassBlur.dp.toPx())
+            }
             //气泡、输入框这类小元素默认不折射，边缘变形会显得脏；矮控件也不值得开 shader
             if (refract && size.minDimension >= 160.dp.toPx() && Cfg.glassLens > 0) {
+                padding = maxOf(padding, 40.dp.toPx())
                 lens(Cfg.glassLens.dp.toPx(), 10.dp.toPx())
             }
         },
