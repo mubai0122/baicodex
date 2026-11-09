@@ -205,6 +205,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
@@ -316,6 +318,10 @@ fun ChatScreen(
     //长按光效进度：按下 0→1 沿边框走一圈，松手回 0
     val glow = remember { Animatable(0f) }
 
+    //发完就收起键盘：输入法长时间占着屏幕下部，正文可见区就只剩一条
+    val kbCtl = LocalSoftwareKeyboardController.current
+    val focusMgr = LocalFocusManager.current
+
     //把当前输入与附件发出去：手打和语音识别回来走同一条路
     fun sendNow(extra: String = "") {
         val t = (input + extra).trim()
@@ -327,6 +333,8 @@ fun ChatScreen(
         pendingFiles = emptyList()
         hint = hintWords.random()
         fullInput = false
+        kbCtl?.hide()
+        focusMgr.clearFocus()
         val fallback = if (imgs.isNotEmpty()) ctx.getString(R.string.cs_see_images)
         else ctx.getString(R.string.cs_see_files)
         Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)

@@ -114,10 +114,6 @@ class DrawerCtl(
         if (goOpen) open() else close()
     }
 
-    /** 关态召唤的收尾：手指动过就展开，只有明显往左甩才收回；按 0.5 进度判会「滑一点出来又消失」 */
-    internal fun settleOpen(velocity: Float) {
-        if (velocity < -FLING) close() else open()
-    }
 } //抽屉控制器
 
 /** 抽屉宿主：内容层 + 透明点击遮罩 + 可拖拽面板。遮罩不带颜色，模糊交给 BackdropHost，避免两层遮罩叠黑 */
@@ -133,6 +129,10 @@ fun DrawerHost(
     BoxWithConstraints(Modifier.fillMaxSize().background(BgGray)) {
     val panelWidth = width ?: (maxWidth * WIDTH_RATIO)
     val widthPx = with(LocalDensity.current) { panelWidth.toPx() }
+    //整页右滑召唤的起手区：只认屏幕左侧三分之一，中间和右边一律让给列表滚动
+    val openZonePx = with(LocalDensity.current) { (maxWidth * 0.34f).toPx() }
+    //左边缘热区起手的容差：手指从边缘往里落几毫米也算边缘起手
+    val edgeSlackPx = with(LocalDensity.current) { 48.dp.toPx() }
     val shiftPx = with(LocalDensity.current) { PushShift.toPx() }
     val density = LocalDensity.current.density
     //顶栏那一条（系统栏 + 顶栏按钮行）不参与右滑召唤，点按钮就不会被拖拽手势抢走
@@ -179,7 +179,7 @@ fun DrawerHost(
                 }
                 //整页右滑召唤：起手在屏幕左三分之一才认，纵向滚动和左滑都不抢
                 .then(
-                    if (gestures) Modifier.pointerInput(widthPx, topGuardPx) { dragToOpen(ctl, widthPx, topGuardPx) } else Modifier
+                    if (gestures) Modifier.pointerInput(widthPx, topGuardPx, openZonePx) { dragToOpen(ctl, widthPx, topGuardPx, openZonePx) } else Modifier
                 )
         ) { content() }
         if (open) {
@@ -223,7 +223,7 @@ fun DrawerHost(
                     .align(Alignment.CenterStart)
                     .fillMaxHeight()
                     .width(32.dp)
-                    .pointerInput(widthPx, topGuardPx) { dragToOpen(ctl, widthPx, topGuardPx) }
+                    .pointerInput(widthPx, topGuardPx, edgeSlackPx) { dragToOpen(ctl, widthPx, topGuardPx, edgeSlackPx) }
             )
         }
     }
@@ -247,15 +247,16 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.dragToCl
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.dragToOpen(
     ctl: DrawerCtl,
     widthPx: Float,
-    topGuardPx: Float
+    topGuardPx: Float,
+    startMaxPx: Float
 ) {
     val vt = VelocityTracker()
-    //起手落在顶栏那一条就整段忽略：按钮区不该有抽屉手势，否则点按会被拖拽抢走
+    //起手落在顶栏那一条不认（按钮区），落在起手区以外也不认（那是用户想滚列表，不是开抽屉）
     var ignore = false
     detectHorizontalDragGestures(
-        onDragStart = { off -> vt.resetTracking(); ignore = off.y < topGuardPx },
-        onDragCancel = { if (!ignore) ctl.settleOpen(0f) },
-        onDragEnd = { if (!ignore) ctl.settleOpen(vt.calculateVelocity().x) },
+        onDragStart = { off -> vt.resetTracking(); ignore = off.y < topGuardPx || off.x > startMaxPx },
+        onDragCancel = { if (!ignore) ctl.settle(0f) },
+        onDragEnd = { if (!ignore) ctl.settle(vt.calculateVelocity().x) },
         onHorizontalDrag = { change, dx ->
             if (ignore) return@detectHorizontalDragGestures
             //关着的时候只认右滑，往左拖一律还给列表
