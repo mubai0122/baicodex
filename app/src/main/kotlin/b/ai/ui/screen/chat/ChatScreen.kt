@@ -421,7 +421,8 @@ fun ChatScreen(
                     contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(Agent.messages) { m ->
+                    //key 用消息 id：不给 key 时列表一更新就整段重新组合，滚动也跟着抖
+                    items(Agent.messages, key = { it.id }) { m ->
                         Column(Modifier.fillMaxWidth()) {
                             //重发 / 重新生成长出来的分支：同父有几条就在这条上方给 ‹ n/m ›，靠向自己那一侧
                             if (m.bTotal > 1) {

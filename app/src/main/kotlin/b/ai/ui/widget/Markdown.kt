@@ -228,6 +228,10 @@ private fun mdCopy(ctx: Context, text: String) {
     cm.setPrimaryClip(ClipData.newPlainText("bai", text))
 }
 
+/**行内样式解析结果按文本缓存：滚动时这些块会反复重组，每次重建 AnnotatedString 就是白烧帧预算 */
+@Composable
+private fun mdInline(text: String): AnnotatedString = remember(text) { inlineMd(text) }
+
 /**Markdown 正文渲染：块级排版 + 行内样式，代码块自带复制按钮 */
 @Composable
 fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
@@ -237,7 +241,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
             when (b) {
                 is MdBlock.Code -> CodeBlock(b)
                 is MdBlock.Head -> Text(
-                    inlineMd(b.text),
+                    mdInline(b.text),
                     fontSize = when (b.level) {
                         1 -> 17.sp
                         2 -> 15.5.sp
@@ -250,12 +254,12 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                 is MdBlock.Bul -> Row(Modifier.padding(start = (b.level * 12).dp)) {
                     Text("•", fontSize = size, color = TextSecondary)
                     Spacer(Modifier.width(6.dp))
-                    Text(inlineMd(b.text), fontSize = size, color = color, lineHeight = 20.sp)
+                    Text(mdInline(b.text), fontSize = size, color = color, lineHeight = 20.sp)
                 }
                 is MdBlock.Num -> Row(Modifier.padding(start = (b.level * 12).dp)) {
                     Text("${b.num}.", fontSize = size, color = TextSecondary)
                     Spacer(Modifier.width(6.dp))
-                    Text(inlineMd(b.text), fontSize = size, color = color, lineHeight = 20.sp)
+                    Text(mdInline(b.text), fontSize = size, color = color, lineHeight = 20.sp)
                 }
                 is MdBlock.Quote -> Row(
                     Modifier
@@ -264,7 +268,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        inlineMd(b.text),
+                        mdInline(b.text),
                         fontSize = size,
                         color = TextSecondary,
                         lineHeight = 20.sp
@@ -278,7 +282,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .padding(top = 0.5.dp)
                 )
                 is MdBlock.Para -> Text(
-                    inlineMd(b.text),
+                    mdInline(b.text),
                     fontSize = size,
                     color = color,
                     lineHeight = 20.sp
