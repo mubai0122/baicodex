@@ -99,6 +99,8 @@ fun ModelSetupPanel() {
     var fProv by remember { mutableStateOf("custom") }
     var fBase by remember { mutableStateOf("") }
     var fKey by remember { mutableStateOf("") }
+    /** 载入这份配置时的 Key：用来判断用户是「没动」还是「真清空」 */
+    var fKey0 by remember { mutableStateOf("") }
     var fModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var fModel by remember { mutableStateOf("") }
     var fTok by remember { mutableStateOf(0) }
@@ -120,6 +122,7 @@ fun ModelSetupPanel() {
         fProv = p?.providerId ?: "custom"
         fBase = p?.baseUrl ?: ""
         fKey = p?.apiKey ?: ""
+        fKey0 = p?.apiKey ?: ""
         fModels = p?.models ?: emptyList()
         fModel = p?.model ?: ""
         fTok = p?.maxTokens ?: 0
@@ -136,6 +139,7 @@ fun ModelSetupPanel() {
         fProv = "custom"
         fBase = ""
         fKey = ""
+        fKey0 = ""
         fModels = emptyList()
         fModel = ""
         fTok = 0
@@ -162,12 +166,15 @@ fun ModelSetupPanel() {
         }
         val id = fId.ifBlank { "p" + System.currentTimeMillis() }
         val custom = fCustom && fName.isNotBlank()
+        //Key 框被读成空时不能拿空值覆盖：那条配置的 Key 只在私有库里，
+        //读不出来表单就是空的，编辑一下模型名就把 Key 洗掉了。真要清 Key 就删掉这条重建
+        val effKey = if (key.isNotEmpty() || fKey0.isEmpty()) key else fKey0
         val p = ModelProfile(
             id = id,
             name = if (custom) fName.trim() else Profiles.autoLabel(fProv, one),
             providerId = fProv,
             baseUrl = base,
-            apiKey = key,
+            apiKey = effKey,
             model = one,
             models = ms,
             vision = Cfg.modelVision,
@@ -176,7 +183,7 @@ fun ModelSetupPanel() {
             maxTokens = fTok,
             custom = custom
         )
-        Cfg.setProfileKey(id, key)
+        if (effKey.isNotEmpty()) Cfg.setProfileKey(id, effKey)
         Profiles.upsert(p)
         Profiles.select(id)
         loadForm(p)

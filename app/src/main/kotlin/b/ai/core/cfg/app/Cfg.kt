@@ -288,7 +288,41 @@ object Cfg {
             else -> e.putString(k, v as? String ?: "")
         }
         e.apply()
-    }
+    } //异步落盘，250ms 内合并
+
+    /** 立刻落盘：数据根文件写不动时要靠分片兜底，慢一步就可能被进程被杀吞掉 */
+    private fun putNow(k: String, v: Any?) {
+        val e = sp?.edit() ?: return
+        when (v) {
+            is Boolean -> e.putBoolean(k, v)
+            is Int -> e.putInt(k, v)
+            is Long -> e.putLong(k, v)
+            is Float -> e.putFloat(k, v)
+            else -> e.putString(k, v as? String ?: "")
+        }
+        e.commit()
+    } //同步落盘
+
+    /** 模型表的版本戳：rev 每次保存 +1，fileAt 记「数据根文件里那份」对应哪个 rev */
+    var modelsRev: Long
+        get() = mem("models_rev", 0L).value
+        set(v) { mem("models_rev", 0L).value = v; putNow("models_rev", v) }
+    var modelsFileAt: Long
+        get() = mem("models_file_at", 0L).value
+        set(v) { mem("models_file_at", 0L).value = v; putNow("models_file_at", v) }
+
+    /** 模型表的整表快照：数据根写不动时它就是真源，冷启动靠它把配置捞回来 */
+    var modelsSnap: String
+        get() = mem("models_snap", "").value
+        set(v) { mem("models_snap", "").value = v; putNow("models_snap", v) }
+
+    /** 技能表同上：rev / fileAt / 快照（快照沿用老的 skills 键） */
+    var skillsRev: Long
+        get() = mem("skills_rev", 0L).value
+        set(v) { mem("skills_rev", 0L).value = v; putNow("skills_rev", v) }
+    var skillsFileAt: Long
+        get() = mem("skills_file_at", 0L).value
+        set(v) { mem("skills_file_at", 0L).value = v; putNow("skills_file_at", v) }
 
     var onboarded: Boolean
         get() = mem("onboarded", false).value

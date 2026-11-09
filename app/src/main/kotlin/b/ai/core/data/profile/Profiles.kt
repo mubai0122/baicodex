@@ -60,7 +60,15 @@ object Profiles {
         corrupt = exists && raw != null && parsed == null
         unreadable = exists && raw == null
         if (corrupt || unreadable) runCatching { f.copyTo(File(f.parentFile, "$FILE.bad"), overwrite = true) }
+        //真源判定：数据根里那份是不是最后一次保存写进去的（modelsFileAt == modelsRev）。
+        //数据根文件的属主被系统改成 media_rw 之后本应用只有读权限，写盘会一直失败；
+        //这时只信文件就等于每次冷启动都把配置回滚成旧档，所以改成分片快照兜底
+        val snap = Cfg.modelsSnap
+        val fromSnap = if (snap.isNotBlank()) runCatching { parse(snap) }.getOrNull() else null
+        val fileOk = parsed != null && Cfg.modelsFileAt == Cfg.modelsRev
         cache.value = when {
+            fileOk -> parsed!!
+            fromSnap != null -> fromSnap
             parsed != null && parsed.isNotEmpty() -> parsed
             corrupt || unreadable -> cache.value.ifEmpty { listOf(legacy()) }
             else -> listOf(legacy()) //文件本来就没有：全新安装，或从单条配置升级上来
@@ -183,9 +191,15 @@ object Profiles {
                     .put("custom", p.custom)
             )
         }
+        val json = arr.toString(2)
+        val rev = System.currentTimeMillis()
+        //先落分片快照（私有目录一定写得进），再尽力写数据根：
+        //数据根写不动时配置也不会丢，下次冷启动按快照把整表捞回来
+        Cfg.modelsSnap = json
+        Cfg.modelsRev = rev
         //写失败不许当成功：以前这里返回值直接丢掉，界面照样提示「已保存」，重启才发现没了
-        lastError = if (Store.write(FILE, arr.toString(2))) ""
-        else "没写进磁盘：${Paths.file(FILE).absolutePath} 不可写（目录被占用或无权限）"
+        lastError = Store.why(FILE, json)
+        Cfg.modelsFileAt = if (lastError.isEmpty()) rev else 0L
     } //整表落盘
 
     /** 切换配置：整组提供商 / Key / 模型 / 能力一起换掉 */

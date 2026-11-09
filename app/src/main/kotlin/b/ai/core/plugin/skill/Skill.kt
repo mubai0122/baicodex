@@ -33,17 +33,26 @@ object Skills {
     val list: List<Skill> get() = cache.value
     val enabled: List<Skill> get() = cache.value.filter { it.on }
 
+    /** 上一次写盘的结果：空串 = 落盘成功，否则是给界面看的错误说明 */
+    var lastError: String = ""
+        private set
+
     fun init(c: Context) {
         if (sp != null) return
         val p = Prefs.get(c)
         sp = p
-        //文件优先：用户手改过就以文件为准；文件不在则迁移旧配置或写预置技能
+        //真源判定：数据根文件里那份是不是最后一次保存写进去的（skillsFileAt == skillsRev）。
+        //数据根写不动时只信文件，就是每次冷启动都把用户删掉的技能塞回来，所以用分片快照兜底
         val fromFile = Store.read(FILE)
-        cache.value = if (fromFile != null) {
-            runCatching { parse(fromFile) }.getOrDefault(emptyList())
-        } else {
-            val legacy = p.getString("skills", null)
-            if (legacy == null) defaults() else runCatching { parse(legacy) }.getOrDefault(emptyList())
+        val fileList = fromFile?.let { runCatching { parse(it) }.getOrNull() }
+        val snapRaw = p.getString("skills", null)
+        val snapList = snapRaw?.let { runCatching { parse(it) }.getOrNull() }
+        val fileOk = fileList != null && Cfg.skillsFileAt == Cfg.skillsRev
+        cache.value = when {
+            fileOk -> fileList!!
+            snapList != null -> snapList
+            fileList != null -> fileList
+            else -> defaults()
         }
         seedOnce()
         save()
@@ -188,8 +197,14 @@ object Skills {
                     .put("on", s.on)
             )
         }
-        sp?.edit()?.putString("skills", arr.toString())?.apply()
-        Store.write(FILE, arr.toString(2))
+        val json = arr.toString(2)
+        val rev = System.currentTimeMillis()
+        //先落分片（私有目录一定写得进），再尽力写数据根：数据根写不动时技能也不会丢
+        sp?.edit()?.putString("skills", arr.toString())?.commit()
+        Cfg.skillsRev = rev
+        //写失败不许当成功：以前这里返回值直接丢掉，删了技能重启又回来
+        lastError = Store.why(FILE, json)
+        Cfg.skillsFileAt = if (lastError.isEmpty()) rev else 0L
     } //整表落盘
 
     fun add(name: String, desc: String, body: String) {

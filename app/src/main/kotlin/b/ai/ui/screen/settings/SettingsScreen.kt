@@ -509,10 +509,17 @@ fun SettingsScreen(
                 onSave = { n, d, b ->
                     if (s.id.isBlank()) Skills.add(n, d, b) else Skills.update(s.id, n, d, b)
                     draft = null
+                    //写不进数据根必须当场说清：以前这里静默，重启才发现改动没了
+                    Skills.lastError.takeIf { it.isNotEmpty() }?.let {
+                        android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_LONG).show()
+                    }
                 },
                 onDelete = {
                     if (s.id.isNotBlank()) Skills.remove(s.id)
                     draft = null
+                    Skills.lastError.takeIf { it.isNotEmpty() }?.let {
+                        android.widget.Toast.makeText(ctx, it, android.widget.Toast.LENGTH_LONG).show()
+                    }
                 },
                 onClose = { draft = null }
             )
