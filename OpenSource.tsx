@@ -165,7 +165,7 @@ export default defineComponent({
             {/* 协议与社区标签 */}
             <div style={{ marginTop: '40px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-mute)' }}>开源协议：</span>
-              <span style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '6px', fontWeight: 500 }}>GPL-3.0 License</span>
+              <span style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-soft)', border: '1px solid var(--border)', borderRadius: '6px', fontWeight: 500 }}>AGPL-3.0 License</span>
               <span style={{ fontSize: '12px', padding: '4px 10px', background: 'rgba(52,199,89,0.1)', color: 'var(--green)', borderRadius: '6px', fontWeight: 500 }}>Active Community</span>
             </div>
           </div>

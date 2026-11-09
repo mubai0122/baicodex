@@ -4,7 +4,7 @@ version = "2.0.0"
 edition = "2021"
 rust-version = "1.78"
 description = "本地 AI Agent 内核：模型直连、工具调用、文件系统、命令执行、加密存储，一套 Rust 逻辑层，多端复用"
-license = "GPL-3.0-only"
+license = "AGPL-3.0-only"
 repository = "https://github.com/mubai0122/baicodex"
 
 # 多端共用同一套内核：

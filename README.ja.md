@@ -12,7 +12,7 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 
 - 公式サイト：<https://agent.ai.baiccb.cn>
 - ダウンロード：<https://github.com/mubai0122/baicodex/releases/latest>
-- 無料・オープンソース：GPL-3.0、課金・広告・回数制限なし
+- ライセンス：AGPL-3.0、課金・広告・回数制限なし。クローズドソース製品への組み込みや SaaS 提供には商用ライセンスが必要
 
 > `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
 
@@ -175,7 +175,7 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 いいえ。通常のアプリ権限でほとんどの機能が使えます。システム級の shell が欲しければ Shizuku（Android 11 以上を推奨）、システムディレクトリを書き換えるなら Root。内蔵 Linux サンドボックスだけは例外で、中のプログラムを実行するには Root / Shizuku チャネルが必要です。
 
 **本当に無料ですか？**
-はい。GPL-3.0 のオープンソースで、課金・サブスク・広告・回数制限はありません。自分でビルドしても構いません。
+はい。AGPL-3.0 のオープンソースで、課金・サブスク・広告・回数制限はありません。自分でビルドしても構いません。クローズドソース製品への組み込みや、AGPL のソース公開義務を免除した SaaS 提供には商用ライセンスが必要です（下記「ライセンス」参照）。
 
 **データはアップロードされますか？**
 されません。会話、ファイル、キーはすべて端末内です。初回起動時に同意画面があり、同意した場合のみ匿名の利用統計を送信します。拒否しても機能は変わりません。
@@ -208,9 +208,15 @@ scripts/                    ビルドとリリースのスクリプト
 
 ### ライセンス
 
-GNU General Public License v3.0。全文は LICENSE を参照。
+GNU Affero General Public License v3.0（AGPL-3.0）。全文は LICENSE を参照。
 
 Copyright (C) 2026 沐白 (mubai0122)
+
+**商用ライセンスについて**
+
+本プロジェクトは AGPL-3.0 で公開されています。クローズドソース製品への組み込み、または SaaS としての提供（AGPL のソース公開義務の免除）には商用ライセンスが必要です。<bai@baiccb.cn> までご連絡ください。
+
+> 商用ライセンスは本プロジェクト自前の Kotlin / Rust / C++ / TypeScript コードのみを対象とします。`app/src/main/assets/linux/` の proot と Ubuntu rootfs は第三者コンポーネントであり、それぞれのライセンス（GPL / LGPL 等）で配布され、商用ライセンスの対象外です。
 
 ---
 

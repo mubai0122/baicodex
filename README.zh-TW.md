@@ -12,7 +12,7 @@
 
 - 官網：<https://agent.ai.baiccb.cn>
 - 下載：<https://github.com/mubai0122/baicodex/releases/latest>
-- 開源免費：GPL-3.0，無內購、無廣告、無次數限制
+- 開源協議：AGPL-3.0，無內購、無廣告、無次數限制；閉源整合與 SaaS 部署需商業授權
 
 > `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
 
@@ -175,7 +175,7 @@
 不需要。一般 App 身分就能用絕大部分功能；要系統級 shell 掛 Shizuku（建議 Android 11+），要改系統目錄才需要 Root。內建 Linux 沙箱是例外——需要 Root / Shizuku 通道才能執行裡面的程式。
 
 **真的免費嗎？**
-是。GPL-3.0 開源，沒有內購、訂閱、廣告或次數限制，也可以自己編一份。
+是。AGPL-3.0 開源，沒有內購、訂閱、廣告或次數限制，也可以自己編一份。若要整合進閉源產品、或作為 SaaS 對外提供而豁免 AGPL 的開源義務，需先取得商業授權，見下方「授權」。
 
 **資料會上傳嗎？**
 不會。對話、檔案、金鑰都在本機。首次啟動有協議頁，同意後才會上報匿名使用統計，拒絕就不報，功能不受影響。
@@ -208,9 +208,15 @@ scripts/                    建置與發版腳本
 
 ### 授權
 
-GNU General Public License v3.0，全文見 LICENSE。
+GNU Affero General Public License v3.0（AGPL-3.0），全文見 LICENSE。
 
 Copyright (C) 2026 沐白 (mubai0122)
+
+**商業授權聲明**
+
+本專案採用 AGPL-3.0 協議。如需整合進閉源產品，或作為 SaaS 服務部署（豁免 AGPL 開源義務），請聯絡 <bai@baiccb.cn> 取得商業授權。
+
+> 商業授權僅涵蓋本專案自有的 Kotlin / Rust / C++ / TypeScript 程式碼。`app/src/main/assets/linux/` 下的 proot 與 Ubuntu rootfs 屬第三方元件，依各自授權（GPL / LGPL 等）散布，不在商業授權範圍內。
 
 ---
 

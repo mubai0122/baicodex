@@ -12,7 +12,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 
 - Website: <https://agent.ai.baiccb.cn>
 - Download: <https://github.com/mubai0122/baicodex/releases/latest>
-- Free and open source: GPL-3.0, no IAP, no ads, no usage limits
+- Licence: AGPL-3.0, no IAP, no ads, no usage limits; closed-source integration and SaaS deployment require a commercial licence
 
 > `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
 
@@ -175,7 +175,7 @@ Three key layers (Keystore-wrapped + HKDF half-key + data key), credentials stor
 No. A normal app identity covers most features; add Shizuku for a system-level shell (Android 11+ recommended), and Root only to modify system directories. The built-in Linux sandbox is the exception — it needs the Root / Shizuku channel to execute programs inside it.
 
 **Is it really free?**
-Yes. GPL-3.0, no IAP, subscriptions, ads or usage limits, and you can build your own copy.
+Yes. AGPL-3.0, no IAP, subscriptions, ads or usage limits, and you can build your own copy. Embedding it in a closed-source product or running it as a SaaS without the AGPL source obligations requires a commercial licence — see Licensing below.
 
 **Does any data get uploaded?**
 No. Chats, files and keys stay on the device. The first launch shows a consent page; anonymous usage stats are only sent if you agree, and declining changes nothing.
@@ -208,9 +208,15 @@ scripts/                    Build and release scripts
 
 ### Licence
 
-GNU General Public License v3.0, full text in LICENSE.
+GNU Affero General Public License v3.0 (AGPL-3.0), full text in LICENSE.
 
 Copyright (C) 2026 沐白 (mubai0122)
+
+**Commercial licensing**
+
+This project is released under AGPL-3.0. Embedding it in a closed-source product, or deploying it as a SaaS service (i.e. waiving the AGPL source obligations), requires a commercial licence. Contact <bai@baiccb.cn>.
+
+> The commercial licence covers only the project's own Kotlin / Rust / C++ / TypeScript code. proot and the Ubuntu rootfs under `app/src/main/assets/linux/` are third-party components distributed under their own licences (GPL / LGPL), and are not covered.
 
 ---
 

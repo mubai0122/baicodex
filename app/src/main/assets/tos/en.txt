@@ -26,7 +26,7 @@ Accessibility is used to read on-screen controls and to tap, swipe and type on y
 The app is provided "as is", without warranty of being defect-free, uninterrupted or fit for a particular purpose. Automation carries a risk of mistakes; please verify actions that involve payment, deletion or sending. To the maximum extent permitted by law, the developer is not liable for any direct or indirect loss arising from the use of, or inability to use, this app.
 
 9. Open source licence
-This app is released under GPL-3.0 and hosted on GitHub. You may study, modify and redistribute it under the terms of that licence, and redistributions must keep the same open-source licence.
+This app is released under AGPL-3.0 and hosted on GitHub. You may study, modify and redistribute it under the terms of that licence, and redistributions must keep the same open-source licence.
 
 10. Changes and termination
 These terms are updated together with app releases; material changes are announced in the app and require you to confirm again. If you do not accept a change, stop using the app and uninstall it. You may end this agreement at any time by uninstalling the app.
