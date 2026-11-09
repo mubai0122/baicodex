@@ -1161,6 +1161,13 @@ object Cfg {
         get() = mem("ctx_total", 128000).value
         set(v) { mem("ctx_total", 128000).value = v; put("ctx_total", v) }
 
+    /** 当前配置自带的窗口，0 = 跟随全局；由 Profiles.apply 灌入，不落盘 */
+    var profCtxTotal: Int = 0
+
+    /** 实际生效的窗口：配置带了窗口就用它，否则用全局设置 */
+    val ctxWin: Int
+        get() = if (profCtxTotal > 0) profCtxTotal else ctxTotal
+
     /** 压缩触发阈值：占总上下文窗口的百分比，10-99 */
     var ctxPct: Int
         get() = mem("ctx_pct", 70).value
@@ -1169,15 +1176,25 @@ object Cfg {
             mem("ctx_pct", 70).value = n
             put("ctx_pct", n)
         }
-
-    /** 中文折算：1 token 大约等于 1.8 个字，字符数除以它就是 token 估算 */
-    const val CHARS_PER_TOKEN = 1.8f
     /** 上下文预算（token）：总窗口 × 压缩阈值百分比，界面直接显示这个 */
     val ctxTokenBudget: Int
-        get() = (ctxTotal.toLong() * ctxPct / 100L).toInt()
-    /** 折成字符预算：给压缩判定用（内部还是按字符数比较） */
-    val ctxCharBudget: Int
-        get() = (ctxTokenBudget.toLong() * CHARS_PER_TOKEN).toInt()
+        get() = (ctxWin.toLong() * ctxPct / 100L).toInt()
+
+
+    /** 按字符构成估 token：中日韩字符 1 字≈1 token，其余按 3.5 字符≈1 token；比统一除 1.8 更贴近真实分词，代码/英文会话不会被判成「快到窗口」 */
+    fun estTokens(s: String): Int {
+        if (s.isEmpty()) return 0
+        var cjk = 0
+        var other = 0
+        for (ch in s) {
+            val c = ch.code
+            if (c in 0x3000..0x303F || c in 0x3040..0x30FF || c in 0x3400..0x4DBF ||
+                c in 0x4E00..0x9FFF || c in 0xAC00..0xD7AF || c in 0xF900..0xFAFF ||
+                c in 0xFF00..0xFFEF
+            ) cjk++ else other++
+        }
+        return cjk + (other * 2 + 6) / 7
+    } //按字符类型估 token
 
     /** 已注入的预置技能版本：小于 Skills.PRESET_SEED 时补一次新版预置 */
     var presetSeed: Int

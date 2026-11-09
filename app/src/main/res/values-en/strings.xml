@@ -864,6 +864,10 @@
     <string name="se2_cur_msgs">This chat: %1$d messages / %2$d chars</string>
     <string name="se2_pct">Compact at %1$d%%</string>
     <string name="se2_kchar">about %1$dk chars</string>
+    <string name="se2_ktok">about %1$dk tokens</string>
+    <string name="ms_ctx_total">Context window</string>
+    <string name="ms_ctx_total_tip">Context window for this profile; choose "Default" to follow the global setting. DeepSeek 1M, most models 128k</string>
+    <string name="se2_ctx_own">This profile sets its own window, so the global value here has no effect; change it in the profile editor</string>
     <string name="se2_n_items">%1$d messages</string>
     <string name="se2_rec">%1$d messages · %2$d chars · %3$d chats</string>
     <string name="se2_ws_files">%1$d files · %2$s · </string>

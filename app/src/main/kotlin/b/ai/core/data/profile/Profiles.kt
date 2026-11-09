@@ -23,6 +23,8 @@ data class ModelProfile(
     val toolCall: Boolean = true,
     val reasoning: Boolean = true,
     val maxTokens: Int = 0,
+    /** 这条配置自己的上下文窗口（token）；0 表示跟随全局「模型窗口」设置 */
+    val ctxTotal: Int = 0,
     /** 名字是否用户自定义：false 时始终按「厂商 · 模型」显示，改模型名字跟着变 */
     val custom: Boolean = false
 ) {
@@ -157,6 +159,7 @@ object Profiles {
                 toolCall = o.optBoolean("toolCall", o.optBoolean("tool_call", true)),
                 reasoning = o.optBoolean("reasoning", true),
                 maxTokens = o.optInt("maxTokens", o.optInt("max_tokens", 0)),
+                ctxTotal = o.optInt("ctxTotal", 0),
                 //老文件没这个字段：名字正好等于自动名就算自动名，跟着模型走
                 custom = o.optBoolean("custom", name.isNotBlank() && name != autoLabel(prov, modelName))
             )
@@ -188,6 +191,7 @@ object Profiles {
                     .put("toolCall", p.toolCall)
                     .put("reasoning", p.reasoning)
                     .put("maxTokens", p.maxTokens)
+                    .put("ctxTotal", p.ctxTotal)
                     .put("custom", p.custom)
             )
         }
@@ -219,6 +223,8 @@ object Profiles {
         Cfg.modelToolCall = p.toolCall
         Cfg.modelReasoning = p.reasoning
         Cfg.maxTokens = p.maxTokens
+        //窗口不写进全局那份设置：全局是用户手填的默认值，这条配置没填（0）时继续用它
+        Cfg.profCtxTotal = p.ctxTotal
         Cfg.profileName = p.name
         Cfg.profileCustom = p.custom
     } //把配置灌进全局
@@ -246,7 +252,8 @@ object Profiles {
             vision = Cfg.modelVision,
             toolCall = Cfg.modelToolCall,
             reasoning = Cfg.modelReasoning,
-            maxTokens = Cfg.maxTokens
+            maxTokens = Cfg.maxTokens,
+            ctxTotal = Cfg.profCtxTotal
         )
         upsert(p)
     } //当前值写回
@@ -284,6 +291,7 @@ object Profiles {
             toolCall = cur?.toolCall ?: Cfg.modelToolCall,
             reasoning = cur?.reasoning ?: Cfg.modelReasoning,
             maxTokens = cur?.maxTokens ?: Cfg.maxTokens,
+            ctxTotal = cur?.ctxTotal ?: 0,
             custom = false
         )
         upsert(p.copy(name = ""))
@@ -309,6 +317,7 @@ object Profiles {
                 toolCall = Cfg.modelToolCall,
                 reasoning = Cfg.modelReasoning,
                 maxTokens = 0,
+                ctxTotal = 0,
                 custom = false
             )
         )

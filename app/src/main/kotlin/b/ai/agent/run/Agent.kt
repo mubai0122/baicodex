@@ -1462,13 +1462,13 @@ object Agent {
         val bound = boundOf(list)
         val fresh = list.filter { it.role != "summary" && it.id > bound }
         if (fresh.size <= 2) return false
-        val chars = fresh.sumOf { m -> m.content.length + m.toolCalls.sumOf { it.arguments.length } }
+        val toks = fresh.sumOf { m -> Cfg.estTokens(m.content) + m.toolCalls.sumOf { Cfg.estTokens(it.arguments) } }
         //用量真的回落就复位防抖系数
-        if (chars <= Cfg.ctxCharBudget) budgetScale = 1f
-        //双阈值：字符预算（总上下文 × 百分比）到线就压；条数只是保险，占用没到四分之一时不许单凭条数压
-        val overChars = chars > (Cfg.ctxCharBudget * budgetScale).toInt()
-        val overCount = fresh.size > Cfg.ctxMsgCount && chars * 4 > Cfg.ctxCharBudget
-        if (!force && !overChars && !overCount) return false
+        if (toks <= Cfg.ctxTokenBudget) budgetScale = 1f
+        //双阈值：token 预算（总窗口 × 百分比）到线就压；条数只是保险，占用没到四分之一时不许单凭条数压
+        val overToks = toks > (Cfg.ctxTokenBudget * budgetScale).toInt()
+        val overCount = fresh.size > Cfg.ctxMsgCount && toks * 4 > Cfg.ctxTokenBudget
+        if (!force && !overToks && !overCount) return false
         var cut = fresh.size - Cfg.ctxKeep.coerceAtLeast(2)
         if (cut <= 0) return false
         while (cut < fresh.size && fresh[cut].role == "tool") cut++
@@ -1559,7 +1559,7 @@ object Agent {
             .replace("{words}", w.coerceAtLeast(0).toString())
             .replace("{limit}", if (w > 0) "${w}字以内" else "不限，按内容需要充分展开")
             .replace("{keep}", Cfg.ctxKeep.toString())
-            .replace("{budget}", Cfg.ctxCharBudget.toString())
+            .replace("{budget}", Cfg.ctxTokenBudget.toString())
     } //总结提示词（注入变量）
     /** 总结用的连接参数：统一走 core/Sum（与工具里的「搜索总结」共用同一份配置） */
     private fun sumLlm(): Array<String> = b.ai.core.model.chat.Sum.llm()

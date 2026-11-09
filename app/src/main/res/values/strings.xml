@@ -870,6 +870,10 @@
     <string name="se2_cur_msgs">当前会话 %1$d 条 / %2$d 字</string>
     <string name="se2_pct">压缩阈值 %1$d%%</string>
     <string name="se2_kchar">约 %1$dk 字</string>
+    <string name="se2_ktok">约 %1$dk token</string>
+    <string name="ms_ctx_total">上下文窗口</string>
+    <string name="ms_ctx_total_tip">这条配置自己的上下文窗口；选「默认」则跟随设置里的全局值。DeepSeek 1M、多数模型 128k</string>
+    <string name="se2_ctx_own">当前配置单独指定了窗口，改这里的全局值不生效；要改就到模型编辑页改「上下文窗口」</string>
     <string name="se2_n_items">%1$d 条</string>
     <string name="se2_rec">%1$d 条记录 · %2$d 字 · 共 %3$d 个会话</string>
     <string name="se2_ws_files">%1$d 个文件 · %2$s · </string>

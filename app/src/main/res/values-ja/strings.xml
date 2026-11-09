@@ -864,6 +864,10 @@
     <string name="se2_cur_msgs">現在の会話 %1$d 件 / %2$d 文字</string>
     <string name="se2_pct">圧縮しきい値 %1$d%%</string>
     <string name="se2_kchar">約 %1$dk 文字</string>
+    <string name="se2_ktok">約 %1$dk token</string>
+    <string name="ms_ctx_total">コンテキストウィンドウ</string>
+    <string name="ms_ctx_total_tip">この設定専用のコンテキストウィンドウ。「デフォルト」なら設定画面のグローバル値に従います。DeepSeek 1M、多くのモデルは 128k</string>
+    <string name="se2_ctx_own">この設定が独自のウィンドウを指定しているため、ここのグローバル値は効きません。変更はモデル編集画面の「コンテキストウィンドウ」で</string>
     <string name="se2_n_items">%1$d 件</string>
     <string name="se2_rec">%1$d 件 · %2$d 文字 · 全 %3$d 会話</string>
     <string name="se2_ws_files">%1$d ファイル · %2$s · </string>

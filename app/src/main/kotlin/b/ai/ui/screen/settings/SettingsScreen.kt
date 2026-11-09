@@ -900,11 +900,16 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
             isSelected = { Cfg.ctxTotal == it },
             onSelect = { Cfg.ctxTotal = it }
         )
+        //配置自己带了窗口时这里的全局值不生效，不说清就会出现「改了没反应」
+        if (Cfg.profCtxTotal > 0) {
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.se2_ctx_own), fontSize = 11.sp, color = TextSecondary)
+        }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.se2_pct, Cfg.ctxPct), fontSize = 11.sp, color = TextPrimary)
             Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.se2_kchar, Cfg.ctxCharBudget / 1000), fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.se2_ktok, Cfg.ctxTokenBudget / 1000), fontSize = 11.sp, color = TextSecondary)
         }
         //滑杆 10-99：到窗口的这个比例就开始压缩，默认 70%
         androidx.compose.material3.Slider(

@@ -864,6 +864,10 @@
     <string name="se2_cur_msgs">Cette discussion : %1$d messages / %2$d caractères</string>
     <string name="se2_pct">Seuil de compactage %1$d%%</string>
     <string name="se2_kchar">environ %1$dk caractères</string>
+    <string name="se2_ktok">environ %1$dk tokens</string>
+    <string name="ms_ctx_total">Fenêtre de contexte</string>
+    <string name="ms_ctx_total_tip">Fenêtre de contexte propre à ce profil ; "Par défaut" suit la valeur globale des réglages. DeepSeek 1M, la plupart des modèles 128k</string>
+    <string name="se2_ctx_own">Ce profil impose sa propre fenêtre : la valeur globale ici reste sans effet, modifiez-la dans l\'édition du profil</string>
     <string name="se2_n_items">%1$d messages</string>
     <string name="se2_rec">%1$d messages · %2$d caractères · %3$d discussions</string>
     <string name="se2_ws_files">%1$d fichiers · %2$s · </string>

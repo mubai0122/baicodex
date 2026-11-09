@@ -11,6 +11,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.FieldBox
 import b.ai.ui.widget.SectionTitle
+import b.ai.ui.widget.SelectField
 import b.ai.ui.widget.SquareIconBox
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
@@ -104,6 +105,8 @@ fun ModelSetupPanel() {
     var fModels by remember { mutableStateOf<List<String>>(emptyList()) }
     var fModel by remember { mutableStateOf("") }
     var fTok by remember { mutableStateOf(0) }
+    /** 这条配置自己的上下文窗口；0 = 跟随全局「模型窗口」 */
+    var fCtx by remember { mutableStateOf(0) }
     var snap by remember { mutableStateOf("") } //上次载入或保存后的指纹，用来判断有没有改动
     var savedTo by remember { mutableStateOf("") } //保存成功的提示，一改动就失效
     var formErr by remember { mutableStateOf<String?>(null) }
@@ -111,7 +114,7 @@ fun ModelSetupPanel() {
     //表单指纹：任何一项变了就算脏，保存提示随之失效
     fun finger(): String = listOf(
         fId, fName, fCustom.toString(), fProv, fBase, fKey,
-        fModels.joinToString(","), fModel, fTok.toString()
+        fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString()
     ).joinToString("|")
 
     //把一条配置装进表单；没保存的改动直接丢掉
@@ -126,6 +129,7 @@ fun ModelSetupPanel() {
         fModels = p?.models ?: emptyList()
         fModel = p?.model ?: ""
         fTok = p?.maxTokens ?: 0
+        fCtx = p?.ctxTotal ?: 0
         formErr = null
         savedTo = ""
         snap = finger()
@@ -143,6 +147,7 @@ fun ModelSetupPanel() {
         fModels = emptyList()
         fModel = ""
         fTok = 0
+        fCtx = 0
         formErr = null
         savedTo = ""
         snap = finger()
@@ -181,6 +186,7 @@ fun ModelSetupPanel() {
             toolCall = Cfg.modelToolCall,
             reasoning = Cfg.modelReasoning,
             maxTokens = fTok,
+            ctxTotal = fCtx,
             custom = custom
         )
         if (effKey.isNotEmpty()) Cfg.setProfileKey(id, effKey)
@@ -449,6 +455,32 @@ fun ModelSetupPanel() {
         Spacer(Modifier.height(4.dp))
         Text(
             stringResource(R.string.ms_max_tok_tip),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(10.dp))
+        //上下文窗口按配置存：不同模型的窗口差别很大（128k 到 1M），全局一个值会两头都不对
+        SelectField(
+            stringResource(R.string.ms_ctx_total),
+            when {
+                fCtx <= 0 -> stringResource(R.string.ms_default)
+                fCtx >= 1_000_000 -> "1M"
+                else -> "${fCtx / 1000}k"
+            },
+            listOf(0, 32_000, 64_000, 128_000, 256_000, 1_000_000),
+            optionLabel = {
+                when {
+                    it <= 0 -> stringResource(R.string.ms_default)
+                    it >= 1_000_000 -> "1M"
+                    else -> "${it / 1000}k"
+                }
+            },
+            isSelected = { fCtx == it },
+            onSelect = { fCtx = it; formErr = null }
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.ms_ctx_total_tip),
             fontSize = 10.sp,
             color = TextSecondary
         )

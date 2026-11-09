@@ -1338,7 +1338,7 @@ private fun fmtNum(v: Int): String = fmtNum(v.toLong())
 
 /**
  * 未压缩那一段的统计：跟 Agent.compact 同一口径——摘要（summary）之后的消息才算。
- * 返回 [token 估算, 条数, 这些轮次真实用掉的 token 合计]；token 估算 = 字符数 / 1.8。
+ * 返回 [token 估算, 条数, 这些轮次真实用掉的 token 合计]；token 估算走 Cfg.estTokens，与压缩判定同一口径。
  */
 private fun ctxStat(list: List<ChatMsg>): IntArray {
     val sm = list.lastOrNull { it.role == "summary" }
@@ -1346,8 +1346,7 @@ private fun ctxStat(list: List<ChatMsg>): IntArray {
         Regex("""\[\[upto:(\d+)]]""").find(it.content)?.groupValues?.get(1)?.toLongOrNull()
     } ?: 0L
     val fresh = list.filter { it.role != "summary" && it.id > bound }
-    val chars = fresh.sumOf { m -> m.content.length + m.toolCalls.sumOf { c -> c.arguments.length } }
-    val tokens = (chars / Cfg.CHARS_PER_TOKEN).toInt()
+    val tokens = fresh.sumOf { m -> Cfg.estTokens(m.content) + m.toolCalls.sumOf { Cfg.estTokens(it.arguments) } }
     return intArrayOf(tokens, fresh.size, fresh.sumOf { it.meta?.totalTokens ?: 0 })
 } //未压缩段统计
 
