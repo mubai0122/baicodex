@@ -478,16 +478,21 @@ fun SettingsScreen(
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
                     }
-//栈空 = 停在分类页；有页 = 渲染该页内容（S1 阶段一个分类先只挂一页，内容仍是原来那整页）
-                    SeNav.top == null -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
+//栈里有页 = 渲染该页；栈空 = 该分类只有一页就直接进内容，多页才列入口
+
                     else -> {
-                    val tp = SeNav.top!!
-                    item { SeBackBar(ctx.getString(tp.titleRes)) { GlassPerf.switched(); SeNav.pop() } }
-                    if (tp.id == "hub") seHubPage() else when (tab) {
-                        0 -> modelTab(onOpenMemory)
-                        1 -> chatTab(stats, onOpenStars)
-                        2 -> uiTab(onOpenPet)
-                        3 -> extTab(
+                    //栈空时看这个分类下挂了几页：只有一页就直接渲染它（点分类再点一行纯属多一次点击），多页才列入口
+                    val tp = SeNav.top
+                    val pid = tp?.id ?: sePagesOf(tab).singleOrNull()?.id
+                    if (tp != null) item { SeBackBar(ctx.getString(tp.titleRes)) { GlassPerf.switched(); SeNav.pop() } }
+                    //内容一律按子页 id 分派，不能按底栏下标：否则加多少子页都是同一页内容
+                    when (pid) {
+                        null -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
+                        "hub" -> seHubPage()
+                        "model" -> modelTab(onOpenMemory)
+                        "chat" -> chatTab(stats, onOpenStars)
+                        "ui" -> uiTab(onOpenPet)
+                        "ext" -> extTab(
                             onEdit = { draft = it },
                             onEditPersona = { personaDraft = it },
                             onEditMcp = { mcpDraft = it },
@@ -497,9 +502,9 @@ fun SettingsScreen(
                             onNewTrigger = { triggerDraft = true },
                             onEditPack = { packDraft = it }
                         )
-                        4 -> statTab(statUi)
-                        5 -> aboutTab(onOpenFeedback)
-                        else -> uiTab(onOpenPet)
+                        "stat" -> statTab(statUi)
+                        "about" -> aboutTab(onOpenFeedback)
+                        else -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
                     }
                     }
                 }
