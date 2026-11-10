@@ -47,32 +47,6 @@ fun LazyListScope.seCatHome(catLabel: Int, sub: String, pages: List<SePage>, onO
     }
 } //分类页
 
-/** 专区页：米家 / 音乐 / 协作 / 沙箱都挂这里，先把壳搭出来 */
-fun LazyListScope.seHubPage() {
-    item {
-        SectionTitle(stringResource(R.string.se_hub), stringResource(R.string.se_hub_sub))
-        CardBox {
-            Text(
-                stringResource(R.string.se_hub_soon),
-                fontSize = 12.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(vertical = 6.dp)
-            )
-        }
-    }
-    items(listOf(R.string.se_hub_mi, R.string.se_hub_music, R.string.se_hub_lan, R.string.se_hub_box)) { t ->
-        CardBox {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(t), fontSize = 14.sp, color = TextPrimary)
-                }
-                Text(stringResource(R.string.se_hub_soon_tag), fontSize = 10.sp, color = TextSecondary)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-} //专区（壳）
-
 /** 分类页上的一行：标题 + 副标题 + 右箭头 */
 @Composable
 fun SeRow(p: SePage, onClick: () -> Unit) {

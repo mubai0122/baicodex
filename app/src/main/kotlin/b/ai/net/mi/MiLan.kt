@@ -1,24 +1,21 @@
 package b.ai.net.mi
 
 import android.util.Log
+import b.ai.native.miot.MiLanNative
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
-import java.net.InterfaceAddress
-import java.net.NetworkInterface
-import java.net.SocketTimeoutException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 米家局域网直连（不走云）：UDP 54321 广播探测拿 IP，再按 did+token 加密对话。
+ * 传输、报文编解码、探测包全在 C++/Rust（MiLanNative → core/feature/miot），这里只留设备模型与参数拼装。
  * 方法名与云 MIoT 一致：get_properties / set_properties / action，区别只是承载在加密 UDP 上。
  */
 object MiLan {
     private const val TAG = "bai.mi.lan"
     const val PORT = 54321
 
-    private val seq = java.util.concurrent.atomic.AtomicInteger((System.currentTimeMillis() % 100000).toInt())
+    private val seq = AtomicInteger((System.currentTimeMillis() % 100000).toInt())
 
     /** 局域网里探到的一台设备；token 只能从云端或手动补，探测包本身不带 */
     class Dev(val did: Long, var ip: String, var tokenHex: String = "") {
@@ -30,113 +27,43 @@ object MiLan {
 
         fun key(): String = did.toString()
     } //一台设备
-
-    private fun broadcastAddrs(): List<InetAddress> {
-        val out = ArrayList<InetAddress>()
-        runCatching { out.add(InetAddress.getByName("255.255.255.255")) }
-        runCatching {
-            for (ni in NetworkInterface.getNetworkInterfaces()) {
-                if (!ni.isUp || ni.isLoopback) continue
-                for (ia: InterfaceAddress in ni.interfaceAddresses) {
-                    val b = ia.broadcast ?: continue
-                    if (!out.contains(b)) out.add(b)
-                }
-            }
-        }
-        return out
-    } //全局广播 + 每张网卡的子网广播，个别 ROM 只吃后者
-
-    /**
-     * 广播探测：发 32 字节探测包，收满 timeout 的所有应答。
-     * 应答前 32 字节里 did 在 4..12、设备时间戳在 12..16，够定位设备但仍需 token 才能说话。
-     */
-    fun discover(timeoutMs: Int = 2500, virtualDid: Long = System.currentTimeMillis()): List<Dev> {
+/** 扫一遍局域网：探测应答里有 did 与设备时间戳，够定位设备但仍需 token 才能说话 */
+    fun discover(timeoutMs: Int = 2500): List<Dev> {
+        val now = System.currentTimeMillis() / 1000
         val found = LinkedHashMap<Long, Dev>()
-        val probe = MiPacket.probe(virtualDid)
-        DatagramSocket().use { s ->
-            runCatching {
-                s.broadcast = true
-                s.soTimeout = 400
-            }
-            for (a in broadcastAddrs()) {
-                runCatching { s.send(DatagramPacket(probe, probe.size, a, PORT)) }
-            }
-            val buf = ByteArray(1400)
-            val deadline = System.currentTimeMillis() + timeoutMs
-            while (System.currentTimeMillis() < deadline) {
-                val p = DatagramPacket(buf, buf.size)
-                try {
-                    s.receive(p)
-                } catch (e: SocketTimeoutException) {
-                    continue
-                } catch (e: Exception) {
-                    Log.w(TAG, "探测收包异常: ${e.message}")
-                    break
-                }
-                //只认设备本体回的包，端口不对的是别的服务
-                if (p.port != PORT || p.length < MiPacket.HEAD) continue
-                val did = MiPacket.didOf(buf)
-                if (did <= 0) continue
-                val ip = runCatching { p.address?.hostAddress ?: "" }.getOrDefault("")
-                if (ip.isEmpty()) continue
-                val d = found.getOrPut(did) { Dev(did, ip) }
-                d.ip = ip
-                d.online = true
-                d.offset = System.currentTimeMillis() / 1000 - MiPacket.stampOf(buf)
-            }
+        for (line in MiLanNative.discover(timeoutMs)) {
+            val part = line.split('|')
+            if (part.size != 3) continue
+            val did = part[0].toLongOrNull() ?: continue
+            if (did <= 0) continue
+            val ip = part[1]
+            if (ip.isEmpty()) continue
+            val stamp = part[2].toLongOrNull() ?: 0L
+            val d = found.getOrPut(did) { Dev(did, ip) }
+            d.ip = ip
+            d.online = true
+            d.offset = now - stamp
         }
         return found.values.toList()
     } //扫一遍局域网
 
     /** 发一条报文等一条回包；超时 / 校验失败 / id 不匹配都返回 null */
     fun call(dev: Dev, method: String, params: Any?, timeoutMs: Int = 4000): JSONObject? {
-        val token = MiPacket.hex2bytes(dev.tokenHex)
-        if (token == null) {
-            Log.w(TAG, "token 不是 32 位十六进制，拒绝发包: ${dev.did}")
-            return null
-        }
+        if (dev.ip.isEmpty()) return null
         val id = seq.incrementAndGet()
         val msg = JSONObject().put("id", id).put("method", method)
         if (params != null) msg.put("params", params)
         val stamp = (System.currentTimeMillis() / 1000 - dev.offset).toInt()
-        val packet = MiPacket.pack(token, dev.did, stamp, msg.toString()) ?: return null
-        DatagramSocket().use { s ->
-            runCatching {
-                s.broadcast = true
-                s.soTimeout = timeoutMs
-            }
-            val dst = runCatching { InetAddress.getByName(dev.ip) }.getOrNull() ?: return null
-            runCatching { s.send(DatagramPacket(packet, packet.size, dst, PORT)) }.onFailure {
-                Log.w(TAG, "发包失败: ${it.message}")
-                return null
-            }
-            val buf = ByteArray(1400)
-            val deadline = System.currentTimeMillis() + timeoutMs
-            while (System.currentTimeMillis() < deadline) {
-                val left = (deadline - System.currentTimeMillis()).toInt()
-                s.soTimeout = left.coerceAtLeast(200)
-                val p = DatagramPacket(buf, buf.size)
-                try {
-                    s.receive(p)
-                } catch (e: SocketTimeoutException) {
-                    return null
-                } catch (e: Exception) {
-                    Log.w(TAG, "收包异常: ${e.message}")
-                    return null
-                }
-                //32 字节是探测应答 / 心跳，不含业务数据
-                if (p.length <= MiPacket.HEAD) {
-                    if (MiPacket.didOf(buf) == dev.did) dev.online = true
-                    continue
-                }
-                if (MiPacket.didOf(buf) != dev.did) continue
-                dev.offset = System.currentTimeMillis() / 1000 - MiPacket.stampOf(buf)
-                val obj = MiPacket.unpack(token, buf.copyOf(p.length)) ?: continue
-                if (obj.optInt("id", -1) != id) continue
-                return obj
-            }
+        val r = MiLanNative.call(dev.ip, dev.did, dev.tokenHex, stamp, msg.toString(), timeoutMs)
+        if (r == null) {
+            Log.w(TAG, "没拿到回包: ${dev.did}")
+            return null
         }
-        return null
+        //回包时间戳用来校正时钟差：设备对时间戳敏感，差太多会被当重放丢掉
+        dev.offset = System.currentTimeMillis() / 1000 - r.first
+        val obj = runCatching { JSONObject(r.second) }.getOrNull() ?: return null
+        if (obj.optInt("id", -1) != id) return null
+        return obj
     } //一次请求-应答
 
     fun getProp(dev: Dev, siid: Int, piid: Int, timeoutMs: Int = 4000): Any? {
@@ -167,29 +94,11 @@ object MiLan {
 
     /** 探活：32 字节探测包打过去有应答就算在线 */
     fun alive(dev: Dev, timeoutMs: Int = 1200): Boolean {
-        val probe = MiPacket.probe(System.currentTimeMillis())
-        DatagramSocket().use { s ->
-            runCatching {
-                s.broadcast = true
-                s.soTimeout = timeoutMs
-            }
-            val dst = runCatching { InetAddress.getByName(dev.ip) }.getOrNull() ?: return false
-            runCatching { s.send(DatagramPacket(probe, probe.size, dst, PORT)) }
-            val buf = ByteArray(1400)
-            val deadline = System.currentTimeMillis() + timeoutMs
-            while (System.currentTimeMillis() < deadline) {
-                s.soTimeout = (deadline - System.currentTimeMillis()).toInt().coerceAtLeast(200)
-                val p = DatagramPacket(buf, buf.size)
-                try {
-                    s.receive(p)
-                } catch (e: Exception) {
-                    return false
-                }
-                if (p.length < MiPacket.HEAD || MiPacket.didOf(buf) != dev.did) continue
-                dev.offset = System.currentTimeMillis() / 1000 - MiPacket.stampOf(buf)
-                return true
-            }
-        }
-        return false
+        if (dev.ip.isEmpty()) return false
+        val stamp = MiLanNative.alive(dev.ip, dev.did, timeoutMs)
+        if (stamp <= 0L) return false
+        dev.offset = System.currentTimeMillis() / 1000 - stamp
+        dev.online = true
+        return true
     } //单台探活
 } //局域网直连

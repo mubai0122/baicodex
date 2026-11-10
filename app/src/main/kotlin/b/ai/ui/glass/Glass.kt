@@ -130,7 +130,11 @@ fun GlassPanel(
                         }
                     )
                 } else {
-                    Modifier.background(if (glass) GlassBrush(touch.x, touch.y, pressed, dark) else SolidColor(SurfaceWhite))
+                    //非玻璃模式：底色也吃「卡片不透明度」，0% 时只剩那圈描边
+                    Modifier.background(
+                        if (glass) GlassBrush(touch.x, touch.y, pressed, dark)
+                        else SolidColor(SurfaceWhite.copy(alpha = Cfg.cardAlpha.coerceIn(0, 100) / 100f))
+                    )
                 }
             )
             .border(

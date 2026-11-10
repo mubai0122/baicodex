@@ -45,6 +45,8 @@ import b.ai.core.task.hook.Noti
 import b.ai.device.sys.a11y.AutoA11y
 import b.ai.device.pet.PetSvc
 import b.ai.net.api.llm.text
+import b.ai.net.mi.MiConf
+import b.ai.native.security.MiCrypto
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -478,30 +480,63 @@ fun SettingsScreen(
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
                     }
-//栈里有页 = 渲染该页；栈空 = 该分类只有一页就直接进内容，多页才列入口
-
                     else -> {
-                    //栈空时看这个分类下挂了几页：只有一页就直接渲染它（点分类再点一行纯属多一次点击），多页才列入口
+                    //栈里有页 = 渲染该页分区；栈空 = 该分类有多页就列入口，只有直连内容（统计/关于）才直接渲染
                     val tp = SeNav.top
-                    val pid = tp?.id ?: sePagesOf(tab).singleOrNull()?.id
+                    val pid = tp?.id
+                    //统计 / 关于：该分类只有一页且标了 direct，点底栏直接渲染内容，不出分类页
+                    val pages = sePagesOf(tab)
+                    val directId = if (pid == null && pages.size == 1 && pages[0].direct) pages[0].id else null
+                    //栈空且不是直连页 = 停在分类页列子页入口；不能拿默认子页顶替，否则多页分类只剩第一页能进
+                    val key = pid ?: directId
                     if (tp != null) item { SeBackBar(ctx.getString(tp.titleRes)) { GlassPerf.switched(); SeNav.pop() } }
-                    //内容一律按子页 id 分派，不能按底栏下标：否则加多少子页都是同一页内容
-                    when (pid) {
+                    //内容一律按子页 key 过滤分区，不能按底栏下标：同一批内容函数按 key 各取一段
+                    when (key) {
                         null -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
-                        "hub" -> seHubPage()
-                        "model" -> modelTab(onOpenMemory)
-                        "chat" -> chatTab(stats, onOpenStars)
-                        "ui" -> uiTab(onOpenPet)
-                        "ext" -> extTab(
-                            onEdit = { draft = it },
-                            onEditPersona = { personaDraft = it },
-                            onEditMcp = { mcpDraft = it },
+                        "model_cfg" -> modelCfgSec(onOpenMemory)
+                        "model_param" -> modelParamSec()
+                        "model_voice" -> modelVoiceSec()
+                        "model_mem" -> modelMemSec(onOpenMemory)
+                        "chat_ctx" -> chatCtxSec(stats)
+                        "chat_inject" -> chatInjectSec()
+                        "chat_session" -> chatSessionSec(stats, onOpenStars)
+                        "chat_perm" -> chatPermSec()
+                        "ui_theme" -> uiThemeSec()
+                        "ui_person" -> uiPersonSec(onOpenPet)
+                        "ui_input" -> uiInputSec()
+                        "ui_nav" -> uiNavSec()
+                        "ext_auto" -> extAutoSec(
                             onNewTask = { taskDraft = true },
                             onNewFlow = { flowDraft = true },
-                            onOpenA2a = { a2aDraft = true },
-                            onNewTrigger = { triggerDraft = true },
+                            onNewTrigger = { triggerDraft = true }
+                        )
+                        "ext_agent" -> extAgentSec(
+                            onEdit = { draft = it },
+                            onEditPersona = { personaDraft = it },
                             onEditPack = { packDraft = it }
                         )
+                        "ext_link" -> extLinkSec(
+                            onOpenA2a = { a2aDraft = true },
+                            onEditMcp = { mcpDraft = it }
+                        )
+                        "ext_tool" -> extToolSec()
+                        "ext_ws" -> extWsSec()
+                        //生态与专区：返回条已经带标题，这里只列四个专区入口，不重复写标题
+                        "ext_hub" -> item {
+                            CardBox {
+                                seChildren("ext_hub").forEachIndexed { i, p ->
+                                    if (i > 0) Spacer(Modifier.height(2.dp))
+                                    SeRow(p) { GlassPerf.switched(); SeNav.push(p) }
+                                }
+                            }
+                        }
+                        "ext_mi" -> miHubSec()
+                        "ext_mi_login" -> miLoginSec()
+                        "ext_mi_dev" -> miDevSec()
+                        "ext_mi_ch" -> miChSec()
+                        "ext_music" -> musicSec()
+                        "ext_lan" -> lanSec()
+                        "ext_box" -> extPlanSec(R.string.se_hub_box, R.string.se_pg_box_sub, EX_BOX_PLAN)
                         "stat" -> statTab(statUi)
                         "about" -> aboutTab(onOpenFeedback)
                         else -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
@@ -585,7 +620,7 @@ fun SettingsScreen(
 } //设置界面
 
 //模型分类：拆成一个个 item，LazyColumn 只组合看得见的那几张卡
-private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
+private fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
     item {
         SectionTitle(stringResource(R.string.se_007), stringResource(R.string.se_064))
         ProfileList()
@@ -619,8 +654,11 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
             ) { Cfg.modelReasoning = it; Profiles.capture() }
         }
     }
+    } //模型配置子页
+
+//模型参数子页：深度思考、温度与额外请求参数
+private fun LazyListScope.modelParamSec() {
     item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
         CardBox {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -689,217 +727,222 @@ private fun LazyListScope.modelTab(onOpenMemory: () -> Unit) {
             )
         }
     }
+} //模型参数子页
+
+private fun LazyListScope.modelVoiceSec() {
     item {
-        //语音识别：系统识别器一条路，模型接口一条路；接口这边给主流服务商预设，模型能从 /models 拉
-        val sysLabel = stringResource(R.string.se_v_mode_sys)
-        val apiLabel = stringResource(R.string.se_v_mode_api)
-        val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
-        val preset = AsrPresets.of(Cfg.asrVendor)
-        val scope = rememberCoroutineScope()
-        var models by remember(Cfg.asrVendor) {
-            mutableStateOf(preset.models.ifEmpty { listOf(Cfg.asrModel) }.filter { it.isNotBlank() })
-        }
-        var loading by remember { mutableStateOf(false) }
-        var pickErr by remember { mutableStateOf("") }
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_v_in_t), stringResource(R.string.se_v_in_d))
-        CardBox {
-            SelectField(
-                stringResource(R.string.se_v_mode),
-                modeLabel(Cfg.asrMode),
-                listOf("sys", "api"),
-                optionLabel = { modeLabel(it) },
-                isSelected = { Cfg.asrMode == it },
-                onSelect = { Cfg.asrMode = it }
-            )
-            if (Cfg.asrMode == "api") {
-                //服务商：选完 baseUrl 跟着走，用户只剩填 key
-                SelectField(
-                    "服务商",
-                    preset.label,
-                    AsrPresets.all,
-                    optionLabel = { it.label },
-                    isSelected = { Cfg.asrVendor == it.id },
-                    onSelect = { p ->
-                        Cfg.asrVendor = p.id
-                        Cfg.asrBase = ""
-                        pickErr = ""
-                        models = p.models
-                        if (p.models.isNotEmpty()) Cfg.asrModel = p.models.first()
-                    }
-                )
-                Field(
-                    label = stringResource(R.string.se_v_base),
-                    value = Cfg.asrBase,
-                    onValueChange = { Cfg.asrBase = it },
-                    placeholder = preset.base.ifBlank { Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" } }
-                )
-                Field(
-                    label = stringResource(R.string.se_v_key),
-                    value = Cfg.asrKey,
-                    onValueChange = { Cfg.asrKey = it },
-                    placeholder = stringResource(R.string.se_v_key_ph),
-                    secret = true
-                )
-                //预设里有模型就直接下拉选，拉回来的列表也塞这里
-                if (models.isNotEmpty()) {
-                    SelectField(
-                        "模型",
-                        Cfg.asrModel,
-                        models,
-                        optionLabel = { it },
-                        isSelected = { Cfg.asrModel == it },
-                        onSelect = { Cfg.asrModel = it }
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                GhostButton(
-                    if (loading) "拉取中…" else "从接口获取模型",
-                    modifier = Modifier.height(38.dp)
-                ) {
-                    if (loading) return@GhostButton
-                    loading = true
-                    pickErr = ""
-                    scope.launch {
-                        val r = withContext(Dispatchers.IO) { runCatching { Audio.listModels() } }
-                        loading = false
-                        r.onSuccess { list ->
-                            if (list.isEmpty()) {
-                                pickErr = "接口没返回模型，下面手填"
-                            } else {
-                                models = list
-                                Cfg.asrModel = list.first()
-                            }
-                        }.onFailure { pickErr = it.message ?: "拉取失败" }
-                    }
-                }
-                Field(
-                    label = "模型（也能手填）",
-                    value = Cfg.asrModel,
-                    onValueChange = { Cfg.asrModel = it },
-                    placeholder = "whisper-1"
-                )
-                if (pickErr.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(pickErr, fontSize = 10.sp, color = DangerRed)
-                }
-                //录音参数：采样率决定上传体积与精度，最长时长到点自动停并转写
-                SelectField(
-                    "录音采样率",
-                    "${Cfg.asrRate} Hz",
-                    AsrPresets.rates,
-                    optionLabel = { "$it Hz" },
-                    isSelected = { Cfg.asrRate == it },
-                    onSelect = { Cfg.asrRate = it }
-                )
-                SelectField(
-                    "单次最长录音",
-                    "${Cfg.asrMaxSec} 秒",
-                    AsrPresets.maxSecs,
-                    optionLabel = { "$it 秒" },
-                    isSelected = { Cfg.asrMaxSec == it },
-                    onSelect = { Cfg.asrMaxSec = it }
-                )
-                if (preset.tip.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(preset.tip, fontSize = 10.sp, color = TextSecondary)
-                }
-            }
-            Field(
-                label = stringResource(R.string.se_v_lang),
-                value = Cfg.asrLang,
-                onValueChange = { Cfg.asrLang = it },
-                placeholder = "zh-CN"
-            )
-            Spacer(Modifier.height(6.dp))
-            //离线优先只对「系统识别」那一路有效：接口模式本来就是录完上传转写
-            CapSwitch(
-                "离线模式",
-                if (Cfg.asrOffline) "只在本机识别，音频不出设备"
-                else "允许识别服务联网（本机模型不全时更准）",
-                Cfg.asrOffline
-            ) { Cfg.asrOffline = it }
-            Spacer(Modifier.height(6.dp))
-            Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
-        }
+        VoiceInCard()
     }
     item {
-        //语音合成：跟识别一样两套来源
-        val ctx = LocalContext.current
-        val sysLabel = stringResource(R.string.se_v_mode_sys)
-        val apiLabel = stringResource(R.string.se_v_mode_api)
-        val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_v_out_t), stringResource(R.string.se_v_out_d))
-        CardBox {
-            CapSwitch(
-                stringResource(R.string.se_124),
-                if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
-                Cfg.speakReplies
-            ) { on ->
-                Cfg.speakReplies = on
-                //打开时试念一句，能立刻确认手机装了中文语音包；关掉时把正在念的掐掉
-                if (on) Speak.say(ctx.getString(R.string.se_127), force = true) else Speak.stop()
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(stringResource(R.string.se_128), fontSize = 11.sp, color = TextSecondary)
-            Spacer(Modifier.height(10.dp))
-            SelectField(
-                stringResource(R.string.se_v_mode),
-                modeLabel(Cfg.ttsMode),
-                listOf("sys", "api"),
-                optionLabel = { modeLabel(it) },
-                isSelected = { Cfg.ttsMode == it },
-                onSelect = { Cfg.ttsMode = it }
-            )
-            if (Cfg.ttsMode == "api") {
-                Field(
-                    label = stringResource(R.string.se_v_base),
-                    value = Cfg.ttsBase,
-                    onValueChange = { Cfg.ttsBase = it },
-                    placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
-                )
-                Field(
-                    label = stringResource(R.string.se_v_key),
-                    value = Cfg.ttsKey,
-                    onValueChange = { Cfg.ttsKey = it },
-                    placeholder = stringResource(R.string.se_v_key_ph),
-                    secret = true
-                )
-                Field(
-                    label = stringResource(R.string.se_v_model),
-                    value = Cfg.ttsModel,
-                    onValueChange = { Cfg.ttsModel = it },
-                    placeholder = "tts-1"
-                )
-                Field(
-                    label = stringResource(R.string.se_v_voice),
-                    value = Cfg.ttsVoice,
-                    onValueChange = { Cfg.ttsVoice = it },
-                    placeholder = "alloy"
-                )
-                Spacer(Modifier.height(10.dp))
-                GhostButton(stringResource(R.string.se_v_play), modifier = Modifier.height(38.dp)) {
-                    Speak.say(ctx.getString(R.string.se_127), force = true)
-                }
-                if (Audio.error.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(Audio.error, fontSize = 10.sp, color = DangerRed)
-                }
-            }
-        }
+        VoiceOutCard()
     }
+} //语音子页
+
+private fun LazyListScope.modelMemSec(onOpenMemory: () -> Unit) {
     item {
-        //记忆：长期记忆的查看与手动增删
         Spacer(Modifier.height(14.dp))
         SectionTitle("记忆", "跨会话长期记忆：模型会自己读写，也可以在这里手动增删改")
         CardBox {
             LinkRow("记忆条目", "查看 / 编辑", onClick = onOpenMemory)
         }
     }
-} //模型分类（含语音识别与语音合成）
+} //记忆子页
 
-private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
+//语音识别卡片（从原 modelTab 迁出，保持逐行一致）
+@Composable
+private fun VoiceInCard() {
+    val sysLabel = stringResource(R.string.se_v_mode_sys)
+    val apiLabel = stringResource(R.string.se_v_mode_api)
+    val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+    val preset = AsrPresets.of(Cfg.asrVendor)
+    val scope = rememberCoroutineScope()
+    var models by remember(Cfg.asrVendor) {
+        mutableStateOf(preset.models.ifEmpty { listOf(Cfg.asrModel) }.filter { it.isNotBlank() })
+    }
+    var loading by remember { mutableStateOf(false) }
+    var pickErr by remember { mutableStateOf("") }
+    CardBox {
+        SelectField(
+            stringResource(R.string.se_v_mode),
+            modeLabel(Cfg.asrMode),
+            listOf("sys", "api"),
+            optionLabel = { modeLabel(it) },
+            isSelected = { Cfg.asrMode == it },
+            onSelect = { Cfg.asrMode = it }
+        )
+        if (Cfg.asrMode == "api") {
+            SelectField(
+                "服务商",
+                preset.label,
+                AsrPresets.all,
+                optionLabel = { it.label },
+                isSelected = { Cfg.asrVendor == it.id },
+                onSelect = { p ->
+                    Cfg.asrVendor = p.id
+                    Cfg.asrBase = ""
+                    pickErr = ""
+                    models = p.models
+                    if (p.models.isNotEmpty()) Cfg.asrModel = p.models.first()
+                }
+            )
+            Field(
+                label = stringResource(R.string.se_v_base),
+                value = Cfg.asrBase,
+                onValueChange = { Cfg.asrBase = it },
+                placeholder = preset.base.ifBlank { Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" } }
+            )
+            Field(
+                label = stringResource(R.string.se_v_key),
+                value = Cfg.asrKey,
+                onValueChange = { Cfg.asrKey = it },
+                placeholder = stringResource(R.string.se_v_key_ph),
+                secret = true
+            )
+            if (models.isNotEmpty()) {
+                SelectField(
+                    "模型",
+                    Cfg.asrModel,
+                    models,
+                    optionLabel = { it },
+                    isSelected = { Cfg.asrModel == it },
+                    onSelect = { Cfg.asrModel = it }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(
+                if (loading) "拉取中…" else "从接口获取模型",
+                modifier = Modifier.height(38.dp)
+            ) {
+                if (loading) return@GhostButton
+                loading = true
+                pickErr = ""
+                scope.launch {
+                    val r = withContext(Dispatchers.IO) { runCatching { Audio.listModels() } }
+                    loading = false
+                    r.onSuccess { list ->
+                        if (list.isEmpty()) pickErr = "接口没返回模型，下面手填"
+                        else { models = list; Cfg.asrModel = list.first() }
+                    }.onFailure { pickErr = it.message ?: "拉取失败" }
+                }
+            }
+            Field(
+                label = "模型（也能手填）",
+                value = Cfg.asrModel,
+                onValueChange = { Cfg.asrModel = it },
+                placeholder = "whisper-1"
+            )
+            if (pickErr.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(pickErr, fontSize = 10.sp, color = DangerRed)
+            }
+            SelectField(
+                "录音采样率",
+                "${Cfg.asrRate} Hz",
+                AsrPresets.rates,
+                optionLabel = { "$it Hz" },
+                isSelected = { Cfg.asrRate == it },
+                onSelect = { Cfg.asrRate = it }
+            )
+            SelectField(
+                "单次最长录音",
+                "${Cfg.asrMaxSec} 秒",
+                AsrPresets.maxSecs,
+                optionLabel = { "$it 秒" },
+                isSelected = { Cfg.asrMaxSec == it },
+                onSelect = { Cfg.asrMaxSec = it }
+            )
+            if (preset.tip.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(preset.tip, fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+        Field(
+            label = stringResource(R.string.se_v_lang),
+            value = Cfg.asrLang,
+            onValueChange = { Cfg.asrLang = it },
+            placeholder = "zh-CN"
+        )
+        Spacer(Modifier.height(6.dp))
+        CapSwitch(
+            "离线模式",
+            if (Cfg.asrOffline) "只在本机识别，音频不出设备"
+            else "允许识别服务联网（本机模型不全时更准）",
+            Cfg.asrOffline
+        ) { Cfg.asrOffline = it }
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
+    }
+} //语音识别卡片
+
+@Composable
+private fun VoiceOutCard() {
+    val ctx = LocalContext.current
+    val sysLabel = stringResource(R.string.se_v_mode_sys)
+    val apiLabel = stringResource(R.string.se_v_mode_api)
+    val modeLabel: (String) -> String = { if (it == "api") apiLabel else sysLabel }
+    CardBox {
+        CapSwitch(
+            stringResource(R.string.se_124),
+            if (Cfg.speakReplies) stringResource(R.string.se_125) else stringResource(R.string.se_126),
+            Cfg.speakReplies
+        ) { on ->
+            Cfg.speakReplies = on
+            if (on) Speak.say(ctx.getString(R.string.se_127), force = true) else Speak.stop()
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(stringResource(R.string.se_128), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        SelectField(
+            stringResource(R.string.se_v_mode),
+            modeLabel(Cfg.ttsMode),
+            listOf("sys", "api"),
+            optionLabel = { modeLabel(it) },
+            isSelected = { Cfg.ttsMode == it },
+            onSelect = { Cfg.ttsMode = it }
+        )
+        if (Cfg.ttsMode == "api") {
+            Field(
+                label = stringResource(R.string.se_v_base),
+                value = Cfg.ttsBase,
+                onValueChange = { Cfg.ttsBase = it },
+                placeholder = Cfg.baseUrl.ifBlank { "https://api.openai.com/v1" }
+            )
+            Field(
+                label = stringResource(R.string.se_v_key),
+                value = Cfg.ttsKey,
+                onValueChange = { Cfg.ttsKey = it },
+                placeholder = stringResource(R.string.se_v_key_ph),
+                secret = true
+            )
+            Field(
+                label = stringResource(R.string.se_v_model),
+                value = Cfg.ttsModel,
+                onValueChange = { Cfg.ttsModel = it },
+                placeholder = "tts-1"
+            )
+            Field(
+                label = stringResource(R.string.se_v_voice),
+                value = Cfg.ttsVoice,
+                onValueChange = { Cfg.ttsVoice = it },
+                placeholder = "alloy"
+            )
+            Spacer(Modifier.height(10.dp))
+            GhostButton(stringResource(R.string.se_v_play), modifier = Modifier.height(38.dp)) {
+                Speak.say(ctx.getString(R.string.se_127), force = true)
+            }
+            if (Audio.error.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(Audio.error, fontSize = 10.sp, color = DangerRed)
+            }
+        }
+    }
+} //语音合成卡片
+
+private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
     item {
     SectionTitle(stringResource(R.string.se_090), stringResource(R.string.se_091))
     CardBox {
@@ -1019,7 +1062,9 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
     }
 
     }
+} //上下文与压缩子页
 
+private fun LazyListScope.chatInjectSec() {
     item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_017), stringResource(R.string.se_104))
@@ -1171,7 +1216,9 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
     }
 
     }
+} //注入与回复子页
 
+private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
     item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
@@ -1218,9 +1265,12 @@ private fun LazyListScope.chatTab(stats: Pair<Int, Int>, onOpenStars: () -> Unit
     SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
     WsSection()
     }
+} //会话与导出子页
+
+private fun LazyListScope.chatPermSec() {
     item { Spacer(Modifier.height(14.dp)) }
     permTab()
-} //对话分类（含原「权限」分类：工作方式 / 系统权限 / 实验性功能）；permTab 必须在 item 外面调，item 的 lambda 里 LazyListScope 隐式接收者被挡
+} //权限子页
 
 /** 工作区信息：数据根下的哈希目录 + 会话绑定的目录，未被任何会话绑定的可以一键删除 */
 @Composable
@@ -1563,7 +1613,7 @@ private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f,
 private const val TOOL_PAGE = 12
 
 //外观分类：一张卡一个 item，视口外的卡不组合
-private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
+private fun LazyListScope.uiThemeSec() {
     item {
         //切语言：存完配置要重建 Activity，界面才会真的换语言
         val act = LocalContext.current as? Activity
@@ -1678,8 +1728,11 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
             BgImagePick()
         }
     }
+} //主题与背景子页
+
+//个性化子页：头像、气泡胶囊与桌宠
+private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
     item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_169), stringResource(R.string.se_170))
         CardBox {
             CapSwitch(stringResource(R.string.se_171), stringResource(R.string.se_172), Cfg.avatarOn) {
@@ -1728,8 +1781,11 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
         //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
         PetEntryRow(onOpenPet)
     }
+    } //个性化子页
+
+//输入与质感子页：输入框、粘贴转文件、玻璃质感与提示文案
+private fun LazyListScope.uiInputSec() {
     item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
         CardBox {
             CapSwitch(
@@ -1824,6 +1880,13 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
                     Cfg.glassVeil = it.toInt()
                 }
                 Text("压住背景保住文字可读，0% 完全透明", fontSize = 10.sp, color = TextSecondary)
+            } else {
+                //没开玻璃卡片时才有意义：实底白卡要多透，直接决定卡片和背景图的关系
+                Spacer(Modifier.height(10.dp))
+                GlassSlider("卡片不透明度", "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
+                    Cfg.cardAlpha = it.toInt()
+                }
+                Text("100% 是原来的实底白卡；调低会露出背景，文本可读性也随之下降", fontSize = 10.sp, color = TextSecondary)
             }
         }
     }
@@ -1848,6 +1911,9 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
             )
         }
     }
+} //输入与质感子页
+
+private fun LazyListScope.uiNavSec() {
     item {
         Spacer(Modifier.height(14.dp))
         //悬浮聊天窗：常驻其他应用上层的简约聊天，回复按 Markdown 渲染
@@ -1887,22 +1953,12 @@ private fun LazyListScope.uiTab(onOpenPet: () -> Unit) {
 } //外观分类：字号 / 输入框 / 手势
 
 //扩展分类：一张卡一个 item，没滚到的卡不组合（工具权限那张卡最重，几十个下拉）
-private fun LazyListScope.extTab(
-    onEdit: (Skill) -> Unit,
-    onEditPersona: (Persona) -> Unit,
-    onEditMcp: (McpServer) -> Unit,
+private fun LazyListScope.extAutoSec(
     onNewTask: () -> Unit,
     onNewFlow: () -> Unit,
-    onOpenA2a: () -> Unit,
-    onNewTrigger: () -> Unit,
-    onEditPack: (SkillPack) -> Unit
+    onNewTrigger: () -> Unit
 ) {
     item {
-        //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
-        SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
-    }
-    item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
         CardBox {
             val ctx = LocalContext.current
@@ -1975,38 +2031,6 @@ private fun LazyListScope.extTab(
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
-        CardBox {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.padding(end = 8.dp)) {
-                    Icon(
-                        Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = AccentBlue,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
-                        fontSize = 13.sp,
-                        color = TextPrimary
-                    )
-                    Text(
-                        if (A2aNodes.list.isEmpty()) "还没加对端"
-                        else "对端 " + A2aNodes.list.size + " 个：" +
-                            A2aNodes.list.take(2).joinToString("；") { it.name },
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        maxLines = 1
-                    )
-                }
-                GhostButton("打开 A2A") { onOpenA2a() }
-            }
-        }
-    }
-    item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.ntg_title), stringResource(R.string.ntg_sub))
         CardBox {
             val rules = Triggers.list
@@ -2043,9 +2067,43 @@ private fun LazyListScope.extTab(
             }
         }
     }
+} //自动化子页
+
+//接入子页：A2A 节点、搜索平台、MCP 服务
+private fun LazyListScope.extLinkSec(
+    onOpenA2a: () -> Unit,
+    onEditMcp: (McpServer) -> Unit
+) {
     item {
-        Spacer(Modifier.height(14.dp))
-        LinuxSection()
+        SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
+        CardBox {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = AccentBlue,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (A2aNodes.list.isEmpty()) "还没加对端"
+                        else "对端 " + A2aNodes.list.size + " 个：" +
+                            A2aNodes.list.take(2).joinToString("；") { it.name },
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                }
+                GhostButton("打开 A2A") { onOpenA2a() }
+            }
+        }
     }
     item {
         Spacer(Modifier.height(14.dp))
@@ -2104,8 +2162,15 @@ private fun LazyListScope.extTab(
         Spacer(Modifier.height(14.dp))
         McpSection(onEdit = onEditMcp)
     }
+    } //接入子页
+
+//技能与角色子页：角色卡、系统提示词、技能、技能包
+private fun LazyListScope.extAgentSec(
+    onEdit: (Skill) -> Unit,
+    onEditPersona: (Persona) -> Unit,
+    onEditPack: (SkillPack) -> Unit
+) {
     item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_047), stringResource(R.string.se2_persona_sub))
         CardBox {
             ChoiceRow(stringResource(R.string.se2_persona_none), stringResource(R.string.se2_persona_none_sub), Cfg.personaId.isBlank()) { Agent.setPersona("") }
@@ -2183,8 +2248,11 @@ private fun LazyListScope.extTab(
         SectionTitle(stringResource(R.string.skp_t), stringResource(R.string.skp_d))
         SkillPackBox(onEdit = onEditPack)
     }
+    } //技能与角色子页
+
+//工具权限子页：每个工具一条允许/询问/拒绝
+private fun LazyListScope.extToolSec() {
     item {
-        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
         //MCP 能力不列在这里：它们由 MCP 服务自己拉取，到「扩展 → MCP 服务」里单独管
         val tools = Tools.all.filterNot { it.startsWith(Tools.MCP) }
@@ -2222,7 +2290,41 @@ private fun LazyListScope.extTab(
             }
         }
     }
-} //扩展分类：功能专区 + 技能专区 + 工具权限
+} //工具权限子页
+
+//工作区子页：数据根目录、本机 Linux 环境
+private fun LazyListScope.extWsSec() {
+    item {
+        //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
+        SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        LinuxSection()
+    }
+} //工作区子页
+
+//还剩文件沙箱一个专区的计划清单：页面上先讲清会有什么，别点进去一片空白
+private val EX_BOX_PLAN = listOf(
+    "允许目录白名单，读写权限分级",
+    "符号链接与越界读写拦截开关",
+    "操作审计日志"
+)
+
+/** 专区计划页：清单 + 一句状态说明，等实现落地后替换成真控件 */
+private fun LazyListScope.extPlanSec(titleRes: Int, subRes: Int, points: List<String>) {
+    item {
+        SectionTitle(stringResource(titleRes), stringResource(subRes))
+        CardBox {
+            points.forEachIndexed { i, s ->
+                if (i > 0) Spacer(Modifier.height(6.dp))
+                Text("· $s", fontSize = 12.sp, color = TextPrimary)
+            }
+            Spacer(Modifier.height(10.dp))
+            Text(stringResource(R.string.se_hub_soon), fontSize = 10.sp, color = TextSecondary)
+        }
+    }
+} //专区计划页
 /** 技能包：外部目录里有哪些包、哪些函数校验没过；改完包点重新扫描 */
 @Composable
 private fun SkillPackBox(onEdit: (SkillPack) -> Unit) {

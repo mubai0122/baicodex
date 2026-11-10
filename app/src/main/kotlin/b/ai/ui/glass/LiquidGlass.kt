@@ -223,20 +223,16 @@ fun LiquidCard(
     //模糊和折射都关了就没有可跑的 effect，真玻璃采到的就是背景本身，画出来和轻档一样
     val heavy = GlassPerf.heavy && (Cfg.glassBlur > 0 || Cfg.glassLens > 0)
     val press = remember(scope, onClick) { PressHighlight(scope, onClick) }
-    //轻档：完全不进 drawBackdrop，只留半透底 + 高光边
-    if (!heavy) {
-        Column(
-            modifier = modifier
-                .then(Modifier.glassLite(shape, SurfaceWhite, 0.12f))
-                .border(1.dp, if (DarkColors) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.70f), shape)
-                .then(if (onClick != null) press.modifier.then(press.gesture) else Modifier)
-                .padding(contentPadding),
-            content = content
-        )
-        return
-    }
-    Column(
-        modifier = modifier
+    val tap = if (onClick != null) press.modifier.then(press.gesture) else Modifier
+    //两个档位只换 Modifier，容器始终是同一个 Column：content 在这里只能出现一次。
+    //以前轻档与真玻璃各写一个 Column{content()}，弹窗一开 GlassPerf.dialog 置真就把 heavy 翻成 false，
+    //content 的调用位置换到另一个分支，子组合被整个重建，卡片里的表单草稿与输入框状态全丢
+    val glass = if (!heavy) {
+        modifier
+            .then(Modifier.glassLite(shape, SurfaceWhite, 0.12f))
+            .border(1.dp, if (DarkColors) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.70f), shape)
+    } else {
+        modifier
             .drawBackdrop(
                 backdrop = backdrop,
                 shape = { shape },
@@ -268,21 +264,12 @@ fun LiquidCard(
                 onDrawSurface = {
                     //浅色下什么都不叠：玻璃直接透出页面背景（有背景图就是背景图，没有就是背景的模糊）
                     drawRect(if (DarkColors) Color.Black.copy(alpha = 0.10f) else Color.Transparent)
-                    //矮卡片或者降档期间没有模糊，补一层乳白，既能看出是玻璃又不丢文字对比度
-                    //只按降档判定，不再按尺寸判：单行卡（色系那种 80dp 高）以前被这层白盖成毛玻璃
-                    if (!heavy) {
-                        drawRect(
-                            if (DarkColors) Color.White.copy(alpha = 0.08f)
-                            else Color.White.copy(alpha = 0.55f)
-                        )
-                    }
                 }
             )
             //只有可点的卡片才挂按压：里面的开关、按钮、滑杆照常拿事件
-            .then(if (onClick != null) press.modifier.then(press.gesture) else Modifier)
-            .padding(contentPadding),
-        content = content
-    )
+            .then(tap)
+    }
+    Column(modifier = glass.padding(contentPadding), content = content)
 } //液态玻璃卡片
 
 /**

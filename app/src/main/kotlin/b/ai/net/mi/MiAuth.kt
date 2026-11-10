@@ -2,11 +2,11 @@ package b.ai.net.mi
 
 import android.util.Log
 import b.ai.core.cfg.secret.Secret
+import b.ai.native.security.MiCrypto
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import java.security.MessageDigest
 import java.util.UUID
 
 /**
@@ -41,8 +41,7 @@ object MiAuth {
 
     fun state(): String {
         val d = "d=" + deviceId()
-        val h = MessageDigest.getInstance("SHA-1").digest(d.toByteArray(Charsets.UTF_8))
-        return MiPacket.bytes2hex(h)
+        return MiCrypto.sha1Hex(d.toByteArray(Charsets.UTF_8))
     } //sha1(d=<设备身份>)
 
     /** 授权链接：redirect 决定 code 回到哪，client_id 没注入就返回空串（云端能力直接关闭） */

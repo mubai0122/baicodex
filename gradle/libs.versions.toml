@@ -8,6 +8,9 @@ composeBom = "2025.10.01"
 libsu = "6.0.0"
 shizuku = "13.1.5"
 composeMp = "1.12.2"
+materialIconsCore = "1.7.8"
+backdrop = "2.0.0"
+stringfog = "v2.3.0"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -15,6 +18,8 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMp" }
+#StringFog 只发在 JitPack，settings.gradle.kts 里另有一段 useModule 重定向到插件成品坐标
+stringfog = { id = "com.va.stringfog", version.ref = "stringfog" }
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,8 +30,11 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIconsCore" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 libsu-core = { group = "com.github.topjohnwu.libsu", name = "core", version.ref = "libsu" }
 shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
 shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+kyant-backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
+pangu-stringfog = { group = "com.github.Pangu-Immortal.StringFogPro", name = "stringfog", version.ref = "stringfog" }

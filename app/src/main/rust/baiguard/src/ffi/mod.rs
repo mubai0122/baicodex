@@ -2,7 +2,7 @@
 //!
 //! 导出符号名与 C++ 兜底实现完全一致，JNI 层不需要区分后端是不是 Rust。
 
-use crate::core::feature::selfcheck;
+use crate::core::feature::{miot, selfcheck};
 use crate::core::security::{crypto, mask};
 
 /// 逐字节异或：dst = a ^ b
@@ -85,3 +85,52 @@ pub extern "C" fn bai_mask_shape() -> i32 {
     let (keys, prefixes) = mask::shape();
     ((keys.min(255) as i32) << 8) | prefixes.min(255) as i32
 } //规则规模
+
+/// 米家探测包：写满 32 字节
+///
+/// # Safety
+/// `out` 必须可写 32 字节。
+#[no_mangle]
+pub unsafe extern "C" fn bai_miot_probe(virtual_did: u64, out: *mut u8) {
+    if out.is_null() {
+        return;
+    }
+    let b = miot::probe(virtual_did);
+    std::ptr::copy_nonoverlapping(b.as_ptr(), out, b.len());
+} //探测包
+
+/// 报文头里的 did；长度不够返回 -1
+///
+/// # Safety
+/// `p` 必须可读 `len` 字节。
+#[no_mangle]
+pub unsafe extern "C" fn bai_miot_head_did(p: *const u8, len: usize) -> i64 {
+    if p.is_null() || len < 12 {
+        return -1;
+    }
+    miot::head_did(std::slice::from_raw_parts(p, len))
+} //取 did
+
+/// 报文头里的设备时间戳；长度不够返回 0
+///
+/// # Safety
+/// `p` 必须可读 `len` 字节。
+#[no_mangle]
+pub unsafe extern "C" fn bai_miot_head_stamp(p: *const u8, len: usize) -> u32 {
+    if p.is_null() || len < 16 {
+        return 0;
+    }
+    miot::head_stamp(std::slice::from_raw_parts(p, len))
+} //取时间戳
+
+/// JSON 里取整数：找不到返回 i64::MIN
+///
+/// # Safety
+/// `p` 可读 `len` 字节，`key` 可读 `klen` 字节。
+#[no_mangle]
+pub unsafe extern "C" fn bai_miot_json_int(p: *const u8, len: usize, key: *const u8, klen: usize) -> i64 {
+    if p.is_null() || key.is_null() || klen == 0 {
+        return i64::MIN;
+    }
+    miot::json_int(std::slice::from_raw_parts(p, len), std::slice::from_raw_parts(key, klen))
+} //取整数字段

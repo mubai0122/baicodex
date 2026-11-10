@@ -140,6 +140,8 @@ class App : Application() {
             runCatching { b.ai.core.data.profile.Prices.init(self) }
             runCatching { Triggers.init(self) }
             runCatching { Mcp.init(self) }
+            //种子注入：编译期从 local.properties 进 BuildConfig，这里只补空位（协作 token、配对码、发现与接活端口）
+            runCatching { b.ai.core.cfg.seed.Seeds.apply() }
             // A2A 服务端：上次开着就恢复监听；端口被占就失败，不崩
             if (Cfg.a2aOn) runCatching { A2aSrv.start(Cfg.a2aPort) }
             //厂商图标：C 层抓，磁盘缓存 168 天，之后设置页打开直接出图
@@ -167,6 +169,8 @@ class App : Application() {
             //脱敏：先把上次缓存的服务端规则装回 native，再按有效期后台换一份新的
             runCatching { b.ai.native.security.Mask.boot() }
             runCatching { if (Cfg.maskOut) b.ai.net.doc.MaskRules.sync() }
+            //局域网互联：开关是开着的就把监听接上，重进 App 依然能被同网段设备扫到
+            runCatching { if (b.ai.net.lan.LanCfg.load().on) b.ai.net.lan.Lan.start() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
         b.ai.ui.overlay.PerfProbe.install()

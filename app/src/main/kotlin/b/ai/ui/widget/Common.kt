@@ -27,7 +27,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,22 +99,27 @@ fun Modifier.tapLong(onClick: () -> Unit, onLong: () -> Unit): Modifier = compos
     )
 }
 
-/** 卡片容器：开了液态玻璃卡片、且这一页登记了背景层，就走真玻璃，否则还是原来那张白卡 */
+/** 卡片容器：开了液态玻璃卡片、且这一页登记了背景层，就走真玻璃，否则还是白卡（底色不透明度按设置走） */
 @Composable
 fun CardBox(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val backdrop = LocalCardBackdrop.current
+    //外壳会在「白卡 / 玻璃卡」两种容器之间切（玻璃开关、背景层异步就绪都会翻），
+    //用 movableContentOf 把内容搬过去：切换时子组合不重建，卡里编辑到一半的表单与输入态不会丢
+    val latest by rememberUpdatedState(content)
+    val body = remember { movableContentOf<ColumnScope> { scope -> latest.invoke(scope) } }
     if (Cfg.glassCard && backdrop != null) {
-        LiquidCard(backdrop, modifier.fillMaxWidth(), corner = 16.dp, content = content)
+        LiquidCard(backdrop, modifier.fillMaxWidth(), corner = 16.dp) { body(this) }
         return
     }
+    val shape = RoundedCornerShape(16.dp)
+    val alpha = Cfg.cardAlpha.coerceIn(0, 100) / 100f
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(16.dp))
-            .border(1.dp, BorderGray, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        content = content
-    )
+            .liquidBg(shape, tint = SurfaceWhite.copy(alpha = alpha))
+            .border(1.dp, BorderGray, shape)
+            .padding(16.dp)
+    ) { body(this) }
 } //白卡 / 玻璃卡
 
 @Composable

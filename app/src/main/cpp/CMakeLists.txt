@@ -33,6 +33,11 @@ add_library(baicodex SHARED
         core/security/mask/patterns.cpp
         core/security/mask/rules.cpp
         core/security/mask/scan.cpp
+        core/security/crypto/crypto.cpp
+        core/feature/miot/packet.cpp
+        core/feature/miot/udp.cpp
+        ffi/crypto_ffi.cpp
+        ffi/miot_ffi.cpp
         ffi/mask_ffi.cpp
         ffi/mask_jni.cpp
         tools/dsl.cpp
@@ -45,10 +50,12 @@ add_library(baicodex SHARED
         runtime/guard.cpp
         runtime/secret.cpp
         jni/blur_jni.cpp
+        jni/crypto_jni.cpp
         jni/dsl_jni.cpp
         jni/edit_jni.cpp
         jni/guard_jni.cpp
         jni/js_jni.cpp
+        jni/miot_jni.cpp
         jni/net_jni.cpp
         jni/secret_jni.cpp)
 target_include_directories(baicodex PRIVATE

@@ -714,6 +714,10 @@ object Cfg {
     var glassCard: Boolean
         get() = mem("glass_card", false).value
         set(v) { mem("glass_card", false).value = v; put("glass_card", v) }
+    /** 卡片不透明度（%）：只在非玻璃模式下生效，100 = 原来的实底白卡，0 = 全透只剩描边 */
+    var cardAlpha: Int
+        get() = mem("card_alpha", 100).value
+        set(v) { mem("card_alpha", 100).value = v; put("card_alpha", v) }
 
     /** 质感按钮：深度思考 / 最大 / 语音 / 发送换成带厚度的 3D 按钮 */
     var tactileBtn: Boolean

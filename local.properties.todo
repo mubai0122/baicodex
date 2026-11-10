@@ -4,3 +4,18 @@ stringfog.key=
 baicodex.aes.key=
 baicodex.host=
 baicodex.backup.key=
+
+miot.client.id=
+miot.redirect=
+miot.region=cn
+
+seed.netease.preset=
+seed.netease.iv=
+seed.netease.rsa.e=
+seed.netease.rsa.n=
+
+#自用构建要免手输就加 -PallowSeedCred=1，这两个值才会进包
+seed.a2a.token=
+seed.lan.code=
+seed.lan.port=
+seed.team.port=

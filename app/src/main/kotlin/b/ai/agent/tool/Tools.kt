@@ -6,6 +6,10 @@ import b.ai.ui.widget.tap
 
 import b.ai.net.api.a2a.A2aNode
 import b.ai.net.api.a2a.A2aNodes
+import b.ai.net.api.a2a.A2aSrv
+import b.ai.net.lan.Lan
+import b.ai.net.lan.LanCfg
+import b.ai.net.lan.Team
 import b.ai.core.misc.apk.Apk
 import b.ai.core.cfg.app.AgentMode
 import b.ai.core.cfg.app.Cfg
@@ -13,6 +17,11 @@ import b.ai.native.net.Net
 import b.ai.native.script.Dsl
 import b.ai.native.script.Js
 import b.ai.net.mcp.Mcp
+import b.ai.core.media.music.MusicCfg
+import b.ai.net.mi.MiAuth
+import b.ai.net.mi.MiHome
+import b.ai.net.mi.MiStore
+import b.ai.net.music.NeteaseLogin
 import b.ai.agent.memory.Memory
 import b.ai.core.model.chat.Route
 import b.ai.core.task.alarm.Schedules
@@ -119,6 +128,18 @@ object Tools {
     const val FLOW_LIST = "flow_list"
     /** A2A：和别的 A2A 智能体对话（A2A 1.0），本机也能当服务端 */
     const val A2A = "a2a"
+    /** 局域网团队协作：发现、配对、把任务派给对端的大模型 */
+    const val LAN = "lan"
+    /** 米家：台账、局域网扫描、属性读写与动作；控制链路是「局域网优先、云端兜底」 */
+    const val MI_DEVICES = "mijia_devices"
+    const val MI_SCAN = "mijia_scan"
+    const val MI_READ = "mijia_read"
+    const val MI_WRITE = "mijia_write"
+    const val MI_ACTION = "mijia_action"
+    /** 音乐：平台开关与优先级、登录态（cookie 进加密库）、缓存清理 */
+    const val MUSIC_PLATS = "music_platforms"
+    const val MUSIC_LOGIN = "music_login"
+    const val MUSIC_CACHE = "music_cache_clear"
     /** MCP 能力的工具名前缀：mcp_服务_能力 */
     const val MCP = "mcp_"
 
@@ -131,7 +152,9 @@ object Tools {
                 listOf(
                     LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, PING, CURL, PAGE, APKTOOL,
                     BROWSE, SUB, JS,
-                    FLOW_RUN, FLOW_SAVE, FLOW_LIST, A2A
+                    FLOW_RUN, FLOW_SAVE, FLOW_LIST, A2A, LAN,
+                    MI_DEVICES, MI_SCAN, MI_READ, MI_WRITE, MI_ACTION,
+                    MUSIC_PLATS, MUSIC_LOGIN, MUSIC_CACHE
                 )
             )
             if (Linux.installed()) {
@@ -149,8 +172,9 @@ object Tools {
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
     private val PLAN_OFF = setOf(
         WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, MEMORY_DEL, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
-        FLOW_RUN, FLOW_SAVE, A2A,
-        SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT
+        FLOW_RUN, FLOW_SAVE, A2A, LAN,
+        SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT,
+        MI_WRITE, MI_ACTION, MUSIC_LOGIN, MUSIC_CACHE
     )
 
     /** 极简模式只留这五个：文件四件套 + exec_shell */
@@ -232,6 +256,8 @@ object Tools {
         if (name == DELETE || name == SHELL || name == LINUX || name == JS) return true
         //SSH 里只有会改远端或跑任意命令的算高危，ls / read / get 是只读，不必每次弹确认
         if (name == SSH_SUDO || name == SSH_EXEC || name == SSH_WRITE || name == SSH_PUT) return true
+        //米家写属性 / 调动作会真动设备，清缓存会删文件，都按高危算
+        if (name == MI_WRITE || name == MI_ACTION || name == MUSIC_CACHE) return true
         if (Js.has(name)) return true
         if (!name.startsWith(MCP)) return false
         val t = Mcp.findTool(name) ?: return true
@@ -253,6 +279,8 @@ object Tools {
     } //工具结果治理：超预算直接截止，只保留头部
 
     private fun str(desc: String) = JSONObject().put("type", "string").put("description", desc)
+
+    private fun num(desc: String) = JSONObject().put("type", "integer").put("description", desc)
 
     /** 组一份参数表：properties 手给，required 显式列（SSH 那组每个工具的必填项都不一样） */
     private fun toolIn(props: JSONObject, vararg required: String): JSONObject {
@@ -930,6 +958,142 @@ object Tools {
                 )
             )
         )
+        //局域网团队协作：扫到对面、配对、把活派给对面的模型
+        arr.put(
+            fn(
+                LAN,
+                "局域网团队协作：同一 Wi-Fi 下的两台设备互相派活。先 scan 找设备，再 pair 配对（要对方配对码），" +
+                    "之后 assign 就能把一条任务交给对面的大模型跑，结果原样回来。action：\n" +
+                    "- status（默认）：本机协作状态 + 已配对设备\n" +
+                    "- serve：开/关本机接活服务（on、port）\n" +
+                    "- scan：扫同一 Wi-Fi 下的设备，约 2 秒\n" +
+                    "- pair：配对，要 peer（扫到的设备名 / 设备号 / IP）与 code（对方 6 位配对码）\n" +
+                    "- peers：已配对设备，含在线标记与协作端口\n" +
+                    "- unpair：解除配对，要 peer\n" +
+                    "- card：看对面能干什么，要 peer\n" +
+                    "- assign：把任务派给对面大模型并等结果，要 peer 与 task\n" +
+                    "- tasks：列对面最近的任务；cancel：取消，要 peer 与 task/任务 id",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("status / serve / scan / pair / peers / unpair / card / assign / tasks / cancel"))
+                        .put("peer", str("对面设备：名字、设备号或 IP"))
+                        .put("code", str("pair 时对方的 6 位配对码"))
+                        .put("task", str("assign 派过去的任务内容"))
+                        .put("on", JSONObject().put("type", "boolean").put("description", "serve 时开关，默认 true"))
+                        .put("port", num("serve 时监听端口，默认沿用设置里的协作端口")),
+                    "action"
+                )
+            )
+        )
+        //米家：台账在本地，控制走「局域网优先、云端兜底」
+        arr.put(
+            fn(
+                MI_DEVICES,
+                "米家设备台账。action：\n" +
+                    "- list（默认）：列出本地台账里的设备，带 did、名字、型号、IP、在线状态、有没有本地 token\n" +
+                    "- sync：拉云端设备清单并进台账，需要已经登录米家账号\n" +
+                    "- add：手工补一台设备（did + ip + token），没有云端也能局域网直连\n" +
+                    "要控制设备前先调它拿 did；siid / piid / aiid 是设备自己的规格号。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("list / sync / add，默认 list"))
+                        .put("did", str("add 时的设备 did（纯数字）"))
+                        .put("ip", str("add 时的设备局域网 IP"))
+                        .put("token", str("add 时的设备 token，32 位十六进制"))
+                        .put("name", str("add 时的设备名，可空"))
+                )
+            )
+        )
+        arr.put(
+            fn(
+                MI_SCAN,
+                "扫一遍局域网，把应答的米家设备 IP 回填台账并标记在线。设备不在同一网段、或没开局域网协议时会扫不到。",
+                toolIn(
+                    JSONObject().put("timeout", num("扫多少毫秒，默认 2500，上限 10000"))
+                )
+            )
+        )
+        arr.put(
+            fn(
+                MI_READ,
+                "读米家设备的一个属性（siid 服务 + piid 属性）。局域网连不上会自动回落云端，两边都不通才返回失败。",
+                params("did" to str("设备 did"), "siid" to num("服务 id"), "piid" to num("属性 id"))
+            )
+        )
+        arr.put(
+            fn(
+                MI_WRITE,
+                "写米家设备的一个属性。value 会按内容自动转类型：true/false 转布尔、纯数字转整数、带小数点转小数，其余按字符串。" +
+                    "这是会改变设备状态的写操作。",
+                params(
+                    "did" to str("设备 did"), "siid" to num("服务 id"), "piid" to num("属性 id"),
+                    "value" to str("要写入的值")
+                )
+            )
+        )
+        arr.put(
+            fn(
+                MI_ACTION,
+                "调米家设备的一个动作（siid 服务 + aiid 动作）。args 可选：写 JSON 数组或用逗号分隔。",
+                toolIn(
+                    JSONObject()
+                        .put("did", str("设备 did"))
+                        .put("siid", num("服务 id"))
+                        .put("aiid", num("动作 id"))
+                        .put("args", str("动作参数，JSON 数组或逗号分隔，可空")),
+                    "did", "siid", "aiid"
+                )
+            )
+        )
+        //音乐：只解决「哪家优先、什么音质、登没登录、缓存多大」
+        arr.put(
+            fn(
+                MUSIC_PLATS,
+                "音乐平台设置。action：\n" +
+                    "- list（默认）：看三个平台（网易云 / QQ 音乐 / 酷我）的启用状态、优先级、登录态与缓存占用\n" +
+                    "- enable：把某个平台设为唯一启用（一次只让一家说话，免得同一条命令几家一起抢）\n" +
+                    "- disable：关掉某个平台，至少留一个启用\n" +
+                    "- quality：改音质档位（标准 128k / 高品 192k / 极高 320k / 无损）\n" +
+                    "- up：把某个平台在优先级里往上挪一位",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("list / enable / disable / quality / up，默认 list"))
+                        .put("plat", str("平台：netease / qq / kuwo，也可以写中文名"))
+                        .put("quality", str("音质档位，也可以写 320 / 无损 这种简写")),
+                    "action"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                MUSIC_LOGIN,
+                "音乐平台登录态。action：\n" +
+                    "- status（默认）：看有没有登录\n" +
+                    "- verify：拿已存的凭据真去查一次账号，能查出昵称才算真登录\n" +
+                    "- set：把 cookie 存进加密库\n" +
+                    "- clear：清掉凭据\n" +
+                    "- sms：给手机号发验证码（只有网易云支持）\n" +
+                    "- code：用手机号 + 验证码登录（只有网易云支持）\n" +
+                    "cookie 只进加密库、不回显内容；验证码登录成功后凭据自动落库，不用再 set。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("status / verify / set / clear / sms / code，默认 status"))
+                        .put("plat", str("平台：netease / qq / kuwo"))
+                        .put("cookie", str("set 时的 cookie 原文，只取第一行"))
+                        .put("phone", str("sms / code 时的手机号"))
+                        .put("code", str("code 时的短信验证码"))
+                        .put("area", str("国家码，默认 86")),
+                    "plat"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                MUSIC_CACHE,
+                "音乐缓存目录（baicode/music）。action：size 只看占用 / clear（默认）真删并回显释放了多少。",
+                toolIn(JSONObject().put("action", str("size / clear，默认 clear")))
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -1036,6 +1200,15 @@ object Tools {
         FLOW_SAVE -> flowSave(args)
         FLOW_LIST -> flowList()
         A2A -> a2a(args).governed()
+        LAN -> lanTool(args).governed()
+        MI_DEVICES -> miDevices(args).governed()
+        MI_SCAN -> miScan(args).governed()
+        MI_READ -> miRead(args).governed()
+        MI_WRITE -> miWrite(args).governed()
+        MI_ACTION -> miAction(args).governed()
+        MUSIC_PLATS -> musicPlats(args).governed()
+        MUSIC_LOGIN -> musicLogin(args).governed()
+        MUSIC_CACHE -> musicCache(args).governed()
         SSH_CONNECT, SSH_LS, SSH_READ, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_GET, SSH_PUT ->
             sshTool(name, args).governed()
         JS -> jsRun(args).governed()
@@ -1158,6 +1331,122 @@ object Tools {
         if (!k.startsWith("http://") && !k.startsWith("https://")) return null
         return A2aNode(id = "", name = k, url = A2aNodes.norm(k))
     } //对端解析
+    /** 局域网团队协作：发现、配对、派活；peer 认名字/设备号/IP，台账里没有就现场扫一遍 */
+    private fun lanTool(a: JSONObject): ToolOutcome {
+        val act = a.optString("action").lowercase().trim().ifBlank { "status" }
+        when (act) {
+            "status", "peers" -> {
+                val sb = StringBuilder(Team.self()).append('\n')
+                val list = LanCfg.peers()
+                if (list.isEmpty()) {
+                    sb.append("还没配对过设备：先 action=scan 找设备，再 action=pair 输对方配对码。")
+                } else {
+                    sb.append("已配对 ").append(list.size).append(" 台：\n")
+                    list.forEach { sb.append(peerLine(it)).append('\n') }
+                }
+                return ToolOutcome(true, sb.toString().trim(), Route.SANDBOX)
+            } //状态与台账
+            "serve" -> {
+                if (!a.optBoolean("on", true)) {
+                    Cfg.a2aOn = false
+                    A2aSrv.stop()
+                    return ToolOutcome(true, "本机已停止接活：对面再也派不进来了", Route.SANDBOX)
+                }
+                val port = a.optInt("port", 0).takeIf { it in 1024..65535 } ?: Cfg.a2aPort
+                Cfg.a2aPort = port
+                Cfg.a2aOn = true
+                val msg = A2aSrv.start(port)
+                if (!msg.startsWith("已监听")) {
+                    Cfg.a2aOn = false
+                    return ToolOutcome(false, "开不了接活服务：" + msg, Route.SANDBOX)
+                }
+                return ToolOutcome(true, "本机已在 " + A2aSrv.baseUrl() + " 接活；对面配对一次就能派活过来", Route.SANDBOX)
+            } //开/关本机接活服务
+            "scan" -> {
+                val found = Lan.scan(a.optInt("ms", 2500))
+                if (found.isEmpty()) {
+                    return ToolOutcome(
+                        false,
+                        "没扫到设备：确认两台在同一 Wi-Fi（或同一热点）、对方「允许被发现」开着；系统挡了局域网权限也会这样。",
+                        Route.SANDBOX
+                    )
+                }
+                val paired = LanCfg.peers().map { it.id }.toSet()
+                val sb = StringBuilder("扫到 ").append(found.size).append(" 台：\n")
+                found.forEach {
+                    sb.append("- ").append(it.name.ifBlank { it.id }).append(' ').append(it.ip).append(':').append(it.port)
+                    sb.append(if (it.a2aPort > 0) " 可接活（协作端口 ${it.a2aPort}）" else " 没开协作")
+                    if (it.id in paired) sb.append(" 已配对")
+                    sb.append('\n')
+                }
+                sb.append("要配对就 action=pair peer=<名字或设备号> code=<对方 6 位码>")
+                return ToolOutcome(true, sb.toString().trim(), Route.SANDBOX)
+            } //扫同一 Wi-Fi
+            "pair" -> {
+                val code = a.optString("code").trim()
+                if (code.isEmpty()) return ToolOutcome(false, "要对方 6 位配对码（在它「面对面团队协作」页上）", Route.SANDBOX)
+                val hit = findPeer(a.optString("peer"))
+                    ?: return ToolOutcome(false, "扫不到「" + a.optString("peer") + "」：先 action=scan 看设备名", Route.SANDBOX)
+                val err = Lan.pair(hit, code)
+                if (err.isNotEmpty()) return ToolOutcome(false, err, Route.SANDBOX)
+                Team.ensureServe()
+                val p = LanCfg.peers().firstOrNull { it.id == hit.id } ?: hit
+                return ToolOutcome(true, "配对成功：" + peerLine(p), Route.SANDBOX)
+            } //配对：对端校验通过才算
+            "unpair" -> {
+                val p = Team.find(a.optString("peer"))
+                    ?: return ToolOutcome(false, "台账里没这台设备", Route.SANDBOX)
+                LanCfg.removePeer(p.id)
+                return ToolOutcome(true, "已解除配对：" + p.name.ifBlank { p.ip }, Route.SANDBOX)
+            }
+            "card" -> {
+                val p = findPeer(a.optString("peer")) ?: return ToolOutcome(false, "找不到这台设备：先 action=scan", Route.SANDBOX)
+                val r = Team.card(p)
+                return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+            } //看对面能力
+            "assign" -> {
+                val task = a.optString("task").trim()
+                if (task.isEmpty()) return ToolOutcome(false, "task 要写清楚让对面做什么，别只写「帮我看一下」", Route.SANDBOX)
+                val p = findPeer(a.optString("peer")) ?: return ToolOutcome(false, "找不到这台设备：先 action=scan", Route.SANDBOX)
+                Team.ensureServe()
+                val r = Team.assign(p, task, a.optLong("wait", 120_000L).coerceIn(10_000L, 600_000L))
+                return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+            } //派活并等对面大模型跑完
+            "tasks" -> {
+                val p = Team.find(a.optString("peer")) ?: return ToolOutcome(false, "台账里没这台设备", Route.SANDBOX)
+                val r = Team.tasks(p)
+                return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+            }
+            "cancel" -> {
+                val p = Team.find(a.optString("peer")) ?: return ToolOutcome(false, "台账里没这台设备", Route.SANDBOX)
+                val r = Team.cancel(p, a.optString("task"))
+                return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+            }
+            else -> return ToolOutcome(
+                false,
+                "不认识的 action：$act（status / serve / scan / pair / peers / unpair / card / assign / tasks / cancel）",
+                Route.SANDBOX
+            )
+        }
+    } //局域网协作
+
+    private fun peerLine(p: LanCfg.Peer): String {
+        val ago = p.lastSeen.takeIf { it > 0 }?.let {
+            val m = (System.currentTimeMillis() - it) / 60_000
+            if (m <= 0) "刚刚" else m.toString() + " 分钟前"
+        } ?: "没探活过"
+        val a2a = if (p.a2aPort > 0) "协作端口 " + p.a2aPort else "没开协作"
+        return "- " + p.name.ifBlank { p.ip } + " " + p.ip + ":" + p.port + "，" + a2a + "，上次 " + ago + "（设备号 " + p.id + "）"
+    } //一行一台设备，给模型看也给人看
+
+    private fun findPeer(key: String): LanCfg.Peer? {
+        Team.find(key)?.let { return it }
+        val k = key.trim()
+        if (k.isEmpty()) return null
+        return Lan.scan(2000).firstOrNull {
+            it.id.equals(k, true) || it.name.equals(k, true) || it.ip == k || it.name.contains(k, true)
+        }
+    } //先查台账，再现场扫
     /** 定时时间解析：认 yyyy-MM-dd HH:mm、yyyy/MM/dd HH:mm、HH:mm（按今天算）；过期时间每天的顺延，单次的返 0 */
     private fun parseAt(raw: String, daily: Boolean): Long {
         val s = raw.trim()
@@ -1712,4 +2001,247 @@ object Tools {
         val r = Linux.run(Workspace.wrap(command))
         return ToolOutcome(r.ok, "[Ubuntu] exit=${r.code}\n${r.out}", Route.SANDBOX)
     } //linux_shell：在自带 Ubuntu 里跑，/sdcard 是同一条路径
+
+    /** 米家台账：list 看本地、sync 拉云端、add 手工补（没有云端也能局域网直连） */
+    private fun miDevices(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "list").trim().lowercase()
+        if (act == "sync") {
+            val r = MiHome.sync()
+            val ok = !r.startsWith("还没登录") && !r.contains("没拉到")
+            return ToolOutcome(ok, r, Route.SANDBOX)
+        }
+        if (act == "add") {
+            val did = a.optString("did").trim()
+            val ip = a.optString("ip").trim()
+            val tok = a.optString("token").trim()
+            if (did.isEmpty() || ip.isEmpty() || tok.isEmpty()) {
+                return ToolOutcome(false, "add 需要 did、ip、token 三个参数", Route.SANDBOX)
+            }
+            val err = MiHome.addManual(did, ip, tok, a.optString("name").trim())
+            return ToolOutcome(err.isEmpty(), err.ifEmpty { "已加入台账：$did @ $ip" }, Route.SANDBOX)
+        }
+        val rows = MiStore.load()
+        val sb = StringBuilder()
+        sb.append("登录态：").append(if (MiAuth.logged()) "已登录" else "未登录（只能用手工补的带 token 设备）").append('\n')
+        if (rows.isEmpty()) {
+            sb.append("台账里没有设备。action=sync 拉云端，或 action=add 手工补一台。")
+            return ToolOutcome(true, sb.toString(), Route.SANDBOX)
+        }
+        sb.append("共 ${rows.size} 台：\n")
+        rows.forEach { r ->
+            sb.append("- ").append(r.did).append(" · ").append(r.name.ifEmpty { "未命名" })
+            if (r.model.isNotEmpty()) sb.append(" · ").append(r.model)
+            sb.append(" · ").append(if (r.ip.isEmpty()) "IP 未知" else r.ip)
+            sb.append(" · ").append(if (r.online) "在线" else "离线")
+            sb.append(" · ").append(if (MiStore.token(r.did).isEmpty()) "无 token" else "有 token")
+            if (r.roomName.isNotEmpty()) sb.append(" · ").append(r.roomName)
+            sb.append('\n')
+        }
+        return ToolOutcome(true, sb.toString().trimEnd(), Route.SANDBOX)
+    } //米家台账
+
+    /** 局域网扫描：只回填 IP 与在线状态，协议细节全在 C++ 侧 */
+    private fun miScan(a: JSONObject): ToolOutcome {
+        val ms = a.optInt("timeout", 2500).coerceIn(500, 10_000)
+        if (MiStore.load().isEmpty()) {
+            return ToolOutcome(false, "台账里没有设备，先 mijia_devices 的 sync / add", Route.SANDBOX)
+        }
+        val hit = MiHome.lanScan(ms)
+        val t = if (hit == 0) {
+            "扫了 ${ms}ms，没有设备应答（不在同一网段，或设备没开局域网协议）"
+        } else {
+            "扫到 $hit 台，IP 已回填台账"
+        }
+        return ToolOutcome(true, t, Route.SANDBOX)
+    } //局域网扫描
+
+    /** 读属性：局域网优先、云端兜底都是 MiHome 内部的事，这里只报结果 */
+    private fun miRead(a: JSONObject): ToolOutcome {
+        val did = a.optString("did").trim()
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val siid = a.optInt("siid", -1)
+        val piid = a.optInt("piid", -1)
+        if (siid < 0 || piid < 0) return ToolOutcome(false, "siid / piid 必须是非负整数", Route.SANDBOX)
+        val v = MiHome.read(did, siid, piid)
+            ?: return ToolOutcome(false, "读不到属性（设备离线、token 失效，或云端没登录）", Route.SANDBOX)
+        return ToolOutcome(true, "did=$did siid=$siid piid=$piid → $v", Route.SANDBOX)
+    } //读属性
+
+    /** 写属性：会真改设备状态，计划模式下已被 PLAN_OFF 拦掉 */
+    private fun miWrite(a: JSONObject): ToolOutcome {
+        val did = a.optString("did").trim()
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val siid = a.optInt("siid", -1)
+        val piid = a.optInt("piid", -1)
+        if (siid < 0 || piid < 0) return ToolOutcome(false, "siid / piid 必须是非负整数", Route.SANDBOX)
+        val v = valueOf(a.optString("value"))
+        val err = MiHome.write(did, siid, piid, v)
+        return ToolOutcome(err == null, err ?: "已写入：did=$did siid=$siid piid=$piid = $v", Route.SANDBOX)
+    } //写属性
+
+    /** 调动作：args 支持 JSON 数组与逗号分隔两种写法 */
+    private fun miAction(a: JSONObject): ToolOutcome {
+        val did = a.optString("did").trim()
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val siid = a.optInt("siid", -1)
+        val aiid = a.optInt("aiid", -1)
+        if (siid < 0 || aiid < 0) return ToolOutcome(false, "siid / aiid 必须是非负整数", Route.SANDBOX)
+        val err = MiHome.action(did, siid, aiid, argsOf(a.optString("args")))
+        return ToolOutcome(err == null, err ?: "动作已下发：did=$did siid=$siid aiid=$aiid", Route.SANDBOX)
+    } //调动作
+
+    /** 参数值按内容转类型：设备对 true / 数字 / 字符串是三种不同的东西，糊成字符串会被拒 */
+    private fun valueOf(raw: String): Any {
+        val s = raw.trim()
+        s.lowercase().toBooleanStrictOrNull()?.let { return it }
+        s.toLongOrNull()?.let { return it }
+        s.toDoubleOrNull()?.let { return it }
+        return s
+    } //值转型
+
+    /** 动作参数表：优先按 JSON 数组解析，否则按逗号切；空串给空表 */
+    private fun argsOf(raw: String): List<Any> {
+        val s = raw.trim()
+        if (s.isEmpty()) return emptyList()
+        if (s.startsWith("[")) {
+            val arr = runCatching { JSONArray(s) }.getOrNull() ?: return emptyList()
+            return (0 until arr.length()).map { i ->
+                when (val v = arr.opt(i)) {
+                    is Number -> v
+                    is Boolean -> v
+                    null -> ""
+                    else -> v.toString()
+                }
+            }
+        }
+        return s.split(',').map { valueOf(it) }
+    } //动作参数表
+
+    /** 平台标识：认 id，也认中文名与网易 / qq / 酷我 这类简写 */
+    private fun platOf(raw: String): String? {
+        val s = raw.trim().lowercase()
+        if (s.isEmpty()) return null
+        MusicCfg.PLATS.keys.firstOrNull { it == s }?.let { return it }
+        return MusicCfg.PLATS.keys.firstOrNull { id ->
+            val name = MusicCfg.PLATS[id].orEmpty().lowercase()
+            name.contains(s) || s.contains(id)
+        }
+    } //平台标识
+
+    /** 音质档位：认全称，也认 128 / 192 / 320 / 无损 这种简写 */
+    private fun qualityOf(raw: String): String? {
+        val s = raw.trim().lowercase()
+        if (s.isEmpty()) return null
+        MusicCfg.QUALITIES.firstOrNull { it.lowercase().contains(s) }?.let { return it }
+        return when {
+            s.contains("无损") || s == "lossless" -> MusicCfg.QUALITIES[3]
+            s.contains("320") -> MusicCfg.QUALITIES[2]
+            s.contains("192") -> MusicCfg.QUALITIES[1]
+            s.contains("128") -> MusicCfg.QUALITIES[0]
+            else -> null
+        }
+    } //音质档位
+
+    /** 平台现状：顺序即优先级，登录态只说有没有、不说内容 */
+    private fun musicText(c: MusicCfg.Cfg): String {
+        val sb = StringBuilder("音质：").append(c.quality).append('\n')
+        sb.append("优先级与启用：\n")
+        c.order.forEachIndexed { i, id ->
+            val ck = if (MusicCfg.cookie(id).isEmpty()) "未登录" else "已登录"
+            sb.append(i + 1).append(". ").append(MusicCfg.PLATS[id].orEmpty())
+                .append(" · ").append(if (c.on[id] == true) "启用" else "关")
+                .append(" · ").append(ck).append('\n')
+        }
+        sb.append("缓存：").append(MusicCfg.sizeText(MusicCfg.cacheSize()))
+        return sb.toString().trimEnd()
+    } //平台现状
+
+    /** 音乐平台设置：一次只让一家说话，enable 直接把别的关掉 */
+    private fun musicPlats(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "list").trim().lowercase()
+        val c = MusicCfg.load()
+        if (act == "list" || act.isEmpty()) return ToolOutcome(true, musicText(c), Route.SANDBOX)
+        if (act == "quality") {
+            val q = qualityOf(a.optString("quality"))
+                ?: return ToolOutcome(false, "音质只认：" + MusicCfg.QUALITIES.joinToString(" / "), Route.SANDBOX)
+            val err = MusicCfg.save(MusicCfg.Cfg(c.order, c.on, q))
+            return ToolOutcome(err.isEmpty(), err.ifEmpty { "音质改成 $q" }, Route.SANDBOX)
+        }
+        val id = platOf(a.optString("plat"))
+        val keys = MusicCfg.PLATS.keys.joinToString(" / ")
+        if (id == null) return ToolOutcome(false, "plat 只认 $keys，也可以写中文名", Route.SANDBOX)
+        val name = MusicCfg.PLATS[id].orEmpty()
+        if (act == "up") {
+            val err = MusicCfg.moveUp(id)
+            return ToolOutcome(err.isEmpty(), err.ifEmpty { "$name 已上移一位" }, Route.SANDBOX)
+        }
+        if (act == "disable") {
+            if (c.on[id] != true) return ToolOutcome(true, "$name 本来就是关的", Route.SANDBOX)
+            if (c.on.count { it.value } <= 1) {
+                return ToolOutcome(false, "至少要留一个启用的平台", Route.SANDBOX)
+            }
+            val on = LinkedHashMap(c.on)
+            on[id] = false
+            val err = MusicCfg.save(MusicCfg.Cfg(c.order, on, c.quality))
+            return ToolOutcome(err.isEmpty(), err.ifEmpty { "$name 已关闭" }, Route.SANDBOX)
+        }
+        if (act != "enable") return ToolOutcome(false, "action 只认 list / enable / disable / quality / up", Route.SANDBOX)
+        val on = LinkedHashMap<String, Boolean>()
+        MusicCfg.PLATS.keys.forEach { on[it] = it == id }
+        val err = MusicCfg.save(MusicCfg.Cfg(c.order, on, c.quality))
+        return ToolOutcome(err.isEmpty(), err.ifEmpty { "$name 已设为唯一启用" }, Route.SANDBOX)
+    } //平台设置
+
+    /** 登录态：网易云能真登录（验证码 / cookie 校验），其它平台先只存 cookie */
+    private fun musicLogin(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "status").trim().lowercase()
+        val id = platOf(a.optString("plat"))
+        if (id == null) {
+            return ToolOutcome(
+                false, "plat 只认 " + MusicCfg.PLATS.keys.joinToString(" / ") + "，也可以写中文名", Route.SANDBOX
+            )
+        }
+        val name = MusicCfg.PLATS[id].orEmpty()
+        val area = a.optString("area", "86").trim().ifEmpty { "86" }
+        if (act == "sms" || act == "code") {
+            if (id != "netease") {
+                return ToolOutcome(false, "只有网易云支持验证码登录，$name 请用 set 粘 cookie", Route.SANDBOX)
+            }
+            if (act == "sms") {
+                val r = NeteaseLogin.sendCaptcha(a.optString("phone"), area)
+                return ToolOutcome(r.isEmpty(), r.ifEmpty { "验证码已发出，转给用户" }, Route.SANDBOX)
+            }
+            val r = NeteaseLogin.loginByCaptcha(a.optString("phone"), a.optString("code"), area)
+            return ToolOutcome(r.startsWith("登录成功"), r, Route.SANDBOX)
+        }
+        if (act == "verify") {
+            if (id != "netease") {
+                return ToolOutcome(true, "$name：凭据已存（这家还没接账号校验）", Route.SANDBOX)
+            }
+            val r = NeteaseLogin.me()
+            val ok = !r.startsWith("未登录") && !r.startsWith("网络")
+            return ToolOutcome(ok, "$name：$r", Route.SANDBOX)
+        }
+        if (act == "clear") {
+            MusicCfg.clearCookie(id)
+            return ToolOutcome(true, "$name 的登录态已清除", Route.SANDBOX)
+        }
+        if (act == "set") {
+            val err = MusicCfg.setCookie(id, a.optString("cookie"))
+            val n = MusicCfg.cookie(id).length
+            return ToolOutcome(err.isEmpty(), err.ifEmpty { "$name 登录态已存加密库（$n 字符）" }, Route.SANDBOX)
+        }
+        val ck = MusicCfg.cookie(id)
+        return ToolOutcome(true, if (ck.isEmpty()) "$name：未登录" else "$name：已存凭据（${ck.length} 字符）", Route.SANDBOX)
+    } //登录态
+
+    /** 缓存：size 只看占用，clear 真删并回显释放多少 */
+    private fun musicCache(a: JSONObject): ToolOutcome {
+        val act = a.optString("action", "clear").trim().lowercase()
+        if (act == "size") {
+            return ToolOutcome(true, "缓存占用 " + MusicCfg.sizeText(MusicCfg.cacheSize()), Route.SANDBOX)
+        }
+        val freed = MusicCfg.clearCache()
+        return ToolOutcome(true, "已清空缓存，释放 " + MusicCfg.sizeText(freed), Route.SANDBOX)
+    } //清缓存
 }

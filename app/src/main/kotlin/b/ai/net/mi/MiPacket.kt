@@ -1,25 +1,22 @@
 package b.ai.net.mi
 
+import b.ai.native.security.MiCrypto
 import org.json.JSONObject
-import java.security.MessageDigest
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 /**
  * 米家局域网报文（0x2131）编解码。
  * 头 32 字节：magic2 + 总长2 + did8 + 时间戳4 + 校验16；body 是 JSON 过 AES-128-CBC，
  * token 同时当密钥和 IV，校验位是对整包（含 token）算的 MD5。
+ * 摘要与 AES 都在 C 层（MiCrypto → core/security/crypto），这里不碰 javax.crypto。
  */
 object MiPacket {
     const val H0 = 0x21
     const val H1 = 0x31
     const val HEAD = 32
 
-    private const val AES = "AES/CBC/PKCS5Padding"
-
-    private fun md5(b: ByteArray, len: Int): ByteArray =
-        MessageDigest.getInstance("MD5").apply { update(b, 0, len) }.digest() //整包 MD5
+    /** 整包 MD5：只算前 len 字节，令牌段此时已经被校验位占用 */
+    private fun md5(b: ByteArray, len: Int): ByteArray? =
+        MiCrypto.md5(if (len == b.size) b else b.copyOf(len))
 
     fun hex2bytes(hex: String): ByteArray? {
         val s = hex.trim().replace(":", "").replace(" ", "")
@@ -70,44 +67,39 @@ object MiPacket {
     } //32 字节广播探测包：did 段填全 F，MDID 标记后跟自己的虚拟 did
 
     fun pack(token: ByteArray, did: Long, stamp: Int, json: String): ByteArray? {
-        return runCatching {
-            val c = Cipher.getInstance(AES).apply {
-                init(Cipher.ENCRYPT_MODE, SecretKeySpec(token, "AES"), IvParameterSpec(token))
-            }
-            val enc = c.doFinal(json.toByteArray(Charsets.UTF_8))
-            val total = HEAD + enc.size
-            val out = ByteArray(total)
-            out[0] = H0.toByte()
-            out[1] = H1.toByte()
-            out[2] = ((total shr 8) and 0xFF).toByte()
-            out[3] = (total and 0xFF).toByte()
-            putLong(out, 4, did)
-            out[12] = ((stamp shr 24) and 0xFF).toByte()
-            out[13] = ((stamp shr 16) and 0xFF).toByte()
-            out[14] = ((stamp shr 8) and 0xFF).toByte()
-            out[15] = (stamp and 0xFF).toByte()
-            System.arraycopy(token, 0, out, 16, 16)
-            System.arraycopy(enc, 0, out, HEAD, enc.size)
-            System.arraycopy(md5(out, total), 0, out, 16, 16)
-            out
-        }.getOrNull()
+        if (token.size != 16) return null
+        val enc = MiCrypto.aes128Cbc(token, token, json.toByteArray(Charsets.UTF_8), true) ?: return null
+        val total = HEAD + enc.size
+        val out = ByteArray(total)
+        out[0] = H0.toByte()
+        out[1] = H1.toByte()
+        out[2] = ((total shr 8) and 0xFF).toByte()
+        out[3] = (total and 0xFF).toByte()
+        putLong(out, 4, did)
+        out[12] = ((stamp shr 24) and 0xFF).toByte()
+        out[13] = ((stamp shr 16) and 0xFF).toByte()
+        out[14] = ((stamp shr 8) and 0xFF).toByte()
+        out[15] = (stamp and 0xFF).toByte()
+        System.arraycopy(token, 0, out, 16, 16)
+        System.arraycopy(enc, 0, out, HEAD, enc.size)
+        val sum = md5(out, total) ?: return null
+        System.arraycopy(sum, 0, out, 16, 16)
+        return out
     } //打一包：明文 JSON → 加密 → 填头 → 补校验
 
     fun unpack(token: ByteArray, raw: ByteArray): JSONObject? {
+        if (token.size != 16 || raw.size <= HEAD) return null
+        if (raw[0] != H0.toByte() || raw[1] != H1.toByte()) return null
         return runCatching {
-            if (raw.size <= HEAD) return null
-            if (raw[0] != H0.toByte() || raw[1] != H1.toByte()) return null
             val len = ((raw[2].toInt() and 0xFF) shl 8) or (raw[3].toInt() and 0xFF)
             //设备会把总长写小或写超出实收长度，一律按实收裁，别信头里的长度
             val body = raw.copyOfRange(0, minOf(raw.size, if (len in HEAD..raw.size) len else raw.size))
             val md5Orig = body.copyOfRange(16, 32)
             System.arraycopy(token, 0, body, 16, 16)
-            val calc = md5(body, body.size)
+            val calc = md5(body, body.size) ?: return null
             if (!md5Orig.contentEquals(calc)) return null
-            val c = Cipher.getInstance(AES).apply {
-                init(Cipher.DECRYPT_MODE, SecretKeySpec(token, "AES"), IvParameterSpec(token))
-            }
-            val clear = c.doFinal(body, HEAD, body.size - HEAD)
+            val clear = MiCrypto.aes128Cbc(token, token, body.copyOfRange(HEAD, body.size), false)
+                ?: return null
             //个别设备在 JSON 尾巴补 \0，去掉再解析
             val s = String(clear, Charsets.UTF_8).trimEnd('\u0000')
             if (s.isEmpty()) null else JSONObject(s)

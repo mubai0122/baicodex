@@ -9,16 +9,21 @@ app/build.sh
 _operit/
 _dsp/
 
-#本地日志与备份
+#工作区：临时文件、构建日志、历史产物、一次性脚本归档，一律放这里
+.work/
+#老的临时与日志目录（内容已并入 .work/，留着防手滑重建）
 logs/
+.tmp/
+
+#本地备份
 .backup/
 
 #崩溃日志
 crashlogs/
 
-#本机配置与临时构建文件
+#本机配置与密钥（模板见 local.properties.todo；种子索引在 gradle/seeds.gradle.kts）
 local.properties
-.tmp/
+scripts/.up.token
 #产物与备份
 *.apk
 *.aab
