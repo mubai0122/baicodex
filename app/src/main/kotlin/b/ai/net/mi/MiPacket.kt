@@ -9,7 +9,7 @@ import javax.crypto.spec.SecretKeySpec
 /**
  * 米家局域网报文（0x2131）编解码。
  * 头 32 字节：magic2 + 总长2 + did8 + 时间戳4 + 校验16；body 是 JSON 过 AES-128-CBC，
- * token 同时当密钥和 IV，校验位是对整包（含 token）算的 MD5。与参考实现逐字节一致。
+ * token 同时当密钥和 IV，校验位是对整包（含 token）算的 MD5。
  */
 object MiPacket {
     const val H0 = 0x21

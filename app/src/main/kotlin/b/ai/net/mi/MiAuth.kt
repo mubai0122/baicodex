@@ -45,11 +45,13 @@ object MiAuth {
         return MiPacket.bytes2hex(h)
     } //sha1(d=<设备身份>)
 
-    /** 授权链接：redirect 必须是能被外部拉起的地址（App 用自定义 scheme），拿不到 code 就登不上 */
-    fun authUrl(redirect: String, region: String = "cn", skipConfirm: Boolean = true): String {
+    /** 授权链接：redirect 决定 code 回到哪，client_id 没注入就返回空串（云端能力直接关闭） */
+    fun authUrl(redirect: String = MiConf.redirect(), skipConfirm: Boolean = true): String {
+        val cid = MiConf.clientId()
+        if (cid.isEmpty()) return ""
         val q = listOf(
             "redirect_uri" to redirect,
-            "client_id" to CLIENT_ID,
+            "client_id" to cid,
             "response_type" to "code",
             "device_id" to deviceId(),
             "state" to state(),
@@ -97,9 +99,14 @@ object MiAuth {
         }
     } //打一次 get_token，成功即落库
 
-    fun login(code: String, redirect: String, region: String = "cn"): Token? {
+    fun login(code: String, redirect: String = MiConf.redirect(), region: String = MiConf.region()): Token? {
+        val cid = MiConf.clientId()
+        if (cid.isEmpty()) {
+            Log.w(TAG, "没注入 client_id，换 token 无从谈起")
+            return null
+        }
         val data = JSONObject()
-            .put("client_id", CLIENT_ID)
+            .put("client_id", cid)
             .put("redirect_uri", redirect)
             .put("code", code)
             .put("device_id", deviceId())
@@ -108,12 +115,14 @@ object MiAuth {
         return t
     } //授权码换 token
 
-    fun refresh(region: String = "cn"): Token? {
+    fun refresh(region: String = MiConf.region()): Token? {
+        val cid = MiConf.clientId()
+        if (cid.isEmpty()) return null
         val rt = Secret.get(K_REFRESH)
         if (rt.isEmpty()) return null
         val data = JSONObject()
-            .put("client_id", CLIENT_ID)
-            .put("redirect_uri", REDIRECT)
+            .put("client_id", cid)
+            .put("redirect_uri", MiConf.redirect())
             .put("refresh_token", rt)
         val t = call(data, region) ?: return null
         save(t)
@@ -121,7 +130,7 @@ object MiAuth {
     } //用 refresh_token 续期
 
     /** 拿一个能用的 access_token：没过期直接给，过期先续，续不上返回 null（UI 要提示重登） */
-    fun access(region: String = "cn"): String? {
+    fun access(region: String = MiConf.region()): String? {
         val a = Secret.get(K_ACCESS)
         if (a.isEmpty()) return null
         val exp = Secret.get(K_EXPIRES).toLongOrNull() ?: 0L
@@ -144,9 +153,6 @@ object MiAuth {
     /** 登录态是否存在（不保证还能用） */
     fun logged(): Boolean = Secret.get(K_ACCESS).isNotEmpty() || Secret.get(K_REFRESH).isNotEmpty()
 
-    /** 小米开放平台给这个接入方注册的 client_id：换成自己的才不算蹭别人的应用身份 */
-    const val CLIENT_ID = "2882303761520251711"
-
-    /** 默认回调地址，登录时必须与发起时一致，否则换 token 会被判 redirect 不匹配 */
-    const val REDIRECT = "https://localhost/miot/auth"
+    /** 参数从哪来：MiConf（本地注入），源码里不留任何应用身份 */
+    const val SOURCE = "miot_conf.json"
 } //米家登录

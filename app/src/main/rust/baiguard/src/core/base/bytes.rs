@@ -34,11 +34,6 @@ pub const fn printable(b: u8) -> bool {
     b >= 0x20 && b < 0x7f
 }
 
-/// 字节是否落在给定集合里
-pub fn in_set(b: u8, set: &[u8]) -> bool {
-    set.contains(&b)
-}
-
 /// src 从 at 起是否以 pat 开头（忽略大小写）；pat 为空或越界一律返回 false
 pub fn starts_ci(src: &[u8], at: usize, pat: &[u8]) -> bool {
     if pat.is_empty() || at >= src.len() || pat.len() > src.len() - at {

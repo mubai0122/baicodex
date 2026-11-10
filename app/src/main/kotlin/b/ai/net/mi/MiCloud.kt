@@ -8,8 +8,8 @@ import java.net.URL
 
 /**
  * 米家云 MIoT：拿家庭与设备清单（含每台设备的局域网 token）、读写属性、调动作。
- * 头里 X-Client-BizId 固定 haapi，Authorization 是 "Bearer" 直接拼 token（没有空格，与参考实现一致，
- * 加空格反而会被判无效）。
+ * 头里 X-Client-BizId 固定 haapi，Authorization 由 "Bearer" 与 token 直接拼接（中间没有空格，
+ * 加了空格会被判无效）。
  */
 object MiCloud {
     private const val TAG = "bai.mi.cloud"
@@ -52,7 +52,7 @@ object MiCloud {
                 setRequestProperty("X-Client-BizId", "haapi")
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("Authorization", "Bearer$token")
-                setRequestProperty("X-Client-AppId", MiAuth.CLIENT_ID)
+                setRequestProperty("X-Client-AppId", MiConf.clientId())
                 setRequestProperty("User-Agent", "BaiAgent/" + MiAuth.deviceId())
                 if (body != null) {
                     doOutput = true
