@@ -868,6 +868,14 @@
     <string name="ms_ctx_total">上下文視窗</string>
     <string name="ms_ctx_total_tip">這條設定自己的上下文視窗；選「預設」則跟隨設定裡的全局值。DeepSeek 1M、多數模型 128k</string>
     <string name="se2_ctx_own">目前設定單獨指定了視窗，改這裡的全局值不生效；要改就到模型編輯頁改「上下文視窗」</string>
+    <string name="se_hub">生態與專區</string>
+    <string name="se_hub_sub">米家、音樂、局域網互聯、檔案沙箱的入口都在這裡</string>
+    <string name="se_hub_soon">專區正在逐個接入，接好一個上線一個</string>
+    <string name="se_hub_mi">米家裝置</string>
+    <string name="se_hub_music">音樂平台</string>
+    <string name="se_hub_lan">局域網互聯</string>
+    <string name="se_hub_box">檔案沙箱</string>
+    <string name="se_hub_soon_tag">建置中</string>
     <string name="se2_n_items">%1$d 條</string>
     <string name="se2_rec">%1$d 條記錄 · %2$d 字 · 共 %3$d 個對話</string>
     <string name="se2_ws_files">%1$d 個檔案 · %2$s · </string>

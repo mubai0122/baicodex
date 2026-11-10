@@ -868,6 +868,14 @@
     <string name="ms_ctx_total">Context window</string>
     <string name="ms_ctx_total_tip">Context window for this profile; choose "Default" to follow the global setting. DeepSeek 1M, most models 128k</string>
     <string name="se2_ctx_own">This profile sets its own window, so the global value here has no effect; change it in the profile editor</string>
+    <string name="se_hub">Ecosystem</string>
+    <string name="se_hub_sub">Mi Home, music, LAN pairing and file sandbox all live here</string>
+    <string name="se_hub_soon">Integrations are landing one by one</string>
+    <string name="se_hub_mi">Mi Home devices</string>
+    <string name="se_hub_music">Music services</string>
+    <string name="se_hub_lan">LAN pairing</string>
+    <string name="se_hub_box">File sandbox</string>
+    <string name="se_hub_soon_tag">soon</string>
     <string name="se2_n_items">%1$d messages</string>
     <string name="se2_rec">%1$d messages · %2$d chars · %3$d chats</string>
     <string name="se2_ws_files">%1$d files · %2$s · </string>

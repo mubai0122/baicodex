@@ -874,6 +874,14 @@
     <string name="ms_ctx_total">上下文窗口</string>
     <string name="ms_ctx_total_tip">这条配置自己的上下文窗口；选「默认」则跟随设置里的全局值。DeepSeek 1M、多数模型 128k</string>
     <string name="se2_ctx_own">当前配置单独指定了窗口，改这里的全局值不生效；要改就到模型编辑页改「上下文窗口」</string>
+    <string name="se_hub">生态与专区</string>
+    <string name="se_hub_sub">米家、音乐、局域网互联、文件沙箱的入口都在这里</string>
+    <string name="se_hub_soon">专区正在逐个接入，接好一个上线一个</string>
+    <string name="se_hub_mi">米家设备</string>
+    <string name="se_hub_music">音乐平台</string>
+    <string name="se_hub_lan">局域网互联</string>
+    <string name="se_hub_box">文件沙箱</string>
+    <string name="se_hub_soon_tag">建设中</string>
     <string name="se2_n_items">%1$d 条</string>
     <string name="se2_rec">%1$d 条记录 · %2$d 字 · 共 %3$d 个会话</string>
     <string name="se2_ws_files">%1$d 个文件 · %2$s · </string>

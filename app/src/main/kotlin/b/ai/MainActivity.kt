@@ -58,6 +58,7 @@ import b.ai.net.api.update.Update
 import b.ai.ui.screen.user.AccDialogs
 import b.ai.ui.screen.user.AccUi
 import b.ai.ui.screen.settings.AnnounceDialog
+import b.ai.ui.screen.settings.SeNav
 import b.ai.ui.dialog.AskSheet
 import b.ai.ui.screen.settings.A11yAuto
 import b.ai.ui.screen.settings.A11yAutoDialog
@@ -327,12 +328,25 @@ private fun Root() {
     //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
     BackHandler(enabled = starsOpen) { starsOpen = false }
     BackHandler(enabled = memOpen) { memOpen = false }
+    //设置页有二级栈时返回先退子页，退到分类页才退出设置
+    val seDeep = screen == "settings" && SeNav.stack.isNotEmpty()
+    BackHandler(enabled = !Cfg.predictiveBack && seDeep) { SeNav.pop() }
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && seDeep && !drawerActive) { progress ->
+        try {
+            progress.collect { e -> backFx = e.progress }
+            SeNav.pop()
+        } catch (e: CancellationException) {
+            throw e
+        } finally {
+            backFx = 0f
+        }
+    }
     //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页
-    BackHandler(enabled = !Cfg.predictiveBack && (screen == "settings" || screen == "pet" || screen == "workspace")) {
+    BackHandler(enabled = !Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace")) {
         screen = if (screen == "pet") "settings" else "chat"
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && (screen == "settings" || screen == "pet" || screen == "workspace") && !drawerActive) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace") && !drawerActive) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
             screen = if (screen == "pet") "settings" else "chat"

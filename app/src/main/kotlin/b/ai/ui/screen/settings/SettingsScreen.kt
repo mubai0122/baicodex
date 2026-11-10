@@ -208,7 +208,7 @@ private val TINT_NAMES = listOf(
 )
 
 /** 设置项索引：搜索只查这张表，命中后直接跳到对应 tab；tab 写标签而不是数字，避免换顺序时错位 */
-private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes: Int = 0, val hintRaw: String = "")
+private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes: Int = 0, val hintRaw: String = "", val pageId: String? = null)
 
 private val SettingIndex = listOf(
     SettingEntry(R.string.se_007, R.string.se_001, R.string.se_008),
@@ -287,7 +287,7 @@ fun SettingsScreen(
     //进页面这一次也按「刚换过内容」算：首帧先平涂，别在进页面那一帧同时建一堆离屏节点
     remember { GlassPerf.switched(); Unit }
     val scroll = glassLazyListState()
-    LaunchedEffect(tab) {
+    LaunchedEffect(tab, SeNav.top?.id) {
         GlassPerf.switched()
         scroll.scrollToItem(0)
     }
@@ -333,7 +333,7 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.se_056), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.width(8.dp))
-                Text(if (find) stringResource(R.string.se_057) else stringResource(SettingsTabs[tab].labelRes), fontSize = 12.sp, color = TextSecondary)
+                Text(if (find) stringResource(R.string.se_057) else (SeNav.top?.let { ctx.getString(it.titleRes) } ?: stringResource(SettingsTabs[tab].labelRes)), fontSize = 12.sp, color = TextSecondary)
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
@@ -352,7 +352,7 @@ fun SettingsScreen(
                 Row(
                     Modifier
                         .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
-                        .tap { onBack() }
+                        .tap { SeNav.clear(); onBack() }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -436,7 +436,19 @@ fun SettingsScreen(
                                         .fillMaxWidth()
                                         .padding(vertical = 3.dp)
                                         .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
-                                        .tap { GlassPerf.switched(); tab = tabIndex(e.tabRes); find = false; fq = "" }
+                                        .tap {
+                                            GlassPerf.switched()
+                                            find = false
+                                            fq = ""
+                                            //搜索直接落到具体子页：先按索引表的 pageId 走，没写就退到该分类的默认子页
+                                            val pid = e.pageId ?: seDefaultPage(tabIndex(e.tabRes))?.id
+                                            val pg = pid?.let { sePage(it) }
+                                            if (pg != null) {
+                                                tab = pg.cat
+                                                SeNav.clear()
+                                                SeNav.push(pg)
+                                            } else tab = tabIndex(e.tabRes)
+                                        }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -466,7 +478,12 @@ fun SettingsScreen(
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
                     }
-                    else -> when (tab) {
+//栈空 = 停在分类页；有页 = 渲染该页内容（S1 阶段一个分类先只挂一页，内容仍是原来那整页）
+                    SeNav.top == null -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
+                    else -> {
+                    val tp = SeNav.top!!
+                    item { SeBackBar(ctx.getString(tp.titleRes)) { GlassPerf.switched(); SeNav.pop() } }
+                    if (tp.id == "hub") seHubPage() else when (tab) {
                         0 -> modelTab(onOpenMemory)
                         1 -> chatTab(stats, onOpenStars)
                         2 -> uiTab(onOpenPet)
@@ -484,14 +501,15 @@ fun SettingsScreen(
                         5 -> aboutTab(onOpenFeedback)
                         else -> uiTab(onOpenPet)
                     }
-            }
+                    }
+                }
                 }
             }
             }
         FloatTabBar(
             tabs = SettingsTabs,
             selected = tab,
-            onSelect = { GlassPerf.switched(); tab = it },
+            onSelect = { GlassPerf.switched(); SeNav.clear(); tab = it },
             modifier = Modifier.align(Alignment.BottomCenter),
             backdrop = pageBackdrop
         )

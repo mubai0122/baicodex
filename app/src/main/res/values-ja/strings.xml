@@ -868,6 +868,14 @@
     <string name="ms_ctx_total">コンテキストウィンドウ</string>
     <string name="ms_ctx_total_tip">この設定専用のコンテキストウィンドウ。「デフォルト」なら設定画面のグローバル値に従います。DeepSeek 1M、多くのモデルは 128k</string>
     <string name="se2_ctx_own">この設定が独自のウィンドウを指定しているため、ここのグローバル値は効きません。変更はモデル編集画面の「コンテキストウィンドウ」で</string>
+    <string name="se_hub">エコシステム</string>
+    <string name="se_hub_sub">Mi Home、音楽、LAN 連携、ファイルサンドボックスの入口</string>
+    <string name="se_hub_soon">各連携を順次対応中です</string>
+    <string name="se_hub_mi">Mi Home 機器</string>
+    <string name="se_hub_music">音楽サービス</string>
+    <string name="se_hub_lan">LAN 連携</string>
+    <string name="se_hub_box">ファイルサンドボックス</string>
+    <string name="se_hub_soon_tag">準備中</string>
     <string name="se2_n_items">%1$d 件</string>
     <string name="se2_rec">%1$d 件 · %2$d 文字 · 全 %3$d 会話</string>
     <string name="se2_ws_files">%1$d ファイル · %2$s · </string>
