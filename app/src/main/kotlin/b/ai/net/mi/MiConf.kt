@@ -1,13 +1,14 @@
 package b.ai.net.mi
 
+import b.ai.BuildConfig
 import b.ai.core.cfg.io.Store
 import b.ai.core.cfg.secret.Secret
 import org.json.JSONObject
 
 /**
  * 米家接入参数：client_id / 回调地址 / 区域 / 局域网优先 / 超时。
- * client_id 是本应用的接入身份，只存本机加密库，由本地注入（设置页填或构建时写），
- * 源码与明文配置里都不出现；其余非敏感参数落 miot_conf.json。
+ * 取值优先级：本机加密库 → 老明文配置（迁移）→ 构建期注入的种子（local.properties 的 miot.*）。
+ * 种子只在加密库为空时写一次，之后以用户填的为准，换 APK 不会把它冲掉。
  */
 object MiConf {
     private const val FILE = "miot_conf.json"
@@ -29,19 +30,33 @@ object MiConf {
         cache?.let { return it }
         val raw = Store.read(FILE)
         val o = if (raw.isNullOrBlank()) null else runCatching { JSONObject(raw) }.getOrNull()
-        //老版本把 client_id 写在明文 JSON 里，读到就搬进加密库并从 JSON 抹掉
-        val legacy = o?.optString("clientId")?.trim().orEmpty()
         var cid = Secret.get(K_CID).trim()
-        if (cid.isEmpty() && legacy.isNotEmpty()) {
-            Secret.put(K_CID, legacy)
-            cid = legacy
-            o?.remove("clientId")
-            o?.let { Store.write(FILE, it.toString()) }
+        //老版本把 client_id 写在明文 JSON 里，读到就搬进加密库并从 JSON 抹掉
+        if (cid.isEmpty()) {
+            val legacy = o?.optString("clientId")?.trim().orEmpty()
+            if (legacy.isNotEmpty()) {
+                cid = legacy
+                Secret.put(K_CID, cid)
+                o?.remove("clientId")
+                o?.let { Store.write(FILE, it.toString()) }
+            }
+        }
+        //构建期注入的种子：只在加密库空着时灌一次，之后以加密库为准
+        if (cid.isEmpty()) {
+            val seed = BuildConfig.MIOT_CLIENT_ID.trim()
+            if (seed.isNotEmpty()) {
+                cid = seed
+                Secret.put(K_CID, cid)
+            }
         }
         val c = Cfg(
             clientId = cid,
-            redirect = o?.optString("redirect")?.trim().orEmpty().ifEmpty { DEF_REDIRECT },
-            region = o?.optString("region")?.trim().orEmpty().ifEmpty { DEF_REGION },
+            redirect = o?.optString("redirect")?.trim().orEmpty()
+                .ifEmpty { BuildConfig.MIOT_REDIRECT.trim() }
+                .ifEmpty { DEF_REDIRECT },
+            region = o?.optString("region")?.trim().orEmpty()
+                .ifEmpty { BuildConfig.MIOT_REGION.trim() }
+                .ifEmpty { DEF_REGION },
             lanFirst = o?.optBoolean("lanFirst", true) ?: true,
             timeoutMs = o?.optInt("timeoutMs", 4000) ?: 4000
         )
@@ -49,16 +64,21 @@ object MiConf {
         return c
     } //读配置（内存缓存一份，改完要 save 才会刷新）
 
-    fun save(c: Cfg): Boolean {
+    /** 写配置：空串 = 成功，否则是不接受的原因（client_id 与回填地址先过自检） */
+    fun save(c: Cfg): String {
+        if (c.clientId.isNotBlank()) {
+            val why = check(c.clientId, c.redirect, c.region)
+            if (why.isNotEmpty()) return why
+        }
         Secret.put(K_CID, c.clientId.trim())
         val o = JSONObject()
             .put("redirect", c.redirect.trim())
             .put("region", c.region.trim().ifEmpty { DEF_REGION })
             .put("lanFirst", c.lanFirst)
             .put("timeoutMs", c.timeoutMs)
-        val ok = Store.write(FILE, o.toString())
-        if (ok) cache = null
-        return ok
+        if (!Store.write(FILE, o.toString())) return "配置写不进磁盘"
+        cache = null
+        return ""
     } //写配置：client_id 进加密库，其余进 JSON
 
     fun region(): String = load().region

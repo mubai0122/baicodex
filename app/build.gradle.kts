@@ -44,6 +44,32 @@ val baiBkKey: String = run {
     } ?: "baicodex-backup-placeholder"
 }
 
+val miotClientId: String = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run ""
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    props.getProperty("miot.client.id")?.trim()?.takeIf { s -> s.length in 6..32 && s.all { it.isDigit() } } ?: ""
+}
+
+val miotRedirect: String = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run ""
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    props.getProperty("miot.redirect")?.trim()?.takeIf { s -> s.startsWith("http://") || s.startsWith("https://") } ?: ""
+}
+
+val miotRegion: String = run {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return@run "cn"
+    val props = Properties()
+    f.inputStream().use { props.load(it) }
+    props.getProperty("miot.region")?.trim()?.takeIf { s ->
+        s.isNotEmpty() && s.length <= 10 && s.all { it.isLowerCase() || it.isDigit() }
+    } ?: "cn"
+}
+
 android {
     namespace = "b.ai"
     compileSdk = 37
@@ -59,6 +85,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
         buildConfigField("String", "BAI_BK_KEY", "\"$baiBkKey\"")
+        buildConfigField("String", "MIOT_CLIENT_ID", "\"$miotClientId\"")
+        buildConfigField("String", "MIOT_REDIRECT", "\"$miotRedirect\"")
+        buildConfigField("String", "MIOT_REGION", "\"$miotRegion\"")
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
