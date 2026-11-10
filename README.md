@@ -15,7 +15,7 @@
 - 下载：<https://github.com/mubai0122/baicodex/releases/latest>
 - 开源协议：AGPL-3.0，无内购、无广告、无次数限制；闭源集成与 SaaS 部署需商业许可
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
+> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
 
 ---
 
@@ -53,6 +53,9 @@
 
 10. **技术栈广**
     Rust 内核 + C++ 原生层 + Kotlin / Compose 界面 + TypeScript / WebView2 桌面端，一套内核三端跑。
+
+11. **米家、网易云音乐、局域网协作都是原生实现**
+    米家走自己的 C 层密码学（AES-128-CBC / MD5 / SHA-1，带标准向量自检），控制链路局域网优先、云端兜底；网易云音乐走 weapi 加密通道（两次 AES-128-CBC + 模幂），验证码登录、cookie 回填与登录态校验全在本地完成；同一 Wi-Fi 下的多台设备用 6 位配对码握手后互相派活、互传文件。三套工具躺在同一张工具表里：查设备、调空调、清缓存、把日志派给隔壁那台机器，一句话里就能串完。
 
 ---
 
@@ -109,6 +112,30 @@
 - 工作流：多步任务串成一条流，每步跑一个分智能体，步骤之间不共享上下文
 - A2A：按 1.0 规范实现 SendMessage / GetTask / ListTasks / CancelTask，方法名与状态码与规范一致——别的 Agent 能给你派活，你的 Agent 也能把活派出去
 
+### 米家与智能家居
+
+- 报文密码学在原生 C 层：AES-128-CBC 与 MD5 / SHA-1，带标准向量自检，米家专区页直接显示自检结果与本次构建是否已注入接入身份
+- 三块子页：登录与账号（授权页取 code 换 token、登录态与退出）、设备（台账 / 扫描 / 手动添加 / 属性读写）、通道（区域、局域网优先、超时与诊断）
+- 工具五个：`mijia_devices`、`mijia_scan`、`mijia_read`、`mijia_write`、`mijia_action`；写属性与调动作算高危工具，要二次确认，计划模式下直接禁掉
+- 控制链路局域网优先：局域网通得了就走局域网，不通再回落云端
+- 局域网传输下沉到 C++：UDP 广播探测与单播请求应答在原生层，探测包、报文头与 JSON 取数由 Rust 提供，带 cargo 单测
+
+### 音乐（网易云）
+
+- 登录走 weapi 加密通道：两次 AES-128-CBC 在 C 层 OpenSSL 里做，随机密钥走模幂；手机验证码登录，cookie 校验通过才回填
+- 登录后真去查一次账号拿昵称，cookie 失效自动回滚并提示重新获取，不装成「已登录」
+- 平台侧：启用与优先级（一次只启用一家）、音质档位、缓存占用与清理，登录态进加密库
+- 工具三个：`music_platforms`、`music_login`（`verify` / `sms` / `code` 三个动作，验证码流程模型自己跑完）、`music_cache_clear`
+- 与米家共用同一张工具表：一句话里可以「看登录还在不在 → 清缓存 → 把客厅空调调到 26 度」，模型自己排顺序；取歌与播放还没做，音乐侧目前管的是平台、登录与缓存
+
+### 局域网团队协作
+
+- UDP 广播发现 + 6 位配对码握手：配对码只上行摘要，不上行明文码
+- 已配对设备台账与探活；配对握手时交换接活端口与凭据，两台设备各自的大模型可以互相派活
+- 局域网配置页：发现开关、本机名称与配对码、扫描与配对、已配对设备移除、传输端口与并发、热点设置入口
+- `lan` 工具：查状态、开接活服务、扫描、配对、解除、看对端能力、派任务与取消
+- 同一 Wi-Fi 下多台设备互传文件，端口与并发自己定
+
 ### 屏幕操作
 
 - 无障碍服务直连：dump 节点树、点击、长按、滑动、输入、按键、开应用、列应用，不需要 Shizuku 也能截图
@@ -125,8 +152,9 @@
 
 ### 桌面端（Windows）
 
-- 无边框窗口 + DWM 液态玻璃 + WebView2 渲染面，界面是 `desktop/web` 那套 TypeScript + Vite 代码
+- 无边框窗口 + DWM 液态玻璃 + WebView2 渲染面，前端是 TypeScript + Vite
 - 与手机同一份 Rust 内核，同一个版本号，工具表与配置结构一致
+- 桌面端前端已从本仓库剥离、单独维护，仓库里只留与它共用的内核
 
 ### 界面与个性化
 
@@ -200,11 +228,11 @@ Android 7.0（API 24）及以上，targetSdk 34，编译用 SDK 37。APK 含 `ar
 
 ```
 app/src/main/kotlin/b/ai/   Android 界面与平台层（agent / core / device / native / net / ui）
-app/src/main/cpp/           Android 原生层（JNI、QuickJS、图像、原生执行）
+app/src/main/cpp/           Android 原生层（JNI、QuickJS、图像、原生执行、米家密码学）
 app/src/main/rust/          Rust 内核（core / exec / net / ffi / crates / android）
 app/src/main/assets/linux/  内置 Linux 的 rootfs 与 proot
-desktop/web/                桌面端前端（pnpm workspace）
-scripts/                    构建与发版脚本
+gradle/                     构建脚本（含 seeds.gradle.kts：种子注入解析与索引表）
+.work/script/               构建与发版脚本（本目录不进版本库，克隆后需自备）
 ```
 
 ### 协议
@@ -235,14 +263,16 @@ Copyright (C) 2026 沐白 (mubai0122)
 ./gradlew assembleRelease   # release：R8 混淆 + 资源裁剪 + 字符串加密
 ```
 
-字符串加密的密钥不进仓库，从 `local.properties` 读：
+字符串加密的密钥与接入凭据不进仓库，从 `local.properties` 读，模板见 `local.properties.todo`：
 
 ```properties
 stringfog.key=你自己的一串密钥
 baicodex.aes.key=凭据加密用的种子
+miot.client.id=米家接入 clientId
+seed.netease.preset=网易云 weapi 预置串
 ```
 
-没配也能构建，会退到占位串（占位串等于没加密，别用占位串发版）。
+没配也能构建，会退到占位串（占位串等于没加密，别用占位串发版）。米家与网易云那几项属公开客户端口径，不配也能跑；协作 token（`seed.a2a.token`）与固定配对码（`seed.lan.code`）默认不写进包，自用构建才加 `-PallowSeedCred=1` 注入。
 
 **内核与桌面端**
 
@@ -251,17 +281,8 @@ cd app/src/main/rust
 cargo build --bin baicodex                 # 内核 + 终端前端
 
 cd baiguard && cargo test                  # 数据保障层单测（独立 crate）
-
-cd ../../../..                             # 回到仓库根
-bash scripts/desktop-build.sh release      # Windows 出包
 ```
 
-前端预览：
-
-```bash
-cd desktop/web
-pnpm install
-pnpm --filter @baicodex/desktop dev
-```
+前端源码与桌面出包不在本仓库（桌面端前端已剥离单独维护），这里只编内核与终端前端。
 
 </details>

@@ -14,7 +14,7 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 - ダウンロード：<https://github.com/mubai0122/baicodex/releases/latest>
 - ライセンス：AGPL-3.0、課金・広告・回数制限なし。クローズドソース製品への組み込みや SaaS 提供には商用ライセンスが必要
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
+> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
 
 ---
 
@@ -52,6 +52,9 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 
 10. **技術スタックの幅**
     Rust コア + C++ ネイティブ層 + Kotlin / Compose UI + TypeScript / WebView2 デスクトップ。1 つのコアで 3 プラットフォーム。
+
+11. **米家・NetEase Cloud Music・LAN 連携はいずれもネイティブ実装**
+    米家は独自の C 層暗号（AES-128-CBC / MD5 / SHA-1、標準ベクタによる自己テスト付き）を使い、制御は LAN 優先でクラウドにフォールバック。NetEase Cloud Music は weapi 暗号チャネル（AES-128-CBC 2 回 + 冪乗算）で、SMS ログイン・cookie の書き戻し・ログイン状態の検証まで端末内で完結。同じ Wi-Fi 上の複数デバイスは 6 桁のコードでペアリングし、互いに仕事とファイルをやり取りできる。3 つのツール群は同じツール表に並ぶので、デバイス確認・エアコン設定・キャッシュ削除・隣のマシンへの仕事の配布まで、1 文でモデルが順番を組んで実行する。
 
 ---
 
@@ -108,6 +111,30 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 - ワークフロー：複数ステップのタスクを 1 本の流れにし、各ステップをサブエージェントが実行。ステップ間でコンテキストは共有しない
 - A2A：1.0 仕様に沿って SendMessage / GetTask / ListTasks / CancelTask を実装。メソッド名もステータスコードも仕様どおりで、他のエージェントから仕事を振られ、こちらからも振れる
 
+### 米家（スマートホーム）
+
+- パケット暗号はネイティブ C 層：AES-128-CBC と MD5 / SHA-1、標準ベクタによる自己テスト付き。米家ページに自己テスト結果と、このビルドに接続情報が入っているかをそのまま表示
+- 3 つのサブページ：ログインとアカウント（認可ページで code を取り token に交換、ログイン状態とログアウト）、デバイス（台帳 / スキャン / 手動追加 / プロパティ読み書き）、チャネル（リージョン、LAN 優先、タイムアウトと診断）
+- ツール 5 つ：`mijia_devices`、`mijia_scan`、`mijia_read`、`mijia_write`、`mijia_action`。プロパティ書き込みとアクション実行は高危険ツール扱いで確認を挟み、プランモードでは無効
+- 制御は LAN 優先：LAN が応答すれば LAN、だめならクラウドにフォールバック
+- LAN 転送は C++ に降ろした：UDP ブロードキャスト探索とユニキャスト要求応答はネイティブ層、探索パケット・ヘッダ・JSON 取得は Rust 側で、cargo のユニットテスト付き
+
+### 音楽（NetEase Cloud）
+
+- ログインは weapi 暗号チャネル：AES-128-CBC を 2 回、C 層の OpenSSL で実行。ランダム鍵は冪乗算で処理。SMS コードログインに対応し、cookie は検証が通ってから保存
+- ログイン後は実際にアカウントを 1 回引いてニックネームを取得。cookie が失効したら自動で巻き戻し、取り直しを促す（ログイン済みのふりはしない）
+- プラットフォーム側：有効化と優先順位（同時に 1 社のみ）、音質ティア、キャッシュ容量と削除、ログイン状態は暗号化ストアに保存
+- ツール 3 つ：`music_platforms`、`music_login`（`verify` / `sms` / `code` の 3 アクションで、SMS の流れをモデル自身が最後まで実行できる）、`music_cache_clear`
+- 米家と同じツール表を共有するので、1 文で「ログインが生きているか確認 → キャッシュ削除 → リビングのエアコンを 26 度に」までモデルが順番を組む。曲の取得と再生はまだ未実装で、音楽側が扱うのはプラットフォーム・ログイン・キャッシュまで
+
+### LAN チーム連携
+
+- UDP ブロードキャスト探索 + 6 桁のペアリングコード握手。コードは要約だけを送り、平文は送らない
+- ペアリング済みデバイスの台帳と死活確認。握手時に受付ポートと資格情報を交換し、2 台のデバイスのモデルが互いに仕事を振れる
+- LAN 設定ページ：探索スイッチ、自機名とペアリングコード、スキャンとペアリング、ペアリング解除、転送ポートと並列度、ホットスポット設定への入口
+- `lan` ツール：状態確認、受付開始、スキャン、ペアリング、解除、相手の能力確認、タスクの配布と取り消し
+- 同じ Wi-Fi 内の複数デバイス間でファイル転送。ポートと並列度は指定できる
+
 ### 画面操作
 
 - アクセシビリティ直結：ノードツリーの dump、タップ、長押し、スワイプ、入力、キー送信、アプリ起動、アプリ一覧。Shizuku なしでもスクリーンショットが取れる
@@ -124,7 +151,8 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 
 ### デスクトップ（Windows）
 
-- ボーダーレスウィンドウ + DWM リキッドグラス + WebView2 描画面。UI は `desktop/web` の TypeScript + Vite コード
+- ボーダーレスウィンドウ + DWM リキッドグラス + WebView2 描画面。UI は TypeScript + Vite
+- デスクトップのフロントエンドは本リポジトリから切り離して別管理。ここには共有コアだけを残している
 - スマホと同じ Rust コア、同じバージョン番号、同じツール表と設定構造
 
 ### 見た目とカスタマイズ
@@ -202,8 +230,8 @@ app/src/main/kotlin/b/ai/   Android の UI とプラットフォーム層（agen
 app/src/main/cpp/           Android ネイティブ層（JNI、QuickJS、画像、ネイティブ実行）
 app/src/main/rust/          Rust コア（core / exec / net / ffi / crates / android）
 app/src/main/assets/linux/  内蔵 Linux の rootfs と proot
-desktop/web/                デスクトップのフロントエンド（pnpm workspace）
-scripts/                    ビルドとリリースのスクリプト
+gradle/                     ビルドスクリプト（seeds.gradle.kts：シード注入の解析と索引表を含む）
+.work/script/               ビルドとリリースのスクリプト（本ディレクトリはリポジトリ外。各自で用意）
 ```
 
 ### ライセンス
@@ -241,24 +269,15 @@ baicodex.aes.key=認証情報暗号化のシード
 
 未設定でもビルドできますが、プレースホルダ文字列に退避します（プレースホルダは暗号化なしと同じ。リリースに使わないこと）。
 
-**コアとデスクトップ**
+**コア**
 
 ```bash
 cd app/src/main/rust
 cargo build --bin baicodex                 # コア + ターミナルフロントエンド
 
 cd baiguard && cargo test                  # データガード層のユニットテスト（独立 crate）
-
-cd ../../../..                             # リポジトリのルートへ戻る
-bash scripts/desktop-build.sh release      # Windows パッケージ
 ```
 
-フロントエンドのプレビュー：
-
-```bash
-cd desktop/web
-pnpm install
-pnpm --filter @baicodex/desktop dev
-```
+フロントエンドのソースと Windows パッケージは本リポジトリに含まない（デスクトップのフロントエンドは別管理）。ここではコアとターミナル版フロントエンドのみビルドする。
 
 </details>

@@ -14,7 +14,7 @@
 - 下載：<https://github.com/mubai0122/baicodex/releases/latest>
 - 開源協議：AGPL-3.0，無內購、無廣告、無次數限制；閉源整合與 SaaS 部署需商業授權
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
+> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
 
 ---
 
@@ -52,6 +52,9 @@
 
 10. **技術棧廣**
     Rust 核心 + C++ 原生層 + Kotlin / Compose 介面 + TypeScript / WebView2 桌面端，一套核心三端跑。
+
+11. **米家、網易雲音樂、區網協作都是原生實作**
+    米家走自己的 C 層密碼學（AES-128-CBC / MD5 / SHA-1，帶標準向量自檢），控制鏈路區網優先、雲端兜底；網易雲音樂走 weapi 加密通道（兩次 AES-128-CBC + 模冪），驗證碼登入、cookie 回填與登入態校驗全在本機完成；同一 Wi-Fi 下的多台裝置用 6 位配對碼握手後互相派活、互傳檔案。三套工具躺在同一張工具表裡：查裝置、調空調、清快取、把日誌派給隔壁那台機器，一句話裡就能串完。
 
 ---
 
@@ -108,6 +111,30 @@
 - 工作流：多步任務串成一條流，每步跑一個分智能體，步驟之間不共用上下文
 - A2A：按 1.0 規範實作 SendMessage / GetTask / ListTasks / CancelTask，方法名與狀態碼與規範一致——別的 Agent 能給你派活，你的 Agent 也能把活派出去
 
+### 米家與智慧家庭
+
+- 報文密碼學在原生 C 層：AES-128-CBC 與 MD5 / SHA-1，帶標準向量自檢，米家專區頁直接顯示自檢結果與本次建置是否已注入接入身分
+- 三塊子頁：登入與帳號（授權頁取 code 換 token、登入態與登出）、裝置（台帳 / 掃描 / 手動加入 / 屬性讀寫）、通道（區域、區網優先、逾時與診斷）
+- 工具五個：`mijia_devices`、`mijia_scan`、`mijia_read`、`mijia_write`、`mijia_action`；寫屬性與調動作算高風險工具，要二次確認，計畫模式下直接停用
+- 控制鏈路區網優先：區網通得了就走區網，不通再回落雲端
+- 區網傳輸下沉到 C++：UDP 廣播探測與單播請求應答在原生層，探測封包、報文頭與 JSON 取數由 Rust 提供，帶 cargo 單元測試
+
+### 音樂（網易雲）
+
+- 登入走 weapi 加密通道：兩次 AES-128-CBC 在 C 層 OpenSSL 裡做，隨機金鑰走模冪；手機驗證碼登入，cookie 驗證通過才回填
+- 登入後真的去查一次帳號拿暱稱，cookie 失效自動回滾並提示重新取得，不裝成「已登入」
+- 平台側：啟用與優先順序（一次只啟用一家）、音質檔位、快取佔用與清理，登入態進加密庫
+- 工具三個：`music_platforms`、`music_login`（`verify` / `sms` / `code` 三個動作，驗證碼流程模型自己跑完）、`music_cache_clear`
+- 與米家共用同一張工具表：一句話裡可以「看登入還在不在 → 清快取 → 把客廳空調調到 26 度」，模型自己排順序；取歌與播放還沒做，音樂側目前管的是平台、登入與快取
+
+### 區網團隊協作
+
+- UDP 廣播發現 + 6 位配對碼握手：配對碼只上行摘要，不上行明文碼
+- 已配對裝置台帳與探活；配對握手時交換接活埠與憑證，兩台裝置各自的大模型可以互相派活
+- 區網設定頁：發現開關、本機名稱與配對碼、掃描與配對、已配對裝置移除、傳輸埠與並行、熱點設定入口
+- `lan` 工具：查狀態、開接活服務、掃描、配對、解除、看對端能力、派任務與取消
+- 同一 Wi-Fi 下多台裝置互傳檔案，埠與並行自己定
+
 ### 螢幕操作
 
 - 無障礙服務直連：dump 節點樹、點擊、長按、滑動、輸入、按鍵、開 App、列 App，不需要 Shizuku 也能截圖
@@ -124,7 +151,8 @@
 
 ### 桌面端（Windows）
 
-- 無邊框視窗 + DWM 液態玻璃 + WebView2 渲染面，介面是 `desktop/web` 那套 TypeScript + Vite 程式碼
+- 無邊框視窗 + DWM 液態玻璃 + WebView2 渲染面，介面是 TypeScript + Vite
+- 桌面端前端已從本倉庫剝離、單獨維護，倉庫裡只留與它共用的核心
 - 與手機同一份 Rust 核心，同一個版本號，工具表與設定結構一致
 
 ### 介面與個人化
@@ -202,8 +230,8 @@ app/src/main/kotlin/b/ai/   Android 介面與平台層（agent / core / device /
 app/src/main/cpp/           Android 原生層（JNI、QuickJS、影像、原生執行）
 app/src/main/rust/          Rust 核心（core / exec / net / ffi / crates / android）
 app/src/main/assets/linux/  內建 Linux 的 rootfs 與 proot
-desktop/web/                桌面端前端（pnpm workspace）
-scripts/                    建置與發版腳本
+gradle/                     建置腳本（含 seeds.gradle.kts：種子注入解析與索引表）
+.work/script/               建置與發版腳本（本目錄不進版本庫，複製後需自備）
 ```
 
 ### 授權
@@ -241,24 +269,15 @@ baicodex.aes.key=憑證加密用的種子
 
 沒設也能建置，會退到佔位字串（佔位字串等於沒加密，別用佔位字串發版）。
 
-**核心與桌面端**
+**核心**
 
 ```bash
 cd app/src/main/rust
 cargo build --bin baicodex                 # 核心 + 終端前端
 
 cd baiguard && cargo test                  # 資料保障層單元測試（獨立 crate）
-
-cd ../../../..                             # 回到倉庫根
-bash scripts/desktop-build.sh release      # Windows 出包
 ```
 
-前端預覽：
-
-```bash
-cd desktop/web
-pnpm install
-pnpm --filter @baicodex/desktop dev
-```
+前端原始碼與桌面出包不在本倉庫（桌面端前端已剝離單獨維護），這裡只編核心與終端前端。
 
 </details>

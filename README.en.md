@@ -14,7 +14,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 - Download: <https://github.com/mubai0122/baicodex/releases/latest>
 - Licence: AGPL-3.0, no IAP, no ads, no usage limits; closed-source integration and SaaS deployment require a commercial licence
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp`
+> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
 
 ---
 
@@ -52,6 +52,9 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 
 10. **A wide tech stack**
     Rust core + C++ native layer + Kotlin / Compose UI + TypeScript / WebView2 desktop, one core across three platforms.
+
+11. **Mijia, NetEase Cloud Music and LAN collaboration are all native**
+    Mijia runs on its own C-layer crypto (AES-128-CBC / MD5 / SHA-1 with standard test vectors), LAN first and cloud as the fallback; NetEase Cloud Music goes through the weapi encrypted channel (two AES-128-CBC rounds plus modular exponentiation), with SMS login, cookie backfill and login-state checks all done locally; devices on the same Wi-Fi pair with a 6-digit code and then hand work and files to each other. All three tool sets sit in one table: check devices, set the AC, clear the cache, or hand a log to the machine next door — one sentence, and the model orders the steps.
 
 ---
 
@@ -108,6 +111,30 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 - Workflows: multi-step tasks chained into one flow, one sub-agent per step, contexts not shared between steps
 - A2A: SendMessage / GetTask / ListTasks / CancelTask per the 1.0 spec, method names and status codes matching the spec — other agents can hand you work, yours can hand work out
 
+### Mijia and smart home
+
+- Packet crypto lives in the native C layer: AES-128-CBC plus MD5 / SHA-1 with standard test vectors; the Mijia page shows the self-check result and whether this build carries an injected identity
+- Three sub-pages: account (authorize page → code → token, login state, logout), devices (ledger / scan / manual add / property read-write), channel (region, LAN-first, timeout and diagnostics)
+- Five tools: `mijia_devices`, `mijia_scan`, `mijia_read`, `mijia_write`, `mijia_action`; property writes and actions count as high-risk, so they ask for confirmation and are disabled in plan mode
+- LAN first: the local network is used whenever it answers, the cloud is the fallback
+- LAN transport moved down to C++: UDP broadcast discovery and unicast request/response run in native code; probe packets, headers and JSON payloads come from Rust, covered by cargo unit tests
+
+### Music (NetEase Cloud)
+
+- Login goes through the weapi encrypted channel: two AES-128-CBC rounds inside C-layer OpenSSL, the random key handled by modular exponentiation; SMS-code login, and the cookie is only stored after it verifies
+- After login it really queries the account once for the nickname; an expired cookie rolls back and asks you to fetch it again instead of pretending to be logged in
+- Platform side: enable and priority (one platform at a time), quality tiers, cache size and cleanup, login state kept in the encrypted store
+- Three tools: `music_platforms`, `music_login` (`verify` / `sms` / `code`, so the model can drive the whole SMS flow), `music_cache_clear`
+- Sharing one tool table with Mijia: one sentence can check whether the login is still valid, clear the cache and set the living-room AC to 26 °C — the model orders the steps itself. Fetching and playing songs is not implemented yet; the music side covers platforms, login and cache
+
+### LAN team collaboration
+
+- UDP broadcast discovery plus a 6-digit pairing-code handshake; only a digest of the code is sent, never the plaintext
+- Paired-device ledger with liveness checks; the handshake exchanges the work port and credentials, so the models on two devices can hand tasks to each other
+- LAN settings page: discovery toggle, local name and pairing code, scan and pair, remove paired devices, transfer port and concurrency, hotspot shortcut
+- `lan` tool: status, start accepting work, scan, pair, unpair, peer capabilities, dispatch and cancel tasks
+- File transfer between devices on the same Wi-Fi, with configurable port and concurrency
+
 ### Screen control
 
 - Direct accessibility access: dump the node tree, tap, long-press, swipe, type, send keys, launch apps, list apps; screenshots work without Shizuku
@@ -124,7 +151,8 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 
 ### Desktop (Windows)
 
-- Borderless window + DWM liquid glass + WebView2 rendering surface; the UI is the TypeScript + Vite code in `desktop/web`
+- Borderless window + DWM liquid glass + WebView2 rendering surface; the UI is TypeScript + Vite
+- The desktop front end is maintained outside this repo; only the shared core lives here
 - Same Rust core as the phone, same version number, same tool table and config structure
 
 ### Look and feel
@@ -202,8 +230,8 @@ app/src/main/kotlin/b/ai/   Android UI and platform layer (agent / core / device
 app/src/main/cpp/           Android native layer (JNI, QuickJS, image, native exec)
 app/src/main/rust/          Rust core (core / exec / net / ffi / crates / android)
 app/src/main/assets/linux/  Rootfs and proot for the built-in Linux
-desktop/web/                Desktop front end (pnpm workspace)
-scripts/                    Build and release scripts
+gradle/                     Build scripts (incl. seeds.gradle.kts: seed injection)
+.work/script/               Build and release scripts (not in the repo; bring your own)
 ```
 
 ### Licence
@@ -241,24 +269,15 @@ baicodex.aes.key=seed for credential encryption
 
 Building works without them — it falls back to placeholder strings (placeholder means no encryption; do not ship with them).
 
-**Core and desktop**
+**Core**
 
 ```bash
 cd app/src/main/rust
 cargo build --bin baicodex                 # core + terminal front end
 
 cd baiguard && cargo test                  # unit tests for the data guard layer (separate crate)
-
-cd ../../../..                             # back to the repo root
-bash scripts/desktop-build.sh release      # Windows package
 ```
 
-Front-end preview:
-
-```bash
-cd desktop/web
-pnpm install
-pnpm --filter @baicodex/desktop dev
-```
+Front-end source and the Windows package are not in this repo (the desktop front end is maintained separately); this only builds the core and the terminal front end.
 
 </details>
