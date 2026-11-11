@@ -7,6 +7,7 @@ import android.os.Looper
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,8 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.llm.DevMem
 import b.ai.core.llm.ModelHub
 import b.ai.core.llm.RecModel
+import b.ai.ui.dialog.HostInOverlay
+import b.ai.ui.dialog.ScrimCard
 import b.ai.native.llm.Llama
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.TextPrimary
@@ -41,6 +46,7 @@ import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.SelectField
 import b.ai.ui.widget.tap
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -117,8 +123,11 @@ private fun LocalModelBody() {
     var dlTotal by remember { mutableStateOf(-1L) }
     var dlCancel by remember { mutableStateOf(false) }
     val supported = Llama.available()
+    var gateLevel by remember { mutableStateOf(0) } //0 不弹，1 偏大（5 秒），2 过大（15 秒）
+    var gateLeft by remember { mutableStateOf(0) }
+    var gateFile by remember { mutableStateOf<File?>(null) }
 
-    fun loadFile(f: File) {
+    fun doLoad(f: File) {
         if (sess != 0L) Llama.ctxFree(sess)
         if (handle != 0L) Llama.free(handle)
         sess = 0L
@@ -148,6 +157,17 @@ private fun LocalModelBody() {
             }
         }
     } //加载并建上下文：失败把 native 的原因原样带出来
+
+    /** 加载前先按总内存算占比：超 60% 弹 5 秒、超 90% 弹 15 秒，看完才允许继续 */
+    fun loadFile(f: File) {
+        val level = DevMem.risk(DevMem.ratio(ctx, f.length()))
+        if (level == 0) {
+            doLoad(f)
+            return
+        }
+        gateFile = f
+        gateLevel = level
+    } //带内存风险的加载入口
 
     fun runOnce() {
         val c = sess
@@ -227,6 +247,68 @@ private fun LocalModelBody() {
         }
     } //选 GGUF 并拷进私有目录
 
+    //倒计时读完才允许点「仍然加载」，逼着把风险说明看完
+    LaunchedEffect(gateLevel) {
+        if (gateLevel == 0) return@LaunchedEffect
+        gateLeft = if (gateLevel >= 2) 15 else 5
+        while (gateLeft > 0) {
+            delay(1000)
+            gateLeft -= 1
+        }
+    }
+
+    HostInOverlay(gateLevel != 0) {
+        val f = gateFile
+        val mem = DevMem.info(ctx)
+        val ratio = if (mem.total > 0L && f != null) f.length().toDouble() / mem.total else 0.0
+        ScrimCard(onDismiss = { gateLevel = 0 }) {
+            Text(
+                if (gateLevel >= 2) "模型过大，加载后手机可能卡到没法用" else "模型偏大，加载后可能卡顿",
+                fontSize = 16.sp,
+                color = if (gateLevel >= 2) AccentBlue else TextPrimary
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                (if (f != null) "所选模型 ${human(f.length())}" else "所选模型") +
+                    (if (mem.total > 0L) "，占本机总内存 ${human(mem.total)} 的 ${(ratio * 100).toInt()}%" else "") +
+                    "。\n\n" +
+                    if (gateLevel >= 2) {
+                        "这个体积已经超过总内存的 90%：加载时会长时间无响应，之后后台应用会被系统杀掉、输入法与动画掉帧，最坏情况是 App 被 OOM 直接结束、手机短时间无法操作。\n\n强烈建议改用 1.5B 或 3B 的 Q4_K_M 量化。"
+                    } else {
+                        "超过总内存的 60%：加载后可用内存会明显减少，可能出现后台应用被杀、切换应用重载、输入法掉帧。\n\n建议优先选更小的量化或更小的参数量。"
+                    },
+                fontSize = 12.sp,
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Text(
+                    "取消",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .tap { gateLevel = 0 }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+                Text(
+                    if (gateLeft > 0) "请先看完说明（${gateLeft}s）" else "仍然加载",
+                    fontSize = 13.sp,
+                    color = if (gateLeft > 0) TextSecondary else AccentBlue,
+                    modifier = Modifier
+                        .tap {
+                            if (gateLeft == 0) {
+                                val g = gateFile
+                                gateLevel = 0
+                                gateFile = null
+                                if (g != null) doLoad(g)
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
+
     Column {
         SectionTitle("本地模型", "GGUF 放在 App 私有目录，纯 CPU 推理，断网也能用")
         CardBox {
@@ -238,6 +320,15 @@ private fun LocalModelBody() {
             Spacer(Modifier.height(4.dp))
             Text(
                 "量化建议 Q4_K_M：7B 约 4.4GB 内存，3B 约 2GB，1.5B 约 1.2GB。手机建议 1.5B～3B。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            val mem = DevMem.info(ctx)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "设备：${DevMem.soc()}" +
+                    (if (mem.total > 0L) " · 内存 ${human(mem.total)}（可用 ${human(mem.avail)}）" else "") +
+                    " · 后端 ${if (sess != 0L) "本地 llama.cpp" else "未加载"}",
                 fontSize = 10.sp,
                 color = TextSecondary
             )
