@@ -1,18 +1,22 @@
 package b.ai.ui.widget
 import b.ai.ui.glass.liquidBg
+import b.ai.core.cfg.emoji.Emojis
 import b.ai.net.api.llm.text
 
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -24,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -240,26 +246,26 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
         blocks.forEach { b ->
             when (b) {
                 is MdBlock.Code -> CodeBlock(b)
-                is MdBlock.Head -> Text(
-                    mdInline(b.text),
-                    fontSize = when (b.level) {
+                is MdBlock.Head -> RichLine(
+                    b.text,
+                    size = when (b.level) {
                         1 -> 17.sp
                         2 -> 15.5.sp
                         else -> 14.sp
                     },
-                    fontWeight = FontWeight.SemiBold,
                     color = color,
-                    lineHeight = 22.sp
+                    lineHeight = 22.sp,
+                    weight = FontWeight.SemiBold
                 )
                 is MdBlock.Bul -> Row(Modifier.padding(start = (b.level * 12).dp)) {
                     Text("•", fontSize = size, color = TextSecondary)
                     Spacer(Modifier.width(6.dp))
-                    Text(mdInline(b.text), fontSize = size, color = color, lineHeight = 20.sp)
+                    RichLine(b.text, size = size, color = color)
                 }
                 is MdBlock.Num -> Row(Modifier.padding(start = (b.level * 12).dp)) {
                     Text("${b.num}.", fontSize = size, color = TextSecondary)
                     Spacer(Modifier.width(6.dp))
-                    Text(mdInline(b.text), fontSize = size, color = color, lineHeight = 20.sp)
+                    RichLine(b.text, size = size, color = color)
                 }
                 is MdBlock.Quote -> Row(
                     Modifier
@@ -267,12 +273,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .background(CodeBg, RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
-                    Text(
-                        mdInline(b.text),
-                        fontSize = size,
-                        color = TextSecondary,
-                        lineHeight = 20.sp
-                    )
+                    RichLine(b.text, size = size, color = TextSecondary)
                 }
                 is MdBlock.Rule -> Box(
                     Modifier
@@ -281,13 +282,62 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .background(TextSecondary.copy(alpha = 0.25f), RoundedCornerShape(1.dp))
                         .padding(top = 0.5.dp)
                 )
-                is MdBlock.Para -> Text(
-                    mdInline(b.text),
-                    fontSize = size,
-                    color = color,
-                    lineHeight = 20.sp
-                )
+                is MdBlock.Para -> RichLine(b.text, size = size, color = color)
             }
         }
     }
 } //Markdown 正文
+
+/**一行里可能带表情标记：命中就按段排（文字 +表情），没命中走原来的纯文本 */
+@Composable
+private fun RichLine(
+    text: String,
+    size: TextUnit,
+    color: Color = TextPrimary,
+    lineHeight: TextUnit = 20.sp,
+    weight: FontWeight? = null
+) {
+    val segs = remember(text) { Emojis.split(text) }
+    if (segs.size == 1 && segs[0] is Emojis.Seg.Txt) {
+        Text(mdInline(text), fontSize = size, color = color, lineHeight = lineHeight, fontWeight = weight ?: FontWeight.Normal)
+        return
+    }
+    //表情跟文字混排：FlowRow 自动换行；行内 AnnotatedString 塞不进图片，所以这里不走 mdInline
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        segs.forEach { s ->
+            when (s) {
+                is Emojis.Seg.Txt -> if (s.text.isNotEmpty()) {
+                    Text(
+                        mdInline(s.text),
+                        fontSize = size,
+                        color = color,
+                        lineHeight = lineHeight,
+                        fontWeight = weight ?: FontWeight.Normal
+                    )
+                }
+                is Emojis.Seg.Pic -> EmojiView(s.item, size)
+            }
+        }
+    }
+} //带表情的一行
+
+/**表情本体：有图读图（同路径只解析一次），没图退回内置字符 */
+@Composable
+private fun EmojiView(item: Emojis.Item, size: TextUnit) {
+    val d = (size.value * 1.5f).dp
+    if (item.file.isNotBlank()) {
+        val bmp = remember(item.file) {
+            runCatching { android.graphics.BitmapFactory.decodeFile(item.file) }.getOrNull()
+        }
+        if (bmp != null) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = item.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(d)
+            )
+            return
+        }
+    }
+    Text(item.emoji.ifBlank { "" }, fontSize = size, color = TextPrimary)
+} //表情渲染

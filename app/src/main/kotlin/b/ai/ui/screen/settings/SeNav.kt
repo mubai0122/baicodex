@@ -62,6 +62,7 @@ val SePages = listOf(
     SePage("ui_person", R.string.se_pg_ui_person, R.string.se_pg_ui_person_sub, 2),
     SePage("ui_input", R.string.se_pg_ui_input, R.string.se_pg_ui_input_sub, 2),
     SePage("ui_nav", R.string.se_037, R.string.se2_back_sub, 2),
+    SePage("ui_emoji", R.string.se_pg_emoji, R.string.se_pg_emoji_sub, 2),
     //扩展
     SePage("ext_auto", R.string.se_pg_ext_auto, R.string.se_pg_ext_auto_sub, 3),
     SePage("ext_agent", R.string.se_pg_agent, R.string.se_pg_agent_sub, 3),

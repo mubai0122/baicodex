@@ -508,6 +508,7 @@ fun SettingsScreen(
                         "ui_person" -> uiPersonSec(onOpenPet)
                         "ui_input" -> uiInputSec()
                         "ui_nav" -> uiNavSec()
+                        "ui_emoji" -> emojiSec()
                         "ext_auto" -> extAutoSec(
                             onNewTask = { taskDraft = true },
                             onNewFlow = { flowDraft = true },
@@ -2309,6 +2310,41 @@ private fun LazyListScope.extToolSec() {
         SectionTitle("隐私与网页登录", "清掉内置浏览器、搜索工具与 WebView 里的登录态和缓存")
         val ctx = LocalContext.current
         var wipeMsg by remember { mutableStateOf("") }
+        var asking by remember { mutableStateOf(false) }
+        HostInOverlay(asking) {
+            if (asking) {
+                ScrimCard(onDismiss = { asking = false }) {
+                    Text("确认清除网页登录态？", fontSize = 16.sp, color = TextPrimary)
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "会清掉 WebView 的 Cookie、WebStorage、缓存与表单记录，之后各网站都要重新登录。" +
+                            "音乐专区的登录态在加密库里，不受影响。",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Text(
+                            "取消",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.tap { asking = false }.padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                        Text(
+                            "确认清除",
+                            fontSize = 13.sp,
+                            color = AccentBlue,
+                            modifier = Modifier
+                                .tap {
+                                    asking = false
+                                    wipeMsg = WebWipe.clearAll(ctx)
+                                }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
         CardBox {
             Text(
                 "会清 WebView 的 Cookie、WebStorage、缓存与表单记录。清完各网站要重新登录；" +
@@ -2317,7 +2353,7 @@ private fun LazyListScope.extToolSec() {
                 color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
-            GhostButton("清除 Cookie 与网页缓存") { wipeMsg = WebWipe.clearAll(ctx) }
+            GhostButton("清除 Cookie 与网页缓存") { asking = true }
             if (wipeMsg.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(wipeMsg, fontSize = 11.sp, color = TextPrimary)

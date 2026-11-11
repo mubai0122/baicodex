@@ -1449,6 +1449,9 @@
     <string name="tos_changed">服务协议有变更，需要先重新阅读并同意</string>
     <string name="dw_plugins">插件</string>
     <string name="plg_title">插件广场</string>
+    <string name="plg_off_title">插件广场维护升级中…</string>
+    <string name="plg_off_body">服务器已停止注册、登录与上传，广场暂时不可用。已安装的插件照常运行，不受影响。</string>
+    <string name="plg_off_back">返回</string>
     <string name="plg_tab_market">广场</string>
     <string name="plg_tab_upload">上传</string>
     <string name="plg_tab_mine">我的</string>
@@ -1718,6 +1721,8 @@
     <string name="se_pg_chat_session_sub">会话管理、收藏夹、导出 Markdown</string>
     <string name="se_pg_chat_tags">提示词标签</string>
     <string name="se_pg_chat_tags_sub">可复用片段，插入输入框或全局启用</string>
+    <string name="se_pg_emoji">自定义表情</string>
+    <string name="se_pg_emoji_sub">表情分类、换图、重置，回复里按标记渲染</string>
     <string name="se_pg_ui_theme">主题</string>
     <string name="se_pg_ui_theme_sub">语言、色系、字体、背景与玻璃</string>
     <string name="se_pg_ui_input">输入</string>
