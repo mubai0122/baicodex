@@ -60,6 +60,12 @@ private fun llmFiles(ctx: Context): List<File> {
         ?: emptyList()
 } //列本地 GGUF
 
+private fun gpuLabel(n: Int): String = when {
+    n <= 0 -> "0（纯 CPU）"
+    n >= 99 -> "99（全部层）"
+    else -> n.toString()
+} //GPU 层数的显示名
+
 private fun human(bytes: Long): String = when {
     bytes >= 1L shl 30 -> String.format(Locale.US, "%.2f GB", bytes / 1073741824.0)
     bytes >= 1L shl 20 -> String.format(Locale.US, "%.1f MB", bytes / 1048576.0)
@@ -515,8 +521,19 @@ private fun LocalModelBody() {
                 isSelected = { kotlin.math.abs(Cfg.llmRep - it) < 0.01f },
                 onSelect = { Cfg.llmRep = it }
             )
-            Spacer(Modifier.height(6.dp))
-            Text("GPU 层数：当前只编了 CPU 后端，暂不支持 offload（列在计划里）", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                "GPU 层数",
+                gpuLabel(Cfg.llmGpu),
+                listOf(0, 10, 20, 99),
+                desc = "仅 arm64 生效，走 OpenCL（Adreno 750 / 8 系已验证）；驱动不支持时自动回退纯 CPU。改完要重新加载模型",
+                optionLabel = { gpuLabel(it) },
+                isSelected = { Cfg.llmGpu == it },
+                onSelect = {
+                    Cfg.llmGpu = it
+                    note = "GPU 层数已设为 ${gpuLabel(it)}，重新加载模型后生效"
+                }
+            )
         }
 
         Spacer(Modifier.height(8.dp))

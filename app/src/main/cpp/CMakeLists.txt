@@ -110,6 +110,31 @@ set_target_properties(baicodex PROPERTIES
         ANDROID_STL c++_static
         CXX_STANDARD 17)
 target_link_options(baicodex PRIVATE -Wl,--strip-all -Wl,--gc-sections -s)
+#GPU offload：只用 OpenCL 后端（Adreno 750/810/830 是官方验证过的路线，Vulkan 在 Android 上基本不可用）
+#头文件用 Khronos OpenCL-Headers；库用从设备 /vendor 拉出来的 libOpenCL.so 当链接期桩，
+#运行期由系统 linker 去 /vendor/lib(64) 解析真实实现，这个桩不会被打进 APK
+set(BAI_OCL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl)
+set(BAI_OCL_LIB ${BAI_OCL_DIR}/${ANDROID_ABI}/libOpenCL.so)
+#注意 v7a 编不过 ggml-opencl（32 位 size_t 从 int64_t 窄化报错，属上游源码问题），只在 arm64 开
+#头文件和 stub 缺任一都退回 CPU：CI 上没有设备 vendor 库，不能因此编不过
+if(ANDROID_ABI STREQUAL "arm64-v8a"
+   AND EXISTS ${BAI_OCL_LIB}
+   AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl-headers/CL/cl.h)
+    set(GGML_OPENCL ON CACHE BOOL "" FORCE)
+    set(GGML_OPENCL_EMBED_KERNELS ON CACHE BOOL "" FORCE)
+    set(GGML_OPENCL_USE_ADRENO_KERNELS ON CACHE BOOL "" FORCE)
+    set(GGML_OPENCL_TARGET_VERSION 300 CACHE STRING "" FORCE)
+    set(OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl-headers CACHE PATH "" FORCE)
+    set(OpenCL_LIBRARY ${BAI_OCL_LIB} CACHE FILEPATH "" FORCE)
+    #ggml 是 INTERFACE target，它身上的 GGML_USE_OPENCL 传不到编译 ggml-backend-reg.cpp 的 ggml-base，
+    #结果 register_backend(ggml_backend_opencl_reg()) 被 #ifdef 剔掉、整个后端不参与链接。必须在 add_subdirectory 前全局定义
+    add_compile_definitions(GGML_USE_OPENCL)
+    message(STATUS "bai: OpenCL 后端开启（${ANDROID_ABI}）")
+else()
+    set(GGML_OPENCL OFF CACHE BOOL "" FORCE)
+    message(STATUS "bai: 缺 ${BAI_OCL_LIB}，GPU offload 关闭，只编 CPU")
+endif()
+
 #本地模型：llama.cpp 静态链进来，只留 llama + ggml CPU 后端，其余组件全关
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(GGML_STATIC ON CACHE BOOL "" FORCE)

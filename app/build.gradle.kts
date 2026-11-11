@@ -104,6 +104,9 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            //libOpenCL.so 只是链接期桩（从设备 /vendor 拉的），运行期由系统 linker 提供；
+            //打进 APK 会让 App 加载到私有目录那份，在 Android 10+ 的命名空间里反而受限
+            excludes += "**/libOpenCL.so"
         }
     }
     kotlin {

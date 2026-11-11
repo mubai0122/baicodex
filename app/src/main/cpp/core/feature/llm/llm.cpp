@@ -102,6 +102,14 @@ uint64_t bai_llm_load(const char *path, int nThreads, int nGpuLayers) {
     mp.n_gpu_layers = nGpuLayers > 0 ? nGpuLayers : 0;
     mp.load_mode = LLAMA_LOAD_MODE_MMAP; //mmap 加载：不占双份内存，模型多大就映射多大
     llama_model *m = llama_model_load_from_file(path, mp);
+    int usedGpu = mp.n_gpu_layers;
+    if (m == nullptr && usedGpu > 0) {
+        //GPU 后端不可用（驱动/内核编译失败）时退回纯 CPU，绝不在这里直接把加载判死
+        gErr = "GPU offload 失败，已回退纯 CPU";
+        mp.n_gpu_layers = 0;
+        m = llama_model_load_from_file(path, mp);
+        usedGpu = 0;
+    }
     if (!m) {
         gErr = std::string("模型加载失败(GGUF 损坏或版本不兼容):") + path;
         return 0;
@@ -113,10 +121,10 @@ uint64_t bai_llm_load(const char *path, int nThreads, int nGpuLayers) {
     char desc[256] = {0};
     llama_model_desc(m, desc, sizeof(desc));
     char buf[512];
-    snprintf(buf, sizeof(buf), "desc=%s\nn_layer=%d\nn_ctx_train=%d\nn_params=%lld\nsize=%lld\nchat=%d\nthreads=%d",
+    snprintf(buf, sizeof(buf), "desc=%s\nn_layer=%d\nn_ctx_train=%d\nn_params=%lld\nsize=%lld\nchat=%d\nthreads=%d\ngpu_layers=%d",
              desc, llama_model_n_layer(m), llama_model_n_ctx_train(m),
              static_cast<long long>(llama_model_n_params(m)), static_cast<long long>(st.st_size),
-             lm->tmpl.empty() ? 0 : 1, lm->threads);
+             lm->tmpl.empty() ? 0 : 1, lm->threads, usedGpu);
     lm->meta = buf;
     std::lock_guard<std::mutex> lk(gMu);
     uint64_t id = gSeq++;
