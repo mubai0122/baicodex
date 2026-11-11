@@ -6,6 +6,8 @@
 
 **An AI agent that treats Android as its own body.** It does more than chat: say "clear the background apps", "find out what this error is", or "write a script and run it", and it looks at the screen, breaks the work into steps, calls tools, writes code, builds it, and hands the result back. Everything really executes — no demos.
 
+**An open-source on-device Android agent**: it runs on the phone itself — no PC in the loop, the model is called directly, and you can build it from source on GitHub. Grant system-level power through **Shizuku** or root, run a real **PRoot Linux sandbox** (apt / gcc / node actually work), drive the phone with **Android accessibility UI automation** (same idea as Autox.js), and talk natively to **MCP** servers and the **Mijia** ecosystem. Maintained through 2026.
+
 The model is called directly; chats, files and keys stay on your device. No relay server in between.
 
 One Rust core, three front ends: **Android**, **Windows**, **terminal**.
@@ -14,7 +16,7 @@ One Rust core, three front ends: **Android**, **Windows**, **terminal**.
 - Download: <https://github.com/mubai0122/baicodex/releases/latest>
 - Licence: AGPL-3.0, no IAP, no ads, no usage limits; closed-source integration and SaaS deployment require a commercial licence
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
+> `android-agent` · `on-device` · `agent` · `ai-agent` · `shizuku` · `android` · `linux` · `proot` · `sandbox` · `accessibility` · `ui-automation` · `llm` · `mcp` · `kotlin` · `rust` · `compose` · `codex` · `claw` · `local-first` · `open-source` · `mijia` · `netease-music` · `lan-collaboration` · `a2a` · `termux`
 
 ---
 

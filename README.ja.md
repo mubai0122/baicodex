@@ -6,6 +6,8 @@
 
 **Android を自分の身体として扱う AI Agent。** ただのチャットではありません。「バックグラウンドを整理して」「このエラーを特定して」「スクリプトを書いて実行して」と言えば、画面を見て、手順に分解し、ツールを呼び、コードを書き、ビルドまでやって、結果を返します。すべて実際に実行します。デモではありません。
 
+**オープンソースの on-device Android Agent**：端末内だけで動作し、PC の常駐は不要、モデルへは直接接続、GitHub から自分でビルドできる Android Agent です。**Shizuku** または root でシステム権限を取得し、**PRoot Linux サンドボックス**（apt / gcc / node が実際に動く）を内蔵、**Android アクセシビリティ UI 自動化**で画面を自分で読み・タップ・スワイプします（同系統の例として Autox.js）。**MCP** サーバーと **Mijia** エコシステムにネイティブ対応、2026 も継続メンテナンス。
+
 モデルへは直接接続。会話・ファイル・キーはすべて端末内に残り、中継サーバーを一切挟みません。
 
 Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**ターミナル**。
@@ -14,7 +16,7 @@ Rust コア 1 本、フロントエンド 3 種：**Android**、**Windows**、**
 - ダウンロード：<https://github.com/mubai0122/baicodex/releases/latest>
 - ライセンス：AGPL-3.0、課金・広告・回数制限なし。クローズドソース製品への組み込みや SaaS 提供には商用ライセンスが必要
 
-> `agent` · `ai-agent` · `codex` · `claw` · `android` · `kotlin` · `rust` · `llm` · `local-first` · `mcp` · `mijia` · `netease-music` · `lan-collaboration`
+> `android-agent` · `on-device` · `agent` · `ai-agent` · `shizuku` · `android` · `linux` · `proot` · `sandbox` · `accessibility` · `ui-automation` · `llm` · `mcp` · `kotlin` · `rust` · `compose` · `codex` · `claw` · `local-first` · `open-source` · `mijia` · `netease-music` · `lan-collaboration` · `a2a` · `termux`
 
 ---
 
