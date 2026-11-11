@@ -2,7 +2,13 @@ package b.ai.native.llm
 
 /** 本地模型推理：llama.cpp 句柄式封装，加载 / 建上下文 / 流式生成，回调跑在调用线程上 */
 object Llama {
-    private val loaded: Boolean by lazy { runCatching { System.loadLibrary("baicodex") }.isSuccess }
+    //loadLibrary 失败别静默吞掉：APK 里没有对应 ABI 的 so、或 so 依赖的库缺失，原因要能显示出来
+    private val loadErr: String by lazy {
+        val e = runCatching { System.loadLibrary("baicodex") }.exceptionOrNull()
+        if (e == null) "" else e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName
+    }
+
+    private val loaded: Boolean by lazy { loadErr.isEmpty() }
 
     /** 逐 token 回调，别在这里做重活，要更新 UI 自己切主线程 */
     fun interface OnToken {
@@ -22,6 +28,9 @@ object Llama {
 
     /** 库没编进来（或 ABI 没带）时整个功能直接不可用，不要抛异常打断调用方 */
     fun available(): Boolean = loaded
+
+    /** 引擎加载失败的原因，空串表示正常。给设置页显示，别只留一句「未加载」 */
+    fun loadError(): String = loadErr
 
     /** 最近一次失败原因，空串表示上次是成功的 */
     fun lastErr(): String = if (!loaded) "native 没加载" else runCatching { nativeErr() }.getOrDefault("")

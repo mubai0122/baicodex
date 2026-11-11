@@ -53,12 +53,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-/** 模型目录：filesDir/models 下所有 .gguf，导入也落这里 */
-private fun llmFiles(ctx: Context): List<File> {
-    val d = File(ctx.filesDir, "models").apply { mkdirs() }
-    return d.listFiles { f -> f.isFile && f.name.endsWith(".gguf", true) }?.sortedBy { it.name.lowercase() }
-        ?: emptyList()
-} //列本地 GGUF
+/** 模型目录：公共路径 /sdcard/baicode/models 下所有 .gguf，导入与下载也落这里 */
+private fun llmFiles(): List<File> = ModelHub.list()
 
 private fun gpuLabel(n: Int): String = when {
     n <= 0 -> "0（纯 CPU）"
@@ -88,9 +84,9 @@ private fun sizeOf(ctx: Context, uri: Uri): Long = runCatching {
 
 /** 从 SAF 拷进模型目录：先查剩余空间，同名自动加序号，不覆盖已有模型 */
 private fun importGguf(ctx: Context, uri: Uri): Pair<File?, String> = runCatching {
-    val dir = ModelHub.dir(ctx)
+    val dir = ModelHub.dir()
     val need = sizeOf(ctx, uri)
-    val free = ModelHub.freeBytes(ctx)
+    val free = ModelHub.freeBytes()
     if (need > 0L && free < need + 64L * 1024 * 1024) {
         return@runCatching Pair(null, "空间不足：需要 ${human(need)}，可用 ${human(free)}")
     }
@@ -117,11 +113,12 @@ private fun LocalModelBody() {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val main = remember { Handler(Looper.getMainLooper()) }
-    var files by remember { mutableStateOf(llmFiles(ctx)) }
+    var files by remember { mutableStateOf(llmFiles()) }
     var busy by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     var out by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("用一句话介绍你自己") }
+    var customUrl by remember { mutableStateOf("") }
     var handle by remember { mutableStateOf(0L) }
     var sess by remember { mutableStateOf(0L) }
     var delTarget by remember { mutableStateOf<File?>(null) }
@@ -133,6 +130,19 @@ private fun LocalModelBody() {
     var gateLevel by remember { mutableStateOf(0) } //0 不弹，1 偏大（5 秒），2 过大（15 秒）
     var gateLeft by remember { mutableStateOf(0) }
     var gateFile by remember { mutableStateOf<File?>(null) }
+
+    //老版本把模型存在 filesDir/models，进页面先搬一次到公共目录，别让用户重下 4 个 G
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            val moved = runCatching { ModelHub.migrate(ctx) }.getOrDefault(emptyList())
+            if (moved.isNotEmpty()) {
+                withContext(Dispatchers.Main) {
+                    files = llmFiles()
+                    note = "已把旧目录里的 ${moved.size} 个模型迁到 ${ModelHub.dir().absolutePath}"
+                }
+            }
+        }
+    }
 
     fun doLoad(f: File) {
         if (sess != 0L) Llama.ctxFree(sess)
@@ -203,42 +213,74 @@ private fun LocalModelBody() {
         }
     } //试跑一轮：prompt 走模型自带 chat template
 
-    fun startDownload(m: RecModel) {
+    //S9.4 文字连通性：固定发「测试测试」，拿到非空回复就算通，顺带报耗时
+    fun connTest() {
+        val c = sess
+        if (c == 0L) {
+            note = "先加载一个模型再测"
+            return
+        }
+        out = ""
+        note = "连通性测试中…"
+        val h = handle
+        scope.launch(Dispatchers.IO) {
+            val p = Llama.chat(h, listOf("user" to "测试测试"), true) ?: "测试测试"
+            val t0 = System.currentTimeMillis()
+            val sb = StringBuilder()
+            val rc = Llama.run(c, p, 32) { t -> sb.append(t).also { _ -> main.post { out += t } } }
+            val ms = System.currentTimeMillis() - t0
+            val err = Llama.lastErr()
+            withContext(Dispatchers.Main) {
+                val txt = sb.toString().trim()
+                note = if (rc >= 0 && txt.isNotEmpty()) {
+                    val tps = if (ms > 0) rc * 1000L / ms else 0L
+                    "连通性测试通过：${ms}ms 收到 ${txt.length} 字（$rc token，约 $tps tok/s）\n回复摘要：${txt.take(40)}"
+                } else {
+                    "连通性测试失败($rc)：" + err.ifBlank { "模型没有返回任何内容" }
+                }
+            }
+        }
+    } //S9.4 文字连通性测试
+
+    /** 下载到模型目录：url 必填，mirror 可选（推荐模型才有备源），file 是落盘文件名 */
+    fun downloadTo(url: String, mirror: String?, file: String, label: String) {
         if (busy) return
-        val free = ModelHub.freeBytes(ctx)
-        if (free < 600L * 1024 * 1024) {
-            note = "存储空间不足：可用 ${human(free)}，至少要留 600MB"
+        val free = ModelHub.freeBytes()
+        if (free < 300L * 1024 * 1024) {
+            note = "存储空间不足：可用 ${human(free)}，至少要留 300MB"
             return
         }
         busy = true
-        dlName = m.file
+        dlName = file
         dlHave = 0L
         dlTotal = -1L
         dlCancel = false
-        note = "开始下载 ${m.label}"
+        note = "开始下载 $label"
         scope.launch(Dispatchers.IO) {
-            val dst = File(ModelHub.dir(ctx), m.file)
+            val dst = File(ModelHub.dir(), file)
             fun prog(h: Long, t: Long) {
                 main.post {
                     dlHave = h
                     dlTotal = t
                 }
             }
-            var ok = ModelHub.download(m.url, dst, ::prog) { dlCancel }
+            var ok = ModelHub.download(url, dst, ::prog) { dlCancel }
             //主源失败且不是用户取消，换镜像再试一次；已下部分会接着续
-            if (!ok && !dlCancel) ok = ModelHub.download(m.mirror, dst, ::prog) { dlCancel }
+            if (!ok && !dlCancel && mirror != null) ok = ModelHub.download(mirror, dst, ::prog) { dlCancel }
             withContext(Dispatchers.Main) {
                 busy = false
                 dlName = ""
-                files = llmFiles(ctx)
+                files = llmFiles()
                 note = when {
-                    ok -> "下载完成：${m.file}"
+                    ok -> "下载完成：$file"
                     dlCancel -> "已取消下载（已下部分保留，下次接着下）"
-                    else -> "下载失败：主源与镜像都没成功，检查网络后重试"
+                    else -> "下载失败：${if (mirror != null) "主源与镜像都没成功" else "检查链接是否可直链下载"}，可重试续传"
                 }
             }
         }
-    } //下载推荐模型：主源失败自动换镜像
+    } //下载模型：主源失败自动换镜像
+
+    fun startDownload(m: RecModel) = downloadTo(m.url, m.mirror, m.file, m.label) //下载推荐模型
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -248,11 +290,11 @@ private fun LocalModelBody() {
             val (f, why) = importGguf(ctx, uri)
             withContext(Dispatchers.Main) {
                 busy = false
-                files = llmFiles(ctx)
+                files = llmFiles()
                 note = if (f != null) "已导入：${f.name}（${human(f.length())}）" else why
             }
         }
-    } //选 GGUF 并拷进私有目录
+    } //选 GGUF 并拷进模型目录
 
     //倒计时读完才允许点「仍然加载」，逼着把风险说明看完
     LaunchedEffect(gateLevel) {
@@ -317,12 +359,22 @@ private fun LocalModelBody() {
     }
 
     Column {
-        SectionTitle("本地模型", "GGUF 放在 App 私有目录，纯 CPU 推理，断网也能用")
+        SectionTitle("本地模型", "GGUF 放在公共目录 " + ModelHub.dir().absolutePath + "，断网也能用")
         CardBox {
             Text(
-                if (supported) "推理引擎：已就绪（llama.cpp · CPU）" else "推理引擎：未加载（当前 ABI 没编进来）",
+                if (supported) {
+                    "推理引擎：已就绪（llama.cpp · " + (if (Cfg.llmGpu > 0) "GPU 层 ${Cfg.llmGpu}，驱动不支持时回退 CPU" else "纯 CPU") + "）"
+                } else {
+                    "推理引擎：不可用 · " + Llama.loadError().ifBlank { "当前 ABI 没编进来" }
+                },
                 fontSize = 12.sp,
                 color = if (supported) TextPrimary else AccentBlue
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "存放位置：${ModelHub.dir().absolutePath}" + (if (ModelHub.isPublic()) "（公共目录，可用文件管理器直接换模型）" else "（外部存储不可用，已退回私有目录）"),
+                fontSize = 10.sp,
+                color = TextSecondary
             )
             Spacer(Modifier.height(4.dp))
             Text(
@@ -350,7 +402,7 @@ private fun LocalModelBody() {
             Spacer(Modifier.height(6.dp))
             ModelHub.recs.forEachIndexed { i, m ->
                 if (i > 0) Spacer(Modifier.height(2.dp))
-                val done = ModelHub.installed(ctx, m)
+                val done = ModelHub.installed(m)
                 val running = dlName == m.file
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
@@ -384,10 +436,46 @@ private fun LocalModelBody() {
             }
         }
 
+        Spacer(Modifier.height(8.dp))
+        CardBox {
+            Text("自定义下载链接", fontSize = 13.sp, color = TextPrimary)
+            Text(
+                "填 GGUF 直链即可（ModelScope / hf-mirror / 自己的服务器都行），文件名取链接最后一段",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Field(
+                label = "链接",
+                value = customUrl,
+                onValueChange = { customUrl = it },
+                placeholder = "https://…/xxx.gguf"
+            )
+            if (customUrl.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text("将保存为：${ModelHub.nameOf(customUrl)}", fontSize = 10.sp, color = TextSecondary)
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(if (busy) "请稍候…" else "下载这个链接") {
+                val u = customUrl.trim()
+                when {
+                    busy -> Unit
+                    !u.startsWith("http://") && !u.startsWith("https://") -> note = "链接要以 http:// 或 https:// 开头"
+                    else -> {
+                        val n = ModelHub.nameOf(u)
+                        downloadTo(u, null, n, n)
+                    }
+                }
+            }
+        }
+
         if (files.isEmpty()) {
             Spacer(Modifier.height(8.dp))
             CardBox {
-                Text("还没有模型文件。点上面导入，或用文件管理器把 .gguf 放进 files/models/。", fontSize = 11.sp, color = TextSecondary)
+                Text(
+                    "还没有模型文件。点上面导入，或用文件管理器把 .gguf 放进 ${ModelHub.dir().absolutePath}/。",
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
             }
         } else {
             Spacer(Modifier.height(8.dp))
@@ -444,7 +532,7 @@ private fun LocalModelBody() {
                             handle = 0L
                         }
                         val ok = f.delete()
-                        files = llmFiles(ctx)
+                        files = llmFiles()
                         delTarget = null
                         note = if (ok) "已删除：${f.name}" else "删除失败：${f.name}"
                     }
@@ -555,6 +643,10 @@ private fun LocalModelBody() {
                 GhostButton("停止", Modifier.weight(1f)) {
                     if (sess != 0L) Llama.cancel(sess)
                 }
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(if (sessionAlive(sess)) "连通性测试（发「测试测试」）" else "先加载模型", Modifier.fillMaxWidth()) {
+                if (sessionAlive(sess) && !busy) connTest()
             }
             if (out.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
