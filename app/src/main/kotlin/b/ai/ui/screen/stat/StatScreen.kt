@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.data.usage.DayUse
+import b.ai.core.dev.PerfStat
 import b.ai.core.data.usage.ModelUse
 import b.ai.core.data.usage.Price
 import b.ai.core.data.profile.Prices
@@ -426,7 +427,64 @@ fun LazyListScope.statTab(ui: StatUi) {
         }
     }
     }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("运行状态", "本体、终端会话、执行进程分开算，1.5 秒刷新一次")
+        PerfCard()
+    }
 } //统计分类
+
+/** 分项占用的内存：KB 折成 MB / GB */
+private fun mem(kb: Long): String = when {
+    kb >= 1024 * 1024 -> "%.2f GB".format(kb / 1024.0 / 1024.0)
+    kb >= 1024 -> "%.0f MB".format(kb / 1024.0)
+    else -> "${kb} KB"
+}
+
+/** 运行状态卡：每行一个分项，CPU 按单核算，过 100% 说明占满一个核以上 */
+@Composable
+private fun PerfCard() {
+    val ctx = LocalContext.current
+    var snap by remember { mutableStateOf<PerfStat.Snap?>(null) }
+    //页面滚出屏幕就停采样，回到屏幕自动接着采
+    LaunchedEffect(Unit) {
+        while (true) {
+            val s = withContext(Dispatchers.IO) { PerfStat.sample(ctx) }
+            snap = s
+            kotlinx.coroutines.delay(1500)
+        }
+    }
+    val s = snap
+    CardBox {
+        if (s == null) {
+            Text("采样中…", fontSize = 11.sp, color = TextSecondary)
+            return@CardBox
+        }
+        s.rows.forEachIndexed { i, r ->
+            if (i > 0) Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(r.name, fontSize = 12.sp, color = TextPrimary)
+                    Text(r.note, fontSize = 9.sp, color = TextSecondary)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(mem(r.pssKb), fontSize = 12.sp, color = TextPrimary)
+                    Text(
+                        if (r.cpu == null) "CPU —" else "CPU %.0f%%".format(r.cpu),
+                        fontSize = 9.sp,
+                        color = if ((r.cpu ?: 0.0) >= 60.0) AccentBlue else TextSecondary
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "合计 ${mem(s.pssKb)} · ${s.procs} 个进程；插件与界面同进程，进程级分不出插件单项",
+            fontSize = 9.sp,
+            color = TextSecondary
+        )
+    }
+} //运行状态卡
 
 /** 按天柱状图：柱高按当期最大值归一，点一根看当天明细 */
 @Composable
