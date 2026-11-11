@@ -3,6 +3,7 @@ package b.ai.core.dev
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Process
+import b.ai.core.cfg.io.Paths
 import java.io.File
 
 /**
@@ -14,6 +15,45 @@ object PerfStat {
     /** 一行分项：cpu 为 null 表示第一次采样还没基线，内存单位 KB */
     data class Row(val name: String, val note: String, val cpu: Double?, val pssKb: Long, val procs: Int)
     data class Snap(val rows: List<Row>, val pssKb: Long, val procs: Int)
+    /** 曲线上的一个点：采样时刻（毫秒）+ 三行合计 CPU 百分比 */
+    data class Point(val at: Long, val cpu: Float)
+    /** 曲线保留多久与几个点：1.5 秒一个点，40 个点正好一分钟 */
+    const val HIST_SPAN = 60_000L
+    const val HIST_MAX = 40
+    /** 基线超过这么久就算断了：切页、锁屏回来第一个点不能拿几十分钟的 ticks 差去除 */
+    private const val GAP_MS = 5_000L
+    /** 曲线历史落盘的位置：数据在盘上，进页面只读历史，不是进页面才开始一秒一秒攒 */
+    private fun histFile(): File = File(Paths.ensure(), "perf_cpu.txt")
+
+    /** 读历史：丢掉一分钟以前的点，文件坏了就当空的 */
+    fun history(): List<Point> {
+        val now = System.currentTimeMillis()
+        val f = histFile()
+        if (!f.isFile) return emptyList()
+        val out = ArrayList<Point>()
+        runCatching {
+            f.forEachLine { l ->
+                val parts = l.split(',')
+                if (parts.size >= 2) {
+                    val at = parts[0].toLongOrNull() ?: return@forEachLine
+                    val v = parts[1].toFloatOrNull() ?: return@forEachLine
+                    if (now - at <= HIST_SPAN) out.add(Point(at, v))
+                }
+            }
+        }
+        return out.takeLast(HIST_MAX)
+    } //读历史
+
+    /** 记一个点：内存里留最近 40 个，再整份覆写回盘（40 行不到 1KB，一次采样写一次不成负担） */
+    fun record(cpu: Float) {
+        val now = System.currentTimeMillis()
+        val list = history().filter { now - it.at <= HIST_SPAN }.toMutableList()
+        list.add(Point(now, cpu))
+        val keep = list.takeLast(HIST_MAX)
+        runCatching {
+            histFile().writeText(keep.joinToString("\n") { "${it.at},${it.cpu}" })
+        }
+    } //记一个点
 
     /** clk_tck：Android 上固定 100，直接除就是秒 */
     private const val HZ = 100.0
@@ -81,7 +121,9 @@ object PerfStat {
         val me = Process.myPid()
         val all = scan()
         val now = System.currentTimeMillis()
-        val dt = if (lastAt > 0L) (now - lastAt) / 1000.0 else 0.0
+        //两次采样隔太久（切页、锁屏、后台）就当没有基线，否则拿几十分钟的 ticks 差平均出来是一串假低值
+        val gap = now - lastAt
+        val dt = if (lastAt > 0L && gap <= GAP_MS) gap / 1000.0 else 0.0
         val exec = all.keys.firstOrNull { cmdOf(it).startsWith(ctx.packageName + ":exec") }
         val term = subtree(me, all)
         val execAll = if (exec != null) listOf(exec) + subtree(exec, all) else emptyList<Int>()

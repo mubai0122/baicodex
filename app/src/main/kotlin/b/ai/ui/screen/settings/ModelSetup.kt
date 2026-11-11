@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.profile.ModelProfile
+import b.ai.core.dev.ApiProbe
 import b.ai.core.llm.ModelHub
 import b.ai.core.model.chat.Provider
 import b.ai.core.plugin.skill.Providers
@@ -68,6 +69,7 @@ import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed
+import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
@@ -111,6 +113,10 @@ fun ModelSetupPanel() {
     var snap by remember { mutableStateOf("") } //上次载入或保存后的指纹，用来判断有没有改动
     var savedTo by remember { mutableStateOf("") } //保存成功的提示，一改动就失效
     var formErr by remember { mutableStateOf<String?>(null) }
+    /** 云端连通性测试：probing 是正在测，probeMsg 是上一次结果（成功绿、失败红） */
+    var probing by remember { mutableStateOf(false) }
+    var probeMsg by remember { mutableStateOf("") }
+    var probeOk by remember { mutableStateOf(false) }
 
     //表单指纹：任何一项变了就算脏，保存提示随之失效
     fun finger(): String = listOf(
@@ -536,25 +542,65 @@ fun ModelSetupPanel() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             PrimaryButton(stringResource(R.string.ms_save), enabled = dirty) { save() }
             Spacer(Modifier.width(8.dp))
+            //测连通性：拿表单里的当前值跑两轮，第一轮文字、第二轮注入纯黑图测视觉；视觉开关关着就跳过第二轮
+            GhostButton(if (probing) "测试中…" else "测连通性", Modifier.height(46.dp)) {
+                if (probing) return@GhostButton
+                probing = true
+                probeMsg = ""
+                val prov = fProv
+                val base = fBase.trim()
+                //Key 框常常是空的（真 Key 只在加密库里，读不出来），这时按这条配置已存的第一个 Key 去测
+                val key = fKey.trim().ifBlank { if (fId.isNotBlank()) Cfg.keyList(fId).firstOrNull().orEmpty() else "" }
+                val md = fModel.trim()
+                val vis = Cfg.modelVision
+                scope.launch {
+                    val o = withContext(Dispatchers.IO) { ApiProbe.test(prov, base, key, md, vis) }
+                    probing = false
+                    val t = o.text
+                    val v = o.vision
+                    probeOk = t.ok && (v?.ok ?: true)
+                    probeMsg = buildString {
+                        append("文字轮：")
+                        if (t.ok) append("✓ ${t.ms}ms · ${t.reply.length} 字 · ${t.reply}")
+                        else append("✗ " + t.err + (if (t.ms > 0) "（${t.ms}ms）" else ""))
+                        append("\n图片轮：")
+                        when {
+                            v == null -> append("跳过 · " + o.skipped)
+                            v.ok -> append("✓ ${v.ms}ms · 模型认出纯黑 · ${v.reply}")
+                            else -> append("✗ " + v.err + (if (v.ms > 0) "（${v.ms}ms）" else ""))
+                        }
+                    }
+                }
+            }
+        }
+        if (probeMsg.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                when {
-                    formErr != null -> formErr!!
-                    dirty -> stringResource(R.string.ms_edit_tip)
-                    savedTo.isNotEmpty() -> "✓ " + savedTo
-                    else -> stringResource(
-                        R.string.ms_saved_to,
-                        Profiles.selected?.label ?: stringResource(R.string.ms_new_cfg)
-                    )
-                },
+                probeMsg,
                 fontSize = 10.sp,
-                color = when {
-                    formErr != null -> DangerRed
-                    dirty -> TextSecondary
-                    else -> AccentBlue
-                },
-                maxLines = 2
+                color = if (probeOk) OkGreen else DangerRed,
+                maxLines = 6
             )
         }
+        Spacer(Modifier.height(10.dp))
+        Text(
+            when {
+                formErr != null -> formErr!!
+                dirty -> stringResource(R.string.ms_edit_tip)
+                savedTo.isNotEmpty() -> "✓ " + savedTo
+                else -> stringResource(
+                    R.string.ms_saved_to,
+                    Profiles.selected?.label ?: stringResource(R.string.ms_new_cfg)
+                )
+            },
+            fontSize = 10.sp,
+            color = when {
+                formErr != null -> DangerRed
+                dirty -> TextSecondary
+                else -> AccentBlue
+            },
+            maxLines = 2
+        )
     }
 } //配置面板
 

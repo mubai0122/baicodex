@@ -447,17 +447,20 @@ private fun mem(kb: Long): String = when {
 private fun PerfCard() {
     val ctx = LocalContext.current
     var snap by remember { mutableStateOf<PerfStat.Snap?>(null) }
-    //近 60 秒的合计 CPU：1.5 秒一个点，40 个点正好一分钟
-    val hist = remember { mutableStateListOf<Float>() }
+    //近 60 秒的合计 CPU：数据落在盘上（PerfStat.record），进页面只把历史读回来，不是进页面才开始一秒一秒攒
+    val hist = remember { mutableStateListOf<PerfStat.Point>() }
     //页面滚出屏幕就停采样，回到屏幕自动接着采
     LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { PerfStat.history() }.forEach { hist.add(it) }
         while (true) {
             val s = withContext(Dispatchers.IO) { PerfStat.sample(ctx) }
             snap = s
             //第一次采样没有基线（cpu 为 null），不记点，免得曲线开头插一个假 0
             if (s.rows.any { it.cpu != null }) {
-                hist.add(s.rows.mapNotNull { it.cpu }.sum().toFloat())
-                while (hist.size > 40) hist.removeAt(0)
+                val v = s.rows.mapNotNull { it.cpu }.sum().toFloat()
+                withContext(Dispatchers.IO) { PerfStat.record(v) }
+                hist.add(PerfStat.Point(System.currentTimeMillis(), v))
+                while (hist.size > PerfStat.HIST_MAX) hist.removeAt(0)
             }
             kotlinx.coroutines.delay(1500)
         }
@@ -492,25 +495,30 @@ private fun PerfCard() {
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
-        val peak = hist.maxOrNull()
+        val peak = hist.maxOfOrNull { it.cpu }
         Text(
             "近 60 秒合计 CPU" + (if (peak == null) "" else " · 峰值 %.0f%%".format(peak)),
             fontSize = 9.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(4.dp))
-        //曲线只在采样后重组一次，不做逐帧动画：40 个点画一条静态折线，代价可以忽略
+        //横轴是真实时间：右端永远是「现在」，点按采样时刻落位，滚动就是这么来的；不做动画，重组一次画一帧
         Canvas(Modifier.fillMaxWidth().height(52.dp)) {
             val pts = hist.toList()
             if (pts.size < 2) return@Canvas
             //纵轴跟着峰值走，空闲时不至于被压成一条贴底的线
-            val maxV = (pts.max() * 1.25f).coerceAtLeast(25f)
-            val stepX = size.width / 39f
+            val maxV = (pts.maxOf { it.cpu } * 1.25f).coerceAtLeast(25f)
+            val nowT = System.currentTimeMillis()
             val path = Path()
-            pts.forEachIndexed { i, v ->
-                val x = i * stepX
-                val y = size.height - (v / maxV).coerceIn(0f, 1f) * size.height
-                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            var first = true
+            pts.forEach { p ->
+                val age = (nowT - p.at).coerceIn(0L, PerfStat.HIST_SPAN)
+                val x = size.width - age.toFloat() / PerfStat.HIST_SPAN * size.width
+                val y = size.height - (p.cpu / maxV).coerceIn(0f, 1f) * size.height
+                if (first) {
+                    path.moveTo(x, y)
+                    first = false
+                } else path.lineTo(x, y)
             }
             drawPath(
                 path,

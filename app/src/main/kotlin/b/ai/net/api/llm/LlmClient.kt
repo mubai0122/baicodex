@@ -16,7 +16,13 @@ internal fun JSONObject.text(name: String, def: String = ""): String =
     if (isNull(name)) def else optString(name, def)
 
 /** 极简 OpenAI 兼容客户端：只依赖 HttpURLConnection */
-class LlmClient(baseUrl: String, private val apiKey: String, private val auth: AuthStyle) {
+class LlmClient(
+    baseUrl: String,
+    private val apiKey: String,
+    private val auth: AuthStyle,
+    /** 连通性测试用：开着本地模型开关时也要把请求真发到云端，不能被本地引擎接管 */
+    private val forceRemote: Boolean = false
+) {
     companion object {
         /** 最大模式下至少下发的单轮上限：比自己设的小值抬上来，比这个还大就按用户设的走 */
         private const val MAX_CAP = 8192
@@ -127,7 +133,7 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         tools: JSONArray? = null
     ): JSONObject {
         //本地模式：整条链路切到 llama.cpp，base_url 与 apiKey 都不参与
-        if (LocalEngine.route()) return LocalEngine.chat(messages, temperature)
+        if (!forceRemote && LocalEngine.route()) return LocalEngine.chat(messages, temperature)
         if (base.isBlank()) throw LlmException("base_url 未配置")
         val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
         return messageOf(exec(conn("/chat/completions"), body.toString()))
@@ -149,7 +155,7 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         onDelta: (String, String) -> Unit
     ): JSONObject {
         //本地模式：token 回调语义保持一致，取消走 Llama.cancel
-        if (LocalEngine.route()) return LocalEngine.stream(messages, temperature, shouldStop, onDelta)
+        if (!forceRemote && LocalEngine.route()) return LocalEngine.stream(messages, temperature, shouldStop, onDelta)
         if (base.isBlank()) throw LlmException("base_url 未配置")
         val c = conn("/chat/completions").apply {
             setRequestProperty("Accept", "text/event-stream")
