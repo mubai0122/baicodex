@@ -4,10 +4,25 @@ import android.content.Context
 import android.os.StatFs
 import b.ai.core.cfg.io.Paths
 import b.ai.core.cfg.app.Cfg
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
+
+/** 下载进度：放在单例里，设置页关了再进也照样看得到 */
+data class DlState(
+    val file: String = "",
+    val have: Long = 0L,
+    val total: Long = -1L,
+    val running: Boolean = false,
+    val msg: String = ""
+) //一次下载的进度
 
 /** 推荐模型：主源 ModelScope（国内快），备源 hf-mirror；两个都支持 Range 断点续传 */
 data class RecModel(val label: String, val repo: String, val file: String, val note: String) {
@@ -86,6 +101,39 @@ object ModelHub {
     fun freeBytes(): Long = runCatching {
         StatFs(dir().absolutePath).availableBytes
     }.getOrDefault(0L) //可用空间：导入和下载前先看一眼
+
+    private val pool = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _dl = MutableStateFlow(DlState())
+    val dl: StateFlow<DlState> = _dl
+    @Volatile
+    private var stopFlag = false
+
+    fun cancelDownload() {
+        stopFlag = true
+    } //点取消：下一个数据块前跳出，已下部分留着
+
+    /** 后台下载：进度存单例，页面来去都不影响；mirror 为空表示只有主源 */
+    fun startDownload(url: String, mirror: String?, file: String, label: String) {
+        if (_dl.value.running) return
+        stopFlag = false
+        _dl.value = DlState(file = file, running = true, msg = "开始下载 $label")
+        pool.launch {
+            val dst = File(dir(), file)
+            fun prog(h: Long, t: Long) {
+                _dl.value = _dl.value.copy(have = h, total = t)
+            }
+            var ok = download(url, dst, ::prog) { stopFlag }
+            if (!ok && !stopFlag && mirror != null) ok = download(mirror, dst, ::prog) { stopFlag }
+            _dl.value = _dl.value.copy(
+                running = false,
+                msg = when {
+                    ok -> "下载完成：$file"
+                    stopFlag -> "已取消下载（已下部分保留，再点下载会接着下）"
+                    else -> "下载失败：" + (if (mirror != null) "主源与镜像都没成功" else "链接不是直链或已失效")
+                }
+            )
+        }
+    } //后台下载入口
 
     fun list(): List<File> = dir().listFiles { f -> f.isFile && f.name.endsWith(".gguf", true) }
         ?.sortedBy { it.name.lowercase() } ?: emptyList() //目录里所有 GGUF

@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.profile.ModelProfile
+import b.ai.core.llm.ModelHub
 import b.ai.core.model.chat.Provider
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.data.profile.Profiles
@@ -117,6 +118,8 @@ fun ModelSetupPanel() {
         fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString()
     ).joinToString("|")
 
+    val isLocal = fProv == Providers.LOCAL //本地模型这条：base_url 与 Key 都不用填
+
     //把一条配置装进表单；没保存的改动直接丢掉
     fun loadForm(p: ModelProfile?) {
         fId = p?.id ?: ""
@@ -158,7 +161,7 @@ fun ModelSetupPanel() {
         formErr = null
         val base = fBase.trim()
         val key = fKey.trim()
-        if (base.isEmpty()) {
+        if (!isLocal && base.isEmpty()) {
             formErr = ctx.getString(R.string.ms_need_base)
             return
         }
@@ -166,7 +169,7 @@ fun ModelSetupPanel() {
             .distinct().filter { it.isNotBlank() }
         val one = fModel.trim().ifBlank { ms.firstOrNull() ?: "" }
         if (one.isEmpty()) {
-            formErr = ctx.getString(R.string.ms_no_model)
+            formErr = if (isLocal) "先选一个已导入的 GGUF 模型" else ctx.getString(R.string.ms_no_model)
             return
         }
         val id = fId.ifBlank { "p" + System.currentTimeMillis() }
@@ -206,6 +209,13 @@ fun ModelSetupPanel() {
     //拉模型列表：只刷新候选，不动已勾选结果，用的是表单里的 base_url 与 Key
     fun pull() {
         if (loading) return
+        //本地模型不联网：直接列已经导入到公共目录的 GGUF
+        if (isLocal) {
+            err = null
+            models = ModelHub.list().map { it.name }
+            if (models.isEmpty()) err = "还没有导入任何 GGUF，先去「本地模型」里导入或下载一个"
+            return
+        }
         loading = true
         err = null
         scope.launch {
@@ -261,7 +271,25 @@ fun ModelSetupPanel() {
                     }
                     fProv = p.id
                     fBase = p.baseUrl
+                    //本地模型这条不联网，Key 留着没意义，顺手清掉
+                    if (p.id == Providers.LOCAL) {
+                        fKey = ""
+                        fKey0 = ""
+                        models = emptyList()
+                    }
                     formErr = null
+                    dialog = ""
+                },
+                onClose = { dialog = "" }
+            )
+            "localmodels" -> LocalPickDialog(
+                files = models,
+                current = fModel,
+                onPick = { n ->
+                    fModel = n
+                    fModels = listOf(n)
+                    formErr = null
+                    savedTo = ""
                     dialog = ""
                 },
                 onClose = { dialog = "" }
@@ -368,7 +396,9 @@ fun ModelSetupPanel() {
             Column(Modifier.weight(1f)) {
                 Text(Providers.byId(fProv).name, fontSize = 14.sp, color = TextPrimary)
                 Text(
-                    Providers.byId(fProv).baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
+                    Providers.byId(fProv).baseUrl.ifBlank {
+                        if (fProv == Providers.LOCAL) "手机本地 GGUF，不用 base_url 与 Key" else stringResource(R.string.ms_need_base)
+                    },
                     fontSize = 10.sp,
                     color = TextSecondary,
                     maxLines = 1
@@ -376,22 +406,32 @@ fun ModelSetupPanel() {
             }
             Text(stringResource(R.string.ms_pick), fontSize = 11.sp, color = AccentBlue)
         }
-        Field(
-            "base_url",
-            fBase,
-            { fBase = it; formErr = null; urlTick++ },
-            placeholder = "https://api.deepseek.com/v1"
-        )
-        //可填多个 Key：一行一个，请求失败自动换下一个
-        Field(
-            "API key",
-            fKey,
-            { fKey = it; formErr = null },
-            secret = true,
-            singleLine = false,
-            minLines = 2,
-            placeholder = stringResource(R.string.ms_keys_hint)
-        )
+        //本地模型不需要 base_url 与 Key：直接换成一句说明，别让人以为漏填了
+        if (isLocal) {
+            Text(
+                "本地模型不用填 base_url 与 API key：聊天时直接在手机上跑选的 GGUF",
+                fontSize = 11.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 10.dp)
+            )
+        } else {
+            Field(
+                "base_url",
+                fBase,
+                { fBase = it; formErr = null; urlTick++ },
+                placeholder = "https://api.deepseek.com/v1"
+            )
+            //可填多个 Key：一行一个，请求失败自动换下一个
+            Field(
+                "API key",
+                fKey,
+                { fKey = it; formErr = null },
+                secret = true,
+                singleLine = false,
+                minLines = 2,
+                placeholder = stringResource(R.string.ms_keys_hint)
+            )
+        }
         Spacer(Modifier.height(10.dp))
         //模型多选：勾一批进表单，保存后才写进这条配置
         SectionTitle(stringResource(R.string.ms_models_t), stringResource(R.string.ms_models_sub))
@@ -400,6 +440,12 @@ fun ModelSetupPanel() {
                 .fillMaxWidth()
                 .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                 .tap {
+                    if (isLocal) {
+                        //本地：先刷新已导入的 GGUF，再让用户在卡片里单选
+                        if (models.isEmpty()) pull()
+                        dialog = "localmodels"
+                        return@tap
+                    }
                     if (loading) return@tap
                     draft = fModels.toSet()
                     q = ""
@@ -548,8 +594,12 @@ private fun ProfileRow(p: ModelProfile) {
     val sel = p.id == Cfg.profileId
     //卡片只反映已保存的内容：表单里改了一半的东西不会漏到这里
     val title = p.label
-    val sub = p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " +
-        p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
+    val sub = if (p.providerId == Providers.LOCAL) {
+        p.model.ifBlank { "未选模型" } + " · 本地 GGUF"
+    } else {
+        p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " +
+            p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -597,6 +647,60 @@ private fun DialogHead(title: String, onClose: () -> Unit) {
     }
 } //弹窗标题行
 
+/** 本地模型单选卡：只列已导入的 GGUF 文件，点一条即选中 */
+@Composable
+private fun LocalPickDialog(
+    files: List<String>,
+    current: String,
+    onPick: (String) -> Unit,
+    onClose: () -> Unit
+) {
+    BackHandler { onClose() }
+    ScrimCard {
+        DialogHead("选本地模型", onClose)
+        Spacer(Modifier.height(8.dp))
+        if (files.isEmpty()) {
+            Text("还没有导入 GGUF。先去「本地模型」分区导入或下载一个。", fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+        } else {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(glassScrollState())
+            ) {
+                files.forEach { n ->
+                    val sel = n == current
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp)
+                            .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
+                            .tap { onPick(n) }
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            n,
+                            fontSize = 12.sp,
+                            color = if (sel) AccentBlue else TextPrimary,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2
+                        )
+                        if (sel) Text("✓", fontSize = 13.sp, color = AccentBlue)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        Text(
+            "文件在 " + ModelHub.dir().absolutePath + "，可以用文件管理器直接放进来",
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
+    }
+} //本地模型单选
+
 @Composable
 private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose: () -> Unit) {
     ScrimCard {
@@ -613,8 +717,9 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .padding(vertical = 3.dp)
                         .liquidBg(RoundedCornerShape(10.dp)
-                        , tint = if (sel) AccentBlueSoft else Color.Transparent)
+                        , tint = if (sel) AccentBlueSoft else SurfaceMuted)
                         .tap { onPick(p) }
                         .padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -622,7 +727,9 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
                     Column(Modifier.weight(1f)) {
                         Text(p.name, fontSize = 13.sp, color = if (sel) AccentBlue else TextPrimary)
                         Text(
-                            p.baseUrl.ifBlank { stringResource(R.string.ms_need_base) },
+                            p.baseUrl.ifBlank {
+                                if (p.id == Providers.LOCAL) "用手机上的 GGUF，不用填 base_url 与 Key" else stringResource(R.string.ms_need_base)
+                            },
                             fontSize = 10.sp,
                             color = TextSecondary,
                             maxLines = 1

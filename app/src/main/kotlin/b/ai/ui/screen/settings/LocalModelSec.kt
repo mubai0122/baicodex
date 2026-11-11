@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -122,10 +123,8 @@ private fun LocalModelBody() {
     var handle by remember { mutableStateOf(0L) }
     var sess by remember { mutableStateOf(0L) }
     var delTarget by remember { mutableStateOf<File?>(null) }
-    var dlName by remember { mutableStateOf("") }
-    var dlHave by remember { mutableStateOf(0L) }
-    var dlTotal by remember { mutableStateOf(-1L) }
-    var dlCancel by remember { mutableStateOf(false) }
+    //下载状态在 ModelHub 单例里：关掉设置页再进来，正在下的进度照样在
+    val dl by ModelHub.dl.collectAsState()
     val supported = Llama.available()
     var gateLevel by remember { mutableStateOf(0) } //0 不弹，1 偏大（5 秒），2 过大（15 秒）
     var gateLeft by remember { mutableStateOf(0) }
@@ -244,43 +243,28 @@ private fun LocalModelBody() {
 
     /** 下载到模型目录：url 必填，mirror 可选（推荐模型才有备源），file 是落盘文件名 */
     fun downloadTo(url: String, mirror: String?, file: String, label: String) {
-        if (busy) return
+        if (dl.running) {
+            note = "已有下载在进行，先等它下完或取消"
+            return
+        }
         val free = ModelHub.freeBytes()
         if (free < 300L * 1024 * 1024) {
             note = "存储空间不足：可用 ${human(free)}，至少要留 300MB"
             return
         }
-        busy = true
-        dlName = file
-        dlHave = 0L
-        dlTotal = -1L
-        dlCancel = false
-        note = "开始下载 $label"
-        scope.launch(Dispatchers.IO) {
-            val dst = File(ModelHub.dir(), file)
-            fun prog(h: Long, t: Long) {
-                main.post {
-                    dlHave = h
-                    dlTotal = t
-                }
-            }
-            var ok = ModelHub.download(url, dst, ::prog) { dlCancel }
-            //主源失败且不是用户取消，换镜像再试一次；已下部分会接着续
-            if (!ok && !dlCancel && mirror != null) ok = ModelHub.download(mirror, dst, ::prog) { dlCancel }
-            withContext(Dispatchers.Main) {
-                busy = false
-                dlName = ""
-                files = llmFiles()
-                note = when {
-                    ok -> "下载完成：$file"
-                    dlCancel -> "已取消下载（已下部分保留，下次接着下）"
-                    else -> "下载失败：${if (mirror != null) "主源与镜像都没成功" else "检查链接是否可直链下载"}，可重试续传"
-                }
-            }
-        }
+        note = ""
+        ModelHub.startDownload(url, mirror, file, label)
     } //下载模型：主源失败自动换镜像
 
     fun startDownload(m: RecModel) = downloadTo(m.url, m.mirror, m.file, m.label) //下载推荐模型
+
+    //下完（含失败、取消）刷新一次文件列表，顺带把结果显示到 note
+    LaunchedEffect(dl.running, dl.msg) {
+        if (!dl.running) {
+            files = llmFiles()
+            if (dl.msg.isNotBlank()) note = dl.msg
+        }
+    }
 
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -403,7 +387,7 @@ private fun LocalModelBody() {
             ModelHub.recs.forEachIndexed { i, m ->
                 if (i > 0) Spacer(Modifier.height(2.dp))
                 val done = ModelHub.installed(m)
-                val running = dlName == m.file
+                val running = dl.running && dl.file == m.file
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.weight(1f)) {
                         Text(m.label, fontSize = 12.sp, color = TextPrimary)
@@ -413,26 +397,27 @@ private fun LocalModelBody() {
                         when {
                             done -> "已下载"
                             running -> "下载中"
-                            busy -> "…"
+                            dl.running -> "…"
                             else -> "下载"
                         },
                         fontSize = 11.sp,
                         color = if (done) TextSecondary else AccentBlue,
-                        modifier = (if (done || busy) Modifier else Modifier.tap { startDownload(m) })
+                        modifier = (if (done || dl.running) Modifier else Modifier.tap { startDownload(m) })
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     )
                 }
             }
-            if (dlName.isNotBlank()) {
+            if (dl.running && dl.file.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
-                val pct = if (dlTotal > 0L) (dlHave * 100 / dlTotal).toInt() else -1
+                val pct = if (dl.total > 0L) (dl.have * 100 / dl.total).toInt() else -1
                 Text(
-                    "正在下载：${human(dlHave)}" + (if (dlTotal > 0L) " / ${human(dlTotal)}（$pct%）" else "（大小未知）"),
+                    "正在下载 ${dl.file}：" + human(dl.have) +
+                        (if (dl.total > 0L) " / ${human(dl.total)}（$pct%）" else "（大小未知）"),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
                 Spacer(Modifier.height(6.dp))
-                GhostButton("取消下载") { dlCancel = true }
+                GhostButton("取消下载") { ModelHub.cancelDownload() }
             }
         }
 
@@ -542,22 +527,16 @@ private fun LocalModelBody() {
 
         Spacer(Modifier.height(8.dp))
         CardBox {
-            SelectField(
-                "对话后端",
-                if (Cfg.llmLocal) "本地模型" else "云端 API",
-                listOf(true, false),
-                desc = "选本地后聊天 / 子 Agent / 上下文总结全走 GGUF；本地没有工具调用能力，会自动降级成纯聊天",
-                optionLabel = { if (it) "本地模型" else "云端 API" },
-                isSelected = { Cfg.llmLocal == it },
-                onSelect = {
-                    Cfg.llmLocal = it
-                    note = if (it) {
-                        if (LocalEngine.route()) "已切到本地模型，下次对话加载 ${File(Cfg.llmModel).name}"
-                        else "已切到本地，但当前没有可用模型（先加载一个）"
-                    } else {
-                        "已切回云端 API"
-                    }
-                }
+            //后端只由「模型配置」决定（选本地模型那条就本地，选云端厂商就云端），这里只显示状态，避免两处开关打架
+            Text(
+                "对话后端：" + if (Cfg.llmLocal) "本地模型" else "云端 API",
+                fontSize = 13.sp,
+                color = TextPrimary
+            )
+            Text(
+                "在「模型配置」里选「本地模型」就是本地推理，选别的厂商就是云端；这里不重复设开关",
+                fontSize = 10.sp,
+                color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
             SelectField(

@@ -57,6 +57,11 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.ComposeEmptyActivity">
+
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -69,7 +74,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 屏幕操作：无障碍服务由系统绑定，能力配置在 res/xml/a11y_service.xml -->
         <service
             android:name=".device.sys.a11y.A11yService"
             android:exported="true"

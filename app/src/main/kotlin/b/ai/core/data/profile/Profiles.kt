@@ -218,6 +218,14 @@ object Profiles {
         Cfg.baseUrl = p.baseUrl
         Cfg.apiKey = p.apiKey
         Cfg.model = p.model
+        //本地模型这条：模型名是 GGUF 文件名，切过来就直接打开公共目录里的那个文件
+        if (p.providerId == Providers.LOCAL) {
+            Cfg.llmLocal = true
+            val f = File(b.ai.core.llm.ModelHub.dir(), p.model)
+            if (f.isFile) Cfg.llmModel = f.absolutePath
+        } else {
+            Cfg.llmLocal = false
+        }
         Cfg.profileModels = p.models
         Cfg.modelVision = p.vision
         Cfg.modelToolCall = p.toolCall
