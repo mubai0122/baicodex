@@ -470,10 +470,14 @@ object Cfg {
     var llmCtx: Int
         get() = mem("llm_ctx", 4096).value
         set(v) { mem("llm_ctx", 4096).value = v; put("llm_ctx", v) }
-    /** offload 到 GPU 的层数：0 = 纯 CPU（当前只编了 CPU 后端，非 0 也不生效） */
+    /** offload 到 GPU 的层数：0 = 纯 CPU；非 0 需要构建里带了 OpenCL 后端 */
     var llmGpu: Int
         get() = mem("llm_gpu", 0).value
         set(v) { mem("llm_gpu", 0).value = v; put("llm_gpu", v) }
+    /** 单轮最多生成多少 token：手机上纯 CPU 越大越慢，默认 512 */
+    var llmMaxTok: Int
+        get() = mem("llm_max_tok", 512).value
+        set(v) { mem("llm_max_tok", 512).value = v; put("llm_max_tok", v) }
     var llmTemp: Float
         get() = mem("llm_temp", 0.8f).value
         set(v) { mem("llm_temp", 0.8f).value = v; put("llm_temp", v) }

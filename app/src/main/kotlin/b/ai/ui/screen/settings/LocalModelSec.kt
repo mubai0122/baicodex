@@ -601,6 +601,16 @@ private fun LocalModelBody() {
                     note = "GPU 层数已设为 ${gpuLabel(it)}，重新加载模型后生效"
                 }
             )
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                "单轮最多生成",
+                Cfg.llmMaxTok.toString(),
+                listOf(256, 512, 1024, 2048),
+                desc = "对话里每轮允许生成的上限；纯 CPU 时 1024 以上会明显慢，长文写作再调大",
+                optionLabel = { "$it token" },
+                isSelected = { Cfg.llmMaxTok == it },
+                onSelect = { Cfg.llmMaxTok = it }
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -621,6 +631,18 @@ private fun LocalModelBody() {
                 Spacer(Modifier.width(8.dp))
                 GhostButton("停止", Modifier.weight(1f)) {
                     if (sess != 0L) Llama.cancel(sess)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(if (sessionAlive(sess)) "卸载模型（释放内存）" else "当前没有加载模型", Modifier.fillMaxWidth()) {
+                if (sessionAlive(sess) || handle != 0L) {
+                    if (sess != 0L) Llama.ctxFree(sess)
+                    if (handle != 0L) Llama.free(handle)
+                    sess = 0L
+                    handle = 0L
+                    LocalEngine.release() //对话链路那份句柄一起收掉，不然内存还是占着
+                    out = ""
+                    note = "已卸载模型，内存已释放"
                 }
             }
             Spacer(Modifier.height(8.dp))

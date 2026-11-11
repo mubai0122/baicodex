@@ -12,7 +12,9 @@ import java.io.File
  * 句柄按需加载并缓存，换模型自动卸旧的；一次只允许一个生成（native 侧上下文不是线程安全的）。
  */
 object LocalEngine {
-    private const val MAX_TOK = 512 //单轮生成上限：再高手机上纯 CPU 要等很久
+    private const val MAX_TOK_MIN = 64 //再小就没法回完整句子了
+
+    private fun maxTok(): Int = Cfg.llmMaxTok.coerceAtLeast(MAX_TOK_MIN)
 
     private var handle = 0L
     private var sess = 0L
@@ -43,6 +45,13 @@ object LocalEngine {
     private fun ensure(): String {
         val want = Cfg.llmModel
         if (handle != 0L && sess != 0L && path == want) return ""
+        //对话链路没有弹窗给人看：模型体积超过总内存 90% 直接拒绝，免得把系统拖死
+        runCatching {
+            val f = File(want)
+            if (f.isFile && DevMem.risk(DevMem.ratio(b.ai.App.self, f.length())) >= 2) {
+                return "模型太大（占本机内存 90% 以上），本地推理已拒绝加载：换更小的量化，或先在设置里把「对话后端」切回云端"
+            }
+        }
         release()
         val h = Llama.load(want, Cfg.llmThreads, Cfg.llmGpu)
         if (h == 0L) return "本地模型加载失败：" + Llama.lastErr().ifBlank { "未知原因" }
@@ -81,7 +90,7 @@ object LocalEngine {
         }
         val sb = StringBuilder()
         val t0 = System.currentTimeMillis()
-        val rc = Llama.run(c, prompt, MAX_TOK) { t ->
+        val rc = Llama.run(c, prompt, maxTok()) { t ->
             sb.append(t)
             onDelta(t, "")
             //用户点停止时下一 token 前跳出，不在这里做重活
