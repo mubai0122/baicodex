@@ -2374,6 +2374,8 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
     val split = remember(m.id, m.content) { splitDiff(m.content) }
     var copied by remember(m.id) { mutableStateOf(false) }
     ScrimCard(onDismiss = onClose) {
+        //内容区自己滚：参数 + 输出再长也只滚不挤，按钮行始终钉在底部
+        Column(Modifier.weight(1f, fill = false).verticalScroll(glassScrollState())) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 Tools.label(m.toolName ?: ""),
@@ -2438,15 +2440,19 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                 fontFamily = FontFamily.Monospace
             )
         }
+        } //可滚内容结束
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                if (copied) stringResource(R.string.cs_copied) else stringResource(R.string.cs_copy_output),
-                fontSize = 12.sp,
-                color = TextSecondary,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier
+        //按钮行固定 46dp 不吃压缩：大字体或小屏时上面滚，按钮不会被挤成一条
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(46.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                     .tap {
                         runCatching {
@@ -2454,20 +2460,31 @@ private fun ToolDetailDialog(m: ChatMsg, onClose: () -> Unit) {
                             cm.setPrimaryClip(ClipData.newPlainText("bai", split.first))
                         }
                         copied = true
-                    }
-                    .padding(vertical = 11.dp)
-            )
-            Text(
-                stringResource(R.string.cs_close),
-                fontSize = 12.sp,
-                color = Color.White,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                modifier = Modifier
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (copied) stringResource(R.string.cs_copied) else stringResource(R.string.cs_copy_output),
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    maxLines = 1
+                )
+            }
+            Box(
+                Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
-                    .tap { onClose() }
-                    .padding(vertical = 11.dp)
-            )
+                    .tap { onClose() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    stringResource(R.string.cs_close),
+                    fontSize = 12.sp,
+                    color = Color.White,
+                    maxLines = 1
+                )
+            }
         }
     }
 } //工具详情弹窗

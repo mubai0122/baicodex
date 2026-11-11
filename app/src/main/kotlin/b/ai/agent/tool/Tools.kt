@@ -37,6 +37,7 @@ import b.ai.device.fs.FileOps
 import b.ai.device.shell.local.Linux
 import b.ai.device.sys.probe.Router
 import b.ai.device.shell.local.Shell
+import b.ai.device.shell.session.Term
 import b.ai.device.shell.root.Shiz
 import b.ai.device.fs.Workspace
 import b.ai.net.api.a2a.A2A as A2aClient
@@ -359,7 +360,18 @@ object Tools {
         arr.put(
             fn(
                 SHELL, "执行 shell 命令，返回 stdout 与 stderr 合并后的输出。解压、安装、逆向等都用它拼命令完成。",
-                params("command" to str("要执行的完整 shell 命令"))
+                params(
+                    "command" to str("要执行的完整 shell 命令"),
+                    "session" to str(
+                        "会话名。不填 = 一次性执行，跑完进程就退。填了就在常驻会话里跑：" +
+                            "同名会话共用 cwd 与环境变量（cd、export 跨调用保持），不同名各自独立，最多 6 个"
+                    ),
+                    "path" to str("本次命令的工作目录，如 /sdcard/Download。填了会先 cd 过去；不填用当前工作区"),
+                    "keys" to str(
+                        "功能键，配合 session 用，传了就不执行 command：" +
+                            "ctrl-c 打断会话里正在跑的命令、ctrl-d 写 EOF、enter 回车"
+                    )
+                )
             )
         )
         //12306：余票 / 中转 / 经停三个动作合成一个工具，参数多但少一个工具就少一轮误选
@@ -1159,7 +1171,12 @@ object Tools {
         }
         MAKE_DIR -> FileOps.mkdir(args.optString("path")).toOutcome().governed()
         DELETE -> FileOps.delete(args.optString("path")).toOutcome().governed()
-        SHELL -> execShell(args.optString("command")).governed()
+        SHELL -> execShell(
+            args.optString("command"),
+            args.optString("path"),
+            args.optString("session"),
+            args.optString("keys")
+        ).governed()
         LINUX -> execLinux(args.optString("command")).governed()
         WEB_SEARCH -> search(args).governed()
         RAIL -> rail(args).governed()
@@ -1952,7 +1969,12 @@ object Tools {
         return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
     } //浏览网页
 
-    private fun execShell(command: String): ToolOutcome {
+    private fun execShell(command: String, path: String = "", session: String = "", keys: String = ""): ToolOutcome {
+        //功能键：只往会话里打信号，不执行新命令
+        if (keys.isNotBlank()) {
+            val r = Term.keys(keys, session)
+            return ToolOutcome(r.ok, r.out, routeNow())
+        }
         if (command.isBlank()) return ToolOutcome(false, "命令为空", Route.SANDBOX)
         //计划模式一律不许落盘：带写操作的命令直接拒，只放过只读命令
         if (Cfg.agentMode == AgentMode.PLAN) {
@@ -1971,15 +1993,24 @@ object Tools {
             }
         }
         //绑了工作区就先把 cwd 切进去：模型只写相对路径也能跑对
+        //显式要会话或指定目录 → 走常驻会话：cd / export 跨调用保持，还能被 keys 打断
+        if (session.isNotBlank() || path.isNotBlank()) {
+            val name = session.ifBlank { "main" }
+            val r = Term.exec(command, path, name, 120_000L)
+            val dir = Term.cwdOf(name).ifBlank { path }
+            val head = "[" + Cfg.workMode.label + " · 会话 " + name + "] exit=" + r.code +
+                " · cwd=" + dir.ifBlank { "未绑工作区" } + "\n\$ " + echoCmd(command) + "\n"
+            return ToolOutcome(r.ok, head + r.out, routeNow())
+        }
         val cmd = Workspace.wrap(command)
         return when (Cfg.workMode) {
             WorkMode.ROOT -> {
                 val r = Root.run(cmd, timeoutMs = 120_000L)
-                ToolOutcome(r.ok, "[root] exit=${r.code}\n${r.out}", Route.ROOT)
+                ToolOutcome(r.ok, shellHead("root", r.code, command) + r.out, Route.ROOT)
             } //root 身份：一次 su -c
             WorkMode.SHIZUKU -> {
                 val r = Shiz.run(cmd, timeoutMs = 120_000L)
-                ToolOutcome(r.ok, "[Shizuku] exit=${r.code}\n${r.out}", Route.SHIZUKU)
+                ToolOutcome(r.ok, shellHead("Shizuku", r.code, command) + r.out, Route.SHIZUKU)
             } //shell 身份：Shizuku 用户服务
             WorkMode.NORMAL -> {
                 val r = Shell.run(cmd, timeoutMs = 120_000L)
@@ -1991,15 +2022,35 @@ object Tools {
                     "\n（exec_shell 走原路径，零宽变换只对 read_file / write_file / make_dir / delete_file 生效；" +
                         "这个目录请改用那几个工具，或在设置 → 权限 里打开「所有文件访问」）"
                 } else ""
-                ToolOutcome(r.ok, "[沙箱] exit=${r.code}\n${r.out}$extra", Route.SANDBOX)
+                ToolOutcome(r.ok, shellHead("沙箱", r.code, command) + r.out + extra, Route.SANDBOX)
             } //应用身份：sh
         }
     } //exec_shell：不自动降级，权限不足直接把错误回给模型
 
+    /** 执行头：通道 + 退出码 + 实际 cwd + 命令原文，模型不用猜命令跑在哪、跑的是什么 */
+    private fun shellHead(tag: String, code: Int, command: String): String {
+        val dir = runCatching { Workspace.path() }.getOrDefault("")
+        val where = if (dir.isBlank()) "未绑工作区" else dir
+        return "[$tag] exit=$code · cwd=$where\n\$ " + echoCmd(command) + "\n"
+    } //通道与命令回显
+
+    /** 命令原文压成一行：多行命令也只看得到前后文，换个行当分隔 */
+    private fun echoCmd(command: String): String {
+        val one = command.replace("\r", " ").replace("\n", " ⏎ ")
+        return if (one.length > 300) one.take(300) + "…" else one
+    } //命令回显
+
+    /** 当前执行通道对应的 Route：结果卡片上的标签跟它走 */
+    private fun routeNow(): Route = when (Cfg.workMode) {
+        WorkMode.ROOT -> Route.ROOT
+        WorkMode.SHIZUKU -> Route.SHIZUKU
+        else -> Route.SANDBOX
+    } //当前通道
+
     private fun execLinux(command: String): ToolOutcome {
         if (command.isBlank()) return ToolOutcome(false, "命令为空", Route.SANDBOX)
         val r = Linux.run(Workspace.wrap(command))
-        return ToolOutcome(r.ok, "[Ubuntu] exit=${r.code}\n${r.out}", Route.SANDBOX)
+        return ToolOutcome(r.ok, shellHead("Ubuntu", r.code, command) + r.out, Route.SANDBOX)
     } //linux_shell：在自带 Ubuntu 里跑，/sdcard 是同一条路径
 
     /** 米家台账：list 看本地、sync 拉云端、add 手工补（没有云端也能局域网直连） */

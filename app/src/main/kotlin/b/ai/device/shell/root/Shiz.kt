@@ -284,6 +284,14 @@ object Shiz {
         }
     } //服务端起进程执行
 
+    /** 给终端会话用：拿一个常驻 sh 进程，输出由调用方自己收 */
+    fun openShell(): Process? {
+        val m = newProc ?: return null
+        return runCatching {
+            m.invoke(null, arrayOf("/system/bin/sh"), null, null) as Process
+        }.onFailure { Log.w(TAG, "openShell failed: " + (it.message ?: it.javaClass.simpleName)) }.getOrNull()
+    } //常驻 shell
+
     //收 ShizukuRemoteProcess 的输出：它的 exitValue 会抛 IllegalArgumentException，不能用通用的 drainProcess（那套靠 waitFor(超时) 轮询 exitValue）
     private fun drainRemote(p: Process, timeoutMs: Long, input: String?): ShellResult {
         val sb = StringBuilder()
@@ -328,6 +336,11 @@ object Shiz {
                 ShellResult(code, reply.readString() ?: "")
             }
         } catch (e: Exception) {
+            //interface 对不上基本都是 APP 升级后旧用户服务进程还活着：解绑逼下次重绑，否则每条命令都白错一次
+            if (e is IllegalStateException && e.message?.contains("incorrect interface") == true) {
+                Log.w(TAG, "transact interface mismatch, drop user service to rebind")
+                resetConn()
+            }
             ShellResult(-1, "[Shizuku] 执行异常: ${e.message ?: e.javaClass.simpleName}")
         } finally {
             reply.recycle()
@@ -349,7 +362,10 @@ object Shiz {
         if (b != null) {
             val r = transact(b, cmd, input, timeoutMs)
             if (!r.out.startsWith("[Shizuku]")) return r
-            return ShellResult(-1, r.out + "；" + execDirect(cmd, input, timeoutMs).out)
+            //事务层失败但直连跑通了：以直连的真实退出码为准，不能把有正常输出的成功判死
+            val d = execDirect(cmd, input, timeoutMs)
+            if (!d.out.startsWith("[Shizuku]直连执行失败")) return d
+            return ShellResult(-1, r.out + "；" + d.out)
         }
         val direct = execDirect(cmd, input, timeoutMs)
         if (!direct.out.startsWith("[Shizuku]直连执行失败")) return direct
