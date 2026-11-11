@@ -14,6 +14,9 @@ import java.net.URL
 object Plugins {
     private val BASE: String get() = Bai.api("/api/get/plugin.php")
 
+    /** 广场已下架：服务器不再支持注册 / 登录 / 上传，所有请求在出口短路，连连接都不建 */
+    const val OFFLINE: String = "插件广场维护升级中，暂时无法使用"
+
     /** 包体积上限与服务端一致：8MB */
     const val ZIP_MAX = 8L * 1024 * 1024
 
@@ -182,7 +185,9 @@ object Plugins {
     } //批量查版本
 
     /** 下载并解压前的落盘：成功后返回本地 zip 文件 */
+    @Suppress("UNREACHABLE_CODE")
     fun download(id: Int, dest: File, onProgress: (Int) -> Unit = {}): File {
+        error(OFFLINE)
         val url = "$BASE?act=download&id=$id&deviceCode=${Usage.deviceCode()}"
         val c = URL(url).openConnection() as HttpURLConnection
         c.connectTimeout = 12000
@@ -358,7 +363,9 @@ object Plugins {
         return json
     } //解析回包
 
+    @Suppress("UNREACHABLE_CODE")
     private fun post(url: String, body: JSONObject): String {
+        error(OFFLINE)
         //所有请求自动带上登录态：没登录就不带，服务端按匿名处理
         if (Cfg.accToken.isNotBlank() && !body.has("token")) {
             body.put("token", Cfg.accToken)

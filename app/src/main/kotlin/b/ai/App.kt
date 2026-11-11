@@ -171,6 +171,8 @@ class App : Application() {
             runCatching { if (Cfg.maskOut) b.ai.net.doc.MaskRules.sync() }
             //局域网互联：开关是开着的就把监听接上，重进 App 依然能被同网段设备扫到
             runCatching { if (b.ai.net.lan.LanCfg.load().on) b.ai.net.lan.Lan.start() }
+            //日志仓自检：建 baicode/logs 并清掉七天前的文件（当前没有埋点，只为以后 debug 备着）
+            runCatching { b.ai.core.data.log.Logs.start() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
         b.ai.ui.overlay.PerfProbe.install()

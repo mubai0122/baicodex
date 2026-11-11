@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -446,11 +447,18 @@ private fun mem(kb: Long): String = when {
 private fun PerfCard() {
     val ctx = LocalContext.current
     var snap by remember { mutableStateOf<PerfStat.Snap?>(null) }
+    //近 60 秒的合计 CPU：1.5 秒一个点，40 个点正好一分钟
+    val hist = remember { mutableStateListOf<Float>() }
     //页面滚出屏幕就停采样，回到屏幕自动接着采
     LaunchedEffect(Unit) {
         while (true) {
             val s = withContext(Dispatchers.IO) { PerfStat.sample(ctx) }
             snap = s
+            //第一次采样没有基线（cpu 为 null），不记点，免得曲线开头插一个假 0
+            if (s.rows.any { it.cpu != null }) {
+                hist.add(s.rows.mapNotNull { it.cpu }.sum().toFloat())
+                while (hist.size > 40) hist.removeAt(0)
+            }
             kotlinx.coroutines.delay(1500)
         }
     }
@@ -483,6 +491,33 @@ private fun PerfCard() {
             fontSize = 9.sp,
             color = TextSecondary
         )
+        Spacer(Modifier.height(8.dp))
+        val peak = hist.maxOrNull()
+        Text(
+            "近 60 秒合计 CPU" + (if (peak == null) "" else " · 峰值 %.0f%%".format(peak)),
+            fontSize = 9.sp,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(4.dp))
+        //曲线只在采样后重组一次，不做逐帧动画：40 个点画一条静态折线，代价可以忽略
+        Canvas(Modifier.fillMaxWidth().height(52.dp)) {
+            val pts = hist.toList()
+            if (pts.size < 2) return@Canvas
+            //纵轴跟着峰值走，空闲时不至于被压成一条贴底的线
+            val maxV = (pts.max() * 1.25f).coerceAtLeast(25f)
+            val stepX = size.width / 39f
+            val path = Path()
+            pts.forEachIndexed { i, v ->
+                val x = i * stepX
+                val y = size.height - (v / maxV).coerceIn(0f, 1f) * size.height
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(
+                path,
+                AccentBlue.copy(alpha = 0.85f),
+                style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+        }
     }
 } //运行状态卡
 

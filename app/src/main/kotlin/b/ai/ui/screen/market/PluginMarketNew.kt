@@ -67,6 +67,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,11 +105,43 @@ private val PlTabs = listOf(
 )
 
 /**
- * 插件广场：广场（浏览 / 搜索 / 排序 / 下载安装 / 点赞收藏评论）、上传（登录后传 zip）、
- * 我的（账号卡 + 我上传的 + 我收藏的）。作者主页与评论卡都挂根弹窗层。
+ * 插件广场入口：广场已下架，服务器不再支持注册 / 登录 / 上传，这里统一显示维护页。
+ * 旧实现整段保留在 PluginMarketLegacy，日后恢复只要把下面这行换回去。
  */
 @Composable
 fun PluginMarket(onBack: () -> Unit) {
+    MarketOffline(onBack)
+} //插件广场入口
+/** 维护升级页：一个居中卡片 + 返回，不再发任何网络请求 */
+@Composable
+private fun MarketOffline(onBack: () -> Unit) {
+    BackHandler { onBack() }
+    Box(Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
+        CardBox {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Filled.Star, null, tint = AccentBlue, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.height(14.dp))
+                Text(stringResource(R.string.plg_off_title), fontSize = 15.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    stringResource(R.string.plg_off_body),
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+                Spacer(Modifier.height(18.dp))
+                PrimaryButton(stringResource(R.string.plg_off_back), modifier = Modifier.fillMaxWidth()) { onBack() }
+            }
+        }
+    }
+} //维护升级页
+/**
+ * 旧插件广场实现（已下线，源码保留）：广场（浏览 / 搜索 / 排序 / 下载安装 / 点赞收藏评论）、
+ * 上传（登录后传 zip）、我的（账号卡 + 我上传的 + 我收藏的）。作者主页与评论卡都挂根弹窗层。
+ */
+@Composable
+private fun PluginMarketLegacy(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var tab by remember { mutableIntStateOf(0) }
