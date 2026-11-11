@@ -580,6 +580,10 @@ object Cfg {
     var summaryProfileId: String
         get() = mem("summary_profile", "").value
         set(v) { mem("summary_profile", "").value = v; put("summary_profile", v) }
+    /** 标题生成用的模型配置 id：空 = 跟随当前聊天选中的那条 */
+    var titleProfileId: String
+        get() = mem("title_profile", "").value
+        set(v) { mem("title_profile", "").value = v; put("title_profile", v) }
 
     /** 是否让模型先思考再回答（下发 reasoning_effort） */
     var think: Boolean

@@ -27,12 +27,8 @@ object Sum {
         else -> "不限字数，最推荐"
     } //档位说明
 
-    /** 返回 baseUrl / apiKey / providerId / model：与聊天用的压缩器同一个来源 */
-    fun llm(): Array<String> {
-        val p = Profiles.list.firstOrNull { it.id == Cfg.summaryProfileId && it.model.isNotBlank() }
-            ?: return arrayOf(Cfg.baseUrl, Cfg.apiKey, Cfg.providerId, Cfg.model)
-        return arrayOf(p.baseUrl, p.apiKey, p.providerId, p.model)
-    } //取总结模型连接参数
+    /** 返回 baseUrl / apiKey / providerId / model：由「功能模型」统一决定，没配就跟随当前聊天 */
+    fun llm(): Array<String> = b.ai.core.model.chat.FnModel.conn(b.ai.core.model.chat.FnModel.SUMMARY)
 
     /** 当前总结模型名，用于在结果里标明是谁归纳的 */
     fun label(): String = llm()[3].ifBlank { "未配置" }

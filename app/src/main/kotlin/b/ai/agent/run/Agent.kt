@@ -341,8 +341,10 @@ object Agent {
         }
         val resp = runCatching {
             withContext(Dispatchers.IO) {
-                LlmClient(Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth)
-                    .chat(Cfg.model, pay, temperature = 0.3)
+                //标题生成走「功能模型」里配的那条；没配就跟随当前聊天
+                val m = b.ai.core.model.chat.FnModel.conn(b.ai.core.model.chat.FnModel.TITLE)
+                LlmClient(m[0], m[1], b.ai.core.model.chat.FnModel.auth(b.ai.core.model.chat.FnModel.TITLE))
+                    .chat(m[3], pay, temperature = 0.3)
             }
         }.getOrNull() ?: return
         val line = resp.text("content").lines().firstOrNull { it.isNotBlank() }?.trim().orEmpty()

@@ -34,8 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.platform.LocalContext
 import b.ai.agent.run.Agent
 import b.ai.core.data.db.Repo
+import b.ai.core.data.db.SessionIo
 import b.ai.core.model.chat.SessionRow
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
@@ -55,13 +60,35 @@ import b.ai.R
 private fun ts(t: Long): String =
     if (t <= 0L) "" else SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(t))
 
-/** 会话历史：切换 / 重命名 / 删除（删除要二次确认） */
+/** 会话历史：切换 / 重命名 / 删除（删除要二次确认）/ 批量导出导入 */
 @Composable
 fun SessionSheet(onClose: () -> Unit) {
     var list by remember { mutableStateOf(Repo.sessions()) }
     var editing by remember { mutableStateOf<SessionRow?>(null) }
     var draft by remember { mutableStateOf("") }
     var arming by remember { mutableStateOf<String?>(null) }
+    //管理态：勾选多条后批量导出 / 批量删
+    var managing by remember { mutableStateOf(false) }
+    val picked = remember { mutableStateListOf<String>() }
+    var wipeArm by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }
+    val ctx = LocalContext.current
+    //导入走系统选文件：读到内容先落一份临时文件，SessionIo 只吃 File
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val txt = runCatching {
+            ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+        }.getOrNull()
+        if (txt == null) {
+            note = "读不到这个文件"
+        } else {
+            val tmp = java.io.File(ctx.cacheDir, "session-import.json")
+            runCatching { tmp.writeText(txt) }
+            note = SessionIo.import(tmp)
+            runCatching { tmp.delete() }
+            list = Repo.sessions()
+        }
+    }
 
     fun reload() {
         list = Repo.sessions()
@@ -73,6 +100,22 @@ fun SessionSheet(onClose: () -> Unit) {
             Spacer(Modifier.width(6.dp))
             Text("${list.size}", fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
+            Text(
+                if (managing) "完成" else "管理",
+                fontSize = 12.sp,
+                color = AccentBlue,
+                modifier = Modifier
+                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                    .clickable {
+                        managing = !managing
+                        if (!managing) {
+                            picked.clear()
+                            wipeArm = false
+                        }
+                    }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+            Spacer(Modifier.width(6.dp))
             Text(
                 stringResource(R.string.ss_close),
                 fontSize = 12.sp,
@@ -131,8 +174,12 @@ fun SessionSheet(onClose: () -> Unit) {
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable {
-                                Agent.openSession(s.id)
-                                onClose()
+                                if (managing) {
+                                    if (picked.contains(s.id)) picked.remove(s.id) else picked.add(s.id)
+                                } else {
+                                    Agent.openSession(s.id)
+                                    onClose()
+                                }
                             }
                             .padding(10.dp)
                     ) {
@@ -162,6 +209,13 @@ fun SessionSheet(onClose: () -> Unit) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(ts(s.updatedAt), fontSize = 10.sp, color = TextSecondary)
                             Spacer(Modifier.weight(1f))
+                            if (managing) {
+                                Text(
+                                    if (picked.contains(s.id)) "已选" else "未选",
+                                    fontSize = 10.sp,
+                                    color = if (picked.contains(s.id)) AccentBlue else TextSecondary
+                                )
+                            } else {
                             Text(
                                 stringResource(R.string.ss_rename_btn),
                                 fontSize = 10.sp,
@@ -193,17 +247,53 @@ fun SessionSheet(onClose: () -> Unit) {
                                     }
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )
+                            }
                         }
                     }
                 }
             }
+            if (note.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(note, fontSize = 10.sp, color = TextSecondary)
+            }
             Spacer(Modifier.height(12.dp))
+            if (managing) {
+                //批量操作：导出选了哪些就导哪些，删一定要点两下
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Text("${picked.size} 已选", fontSize = 10.sp, color = TextSecondary)
+                    Spacer(Modifier.weight(1f))
+                    GhostButton("导入…") { picker.launch("application/json") }
+                    Spacer(Modifier.width(10.dp))
+                    GhostButton("导出选中") {
+                        val (f, msg) = SessionIo.export(picked.toList())
+                        note = msg
+                        if (f != null) picked.clear()
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    GhostButton(
+                        if (wipeArm) "确认删除 ${picked.size} 个" else "删除选中"
+                    ) {
+                        if (!wipeArm) {
+                            wipeArm = true
+                        } else {
+                            picked.forEach { Agent.deleteSession(it) }
+                            note = "已删除 ${picked.size} 个会话"
+                            picked.clear()
+                            wipeArm = false
+                            reload()
+                        }
+                    }
+                }
+            } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                GhostButton("导入…") { picker.launch("application/json") }
+                Spacer(Modifier.width(10.dp))
                 GhostButton(stringResource(R.string.ss_new)) {
                     Agent.newSession()
                     reload()
                     onClose()
                 }
+            }
             }
         }
     }

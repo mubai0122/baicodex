@@ -91,10 +91,13 @@ object Profiles {
         //坏档只备份不覆盖：这次先拿默认条目撑着，用户重新配完下次启动还能读到好档
         if (!blocked()) save()
         apply(cache.value.first { it.id == Cfg.profileId })
-        //总结用模型指着的那条已经不在表里（被删 / 没读出来）就回落「跟随当前聊天」，
+        //总结 / 标题用模型指着的那条已经不在表里（被删 / 没读出来）就回落「跟随当前聊天」，
         //否则下拉显示的是跟随，实际请求还在用一个不存在的配置
         if (Cfg.summaryProfileId.isNotBlank() && cache.value.none { it.id == Cfg.summaryProfileId }) {
             Cfg.summaryProfileId = ""
+        }
+        if (Cfg.titleProfileId.isNotBlank() && cache.value.none { it.id == Cfg.titleProfileId }) {
+            Cfg.titleProfileId = ""
         }
     } //读盘、迁 Key 到私有 SP、落盘
 

@@ -41,6 +41,7 @@ import b.ai.ui.widget.WsPurge
 import b.ai.ui.widget.WsPurgeDialog
 import b.ai.ui.widget.tap
 import b.ai.core.cfg.app.Bai
+import b.ai.core.net.WebWipe
 import b.ai.core.task.hook.Noti
 import b.ai.device.sys.a11y.AutoA11y
 import b.ai.device.pet.PetSvc
@@ -1035,6 +1036,17 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
             optionLabel = { id -> sumProfiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
             isSelected = { it == Cfg.summaryProfileId },
             onSelect = { Cfg.summaryProfileId = it }
+        )
+        Spacer(Modifier.height(8.dp))
+        //标题生成用模型：同一套候选，留空跟随当前聊天；新建会话取名只花几十 token
+        val titleCur = sumProfiles.firstOrNull { it.id == Cfg.titleProfileId }
+        SelectField(
+            "标题生成用模型",
+            titleCur?.label ?: "跟随当前聊天",
+            listOf("") + sumProfiles.map { it.id },
+            optionLabel = { id -> sumProfiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
+            isSelected = { it == Cfg.titleProfileId },
+            onSelect = { Cfg.titleProfileId = it }
         )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2288,6 +2300,26 @@ private fun LazyListScope.extToolSec() {
                 GhostButton(stringResource(R.string.se_tools_more, tools.size - TOOL_PAGE)) {
                     more = true
                 }
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("隐私与网页登录", "清掉内置浏览器、搜索工具与 WebView 里的登录态和缓存")
+        val ctx = LocalContext.current
+        var wipeMsg by remember { mutableStateOf("") }
+        CardBox {
+            Text(
+                "会清 WebView 的 Cookie、WebStorage、缓存与表单记录。清完各网站要重新登录；" +
+                    "音乐专区的登录态存在加密库里，不受影响，要清请到对应平台卡片单独清。",
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(8.dp))
+            GhostButton("清除 Cookie 与网页缓存") { wipeMsg = WebWipe.clearAll(ctx) }
+            if (wipeMsg.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(wipeMsg, fontSize = 11.sp, color = TextPrimary)
             }
         }
     }
