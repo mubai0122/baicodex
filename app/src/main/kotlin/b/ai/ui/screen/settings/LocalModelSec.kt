@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.llm.DevMem
+import b.ai.core.llm.LocalEngine
 import b.ai.core.llm.ModelHub
 import b.ai.core.llm.RecModel
 import b.ai.ui.dialog.HostInOverlay
@@ -328,7 +329,7 @@ private fun LocalModelBody() {
             Text(
                 "设备：${DevMem.soc()}" +
                     (if (mem.total > 0L) " · 内存 ${human(mem.total)}（可用 ${human(mem.avail)}）" else "") +
-                    " · 后端 ${if (sess != 0L) "本地 llama.cpp" else "未加载"}",
+                    " · 后端 ${if (Cfg.llmLocal) "本地 llama.cpp" else "云端 API"}（${LocalEngine.status()}）",
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -447,6 +448,24 @@ private fun LocalModelBody() {
 
         Spacer(Modifier.height(8.dp))
         CardBox {
+            SelectField(
+                "对话后端",
+                if (Cfg.llmLocal) "本地模型" else "云端 API",
+                listOf(true, false),
+                desc = "选本地后聊天 / 子 Agent / 上下文总结全走 GGUF；本地没有工具调用能力，会自动降级成纯聊天",
+                optionLabel = { if (it) "本地模型" else "云端 API" },
+                isSelected = { Cfg.llmLocal == it },
+                onSelect = {
+                    Cfg.llmLocal = it
+                    note = if (it) {
+                        if (LocalEngine.route()) "已切到本地模型，下次对话加载 ${File(Cfg.llmModel).name}"
+                        else "已切到本地，但当前没有可用模型（先加载一个）"
+                    } else {
+                        "已切回云端 API"
+                    }
+                }
+            )
+            Spacer(Modifier.height(8.dp))
             SelectField(
                 "线程数",
                 if (Cfg.llmThreads == 0) "自动" else Cfg.llmThreads.toString(),

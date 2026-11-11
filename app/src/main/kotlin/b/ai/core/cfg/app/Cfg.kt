@@ -487,6 +487,10 @@ object Cfg {
     var llmModel: String
         get() = mem("llm_model", "").value
         set(v) { mem("llm_model", "").value = v; put("llm_model", v) }
+    /** 聊天是否走本地模型：开着且模型可用时 LlmClient 整体切到 llama.cpp，云端配置保留不删 */
+    var llmLocal: Boolean
+        get() = mem("llm_local", false).value
+        set(v) { mem("llm_local", false).value = v; put("llm_local", v) }
     var workMode: WorkMode
         get() = WorkMode.of(mem("work_mode", WorkMode.NORMAL.id).value)
         set(v) { mem("work_mode", WorkMode.NORMAL.id).value = v.id; put("work_mode", v.id) }

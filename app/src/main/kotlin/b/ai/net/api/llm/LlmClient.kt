@@ -1,7 +1,7 @@
 package b.ai.net.api.llm
 import b.ai.agent.tool.Tools
 import b.ai.core.cfg.app.Cfg
-
+import b.ai.core.llm.LocalEngine
 import b.ai.core.model.chat.AuthStyle
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
@@ -126,6 +126,8 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         extraParams: String? = null,
         tools: JSONArray? = null
     ): JSONObject {
+        //本地模式：整条链路切到 llama.cpp，base_url 与 apiKey 都不参与
+        if (LocalEngine.route()) return LocalEngine.chat(messages, temperature)
         if (base.isBlank()) throw LlmException("base_url 未配置")
         val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
         return messageOf(exec(conn("/chat/completions"), body.toString()))
@@ -146,6 +148,8 @@ class LlmClient(baseUrl: String, private val apiKey: String, private val auth: A
         shouldStop: () -> Boolean = { false },
         onDelta: (String, String) -> Unit
     ): JSONObject {
+        //本地模式：token 回调语义保持一致，取消走 Llama.cancel
+        if (LocalEngine.route()) return LocalEngine.stream(messages, temperature, shouldStop, onDelta)
         if (base.isBlank()) throw LlmException("base_url 未配置")
         val c = conn("/chat/completions").apply {
             setRequestProperty("Accept", "text/event-stream")
