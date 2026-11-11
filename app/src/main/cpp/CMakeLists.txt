@@ -50,6 +50,8 @@ add_library(baicodex SHARED
         runtime/guard.cpp
         runtime/secret.cpp
         jni/blur_jni.cpp
+        core/feature/llm/llm.cpp
+        jni/llm_jni.cpp
         jni/crypto_jni.cpp
         jni/dsl_jni.cpp
         jni/edit_jni.cpp
@@ -108,7 +110,30 @@ set_target_properties(baicodex PROPERTIES
         ANDROID_STL c++_static
         CXX_STANDARD 17)
 target_link_options(baicodex PRIVATE -Wl,--strip-all -Wl,--gc-sections -s)
+#本地模型：llama.cpp 静态链进来，只留 llama + ggml CPU 后端，其余组件全关
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(GGML_STATIC ON CACHE BOOL "" FORCE)
+set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(GGML_CCACHE OFF CACHE BOOL "" FORCE)
+set(GGML_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_IS_DEV OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_COMMON OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_APP OFF CACHE BOOL "" FORCE)
+set(LLAMA_BUILD_MTMD OFF CACHE BOOL "" FORCE)
+set(LLAMA_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+#v7a 没有 v8.2 FP16 NEON 指令（vld1q_f16），llamafile sgemm 在 v7a 上编不过，按 ABI 分别开
+if(ANDROID_ABI STREQUAL "arm64-v8a")
+    set(GGML_LLAMAFILE ON CACHE BOOL "" FORCE)
+else()
+    set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
+endif()
+add_subdirectory(_third_party/llama.cpp EXCLUDE_FROM_ALL)
 target_link_libraries(baicodex PRIVATE
         ${OSSL}/${CMAKE_ANDROID_ARCH_ABI}/libssl.a
         ${OSSL}/${CMAKE_ANDROID_ARCH_ABI}/libcrypto.a
+        llama ggml
         quickjs m log z)
