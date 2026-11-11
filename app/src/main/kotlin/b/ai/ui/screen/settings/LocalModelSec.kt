@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.llm.ModelHub
+import b.ai.core.llm.RecModel
 import b.ai.native.llm.Llama
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.TextPrimary
@@ -64,9 +66,21 @@ private fun displayName(ctx: Context, uri: Uri): String? = runCatching {
     }
 }.getOrNull() //取 SAF 里的原始文件名
 
-/** 从 SAF 拷进模型目录：同名自动加序号，不覆盖已有模型 */
-private fun importGguf(ctx: Context, uri: Uri): File? = runCatching {
-    val dir = File(ctx.filesDir, "models").apply { mkdirs() }
+private fun sizeOf(ctx: Context, uri: Uri): Long = runCatching {
+    ctx.contentResolver.query(uri, null, null, null, null)?.use { c ->
+        val i = c.getColumnIndex(OpenableColumns.SIZE)
+        if (i >= 0 && c.moveToFirst()) c.getLong(i) else -1L
+    } ?: -1L
+}.getOrDefault(-1L) //SAF 里能拿到的大小，拿不到给 -1
+
+/** 从 SAF 拷进模型目录：先查剩余空间，同名自动加序号，不覆盖已有模型 */
+private fun importGguf(ctx: Context, uri: Uri): Pair<File?, String> = runCatching {
+    val dir = ModelHub.dir(ctx)
+    val need = sizeOf(ctx, uri)
+    val free = ModelHub.freeBytes(ctx)
+    if (need > 0L && free < need + 64L * 1024 * 1024) {
+        return@runCatching Pair(null, "空间不足：需要 ${human(need)}，可用 ${human(free)}")
+    }
     val raw = displayName(ctx, uri)?.takeIf { it.isNotBlank() } ?: "model.gguf"
     val base = if (raw.endsWith(".gguf", true)) raw else "$raw.gguf"
     var out = File(dir, base)
@@ -77,9 +91,9 @@ private fun importGguf(ctx: Context, uri: Uri): File? = runCatching {
     }
     ctx.contentResolver.openInputStream(uri)?.use { input ->
         out.outputStream().use { o -> input.copyTo(o, 1 shl 20) }
-    } ?: return@runCatching null
-    out
-}.getOrNull() //导入结果：失败给 null
+    } ?: return@runCatching Pair(null, "读不出文件流，可能是权限或文件已被移走")
+    Pair(out, "")
+}.getOrElse { Pair(null, "导入失败：" + (it.message ?: "未知错误")) } //导入结果：文件名或原因
 
 internal fun LazyListScope.modelLocalSec() {
     item { LocalModelBody() }
@@ -98,6 +112,10 @@ private fun LocalModelBody() {
     var handle by remember { mutableStateOf(0L) }
     var sess by remember { mutableStateOf(0L) }
     var delTarget by remember { mutableStateOf<File?>(null) }
+    var dlName by remember { mutableStateOf("") }
+    var dlHave by remember { mutableStateOf(0L) }
+    var dlTotal by remember { mutableStateOf(-1L) }
+    var dlCancel by remember { mutableStateOf(false) }
     val supported = Llama.available()
 
     fun loadFile(f: File) {
@@ -158,16 +176,53 @@ private fun LocalModelBody() {
         }
     } //试跑一轮：prompt 走模型自带 chat template
 
+    fun startDownload(m: RecModel) {
+        if (busy) return
+        val free = ModelHub.freeBytes(ctx)
+        if (free < 600L * 1024 * 1024) {
+            note = "存储空间不足：可用 ${human(free)}，至少要留 600MB"
+            return
+        }
+        busy = true
+        dlName = m.file
+        dlHave = 0L
+        dlTotal = -1L
+        dlCancel = false
+        note = "开始下载 ${m.label}"
+        scope.launch(Dispatchers.IO) {
+            val dst = File(ModelHub.dir(ctx), m.file)
+            fun prog(h: Long, t: Long) {
+                main.post {
+                    dlHave = h
+                    dlTotal = t
+                }
+            }
+            var ok = ModelHub.download(m.url, dst, ::prog) { dlCancel }
+            //主源失败且不是用户取消，换镜像再试一次；已下部分会接着续
+            if (!ok && !dlCancel) ok = ModelHub.download(m.mirror, dst, ::prog) { dlCancel }
+            withContext(Dispatchers.Main) {
+                busy = false
+                dlName = ""
+                files = llmFiles(ctx)
+                note = when {
+                    ok -> "下载完成：${m.file}"
+                    dlCancel -> "已取消下载（已下部分保留，下次接着下）"
+                    else -> "下载失败：主源与镜像都没成功，检查网络后重试"
+                }
+            }
+        }
+    } //下载推荐模型：主源失败自动换镜像
+
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         busy = true
         note = "导入中…"
         scope.launch(Dispatchers.IO) {
-            val f = importGguf(ctx, uri)
+            val (f, why) = importGguf(ctx, uri)
             withContext(Dispatchers.Main) {
                 busy = false
                 files = llmFiles(ctx)
-                note = if (f != null) "已导入：${f.name}（${human(f.length())}）" else "导入失败：读不出文件或空间不足"
+                note = if (f != null) "已导入：${f.name}（${human(f.length())}）" else why
             }
         }
     } //选 GGUF 并拷进私有目录
@@ -188,6 +243,47 @@ private fun LocalModelBody() {
             )
             Spacer(Modifier.height(10.dp))
             GhostButton(if (busy) "请稍候…" else "导入 GGUF 文件") { if (!busy) pick.launch("*/*") }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        CardBox {
+            Text("推荐模型", fontSize = 13.sp, color = TextPrimary)
+            Text("主源 ModelScope，失败自动换 hf-mirror；断点续传，中断后点下载会接着下", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(6.dp))
+            ModelHub.recs.forEachIndexed { i, m ->
+                if (i > 0) Spacer(Modifier.height(2.dp))
+                val done = ModelHub.installed(ctx, m)
+                val running = dlName == m.file
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.weight(1f)) {
+                        Text(m.label, fontSize = 12.sp, color = TextPrimary)
+                        Text(m.note, fontSize = 10.sp, color = TextSecondary)
+                    }
+                    Text(
+                        when {
+                            done -> "已下载"
+                            running -> "下载中"
+                            busy -> "…"
+                            else -> "下载"
+                        },
+                        fontSize = 11.sp,
+                        color = if (done) TextSecondary else AccentBlue,
+                        modifier = (if (done || busy) Modifier else Modifier.tap { startDownload(m) })
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    )
+                }
+            }
+            if (dlName.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                val pct = if (dlTotal > 0L) (dlHave * 100 / dlTotal).toInt() else -1
+                Text(
+                    "正在下载：${human(dlHave)}" + (if (dlTotal > 0L) " / ${human(dlTotal)}（$pct%）" else "（大小未知）"),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+                Spacer(Modifier.height(6.dp))
+                GhostButton("取消下载") { dlCancel = true }
+            }
         }
 
         if (files.isEmpty()) {
