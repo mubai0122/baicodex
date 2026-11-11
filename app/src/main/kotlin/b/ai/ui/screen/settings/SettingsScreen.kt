@@ -497,6 +497,7 @@ fun SettingsScreen(
                         "model_param" -> modelParamSec()
                         "model_voice" -> modelVoiceSec()
                         "model_mem" -> modelMemSec(onOpenMemory)
+                        "model_local" -> modelLocalSec()
                         "chat_ctx" -> chatCtxSec(stats)
                         "chat_inject" -> chatInjectSec()
                         "chat_session" -> chatSessionSec(stats, onOpenStars)

@@ -1692,6 +1692,8 @@
     <string name="se_pg_voice_sub">语音识别、语音合成与朗读回复</string>
     <string name="se_pg_mem">记忆</string>
     <string name="se_pg_mem_sub">跨会话长期记忆，模型自己读写</string>
+    <string name="se_pg_local">本地模型</string>
+    <string name="se_pg_local_sub">GGUF 离线推理，导入即用，不联网也能跑</string>
     <string name="se_pg_perm">权限</string>
     <string name="se_pg_perm_sub">工作方式、系统权限、Shizuku、实验性功能</string>
     <string name="se_pg_avatar">头像</string>

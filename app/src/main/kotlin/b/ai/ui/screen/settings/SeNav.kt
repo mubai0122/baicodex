@@ -50,6 +50,7 @@ val SePages = listOf(
     SePage("model_param", R.string.se_pg_model_param, R.string.se_pg_model_param_sub, 0),
     SePage("model_voice", R.string.se_pg_voice, R.string.se_pg_voice_sub, 0),
     SePage("model_mem", R.string.se_pg_mem, R.string.se_pg_mem_sub, 0),
+    SePage("model_local", R.string.se_pg_local, R.string.se_pg_local_sub, 0),
     //对话
     SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 1),
     SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 1),

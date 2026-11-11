@@ -87,6 +87,14 @@ object Cfg {
         mem("work_mode", WorkMode.NORMAL.id).value = p.getString("work_mode", WorkMode.NORMAL.id)!!
         mem("agent_mode", AgentMode.STANDARD.id).value = p.getString("agent_mode", AgentMode.STANDARD.id)!!
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
+        //本地模型：线程 / 上下文 / GPU 层 / 采样参数 /上次选中的 GGUF
+        mem("llm_threads", 0).value = p.getInt("llm_threads", 0)
+        mem("llm_ctx", 4096).value = p.getInt("llm_ctx", 4096)
+        mem("llm_gpu", 0).value = p.getInt("llm_gpu", 0)
+        mem("llm_temp", 0.8f).value = p.getFloat("llm_temp", 0.8f)
+        mem("llm_top_p", 0.9f).value = p.getFloat("llm_top_p", 0.9f)
+        mem("llm_rep", 1.1f).value = p.getFloat("llm_rep", 1.1f)
+        mem("llm_model", "").value = p.getString("llm_model", "")!!
         mem("provider_id", "deepseek").value = p.getString("provider_id", "deepseek")!!
         mem("base_url", "").value = p.getString("base_url", "")!!
         //明文 HTTP 已确认过风险，不再弹 5 秒倒计时
@@ -454,6 +462,31 @@ object Cfg {
         get() = mem("lang", "").value
         set(v) { mem("lang", "").value = v; put("lang", v) }
 
+    /** 本地模型线程数：0 = 按核心数自动 */
+    var llmThreads: Int
+        get() = mem("llm_threads", 0).value
+        set(v) { mem("llm_threads", 0).value = v; put("llm_threads", v) }
+    /** 本地模型上下文长度，超过模型训练上下文会被 native 侧压回去 */
+    var llmCtx: Int
+        get() = mem("llm_ctx", 4096).value
+        set(v) { mem("llm_ctx", 4096).value = v; put("llm_ctx", v) }
+    /** offload 到 GPU 的层数：0 = 纯 CPU（当前只编了 CPU 后端，非 0 也不生效） */
+    var llmGpu: Int
+        get() = mem("llm_gpu", 0).value
+        set(v) { mem("llm_gpu", 0).value = v; put("llm_gpu", v) }
+    var llmTemp: Float
+        get() = mem("llm_temp", 0.8f).value
+        set(v) { mem("llm_temp", 0.8f).value = v; put("llm_temp", v) }
+    var llmTopP: Float
+        get() = mem("llm_top_p", 0.9f).value
+        set(v) { mem("llm_top_p", 0.9f).value = v; put("llm_top_p", v) }
+    var llmRep: Float
+        get() = mem("llm_rep", 1.1f).value
+        set(v) { mem("llm_rep", 1.1f).value = v; put("llm_rep", v) }
+    /** 上次选中的本地模型绝对路径，空 = 没选 */
+    var llmModel: String
+        get() = mem("llm_model", "").value
+        set(v) { mem("llm_model", "").value = v; put("llm_model", v) }
     var workMode: WorkMode
         get() = WorkMode.of(mem("work_mode", WorkMode.NORMAL.id).value)
         set(v) { mem("work_mode", WorkMode.NORMAL.id).value = v.id; put("work_mode", v.id) }
