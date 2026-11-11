@@ -83,6 +83,9 @@ object A2aSrv {
 
     fun start(p: Int): String {
         stop()
+        //没 token 就直接放行等于谁都能派活，起服务前强制生一个；用户可在面板里改或重置
+        val autoTok = Cfg.a2aToken.isBlank()
+        if (autoTok) Cfg.a2aToken = newToken()
         val s = try {
             ServerSocket().apply {
                 reuseAddress = true
@@ -99,8 +102,15 @@ object A2aSrv {
                 scope.launch { serve(c) }
             }
         } //accept 循环
-        return "已监听 " + baseUrl()
+        return "已监听 " + baseUrl() + (if (autoTok) "（已自动生成访问 token）" else "")
     } //开服务
+
+    /** 生成 32 位 hex 的访问 token */
+    fun newToken(): String {
+        val b = ByteArray(16)
+        java.security.SecureRandom().nextBytes(b)
+        return b.joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+    } //新 token
 
     fun stop() {
         runCatching { loop?.cancel() }

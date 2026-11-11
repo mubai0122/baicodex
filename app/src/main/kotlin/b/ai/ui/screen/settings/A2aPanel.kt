@@ -76,11 +76,12 @@ fun A2aPanel(onClose: () -> Unit) {
         if (!serving) return
         val msg = A2aSrv.start(newPort)
         srvMsg = msg
+        token = Cfg.a2aToken //启动时若 token 为空会被自动生成，这里同步回输入框
         if (msg.contains("失败")) {
             serving = false
             Cfg.a2aOn = false
         }
-    }
+    } //重启监听
 
     ScrimCard(onDismiss = onClose) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -133,6 +134,7 @@ fun A2aPanel(onClose: () -> Unit) {
                             val p = port.toIntOrNull() ?: Cfg.a2aPort
                             val msg = A2aSrv.start(p)
                             srvMsg = msg
+                            token = Cfg.a2aToken //可能刚被自动生成
                             serving = !msg.contains("失败")
                             if (!serving) Cfg.a2aOn = false
                         } else {
@@ -155,15 +157,28 @@ fun A2aPanel(onClose: () -> Unit) {
                 }
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) {
-                    Field("访问 token（留空不校验）", token, {
+                    Field("访问 token（自动生成，可改）", token, {
                         token = it
                         restart(port.toIntOrNull() ?: Cfg.a2aPort, it)
-                    }, "可留空")
+                    }, "留空则自动生成")
                 }
             }
             Text(
-                "改端口或 token 后，服务开着就直接换新的；token 只建议在可信局域网留空。",
+                "起服务时 token 为空会自动生成并填上去；改端口或 token 后服务开着就直接换新的。",
                 fontSize = 10.sp, color = TextSecondary
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "重置 token（已配对的设备要重新配对）",
+                fontSize = 10.sp,
+                color = AccentBlue,
+                modifier = Modifier
+                    .tap {
+                        val t = A2aSrv.newToken()
+                        token = t
+                        restart(port.toIntOrNull() ?: Cfg.a2aPort, t)
+                    }
+                    .padding(vertical = 4.dp)
             )
             if (serving) {
                 Spacer(Modifier.height(4.dp))
