@@ -55,6 +55,7 @@ val SePages = listOf(
     SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 1),
     SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 1),
     SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 1),
+    SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 1),
     SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 1),
     //外观
     SePage("ui_theme", R.string.se_pg_ui_theme, R.string.se_pg_ui_theme_sub, 2),

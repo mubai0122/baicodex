@@ -1716,6 +1716,8 @@
     <string name="se_pg_chat_inject_sub">上下文注入与回复信息</string>
     <string name="se_pg_chat_session">会话与导出</string>
     <string name="se_pg_chat_session_sub">会话管理、收藏夹、导出 Markdown</string>
+    <string name="se_pg_chat_tags">提示词标签</string>
+    <string name="se_pg_chat_tags_sub">可复用片段，插入输入框或全局启用</string>
     <string name="se_pg_ui_theme">主题</string>
     <string name="se_pg_ui_theme_sub">语言、色系、字体、背景与玻璃</string>
     <string name="se_pg_ui_input">输入</string>

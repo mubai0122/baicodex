@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.sp
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.PromptTags
 import b.ai.net.api.llm.LlmClient
 import b.ai.core.model.chat.Effort
 import b.ai.core.data.profile.Profiles
@@ -144,7 +145,8 @@ internal fun AttachPanel(
     onClose: () -> Unit,
     onPickImage: () -> Unit,
     onPickFile: (kind: String, mime: String) -> Unit,
-    onSkill: () -> Unit
+    onSkill: () -> Unit,
+    onTag: () -> Unit
 ) {
     val ctx = LocalContext.current
     SheetShell {
@@ -154,6 +156,7 @@ internal fun AttachPanel(
         AttachRow(stringResource(R.string.ip_audio), stringResource(R.string.ip_audio_d)) { onPickFile(ctx.getString(R.string.ip_audio), "audio/*") }
         AttachRow(stringResource(R.string.ip_video), stringResource(R.string.ip_video_d)) { onPickFile(ctx.getString(R.string.ip_video), "video/*") }
         AttachRow(stringResource(R.string.ip_music), stringResource(R.string.ip_music_d)) { onPickFile(ctx.getString(R.string.ip_music), "audio/*") }
+        AttachRow("提示词标签", "把常用片段插进输入框，只对这次发言生效") { onTag() }
         Row(
             Modifier
                 .fillMaxWidth()
@@ -253,6 +256,46 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
         }
     }
 } //技能包面板
+
+/** 提示词标签：点一条把正文带回输入框，跟技能包一样只影响这一次发言 */
+@Composable
+internal fun TagPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
+    SheetShell {
+        SheetHead("提示词标签", onClose)
+        val list = PromptTags.list()
+        if (list.isEmpty()) {
+            Text("还没有片段。到 设置 → 对话 → 提示词标签 里先建一条。", fontSize = 11.sp, color = TextSecondary)
+            return@SheetShell
+        }
+        list.forEach { t ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                    .tap { onInsert(t.body) }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        t.name + if (t.on) "（已全局启用）" else "",
+                        fontSize = 12.sp,
+                        color = TextPrimary,
+                        maxLines = 1
+                    )
+                    Text(
+                        t.body.replace("\n", " ").take(60),
+                        fontSize = 10.sp,
+                        color = TextSecondary,
+                        maxLines = 1
+                    )
+                }
+                Text("＋", fontSize = 13.sp, color = AccentBlue)
+            }
+        }
+    }
+} //提示词标签面板
 
 /** 三条横线面板：本轮模型 / 是否思考 / 最大模式 */
 @Composable

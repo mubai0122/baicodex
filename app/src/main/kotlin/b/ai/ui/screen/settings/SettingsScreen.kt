@@ -502,6 +502,7 @@ fun SettingsScreen(
                         "chat_ctx" -> chatCtxSec(stats)
                         "chat_inject" -> chatInjectSec()
                         "chat_session" -> chatSessionSec(stats, onOpenStars)
+                        "chat_tags" -> promptTagSec()
                         "chat_perm" -> chatPermSec()
                         "ui_theme" -> uiThemeSec()
                         "ui_person" -> uiPersonSec(onOpenPet)

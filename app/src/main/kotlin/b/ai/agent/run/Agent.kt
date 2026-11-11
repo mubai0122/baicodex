@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import b.ai.core.cfg.app.AgentMode
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.PromptTags
 import b.ai.App
 import b.ai.R
 import java.io.File
@@ -1260,6 +1261,8 @@ object Agent {
         val mode = Cfg.workMode.label
         val persona = Personas.prompt()
         val custom = Cfg.systemPrompt.trim()
+        //全局启用的提示词标签：每轮都拼进系统提示，用户自己控制开关
+        val tags = PromptTags.prompt()
         val searching = Search.selected != null
         //工具清单跟定义走同一套模式过滤，避免提示里写了模型却调不动
         val tools = Tools.all.filter { Tools.allowed(it) }.joinToString(" / ")
@@ -1267,6 +1270,7 @@ object Agent {
         return buildString {
             if (persona.isNotBlank()) append(persona).append("\n\n")
             if (custom.isNotBlank()) append(custom).append("\n\n")
+            if (tags.isNotBlank()) append(tags).append("\n\n")
             append(flow).append("\n\n")
             append(modePrompt()).append("\n\n")
             //长期记忆整段下发：用户没删就一直带着

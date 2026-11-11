@@ -12,6 +12,7 @@ import b.ai.ui.input.ModelPanel
 import b.ai.ui.input.SheetHead
 import b.ai.ui.input.SheetShell
 import b.ai.ui.input.SkillPanel
+import b.ai.ui.input.TagPanel
 import b.ai.ui.screen.pet.ModelIntroDialog
 import b.ai.ui.screen.pet.PetInApp
 import b.ai.ui.screen.settings.A11yPermDialog
@@ -688,7 +689,15 @@ fun ChatScreen(
                         attachKind = kind
                         pickFile.launch(arrayOf(mime))
                     },
-                    onSkill = { panel = InfoPanel.Skill }
+                    onSkill = { panel = InfoPanel.Skill },
+                    onTag = { panel = InfoPanel.Tag }
+                )
+                InfoPanel.Tag -> TagPanel(
+                    onClose = { panel = InfoPanel.None },
+                    onInsert = { txt ->
+                        panel = InfoPanel.None
+                        input = if (input.isBlank()) txt else "$input\n$txt"
+                    }
                 )
                 InfoPanel.Skill -> SkillPanel(
                     onClose = { panel = InfoPanel.None },
@@ -2713,4 +2722,4 @@ private fun PromptDialog(
 } //编辑重发 / 带提示重生成的输入弹窗
 
 //输入区上方那排信息面板同一时刻只能有一个；用枚举代替一堆布尔量，避免「点模型弹出运行模式」这类串台
-enum class InfoPanel { None, Attach, Cfg, Skill, Model, Mode, Persona }
+enum class InfoPanel { None, Attach, Cfg, Skill, Tag, Model, Mode, Persona }
