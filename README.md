@@ -6,7 +6,7 @@
 
 **把 Android 当成自己身体的 AI Agent。** 它不只是聊天：你说「把后台清一下」「这个报错帮我定位」「写个脚本跑一下」，它会自己看屏幕、拆步骤、调工具、写代码、编译构建，做完再把结果交回来。全是真执行，不是演示。
 
-**开源、on-device 的 Android Agent**：装在本机就能跑，模型直连、不需要电脑陪跑，是 GitHub 上能自己编的 Android Agent 开源项目。挂 **Shizuku** 或 Root 拿系统级权限，内置 **PRoot Linux 沙箱**（真 apt / gcc / node），**Android 无障碍 UI 自动化**自己点自己滑、自己读界面（同一路子的可参见 Autox.js），原生支持 **MCP** 与 **米家**生态，2026 持续维护。
+**开源、on-device 的 Android Agent**：装在本机就能跑，不需要电脑陪跑，是 GitHub 上能自己编的 Android Agent 开源项目。挂 **Shizuku** 或 Root 拿系统级权限，内置 **PRoot Linux 沙箱**（真 apt / gcc / node），**Android 无障碍 UI 自动化**自己点自己滑、自己读界面（同一路子的可参见 Autox.js），原生支持 **MCP** 与 **米家**生态，2026 持续维护。
 
 模型直连，对话、文件、密钥都留在本机，不经过任何中转服务器。
 
