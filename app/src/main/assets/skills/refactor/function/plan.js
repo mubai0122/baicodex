@@ -1,1 +1,0 @@
-sh /storage/emulated/0/baicode/skill/refactor/scripts/plan.sh {ws} {mode}
