@@ -134,6 +134,13 @@ data class ChatMsg(
     val toolCallId: String? = null,
     val toolName: String? = null,
     val isError: Boolean = false,
+    /**
+     * 错误回复的类型，只有 isError 的 assistant 消息有意义：
+     * "model" 没配模型 / 口令无效 / 模型不存在、"perm" 权限缺失、"env" 本地环境缺失；
+     * 空串 = 网络或服务端错误（不涉及用户去改配置）。
+     * 界面据此决定错误气泡上挂两个按钮还是三个（多一个「去配置」）。
+     */
+    val errKind: String = "",
     /** 工具执行耗时（毫秒），只对 tool 消息有意义；0 = 没记到（老记录或非执行路径） */
     val toolMs: Long = 0L,
     /** 模型思考过程（reasoning_content），仅展示，不回传给模型 */

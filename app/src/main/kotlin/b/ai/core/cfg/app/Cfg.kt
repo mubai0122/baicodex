@@ -218,13 +218,16 @@ object Cfg {
         mem("profile_seed", 0).value = p.getInt("profile_seed", 0)
         mem("waifu_mode", false).value = p.getBoolean("waifu_mode", false)
         mem("waifu_bounce", true).value = p.getBoolean("waifu_bounce", true)
+        mem("waifu_real", false).value = p.getBoolean("waifu_real", false)
+        mem("waifu_type_ms", 45).value = p.getInt("waifu_type_ms", 45)
+        mem("waifu_typing", true).value = p.getBoolean("waifu_typing", true)
         //旧版本把自定义提示只存在 SP 里，这里补写到数据根，之后改文件就生效
         if (!Store.exists(SYSTEM_PROMPT_FILE)) {
             val v = p.getString("system_prompt", "")!!
             if (v.isNotBlank()) Store.write(SYSTEM_PROMPT_FILE, v)
         }
-        mem("pet_on", true).value = p.getBoolean("pet_on", true)
-        mem("pet_global", true).value = p.getBoolean("pet_global", true)
+        mem("pet_on", false).value = p.getBoolean("pet_on", false)
+        mem("pet_global", false).value = p.getBoolean("pet_global", false)
         mem("pet_x", -1).value = p.getInt("pet_x", -1)
         mem("pet_y", -1).value = p.getInt("pet_y", -1)
         mem("pet_size", 120).value = p.getInt("pet_size", 120)
@@ -286,6 +289,44 @@ object Cfg {
         mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
         mem("paste_limit", 3000).value = p.getInt("paste_limit", 3000)
         mem("full_input_new", true).value = p.getBoolean("full_input_new", true)
+        //1.18.0：任务岛与备份加密配置。上面这些键都是「只 put 不读回就回默认」，新增键必须补在这里
+        mem("island_on", true).value = p.getBoolean("island_on", true)
+        mem("island_done", true).value = p.getBoolean("island_done", true)
+        mem("island_done_sec", 20).value = p.getInt("island_done_sec", 20)
+        mem("card_alpha", 100).value = p.getInt("card_alpha", 100)
+        mem("bk_secrets", true).value = p.getBoolean("bk_secrets", true)
+        //模型表 / 技能表的版本戳与快照：这三个键漏读回就会出事——数据根 models.json
+        //写不动时（属主被系统改成 media_rw）内存里 fileAt=0、rev=0 恒等，冷启动一律信旧文件，
+        //用户刚配的模型配置看起来就「存了但读不到」
+        mem("models_rev", 0L).value = p.getLong("models_rev", 0L)
+        mem("models_file_at", 0L).value = p.getLong("models_file_at", 0L)
+        mem("models_snap", "").value = p.getString("models_snap", "")!!
+        mem("skills_rev", 0L).value = p.getLong("skills_rev", 0L)
+        mem("skills_file_at", 0L).value = p.getLong("skills_file_at", 0L)
+        //同批漏读回的三个：老版本只写不读，冷启动全回默认
+        mem("title_profile", "").value = p.getString("title_profile", "")!!
+        mem("llm_local", false).value = p.getBoolean("llm_local", false)
+        mem("llm_max_tok", 512).value = p.getInt("llm_max_tok", 512)
+        //外观可配项（Markdown 排版 / 卡片圆角 / 终端字体颜色 / 各气泡字体 / 弹窗圆角 / 滑块外观）：
+        //这一整批都是「只 put 不读回就冷启动回默认」，新增键一律补在这里
+        mem("card_corner", 16).value = p.getInt("card_corner", 16)
+        mem("term_font", 10).value = p.getInt("term_font", 10)
+        mem("term_font_file", "").value = p.getString("term_font_file", "")!!
+        mem("term_fg", 0xFFD5DBE5.toInt()).value = p.getInt("term_fg", 0xFFD5DBE5.toInt())
+        mem("term_bg", 0xFF0E1116.toInt()).value = p.getInt("term_bg", 0xFF0E1116.toInt())
+        mem("ui_font_file", "").value = p.getString("ui_font_file", "")!!
+        mem("user_font_file", "").value = p.getString("user_font_file", "")!!
+        mem("ai_font_file", "").value = p.getString("ai_font_file", "")!!
+        mem("global_indent", 0).value = p.getInt("global_indent", 0)
+        mem("dialog_corner", 20).value = p.getInt("dialog_corner", 20)
+        mem("slider_accent", false).value = p.getBoolean("slider_accent", false)
+        mem("slider_track", 18).value = p.getInt("slider_track", 18)
+        mem("md_font", 13).value = p.getInt("md_font", 13)
+        mem("md_line", 155).value = p.getInt("md_line", 155)
+        mem("md_gap", 6).value = p.getInt("md_gap", 6)
+        mem("md_indent", 12).value = p.getInt("md_indent", 12)
+        mem("md_pad", 0).value = p.getInt("md_pad", 0)
+        mem("md_code", 12).value = p.getInt("md_code", 12)
     } //读盘并预热状态；mig_clean 等 19 个键以前只 put 不读回，冷启动一律回默认
 
     private fun put(k: String, v: Any?) {
@@ -679,6 +720,33 @@ object Cfg {
         get() = mem("waifu_bounce", true).value
         set(v) { mem("waifu_bounce", true).value = v; put("waifu_bounce", v) }
 
+    /**
+     * 更真实的分句引擎：默认关。
+     * 打开后分句切得更碎（逗号也断）、气泡宽度收到屏幕的 3/7、弹出动画换成淡入 + 上浮的缓动，
+     * 观感更接近真人一条条发短消息，而不是同一段文字分几块。
+     */
+    var waifuReal: Boolean
+        get() = mem("waifu_real", false).value
+        set(v) { mem("waifu_real", false).value = v; put("waifu_real", v) }
+
+    /**
+     * 分句打字速度：每个字占用多少毫秒。
+     * 既决定两条气泡之间的节奏，也决定「对方正在输入」挂多久（时长 = 字数 × 该值）。
+     * 20 = 飞快，150 = 明显慢；默认 45 与旧版 gapMs 的 45ms/字 一致。
+     */
+    var waifuTypeMs: Int
+        get() = mem("waifu_type_ms", 45).value
+        set(v) {
+            val n = v.coerceIn(20, 150)
+            mem("waifu_type_ms", 45).value = n
+            put("waifu_type_ms", n)
+        } //打字速度
+
+    /** 模拟「对方正在输入…」：分句模式下这一条已发完、下一条还没到时挂个输入中提示 */
+    var waifuTyping: Boolean
+        get() = mem("waifu_typing", true).value
+        set(v) { mem("waifu_typing", true).value = v; put("waifu_typing", v) }
+
     /** 自定义系统提示，拼在角色之后；落盘在数据根 system_prompt.md，直接改文件也生效 */
     var systemPrompt: String
         get() = Store.read(SYSTEM_PROMPT_FILE) ?: mem("system_prompt", "").value
@@ -769,6 +837,116 @@ object Cfg {
     var cardAlpha: Int
         get() = mem("card_alpha", 100).value
         set(v) { mem("card_alpha", 100).value = v; put("card_alpha", v) }
+
+    /** 卡片圆角（dp）：设置页/弹窗里的卡片统一取这个值，白卡与玻璃卡共用 */
+    var cardCorner: Int
+        get() = mem("card_corner", 16).value
+        set(v) { mem("card_corner", 16).value = v.coerceIn(0, 32); put("card_corner", v.coerceIn(0, 32)) }
+    /** Linux 终端字号（sp）：9-14 之间，屏幕小 / 想一屏多看几行时调小 */
+    var termFont: Int
+        get() = mem("term_font", 10).value
+        set(v) { mem("term_font", 10).value = v.coerceIn(9, 14); put("term_font", v.coerceIn(9, 14)) }
+
+    /** 终端字体文件路径：空 = 内置等宽字体；非空要走 FontStore 解析 */
+    var termFontFile: String
+        get() = mem("term_font_file", "").value
+        set(v) { mem("term_font_file", "").value = v; put("term_font_file", v) }
+
+    /** 终端正文色（ARGB Int），默认 0xFFD5DBE5 */
+    var termFg: Int
+        get() = mem("term_fg", 0xFFD5DBE5.toInt()).value
+        set(v) { mem("term_fg", 0xFFD5DBE5.toInt()).value = v; put("term_fg", v) }
+
+    /** 终端底色（ARGB Int），默认 0xFF0E1116 */
+    var termBg: Int
+        get() = mem("term_bg", 0xFF0E1116.toInt()).value
+        set(v) { mem("term_bg", 0xFF0E1116.toInt()).value = v; put("term_bg", v) }
+
+    /** 全局字体文件路径：所有没显式指定字体的文字都跟它走；空 = 系统默认 */
+    var uiFontFile: String
+        get() = mem("ui_font_file", "").value
+        set(v) { mem("ui_font_file", "").value = v; put("ui_font_file", v) }
+
+    /** 我方（用户）气泡字体文件路径；空 = 跟全局字体 */
+    var userFontFile: String
+        get() = mem("user_font_file", "").value
+        set(v) { mem("user_font_file", "").value = v; put("user_font_file", v) }
+
+    /** AI 回复气泡字体文件路径；空 = 跟全局字体 */
+    var aiFontFile: String
+        get() = mem("ai_font_file", "").value
+        set(v) { mem("ai_font_file", "").value = v; put("ai_font_file", v) }
+
+    /** 全局缩进（dp）：正文 / 气泡左右各让出的距离，0 = 原样 */
+    var globalIndent: Int
+        get() = mem("global_indent", 0).value
+        set(v) { mem("global_indent", 0).value = v.coerceIn(0, 32); put("global_indent", v.coerceIn(0, 32)) }
+
+    /** 弹窗圆角（dp）：ScrimCard 与底部吸附卡片共用 */
+    var dialogCorner: Int
+        get() = mem("dialog_corner", 20).value
+        set(v) { mem("dialog_corner", 20).value = v.coerceIn(0, 32); put("dialog_corner", v.coerceIn(0, 32)) }
+
+    /** 滑块是否继承主题色：true = 激活段与滑块块用主题色，false = 淡灰轨道 + 白块 */
+    var sliderAccent: Boolean
+        get() = mem("slider_accent", false).value
+        set(v) { mem("slider_accent", false).value = v; put("slider_accent", v) }
+
+    /** 滑块轨道的不透明度（%）：5-60，越大轨道越明显 */
+    var sliderTrack: Int
+        get() = mem("slider_track", 18).value
+        set(v) { mem("slider_track", 18).value = v.coerceIn(5, 60); put("slider_track", v.coerceIn(5, 60)) }
+
+
+    /** Markdown 正文字号（sp）：11-18，聊天里 AI 回复的正文大小 */
+    var mdFont: Int
+        get() = mem("md_font", 13).value
+        set(v) { mem("md_font", 13).value = v.coerceIn(11, 18); put("md_font", v.coerceIn(11, 18)) }
+
+    /** Markdown 行距（%）：100 = 1.0 倍字高，越大行越疏 */
+    var mdLine: Int
+        get() = mem("md_line", 155).value
+        set(v) { mem("md_line", 155).value = v.coerceIn(100, 220); put("md_line", v.coerceIn(100, 220)) }
+
+    /** Markdown 块间距（dp）：段落 / 标题 / 列表之间留多少 */
+    var mdGap: Int
+        get() = mem("md_gap", 6).value
+        set(v) { mem("md_gap", 6).value = v.coerceIn(0, 20); put("md_gap", v.coerceIn(0, 20)) }
+
+    /** Markdown 列表缩进（dp / 级）：无序、有序列表每深一层的缩进量 */
+    var mdIndent: Int
+        get() = mem("md_indent", 12).value
+        set(v) { mem("md_indent", 12).value = v.coerceIn(0, 32); put("md_indent", v.coerceIn(0, 32)) }
+
+    /** Markdown 左右内边距（dp）：正文离气泡 / 卡片左右边缘的距离 */
+    var mdPad: Int
+        get() = mem("md_pad", 0).value
+        set(v) { mem("md_pad", 0).value = v.coerceIn(0, 24); put("md_pad", v.coerceIn(0, 24)) }
+
+    /** Markdown 代码块字号（sp）：9-16 */
+    var mdCode: Int
+        get() = mem("md_code", 12).value
+        set(v) { mem("md_code", 12).value = v.coerceIn(9, 16); put("md_code", v.coerceIn(9, 16)) }
+
+    /** 任务通知 / 灵动岛：每轮任务挂一条常驻通知，支持的机型自动上岛 */
+    var islandOn: Boolean
+        get() = mem("island_on", true).value
+        set(v) { mem("island_on", true).value = v; put("island_on", v) }
+
+    /** 任务完成后是否在岛 / 通知栏继续驻留一会儿 */
+    var islandDone: Boolean
+        get() = mem("island_done", true).value
+        set(v) { mem("island_done", true).value = v; put("island_done", v) }
+
+    /** 任务完成后驻留的秒数，0 = 当场撤掉 */
+    var islandDoneSec: Int
+        get() = mem("island_done_sec", 20).value
+        set(v) { mem("island_done_sec", 20).value = v; put("island_done_sec", v) }
+
+    /** 导出备份时是否带上 Vault 的加密配置桶（API Key / SSH / GitHub / 技能密钥等密文） */
+    var bkSecrets: Boolean
+        get() = mem("bk_secrets", true).value
+        set(v) { mem("bk_secrets", true).value = v; put("bk_secrets", v) }
 
     /** 质感按钮：深度思考 / 最大 / 语音 / 发送换成带厚度的 3D 按钮 */
     var tactileBtn: Boolean
@@ -934,7 +1112,6 @@ object Cfg {
         get() = mem("noti_limit", 0).value
         set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
 
-    /** 桌宠总开关：默认开，装完就有一只待在应用里 */
     /**悬浮聊天窗：显示开关 /宽 /高 /字号 /整窗透明度 /位置 */
     var fcOn: Boolean
         get() = mem("fc_on", false).value
@@ -974,14 +1151,15 @@ object Cfg {
         get() = mem("a2a_token", "").value
         set(v) { mem("a2a_token", "").value = v; Vault.put("a2a_token", v) }
 
+    /** 桌宠总开关：默认关（装完不自动起，由用户自己打开） */
     var petOn: Boolean
-        get() = mem("pet_on", true).value
-        set(v) { mem("pet_on", true).value = v; put("pet_on", v) }
+        get() = mem("pet_on", false).value
+        set(v) { mem("pet_on", false).value = v; put("pet_on", v) }
 
-    /** true = 所有状态下都浮在屏幕上（默认）；false = 只在应用内展示 */
+    /** true = 所有状态下都浮在屏幕上；false = 只在应用内展示（默认关） */
     var petGlobal: Boolean
-        get() = mem("pet_global", true).value
-        set(v) { mem("pet_global", true).value = v; put("pet_global", v) }
+        get() = mem("pet_global", false).value
+        set(v) { mem("pet_global", false).value = v; put("pet_global", v) }
 
     /** 悬浮窗位置（px，-1 表示还没摆过）与边长（dp） */
     var petX: Int
@@ -1265,12 +1443,12 @@ object Cfg {
         return st.value
     } //读配置 Key
 
-    fun setProfileKey(id: String, v: String) {
-        if (id.isBlank()) return
+    fun setProfileKey(id: String, v: String): Boolean {
+        if (id.isBlank()) return false
         val k = "profkey_$id"
         mem(k, "").value = v
-        Vault.put(k, v)
-    } //写配置 Key
+        return Vault.put(k, v)
+    } //写配置 Key，返回是否真的落进加密库
 
     /** 一个配置可以填多个 Key：换行 / 逗号 / 分号分隔，请求失败时轮换 */
     fun keyList(id: String): List<String> =

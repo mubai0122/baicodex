@@ -230,7 +230,7 @@ Android 7.0（API 24）及以上，targetSdk 34，編譯用 SDK 37。APK 含 `ar
 ```
 app/src/main/kotlin/b/ai/   Android 介面與平台層（agent / core / device / native / net / ui）
 app/src/main/cpp/           Android 原生層（JNI、QuickJS、影像、原生執行）
-app/src/main/rust/          Rust 核心（core / exec / net / ffi / crates / android）
+app/src/main/rust/          Rust 核心：單一 crate，core（base/security/platform/feature 分塊）+ ffi 按域拆
 app/src/main/assets/linux/  內建 Linux 的 rootfs 與 proot
 gradle/                     建置腳本（含 seeds.gradle.kts：種子注入解析與索引表）
 .work/script/               建置與發版腳本（本目錄不進版本庫，複製後需自備）
@@ -277,7 +277,7 @@ baicodex.aes.key=憑證加密用的種子
 cd app/src/main/rust
 cargo build --bin baicodex                 # 核心 + 終端前端
 
-cd baiguard && cargo test                  # 資料保障層單元測試（獨立 crate）
+cargo test --release                     # 核心單元測試＋整合測試
 ```
 
 前端原始碼與桌面出包不在本倉庫（桌面端前端已剝離單獨維護），這裡只編核心與終端前端。

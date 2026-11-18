@@ -49,8 +49,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 48
-        versionName = "1.17.2"
+        versionCode = 49
+        versionName = "1.18.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -116,6 +116,8 @@ android {
         }
         debug {
             isMinifyEnabled = false
+            //debug 也用 release 签名：这样 debug 包能直接覆盖已装的正式版，测试不用先卸载
+            signingConfig = signingConfigs.findByName("release")
         }
     } //releaseR8
     compileOptions {

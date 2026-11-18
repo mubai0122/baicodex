@@ -51,6 +51,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 
+/** 设置页里工作区 「浏览」按钮的开关：真正的目录选择弹窗由设置页的弹窗挂载点负责 */
+internal object WorkspacePick {
+    var open by mutableStateOf(false)
+} //目录选择开关
+
 /** 工作区绑定卡：设置页内联与聊天页弹窗共用一张 */
 @Composable
 internal fun WorkspaceSection(onBrowse: () -> Unit = {}) {

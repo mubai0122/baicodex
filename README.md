@@ -231,7 +231,7 @@ Android 7.0（API 24）及以上，targetSdk 34，编译用 SDK 37。APK 含 `ar
 ```
 app/src/main/kotlin/b/ai/   Android 界面与平台层（agent / core / device / native / net / ui）
 app/src/main/cpp/           Android 原生层（JNI、QuickJS、图像、原生执行、米家密码学）
-app/src/main/rust/          Rust 内核（core / exec / net / ffi / crates / android）
+app/src/main/rust/          Rust 内核：单个 crate，core（base/security/platform/feature 分块）+ ffi 按域拆
 app/src/main/assets/linux/  内置 Linux 的 rootfs 与 proot
 gradle/                     构建脚本（含 seeds.gradle.kts：种子注入解析与索引表）
 .work/script/               构建与发版脚本（本目录不进版本库，克隆后需自备）
@@ -282,7 +282,7 @@ seed.netease.preset=网易云 weapi 预置串
 cd app/src/main/rust
 cargo build --bin baicodex                 # 内核 + 终端前端
 
-cd baiguard && cargo test                  # 数据保障层单测（独立 crate）
+cargo test --release                     # 内核单测（53 项）+ 集成测试（27 项）
 ```
 
 前端源码与桌面出包不在本仓库（桌面端前端已剥离单独维护），这里只编内核与终端前端。

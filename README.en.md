@@ -230,7 +230,7 @@ Android 7.0 (API 24) and up, targetSdk 34, built with SDK 37. The APK ships `arm
 ```
 app/src/main/kotlin/b/ai/   Android UI and platform layer (agent / core / device / native / net / ui)
 app/src/main/cpp/           Android native layer (JNI, QuickJS, image, native exec)
-app/src/main/rust/          Rust core (core / exec / net / ffi / crates / android)
+app/src/main/rust/          Rust core: single crate, core (base/security/platform/feature blocks) + per-domain ffi
 app/src/main/assets/linux/  Rootfs and proot for the built-in Linux
 gradle/                     Build scripts (incl. seeds.gradle.kts: seed injection)
 .work/script/               Build and release scripts (not in the repo; bring your own)
@@ -277,7 +277,7 @@ Building works without them — it falls back to placeholder strings (placeholde
 cd app/src/main/rust
 cargo build --bin baicodex                 # core + terminal front end
 
-cd baiguard && cargo test                  # unit tests for the data guard layer (separate crate)
+cargo test --release                     # kernel unit tests + integration tests
 ```
 
 Front-end source and the Windows package are not in this repo (the desktop front end is maintained separately); this only builds the core and the terminal front end.

@@ -130,11 +130,13 @@ fun CardBox(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -
     //用 movableContentOf 把内容搬过去：切换时子组合不重建，卡里编辑到一半的表单与输入态不会丢
     val latest by rememberUpdatedState(content)
     val body = remember { movableContentOf<ColumnScope> { scope -> latest.invoke(scope) } }
+    //圆角跟着设置走：0 = 直角，16 是原来的观感，32 接近胶囊；白卡与玻璃卡共用同一个值
+    val corner = Cfg.cardCorner.coerceIn(0, 32).dp
     if (Cfg.glassCard && backdrop != null) {
-        LiquidCard(backdrop, modifier.fillMaxWidth(), corner = 16.dp) { body(this) }
+        LiquidCard(backdrop, modifier.fillMaxWidth(), corner = corner) { body(this) }
         return
     }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(corner)
     val alpha = Cfg.cardAlpha.coerceIn(0, 100) / 100f
     Column(
         modifier = modifier

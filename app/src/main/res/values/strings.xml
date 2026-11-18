@@ -288,6 +288,7 @@
     <string name="cs_copy_content_desc">把这段文字放进剪贴板</string>
     <string name="cs_cancel">取消</string>
     <string name="cs_chars_unit">%1$d 字</string>
+    <string name="cs_typing">对方正在输入</string>
     <string name="cs_think_effort">深度思考 · %1$s</string>
     <string name="cs_think_chars">思考中 · %1$d 字</string>
     <string name="cs_reason_chars">%1$d 字 · 展开</string>
@@ -633,6 +634,12 @@
     <string name="se_175">Waifu模式</string>
     <string name="se_wbounce_t">分句气泡动画增强</string>
     <string name="se_wbounce_d">Waifu 模式下的每条小句弹出时带回弹，像苹果 Messages 那样一条条弹出来</string>
+    <string name="se_wreal_t">使用更真实的分句引擎</string>
+    <string name="se_wreal_d">分句更碎（逗号处也断），气泡宽度收到屏幕的 3/7，弹出动画换成淡入上浮的缓动，更像真人连发短消息</string>
+    <string name="se_wtype_t">分句打字速度</string>
+    <string name="se_wtype_v">%1$d ms/字</string>
+    <string name="se_wtyping_t">模拟对方正在输入</string>
+    <string name="se_wtyping_d">两条分句之间显示「正在输入…」提示，停留时长 = 本条字数 × 打字速度</string>
     <string name="se_176">启用后，AI 的回复将按标点分割逐句发送，营造更自然的对话体验</string>
     <string name="se_177">我的头像</string>
     <string name="se_178">用户消息右侧显示；没设置就是默认人形</string>
@@ -1104,7 +1111,11 @@
     <string name="se_bk_bad">这个文件不是可用的备份（密钥不对或已损坏）</string>
     <string name="se_bk_export">导出备份</string>
     <string name="se_bk_import">导入备份</string>
-    <string name="se_bk_note">备份含数据库、全部设置、技能 / 角色 / 模型清单与头像；导出为加密的 .baicodex，导入时自动解密，密钥不在备份里；工作区文件与 Linux 环境不打包</string>
+    <string name="se_bk_note">备份含数据库、全部设置、技能 / 角色 / 模型清单与头像；导出为加密的 .baicodex，导入时自动解密，密钥不在备份里；工作区文件与 Linux 环境不打包。导入只看文件内容，扩展名是 .bin / .zip 也能识别</string>
+    <string name="se_bk_secrets">导出加密配置</string>
+    <string name="se_bk_secrets_d">把 API Key / SSH / GitHub 令牌 / 技能密钥等加密配置一起打包，换机后可一并恢复；它们是密文，只有同版本的 Baicodex 能解开</string>
+    <string name="se_bk_fail_x">导出失败：%1$s</string>
+    <string name="se_bk_bad_x">导入失败：%1$s</string>
     <string name="dw_memory">记忆</string>
     <string name="mem_title">永久记忆</string>
     <string name="mem_hint">这些内容每轮都会随系统提示发给 AI；删掉就不再发送。</string>
@@ -1733,8 +1744,12 @@
     <string name="se_pg_chat_tags_sub">可复用片段，插入输入框或全局启用</string>
     <string name="se_pg_emoji">自定义表情</string>
     <string name="se_pg_emoji_sub">表情分类、换图、重置，回复里按标记渲染</string>
-    <string name="se_pg_ui_theme">主题</string>
-    <string name="se_pg_ui_theme_sub">语言、色系、字体、背景与玻璃</string>
+    <string name="se_pg_ui_theme">外观</string>
+    <string name="se_pg_ui_theme_sub">语言、主题色、字号、背景、玻璃质感、卡片外观与输入框</string>
+    <string name="se_pg_md">Markdown 排版</string>
+    <string name="se_pg_md_sub">正文字号、行距、段间距、列表缩进、左右留白、代码字号，带实时预览</string>
+    <string name="se_pg_ui_nav">悬浮与手势</string>
+    <string name="se_pg_ui_nav_sub">悬浮聊天窗的权限、尺寸与位置，返回手势</string>
     <string name="se_pg_ui_input">输入</string>
     <string name="se_pg_ui_input_sub">输入框、提示词与头像</string>
     <string name="se_pg_ext_auto">自动化</string>
@@ -1742,7 +1757,9 @@
     <string name="se_pg_ext_link">接入</string>
     <string name="se_pg_ext_link_sub">A2A 节点、搜索平台、MCP 服务</string>
     <string name="se_pg_ext_ws">工作区</string>
-    <string name="se_pg_ext_ws_sub">数据根目录、本机 Linux 环境</string>
+    <string name="se_pg_ext_ws_sub">数据根目录、会话工作区绑定与目录树</string>
+    <string name="se_pg_linux">Linux 沙箱</string>
+    <string name="se_pg_linux_sub">Ubuntu 环境解包、依赖安装与自检</string>
     <string name="se_pg_mi_sub">扫码 / 手机号登录、设备台账与属性面板</string>
     <string name="se_pg_mi_login">登录与账号</string>
     <string name="se_pg_mi_login_sub">授权页取 code 换 token、登录态与退出</string>
@@ -1757,4 +1774,27 @@
     <string name="se_pg_model_param_sub">深度思考、温度与额外请求参数</string>
     <string name="se_pg_ui_person">个性化</string>
     <string name="se_pg_ui_person_sub">头像、气泡胶囊与桌宠</string>
+    <string name="island_ch_name">任务进度</string>
+    <string name="island_no_perm">通知权限未开启：系统会直接丢掉任务通知，点这里去开</string>
+    <string name="island_ch_off">「任务进度」通知分类被关闭了：通知不会出现，点这里去开</string>
+    <string name="island_stop">停止任务</string>
+    <string name="island_task_title">Baicodex 任务</string>
+    <string name="island_running">正在执行任务…</string>
+    <string name="island_done">任务已完成</string>
+    <string name="ag_err_unknown">发送失败，原因未知</string>
+    <string name="cs_fail_title">发送失败</string>
+    <string name="cs_fail_more">仍然发送</string>
+    <string name="cs_fail_retry">重发</string>
+    <string name="cs_fail_keep">这条消息已经留在会话里，可以直接在下方重发</string>
+    <string name="cs_fail_again">仍然重发</string>
+    <string name="cs_err_go_cfg">去配置</string>
+    <string name="ag_err_kw_perm">权限</string>
+    <string name="ag_err_kw_env">未安装</string>
+    <string name="se_kernel_t">Rust 内核</string>
+    <string name="se_kernel_d">存储与加密走 Rust（原子写 + AES-256-GCM 信封），自检会在内核自己的临时桶里跑一遍写读删</string>
+    <string name="se_kernel_run">跑一次自检</string>
+    <string name="se_kernel_busy">自检中…</string>
+    <string name="se_kernel_ok">自检通过</string>
+    <string name="se_kernel_fail">自检未通过</string>
+    <string name="se_kernel_na">这个 ABI 没带 Rust 内核（只编 arm64-v8a）</string>
 </resources>

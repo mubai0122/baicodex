@@ -230,7 +230,7 @@ Android 7.0（API 24）以上、targetSdk 34、ビルドは SDK 37。APK は `ar
 ```
 app/src/main/kotlin/b/ai/   Android の UI とプラットフォーム層（agent / core / device / native / net / ui）
 app/src/main/cpp/           Android ネイティブ層（JNI、QuickJS、画像、ネイティブ実行）
-app/src/main/rust/          Rust コア（core / exec / net / ffi / crates / android）
+app/src/main/rust/          Rust コア：単一 crate、core（base/security/platform/feature のブロック分割）+ ドメイン別 ffi
 app/src/main/assets/linux/  内蔵 Linux の rootfs と proot
 gradle/                     ビルドスクリプト（seeds.gradle.kts：シード注入の解析と索引表を含む）
 .work/script/               ビルドとリリースのスクリプト（本ディレクトリはリポジトリ外。各自で用意）
@@ -277,7 +277,7 @@ baicodex.aes.key=認証情報暗号化のシード
 cd app/src/main/rust
 cargo build --bin baicodex                 # コア + ターミナルフロントエンド
 
-cd baiguard && cargo test                  # データガード層のユニットテスト（独立 crate）
+cargo test --release                     # カーネルのユニットテスト＋統合テスト
 ```
 
 フロントエンドのソースと Windows パッケージは本リポジトリに含まない（デスクトップのフロントエンドは別管理）。ここではコアとターミナル版フロントエンドのみビルドする。

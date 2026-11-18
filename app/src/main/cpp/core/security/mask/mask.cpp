@@ -5,7 +5,7 @@
 #include <mutex>
 
 #ifdef BAI_RUST
-// arm64：算法在 Rust 层（rust/baiguard），这里只做转发，符号名与下面的 C++ 兜底完全一致
+// arm64：算法在 Rust 层（app/src/main/rust），这里只做转发，符号名与下面的 C++ 兜底完全一致
 extern "C" int bai_mask_rules(const unsigned char *p, size_t n);
 extern "C" long bai_mask(const unsigned char *s, size_t sl, unsigned char *d, size_t dl);
 extern "C" int bai_mask_shape();

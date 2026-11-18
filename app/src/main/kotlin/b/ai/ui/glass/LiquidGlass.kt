@@ -174,7 +174,9 @@ private fun Modifier.glassLite(shape: Shape, tint: Color, veil: Float): Modifier
     val solid = if (DarkColors) Color(0xFF12161C) else Color(0xFFFFFFFF)
     //半透而不是盖死：透出下面的页面背景，从轻档切到真玻璃时色差很小，不会白一下再变色
     //veil 越大压得越实：弹窗（0.62）压到 0.71 保文字，普通卡片（0.12）只 0.51 保透感
-    val a = (0.46f + veil * 0.40f).coerceIn(0.46f, 0.72f)
+    //再乘「卡片不透明度」：100% 保持原观感，往下调整块更透，0% 只剩描边
+    val k = Cfg.cardAlpha.coerceIn(0, 100) / 100f
+    val a = (0.46f + veil * 0.40f).coerceIn(0.46f, 0.72f) * k
     var m = background(solid.copy(alpha = a), shape)
     if (tint == AccentBlue || tint == AccentBlueSoft) m = m.background(tint.copy(alpha = 0.55f), shape)
     return m
@@ -333,8 +335,11 @@ fun Modifier.liquidBg(
         veil >= 0.30f -> veil
         else -> Cfg.glassVeil / 100f
     }
+    //乳白遮罩同样吃「卡片不透明度」：调低时遮罩一起变淡，玻璃才会真的更透
+    val alphaK = Cfg.cardAlpha.coerceIn(0, 100) / 100f
     val sheet = if (veilEff <= 0f) Color.Transparent
-    else if (DarkColors) Color.Black.copy(alpha = veilEff) else Color.White.copy(alpha = veilEff)
+    else if (DarkColors) Color.Black.copy(alpha = veilEff * alphaK)
+    else Color.White.copy(alpha = veilEff * alphaK)
     return drawBackdrop(
         backdrop = bd,
         shape = { shape },

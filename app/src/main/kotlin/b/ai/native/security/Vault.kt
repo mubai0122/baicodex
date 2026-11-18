@@ -59,13 +59,56 @@ object Vault {
         return cache[file]?.get(key).orEmpty()
     } //读凭据
 
-    fun put(key: String, value: String, file: String = API) {
+    /**
+     * 上一次凭据落盘失败的原因（空串 = 成功）。
+     * 以前这里全程静默：桶被锁（种子换过）或 native 落盘失败时 put 直接丢弃，
+     * 界面上"保存成功"，重启才发现 Key 没了。设置页现在会把这句显示出来。
+     */
+    var lastError: String = ""
+        private set
+
+    /** 这个桶当前是否被锁：密文解不开（换过种子 / 文件损坏）时不给写，保住还能救回的那份 */
+    fun locked(file: String = API): Boolean {
         ensure(file)
-        if (file in locked) return
+        return file in locked
+    } //是否被锁
+
+    /**
+     * 写凭据。
+     * @return true = 真的写进去了；false = 落盘失败（原因见 lastError）
+     *
+     * 桶被锁（旧密文解不开）时不再一拒了之：调用方明确要写，说明那份旧密文用户已经用不上，
+     * 先把旧文件归档成 `*.stale-<时间戳>` 留档，再按当前密钥重建，写成功并在 lastError 里
+     * 说明"旧库已归档、原 Key 需重填"。
+     */
+    fun put(key: String, value: String, file: String = API): Boolean {
+        ensure(file)
+        val note = if (file in locked) archive(file) else ""
         val m = cache.getOrPut(file) { HashMap() }
         if (value.isEmpty()) m.remove(key) else m[key] = value
-        flush(file)
+        val wrote = flush(file)
+        if (wrote && note.isNotEmpty()) lastError = note
+        return wrote
     } //写凭据
+
+    /** 把解不开的旧密文挪成 `.stale-时间戳` 留档，然后按全新桶初始化 */
+    private fun archive(file: String): String {
+        val f = File(path(file))
+        val bak = File(f.parentFile, "${f.name}.stale-${System.currentTimeMillis() / 1000}")
+        runCatching {
+            if (f.isFile) {
+                if (!f.renameTo(bak)) {
+                    f.copyTo(bak, overwrite = true)
+                    f.delete()
+                }
+            }
+        }
+        cache.remove(file)
+        locked.remove(file)
+        loaded.remove(file)
+        ensure(file) //旧文件已挪走，按"文件不存在"重新初始化，这次一定可写
+        return "旧凭据库与当前密钥对不上，已归档为 ${bak.name}，请重新填一次 API Key（旧密文保留在 files/data/configs/ 里可随时找回）"
+    } //归档并重建
 
     fun snapshot(file: String = API): Map<String, String> {
         ensure(file)
@@ -97,6 +140,17 @@ object Vault {
     /** 当前编译进去的密钥指纹：换过 local.properties 里的种子它就会变，文件解不开时靠它对账 */
     fun fingerprint(): String = if (ok) runCatching { nativeFingerprint() }.getOrDefault("") else ""
 
+    /**
+     * 导入备份换过密文后调用：把内存里的桶全部作废，下次访问按新文件重新解密。
+     * 必须在文件已经换好之后调用，否则会读到旧密文。
+     */
+    @Synchronized
+    fun reload() {
+        cache.clear()
+        loaded.clear()
+        locked.clear()
+    } //重置内存桶
+
     @Synchronized
     private fun ensure(file: String) {
         if (!loaded.add(file)) return
@@ -119,12 +173,18 @@ object Vault {
     } //首次访问时解密进内存
 
     @Synchronized
-    private fun flush(file: String) {
-        if (!ok || file in locked) return
+    private fun flush(file: String): Boolean {
+        if (!ok) {
+            lastError = "加密库没加载起来（libbaicodex），凭据没落盘"
+            return false
+        }
+        if (file in locked) return false
         runCatching { File(App.self.filesDir, DIR).mkdirs() }
         val o = JSONObject()
         cache[file].orEmpty().forEach { (k, v) -> if (v.isNotEmpty()) o.put(k, v) }
-        runCatching { nativeSave(path(file), o.toString()) }
+        val okSave = runCatching { nativeSave(path(file), o.toString()) }.getOrDefault(false)
+        lastError = if (okSave) "" else "凭据没写进 ${path(file)}（目录不可写或加密失败）"
+        return okSave
     } //整体加密落盘
 
     /** 逐桶解进内存：迁移阶段先摸底，解不开的桶进 locked，后面不会被覆盖 */

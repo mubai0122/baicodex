@@ -61,6 +61,55 @@ std::vector<unsigned char> headOf(size_t n, unsigned char ver) {
     return h;
 } //文件头（也当 AAD 用）
 
+std::vector<unsigned char> deriveLegacy() {
+    //1.17.x 中间有一段构建漏注入 baicodex.aes.key，那时的密钥只有四段片段、没有种子。
+    //留着这条派生只为了把那一版写出的密文读回来，新写入永远走 derive()。
+    const std::string s = std::string(piece0()) + piece1() + piece2() + piece3();
+    std::vector<unsigned char> out(32);
+    unsigned int n = 0;
+    if (EVP_Digest(s.data(), s.size(), out.data(), &n, EVP_sha256(), nullptr) != 1 || n != 32) {
+        out.assign(32, 0);
+    }
+    return out;
+} //老派生（无种子）
+
+/** 用给定密钥校验文件头与 GCM tag，失败返回空串 */
+std::string openWith(const std::string &blob, const std::vector<unsigned char> &key) {
+    const size_t need = HEAD_LEN + NONCE_LEN + TAG_LEN;
+    if (blob.size() < need) return "";
+    const unsigned char *raw = reinterpret_cast<const unsigned char *>(blob.data());
+    const size_t n = (static_cast<size_t>(raw[MAGIC_LEN + 1]) << 24) |
+                     (static_cast<size_t>(raw[MAGIC_LEN + 2]) << 16) |
+                     (static_cast<size_t>(raw[MAGIC_LEN + 3]) << 8) |
+                     static_cast<size_t>(raw[MAGIC_LEN + 4]);
+    //长度对不上就是被截断或拼接过，直接拒，别把垃圾喂给解析器
+    if (blob.size() != need + n) return "";
+    if (key.size() != 32) return "";
+    std::vector<unsigned char> head(raw, raw + HEAD_LEN);
+    const unsigned char *nonce = raw + HEAD_LEN;
+    const unsigned char *ct = nonce + NONCE_LEN;
+    unsigned char tag[TAG_LEN];
+    memcpy(tag, raw + HEAD_LEN + NONCE_LEN + n, TAG_LEN);
+    std::vector<unsigned char> pt(n > 0 ? n : 1);
+    EVP_CIPHER_CTX *c = EVP_CIPHER_CTX_new();
+    if (c == nullptr) return "";
+    int len = 0;
+    int total = 0;
+    bool ok = EVP_DecryptInit_ex(c, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
+              EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(NONCE_LEN), nullptr) == 1 &&
+              EVP_DecryptInit_ex(c, nullptr, nullptr, key.data(), nonce) == 1 &&
+              EVP_DecryptUpdate(c, nullptr, &len, head.data(), static_cast<int>(head.size())) == 1;
+    if (ok && n > 0) {
+        ok = EVP_DecryptUpdate(c, pt.data(), &len, ct, static_cast<int>(n)) == 1;
+        total = len;
+    }
+    if (ok) ok = EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_SET_TAG, static_cast<int>(TAG_LEN), tag) == 1;
+    int fin = ok ? EVP_DecryptFinal_ex(c, pt.data() + total, &len) : 0;
+    EVP_CIPHER_CTX_free(c);
+    if (!ok || fin != 1) return "";
+    return std::string(reinterpret_cast<const char *>(pt.data()), n);
+} //校验头与 tag 后解密
+
 void wipe(std::vector<unsigned char> &v) {
     if (!v.empty()) OPENSSL_cleanse(v.data(), v.size());
     v.clear();
@@ -115,39 +164,11 @@ std::string open(const std::string &blob) {
     //第二版文件是新三层密钥写的，没解锁就别浪费时间解
     const bool g2 = raw[MAGIC_LEN] == 2;
     if (g2 && !guard::ready()) return "";
-    const size_t n = (static_cast<size_t>(raw[MAGIC_LEN + 1]) << 24) |
-                     (static_cast<size_t>(raw[MAGIC_LEN + 2]) << 16) |
-                     (static_cast<size_t>(raw[MAGIC_LEN + 3]) << 8) |
-                     static_cast<size_t>(raw[MAGIC_LEN + 4]);
-    //长度对不上就是被截断或拼接过，直接拒，别把垃圾喂给解析器
-    if (blob.size() != need + n) return "";
-    std::vector<unsigned char> head(raw, raw + HEAD_LEN);
-    const unsigned char *nonce = raw + HEAD_LEN;
-    const unsigned char *ct = nonce + NONCE_LEN;
-    unsigned char tag[TAG_LEN];
-    memcpy(tag, raw + HEAD_LEN + NONCE_LEN + n, TAG_LEN);
     std::vector<unsigned char> key = g2 ? guard::key() : derive();
-    if (key.size() != 32) return "";
-    std::vector<unsigned char> pt(n > 0 ? n : 1);
-    EVP_CIPHER_CTX *c = EVP_CIPHER_CTX_new();
-    if (c == nullptr) return "";
-    int len = 0;
-    int total = 0;
-    bool ok = EVP_DecryptInit_ex(c, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) == 1 &&
-              EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_SET_IVLEN, static_cast<int>(NONCE_LEN), nullptr) == 1 &&
-              EVP_DecryptInit_ex(c, nullptr, nullptr, key.data(), nonce) == 1 &&
-              EVP_DecryptUpdate(c, nullptr, &len, head.data(), static_cast<int>(head.size())) == 1;
-    if (ok && n > 0) {
-        ok = EVP_DecryptUpdate(c, pt.data(), &len, ct, static_cast<int>(n)) == 1;
-        total = len;
-    }
-    if (ok) ok = EVP_CIPHER_CTX_ctrl(c, EVP_CTRL_GCM_SET_TAG, static_cast<int>(TAG_LEN), tag) == 1;
-    int fin = ok ? EVP_DecryptFinal_ex(c, pt.data() + total, &len) : 0;
-    EVP_CIPHER_CTX_free(c);
-    wipe(key);
-    if (!ok || fin != 1) return "";
-    return std::string(reinterpret_cast<const char *>(pt.data()), n);
-} //校验头与 GCM tag 后解密
+    return openWith(blob, key);
+} //按当前密钥解开
+
+
 
 bool save(const std::string &path, const std::string &plain) {
     const std::string blob = seal(plain);
@@ -172,6 +193,7 @@ bool save(const std::string &path, const std::string &plain) {
     return true;
 } //原子落盘
 
+
 std::string load(const std::string &path) {
     FILE *f = fopen(path.c_str(), "rb");
     if (f == nullptr) return "";
@@ -180,9 +202,18 @@ std::string load(const std::string &path) {
     size_t n = 0;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) blob.append(buf, n);
     fclose(f);
-    return open(blob);
-} //整份读入再解密
-
+    std::string pt = open(blob);
+    if (pt.empty()) {
+        //1.17.x 有一段构建漏注入 baicodex.aes.key，那时的密文只由四段片段派生，
+        //新构建按带种子的密钥解必然失败。这里回退用老派生再试一次，成功就顺手用新钥重写，
+        //把这个桶自愈成当前格式，用户从此再也不会看到「凭据库解不开」。
+        std::vector<unsigned char> lk = deriveLegacy();
+        pt = openWith(blob, lk);
+        wipe(lk);
+        if (!pt.empty()) save(path, pt);
+    }
+    return pt;
+} //整份读入再解密（兼容旧构建的无种子密文）
 std::string fingerprint() {
     const std::vector<unsigned char> key = derive();
     static const char HEX[] = "0123456789abcdef";

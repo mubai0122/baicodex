@@ -32,8 +32,17 @@ object Backup {
         restoreDir(ctx).listFiles()?.isNotEmpty() == true
     }.getOrDefault(false) //待恢复
 
-    /** 导出：先压一次 WAL，保证拷走的库是完整状态；打出来的 zip 再整份加密，落成 .baicodex */
-    fun export(ctx: Context, out: OutputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
+    /**
+     * 导出：先压一次 WAL，保证拷走的库是完整状态；打出来的 zip 再整份加密，落成 .baicodex。
+     * @param includeVault 是否把 Vault 的加密配置桶（apikeys / ssh / secrets …）一起打包。
+     *   这些文件本身已是密文，包里再套一层备份加密；只能由同构建密钥的 App 解开。
+     */
+    fun export(
+        ctx: Context,
+        out: OutputStream,
+        includeVault: Boolean = false,
+        onLog: (String) -> Unit = {}
+    ): Boolean = runCatching {
         Repo.checkpoint()
         //配置库写盘是合并延迟的，不刷一遍拷走的可能还是半秒前的
         Prefs.flushAll()
@@ -61,6 +70,19 @@ object Backup {
             Layout.dir(ctx, Layout.AVATAR).listFiles()?.filter { it.isFile }?.forEach {
                 put("avatars/" + it.name, it)
             }
+            //加密配置：Vault 的凭据桶原样打包（apikeys / usertokens / secrets / ssh / places / maskrules / sums）
+            //它们本身就是 AES 密文，包里再套一层备份加密；只能在同构建密钥的 App 上解开
+            if (includeVault) {
+                var n = 0
+                Layout.dir(ctx, Layout.CFG).listFiles()
+                    ?.filter { it.isFile && it.name.endsWith(".baicodex") }
+                    ?.sortedBy { it.name }
+                    ?.forEach { f ->
+                        put("vault/" + f.name, f)
+                        n++
+                    }
+                onLog("加密配置 $n 个")
+            }
         }
         onLog("打包完成 ${tmp.length() / 1024}K")
         try {
@@ -72,6 +94,14 @@ object Backup {
         true
     }.getOrDefault(false) //导出
 
+    /** 明文 zip 的文件头：PK\x03\x04。老备份与外部改名成 .bin 的备份都靠它认出来 */
+    private fun isZip(f: File): Boolean = runCatching {
+        if (f.length() < 4) return false
+        val h = ByteArray(4)
+        f.inputStream().use { it.read(h) }
+        h[0] == 0x50.toByte() && h[1] == 0x4B.toByte() && h[2] == 0x03.toByte() && h[3] == 0x04.toByte()
+    }.getOrDefault(false)
+
     /** 导入第一步：先落本地副本，是密文就解开，再当 zip 解压；db 与配置等重启换，baicode 与头像直接覆盖 */
     fun stageImport(ctx: Context, ins: InputStream, onLog: (String) -> Unit = {}): Boolean = runCatching {
         val dir = restoreDir(ctx)
@@ -79,17 +109,27 @@ object Backup {
         //ContentResolver 给的是单向流：先存下来，才能看文件头判断要不要解密
         val raw = File(Layout.dir(ctx, Layout.COMPRESS), "import.tmp")
         raw.outputStream().use { ins.copyTo(it) }
-        val zip = if (BackupCrypt.isSealed(raw)) {
-            val plain = File(Layout.dir(ctx, Layout.COMPRESS), "import.zip")
-            val ok = BackupCrypt.open(raw, plain)
-            raw.delete()
-            if (!ok) {
-                onLog("备份解不开：密钥对不上或文件已损坏")
+        val zip = when {
+            //加密备份：先看 bom 头，与扩展名无关（存成 .bin / .bak 也一样认）
+            BackupCrypt.isSealed(raw) -> {
+                val plain = File(Layout.dir(ctx, Layout.COMPRESS), "import.zip")
+                val ok = BackupCrypt.open(raw, plain)
+                raw.delete()
+                if (!ok) {
+                    onLog("备份解不开：密钥对不上或文件已损坏")
+                    return false
+                }
+                onLog("已解密 ${plain.length() / 1024}K")
+                plain
+            }
+            //老的明文 zip 备份
+            isZip(raw) -> raw
+            else -> {
+                raw.delete()
+                onLog("这个文件不是备份：既不是加密备份，也不是 zip 压缩包")
                 return false
             }
-            onLog("已解密 ${plain.length() / 1024}K")
-            plain
-        } else raw
+        }
         var hasDb = false
         try {
             ZipInputStream(zip.inputStream().buffered()).use { z ->
@@ -130,6 +170,13 @@ object Backup {
                             f.parentFile?.mkdirs()
                             f.outputStream().use { z.copyTo(it) }
                             onLog("+ $name")
+                        }
+                        name.startsWith("vault/") -> {
+                            //加密配置：先落到 restore/vault/，下次启动整批换回 Vault 目录
+                            val f = File(dir, name)
+                            f.parentFile?.mkdirs()
+                            f.outputStream().use { z.copyTo(it) }
+                            onLog("+ $name（加密配置）")
                         }
                     }
                     z.closeEntry()
@@ -201,6 +248,28 @@ object Backup {
             //分片清掉，下次读库时从这份 XML 重新导一遍
             Prefs.reset()
             runCatching { pdir.deleteRecursively() }
+            changed = true
+        }
+        //加密配置：备份里带了 vault/ 才动，没带就保留本机现有凭据（不能因为导了个老备份就把凭据清空）
+        val pv = File(restoreDir(ctx), "vault")
+        if (pv.isDirectory) {
+            val vdir = Layout.dir(ctx, Layout.CFG)
+            //先把本机现有的密文改名留档，导入出错时还能手工回退
+            vdir.listFiles()?.filter { it.isFile && it.name.endsWith(".baicodex") }?.forEach { f ->
+                runCatching {
+                    val bak = File(f.parentFile, f.name + ".preimport")
+                    if (bak.isFile) bak.delete()
+                    if (!f.renameTo(bak)) f.copyTo(bak, overwrite = true)
+                }
+            }
+            pv.listFiles()?.filter { it.isFile }?.forEach { f ->
+                runCatching {
+                    if (!f.renameTo(File(vdir, f.name))) f.copyTo(File(vdir, f.name), overwrite = true)
+                }
+            }
+            pv.deleteRecursively()
+            //内存里的桶若已经读过就作废，下次访问从新密文重新解密
+            runCatching { b.ai.native.security.Vault.reload() }
             changed = true
         }
         return changed

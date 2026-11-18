@@ -5,7 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 /** 本地库：会话 + 记录 + 独立用量账 */
-class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 14) {
+class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 15) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS session(" +
@@ -23,6 +23,7 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 14
                 "images TEXT,meta TEXT,parent_id INTEGER," +
                 "starred INTEGER NOT NULL DEFAULT 0,files TEXT," +
                 "tool_ms INTEGER NOT NULL DEFAULT 0," +
+                "err_kind TEXT," +
                 "created_at INTEGER NOT NULL)"
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_msg_session ON message(session_id,_id)")
@@ -154,6 +155,10 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 14
         //v13→v14：tool 消息补执行耗时列（毫秒），老记录留 0，界面据此决定显不显示
         if (oldVersion < 14) {
             runCatching { db.execSQL("ALTER TABLE message ADD COLUMN tool_ms INTEGER NOT NULL DEFAULT 0") }
+        }
+        //v14→v15：错误回复补类型列（model / perm / env），界面据此决定挂「重发 / 仍然重发 / 去配置」哪几个按钮
+        if (oldVersion < 15) {
+            runCatching { db.execSQL("ALTER TABLE message ADD COLUMN err_kind TEXT") }
         }
     } //版本迁移
 

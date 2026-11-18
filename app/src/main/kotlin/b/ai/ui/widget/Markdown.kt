@@ -1,7 +1,9 @@
 package b.ai.ui.widget
 import b.ai.ui.glass.liquidBg
+import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.emoji.Emojis
 import b.ai.net.api.llm.text
+import b.ai.ui.theme.LocalAiFont
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -221,7 +223,7 @@ private fun CodeBlock(b: MdBlock.Code) {
         Text(
             b.code,
             fontFamily = FontFamily.Monospace,
-            fontSize = 11.5.sp,
+            fontSize = Cfg.mdCode.sp, //代码块字号可配，默认 12sp
             color = TextPrimary,
             modifier = Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 10.dp)
         )
@@ -238,34 +240,48 @@ private fun mdCopy(ctx: Context, text: String) {
 @Composable
 private fun mdInline(text: String): AnnotatedString = remember(text) { inlineMd(text) }
 
-/**Markdown 正文渲染：块级排版 + 行内样式，代码块自带复制按钮 */
+/**
+ * Markdown 正文渲染：块级排版 + 行内样式，代码块自带复制按钮。
+ * 字号 / 行距 / 块间距 / 列表缩进 / 左右内边距都可配（设置 → 外观 → Markdown 显示）；
+ * size 传 null 时跟随配置里的正文字号，显式传值（如悬浮窗、计划面板）则以传值为准。
+ */
 @Composable
-fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
+fun MdText(src: String, color: Color = TextPrimary, size: TextUnit? = null) {
     val blocks = remember(src) { parseMd(src) }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val fs = size ?: Cfg.mdFont.sp //正文字号：默认读配置
+    val lh = (fs.value * Cfg.mdLine / 100f).sp //行距：按配置的百分比乘字高
+    //AI 回复专属字体：设置里没单独挑就跟随全局字体（LocalAiFont 的默认值就是它）
+    val ff = LocalAiFont.current
+    Column(
+        verticalArrangement = Arrangement.spacedBy(Cfg.mdGap.dp),
+        //左右内边距 = Markdown 自己的 + 全局缩进
+        modifier = Modifier.padding(horizontal = (Cfg.mdPad + Cfg.globalIndent).dp)
+    ) {
         blocks.forEach { b ->
             when (b) {
                 is MdBlock.Code -> CodeBlock(b)
+                //标题跟着正文字号等比缩放，不再是写死的 17 / 15.5 / 14
                 is MdBlock.Head -> RichLine(
                     b.text,
                     size = when (b.level) {
-                        1 -> 17.sp
-                        2 -> 15.5.sp
-                        else -> 14.sp
+                        1 -> (fs.value * 1.31f).sp
+                        2 -> (fs.value * 1.19f).sp
+                        else -> (fs.value * 1.08f).sp
                     },
                     color = color,
-                    lineHeight = 22.sp,
-                    weight = FontWeight.SemiBold
+                    lineHeight = (fs.value * 1.69f).sp,
+                    weight = FontWeight.SemiBold,
+                    ff = ff
                 )
-                is MdBlock.Bul -> Row(Modifier.padding(start = (b.level * 12).dp)) {
-                    Text("•", fontSize = size, color = TextSecondary)
+                is MdBlock.Bul -> Row(Modifier.padding(start = (b.level * Cfg.mdIndent).dp)) {
+                    Text("•", fontSize = fs, color = TextSecondary, fontFamily = ff)
                     Spacer(Modifier.width(6.dp))
-                    RichLine(b.text, size = size, color = color)
+                    RichLine(b.text, size = fs, color = color, lineHeight = lh, ff = ff)
                 }
-                is MdBlock.Num -> Row(Modifier.padding(start = (b.level * 12).dp)) {
-                    Text("${b.num}.", fontSize = size, color = TextSecondary)
+                is MdBlock.Num -> Row(Modifier.padding(start = (b.level * Cfg.mdIndent).dp)) {
+                    Text("${b.num}.", fontSize = fs, color = TextSecondary, fontFamily = ff)
                     Spacer(Modifier.width(6.dp))
-                    RichLine(b.text, size = size, color = color)
+                    RichLine(b.text, size = fs, color = color, lineHeight = lh, ff = ff)
                 }
                 is MdBlock.Quote -> Row(
                     Modifier
@@ -273,7 +289,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .background(CodeBg, RoundedCornerShape(8.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
-                    RichLine(b.text, size = size, color = TextSecondary)
+                    RichLine(b.text, size = fs, color = TextSecondary, lineHeight = lh, ff = ff)
                 }
                 is MdBlock.Rule -> Box(
                     Modifier
@@ -282,7 +298,7 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit = 13.sp) {
                         .background(TextSecondary.copy(alpha = 0.25f), RoundedCornerShape(1.dp))
                         .padding(top = 0.5.dp)
                 )
-                is MdBlock.Para -> RichLine(b.text, size = size, color = color)
+                is MdBlock.Para -> RichLine(b.text, size = fs, color = color, lineHeight = lh, ff = ff)
             }
         }
     }
@@ -295,11 +311,19 @@ private fun RichLine(
     size: TextUnit,
     color: Color = TextPrimary,
     lineHeight: TextUnit = 20.sp,
-    weight: FontWeight? = null
+    weight: FontWeight? = null,
+    ff: FontFamily = FontFamily.Default
 ) {
     val segs = remember(text) { Emojis.split(text) }
     if (segs.size == 1 && segs[0] is Emojis.Seg.Txt) {
-        Text(mdInline(text), fontSize = size, color = color, lineHeight = lineHeight, fontWeight = weight ?: FontWeight.Normal)
+        Text(
+            mdInline(text),
+            fontSize = size,
+            color = color,
+            lineHeight = lineHeight,
+            fontWeight = weight ?: FontWeight.Normal,
+            fontFamily = ff
+        )
         return
     }
     //表情跟文字混排：FlowRow 自动换行；行内 AnnotatedString 塞不进图片，所以这里不走 mdInline
@@ -312,7 +336,8 @@ private fun RichLine(
                         fontSize = size,
                         color = color,
                         lineHeight = lineHeight,
-                        fontWeight = weight ?: FontWeight.Normal
+                        fontWeight = weight ?: FontWeight.Normal,
+                        fontFamily = ff
                     )
                 }
                 is Emojis.Seg.Pic -> EmojiView(s.item, size)

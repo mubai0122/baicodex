@@ -130,6 +130,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -197,6 +198,7 @@ import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import b.ai.ui.theme.LocalUserFont
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.sample
@@ -249,6 +251,16 @@ fun ChatScreen(
     //随机 placeholder：候选来自设置（默认「请输入问题」），发送后重抽一次
     val hintWords = hintPool(LocalContext.current)
     var hint by remember(hintWords) { mutableStateOf(hintWords.random()) }
+    //错误回复「去配置」：缺模型去模型页（0），缺权限去外观页的自查项（2），缺环境去扩展页（3）
+    val fixTo: (String) -> Unit = { kind ->
+        onOpenSettings(
+            when (kind) {
+                Agent.ERR_MODEL -> 0
+                Agent.ERR_PERM -> 2
+                else -> 3
+            }
+        )
+    }
     var fullInput by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ChatMsg?>(null) }
     var menuFor by remember { mutableStateOf<ChatMsg?>(null) }
@@ -280,6 +292,21 @@ fun ChatScreen(
     //滑动联动：滑动期间全站玻璃降成平涂，停手 180ms 再升回来（气泡一屏五条，每条一次离屏必掉帧）
     val listState = glassLazyListState()
     val scope = rememberCoroutineScope()
+    //用户是不是停在底部：以列表真实布局为准（最后一条可见、且底部余量 <24dp），不用「消息数」猜
+    val den = LocalDensity.current
+    val bottomSlack = with(den) { 24.dp.roundToPx() }
+    val atBottom by remember(Agent.sessionId, bottomSlack) {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()
+            info.totalItemsCount == 0 ||
+                (last != null && last.index >= info.totalItemsCount - 1 &&
+                    last.offset + last.size - info.viewportEndOffset <= bottomSlack)
+        }
+    }
+    //是否跟随贴底：滚动停下来时按落点决定（落到底部就继续跟，翻到上面就停跟）；
+    //发送消息、点「回到底部」都会把它强制拉回 true
+    var follow by remember(Agent.sessionId) { mutableStateOf(true) }
     //底部面板的采样源：录制整页内容；面板自己浮在页面外，不会采到自己
     val (pageTop, pageBottom) = backdropPageInset()
     val pageBackdrop = rememberLayerBackdrop {
@@ -338,6 +365,8 @@ fun ChatScreen(
         focusMgr.clearFocus()
         val fallback = if (imgs.isNotEmpty()) ctx.getString(R.string.cs_see_images)
         else ctx.getString(R.string.cs_see_files)
+        //发出去就把「跟随贴底」拉回来：紧接着的消息增长会自己把列表滚到最新一条
+        follow = true
         Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
     } //发送当前输入
 
@@ -366,18 +395,34 @@ fun ChatScreen(
         withFrameNanos { }
         val last = Agent.messages.size - 1
         if (last >= 0) listState.scrollToItem(last, Int.MAX_VALUE / 2)
+        follow = true
     }
-    //流式增量贴底：节流 120ms，别每帧滚（每帧 scroll 就是每帧重新摆放列表，8.3ms 预算撑不住）
+    //滚动落点决定是否继续跟随：程序自己贴底也会走这里，落到尾部就还是 true，不影响
     LaunchedEffect(Agent.sessionId) {
-        snapshotFlow { Agent.streamText.length to Agent.messages.size }
-            .sample(120)
+        var began = false
+        snapshotFlow { listState.isScrollInProgress }.collect { on ->
+            if (on) {
+                //手指一动手就暂停跟随：正在翻历史时被拽回底部是最烦的那种抢
+                follow = false
+                began = true
+            } else if (began) {
+                began = false
+                follow = atBottom //落到底部就恢复跟随
+            }
+        }
+    }
+    //内容增长贴底：新消息落库 / 流式字变长 / 工具卡片插入都算；节流 100ms，别每帧重新摆放列表
+    LaunchedEffect(Agent.sessionId, follow) {
+        if (!follow) return@LaunchedEffect
+        snapshotFlow {
+            //三路拼成一个数，任何一路动了都会 emit
+            Agent.messages.size * 1_000_000L + Agent.streamText.length + Agent.runningTools.size * 10_000_000L
+        }
+            .sample(100)
             .collect {
-                val info = listState.layoutInfo
-                val visibleLast = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-                //只在用户本来就停在底部时贴底，手动翻看历史就别抢
-                if (info.totalItemsCount > 0 && visibleLast >= info.totalItemsCount - 2) {
-                    listState.scrollToItem(info.totalItemsCount - 1, Int.MAX_VALUE / 2)
-                }
+                val n = listState.layoutInfo.totalItemsCount
+                //贴底用瞬移不用动画：流式期间每 100ms 一段动画会互相打架，看着就是抽搐
+                if (n > 0) listState.scrollToItem(n - 1, Int.MAX_VALUE / 2)
             }
     }
 
@@ -469,7 +514,8 @@ fun ChatScreen(
                                 m,
                                 onToolDetail = { detail = it },
                                 onLongPress = { menuFor = it },
-                                onSumLong = { sumMenu = it }
+                                onSumLong = { sumMenu = it },
+                                onFix = fixTo
                             )
                         }
                     }
@@ -493,7 +539,8 @@ fun ChatScreen(
                                 m,
                                 onToolDetail = { detail = it },
                                 onLongPress = { menuFor = it },
-                                onSumLong = { sumMenu = it }
+                                onSumLong = { sumMenu = it },
+                                onFix = fixTo
                             )
                         }
                         }
@@ -507,6 +554,35 @@ fun ChatScreen(
                     //流式增量：边收边渲染，落库前就看得见字在长
                     if (Agent.busy && Agent.runningHere() && (Agent.streamText.isNotEmpty() || Agent.streamReason.isNotEmpty())) {
                         item("live") { StreamingMsg(Agent.streamText, Agent.streamReason) }
+                    }
+                    //分句间隙的「对方正在输入…」：只在这一条已发完、下一条还没到时出现
+                    if (Agent.typing && Cfg.waifuMode && Cfg.waifuTyping) {
+                        item("typing") { TypingBubble() }
+                    }
+                }
+                //回到底部：翻在历史里时浮在右下角，点它带动画跳回最新一条；AI 输出中图标变蓝提示有新内容
+                if (!atBottom) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 14.dp, bottom = 10.dp)
+                            .size(38.dp)
+                            .liquidBg(CircleShape, tint = if (Agent.busy) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
+                            .tap {
+                                follow = true
+                                scope.launch {
+                                    val n = listState.layoutInfo.totalItemsCount
+                                    if (n > 0) listState.animateScrollToItem(n - 1)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = if (Agent.busy) AccentBlue else TextPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -886,9 +962,10 @@ private fun TopBar(
             .padding(start = 10.dp, end = 12.dp, top = 8.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        //触摸目标提到 40dp：34dp 在窄边距下手指容易落空，图标本身仍是 18dp 不变
         Box(
             Modifier
-                .size(34.dp)
+                .size(40.dp)
                 .liquidBg(CircleShape, tint = SurfaceMuted, gate = 0.dp)
                 .tap { onOpenDrawer() },
             contentAlignment = Alignment.Center
@@ -2001,33 +2078,77 @@ private fun BranchArrow(glyph: String, onClick: () -> Unit) {
 } //分支箭头
 
 /**
- * 分句气泡的弹出动画（Waifu 模式的「Q弹」）：只给刚追加的那一条跑一次 spring，
- * 历史消息一律静态，否则进会话会满屏一起弹。
+ * 「对方正在输入…」占位气泡：分句模式下这条已发出、下一条还在等打字时长时出现。
+ * 三个点按 360ms 循环轮流点亮，不做无限动画对象，只用一个相位整数驱动，开销最小。
+ */
+@Composable
+private fun TypingBubble() {
+    var phase by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(360)
+            phase = (phase + 1) % 3
+        }
+    } //三点轮流亮
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        if (Cfg.avatarOn) {
+            AvatarView(Avatar.aiPath(), 28.dp)
+            Spacer(Modifier.width(6.dp))
+        }
+        Row(
+            Modifier
+                .liquidBg(bubbleShape(14.dp))
+                .padding(horizontal = bubblePadH(12.dp), vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.cs_typing), fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.width(3.dp))
+            repeat(3) { i ->
+                Text(
+                    "·",
+                    fontSize = 14.sp,
+                    color = if (i == phase) TextPrimary else TextSecondary.copy(alpha = 0.35f)
+                )
+            }
+        }
+    }
+} //正在输入占位
+
+/**
+ * 分句气泡的弹出动画：只给刚追加的那一条跑一次 spring，历史消息一律静态，
+ * 否则进会话会满屏一起弹。
+ * 两套手感：
+ *   · 普通（Q弹）：0.84 起弹、damping 0.42，会过头一点再落回来，像苹果 Messages；
+ *   · 真实引擎：damping 0.78 不回头，配合淡入 + 上浮，更像原生列表插入，不喧宾夺主。
  * 动画值只在 graphicsLayer 的 lambda 里读 —— 走绘制阶段，不触发重组、不重新排版。
  */
 @Composable
 private fun BubbleBounce(id: Long, end: Boolean, content: @Composable () -> Unit) {
-    val on = Cfg.waifuMode && Cfg.waifuBounce
+    val on = Cfg.waifuMode && (Cfg.waifuBounce || Cfg.waifuReal)
+    //真实引擎下即使关了「Q弹」也要播：它换的是另一套更克制的动画
+    val real = Cfg.waifuMode && Cfg.waifuReal
     //首次组合时就把「这条是不是刚来的」定下来，之后重组不再变，滚动时旧消息不会跟着弹
     val fresh = remember(id) { on && id == Agent.lastAppendId }
     if (!fresh) {
         content()
         return
     }
-    //0.84 起弹到 1：damping 0.42 会过头一点点再落回来，就是苹果 Messages 那个手感
     val a = remember(id) { Animatable(0f) }
     LaunchedEffect(id) {
-        a.animateTo(1f, spring(dampingRatio = 0.42f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))
+        val d = if (real) 0.78f else 0.42f
+        a.animateTo(1f, spring(dampingRatio = d, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))
     }
     Box(
         Modifier.graphicsLayer {
             val p = a.value
-            val s = 0.84f + 0.16f * p
+            val s = if (real) 0.96f + 0.04f * p else 0.84f + 0.16f * p
             scaleX = s
             scaleY = s
+            //真实引擎带淡入，更像消息刚到达；Q弹模式保持原样不透明
+            alpha = if (real) 0.35f + 0.65f * p else 1f
             //从说话人那一侧冒出来：用户贴右下、AI 贴左下
             transformOrigin = TransformOrigin(if (end) 1f else 0f, 1f)
-            translationY = (1f - p) * 10.dp.toPx()
+            translationY = (1f - p) * (if (real) 14f else 10f).dp.toPx()
         }
     ) { content() }
 } //分句气泡 Q弹
@@ -2037,7 +2158,9 @@ private fun MessageItem(
     m: ChatMsg,
     onToolDetail: (ChatMsg) -> Unit,
     onLongPress: (ChatMsg) -> Unit,
-    onSumLong: (ChatMsg) -> Unit
+    onSumLong: (ChatMsg) -> Unit,
+    /** 错误回复的「去配置」：传 errKind，由调用方决定跳哪一页设置 */
+    onFix: (String) -> Unit = {}
 ) {
     when (m.role) {
         "user" -> Row(
@@ -2050,7 +2173,11 @@ private fun MessageItem(
                     .weight(1f, fill = false)
                     .liquidBg(bubbleShape(14.dp), tint = AccentBlueSoft)
                     .longPress { onLongPress(m) }
-                    .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
+                    //左右内边距额外加上「全局缩进」
+                    .padding(
+                        horizontal = bubblePadH(12.dp) + Cfg.globalIndent.dp,
+                        vertical = bubblePadV(12.dp)
+                    )
                     ) {
                 Column {
                     if (m.images.isNotEmpty()) {
@@ -2063,7 +2190,12 @@ private fun MessageItem(
                         FileChips(files = m.files)
                         Spacer(Modifier.height(6.dp))
                     }
-                    Text(m.content, fontSize = 13.sp, color = TextPrimary)
+                    Text(
+                        m.content,
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        fontFamily = LocalUserFont.current
+                    )
                 }
             }
             if (Cfg.avatarOn) {
@@ -2081,9 +2213,18 @@ private fun MessageItem(
                 AvatarView(Avatar.aiPath(), 28.dp)
                 Spacer(Modifier.width(6.dp))
             }
+            //真实分句引擎下 AI 气泡收窄到屏幕的 3/7，更像真人一条条发短消息；普通模式仍占满可用宽度
+            val narrow = Cfg.waifuMode && Cfg.waifuReal
+            val maxW = (LocalConfiguration.current.screenWidthDp * 3 / 7).dp
+            val mt = m.meta
+            //外层只负责宽度与统计行；气泡背景/内边距放在内层，统计才能落在框外
             Column(
                 Modifier
-                    .weight(1f)
+                    .weight(1f, fill = !narrow)
+                    .then(if (narrow) Modifier.widthIn(max = maxW) else Modifier)
+            ) {
+            Column(
+                Modifier
                     .liquidBg(bubbleShape(14.dp))
                     .longPress { onLongPress(m) }
                     .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
@@ -2091,6 +2232,11 @@ private fun MessageItem(
                 if (m.reasoning.isNotBlank()) ThinkBlock(m)
                 if (m.content.isNotBlank()) {
                     MdText(m.content, color = if (m.isError) DangerRed else TextPrimary)
+                }
+                //错误回复：正文下方挂按钮——重发 / 仍然重发，缺配置类再多一个「去配置」
+                if (m.isError) {
+                    Spacer(Modifier.height(8.dp))
+                    ErrActions(m, onFix)
                 }
                 if (m.toolCalls.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
@@ -2111,13 +2257,19 @@ private fun MessageItem(
                         )
                     }
                 }
-                val mt = m.meta
-                if (mt != null && (Cfg.showUsage || Cfg.showMeta)) {
+                //分句模式下统计行不进气泡：这里只在非分句模式画在框内
+                if (mt != null && !Cfg.waifuMode && (Cfg.showUsage || Cfg.showMeta)) {
                     Spacer(Modifier.height(6.dp))
                     MetaLine(mt)
                 }
                 }
+                //分句模式：所有分句发完之后，统计行挂在最后一条气泡外面（下方），像聊天时间戳
+                if (mt != null && Cfg.waifuMode && (Cfg.showUsage || Cfg.showMeta)) {
+                    Spacer(Modifier.height(4.dp))
+                    MetaLine(mt)
+                }
             }
+        }
     }
 } //单条消息渲染
 
@@ -2720,6 +2872,39 @@ private fun PromptDialog(
         }
     }
 } //编辑重发 / 带提示重生成的输入弹窗
+
+/**
+ * 错误回复按钮组（消息回复式错误处理）。
+ *   · 重发：把 head 退回这条错误上方的用户消息，原地重跑这一轮；
+ *   · 仍然重发：无视这次失败，把当初那条用户消息当新消息再发一次；
+ *   · 去配置：只有 errKind 非空（缺模型 / 缺权限 / 缺环境）才出现，点了跳对应设置页。
+ */
+@Composable
+private fun ErrActions(m: ChatMsg, onFix: (String) -> Unit) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        ErrChip(stringResource(R.string.cs_fail_retry), primary = true) { Agent.retryErr(m.id) }
+        ErrChip(stringResource(R.string.cs_fail_again)) { Agent.resendErr(m.id) }
+        if (m.errKind.isNotBlank()) ErrChip(stringResource(R.string.cs_err_go_cfg)) { onFix(m.errKind) }
+    }
+} //错误回复按钮组
+
+/** 错误气泡里的一个小按钮：主按钮蓝底白字，其余灰底 */
+@Composable
+private fun ErrChip(text: String, primary: Boolean = false, onClick: () -> Unit) {
+    Text(
+        text,
+        fontSize = 11.sp,
+        color = if (primary) Color.White else TextPrimary,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = Modifier
+            .liquidBg(RoundedCornerShape(9.dp), tint = if (primary) AccentBlue else SurfaceMuted)
+            .tap { onClick() }
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    )
+} //错误按钮小块
 
 //输入区上方那排信息面板同一时刻只能有一个；用枚举代替一堆布尔量，避免「点模型弹出运行模式」这类串台
 enum class InfoPanel { None, Attach, Cfg, Skill, Tag, Model, Mode, Persona }

@@ -30,6 +30,8 @@ object Layout {
     const val COMPRESS = "data/compress"
     /** 统计导出：用量报表这类，库里查完落这里给用户拿走 */
     const val STAT = "data/statistics"
+    /** Rust 内核数据根：凭据 / 配置 / 迁移标记与自管主密钥都在这里（meta/master.key） */
+    const val KERNEL = "data/kernel"
 
     /** 图片根 */
     const val IMG = "img"
@@ -46,7 +48,7 @@ object Layout {
     const val APK = "cache/update"
 
     /** 全部需要预先建出来的目录：少一层各写一次 mkdirs */
-    private val DIRS = listOf(CFG, PREFS, USER, COMPRESS, STAT, WALL, AVATAR, CHAT, FACE, BRAND, SHOT, ATTACH, APK)
+    private val DIRS = listOf(CFG, PREFS, USER, COMPRESS, STAT, KERNEL, WALL, AVATAR, CHAT, FACE, BRAND, SHOT, ATTACH, APK)
 
     private fun root(ctx: Context): File = ctx.filesDir
 

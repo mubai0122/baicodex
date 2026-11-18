@@ -131,8 +131,7 @@ fun DrawerHost(
     val widthPx = with(LocalDensity.current) { panelWidth.toPx() }
     //整页右滑召唤的起手区：只认屏幕左侧三分之一，中间和右边一律让给列表滚动
     val openZonePx = with(LocalDensity.current) { (maxWidth * 0.34f).toPx() }
-    //左边缘热区起手的容差：手指从边缘往里落几毫米也算边缘起手
-    val edgeSlackPx = with(LocalDensity.current) { 48.dp.toPx() }
+    //左边缘热区已移除：起手容差直接用整页 34% 起手区，不再单铺一层遮挡顶栏
     val shiftPx = with(LocalDensity.current) { PushShift.toPx() }
     val density = LocalDensity.current.density
     //顶栏那一条（系统栏 + 顶栏按钮行）不参与右滑召唤，点按钮就不会被拖拽手势抢走
@@ -216,16 +215,8 @@ fun DrawerHost(
                     )
             ) { CompositionLocalProvider(LocalDrawerWidth provides panelWidth) { panel() } }
         }
-        //关闭态才铺左边缘热区：往外拖直接跟手拉开（这里以前错绑了 dragToClose，边缘起手要过半才留得住）
-        if (gestures && !open) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(32.dp)
-                    .pointerInput(widthPx, topGuardPx, edgeSlackPx) { dragToOpen(ctl, widthPx, topGuardPx, edgeSlackPx) }
-            )
-        }
+        //关闭态不再单独铺左边缘热区：整页 dragToOpen 的起手区已经是屏宽左 34%，
+        //这层 32dp 全高的兄弟节点会压在最上层把顶栏汉堡按钮左半也让给它，点一下只进拖拽手势、不上报点击
     }
 } //抽屉宿主
 

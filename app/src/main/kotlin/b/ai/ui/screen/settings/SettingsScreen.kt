@@ -1,4 +1,5 @@
 package b.ai.ui.screen.settings
+import b.ai.native.security.BxKernel
 import b.ai.ui.dialog.guardStateText
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.dialog.GuardBusyDialog
@@ -33,6 +34,7 @@ import b.ai.ui.widget.FloatTab
 import b.ai.ui.widget.FloatTabBar
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.LocalPicker
+import b.ai.ui.widget.MdText
 import b.ai.ui.widget.PickItem
 import b.ai.ui.widget.PickSheet
 import b.ai.ui.widget.SectionTitle
@@ -59,7 +61,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import android.os.Handler
+import android.os.Build
 import android.os.Looper
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -133,6 +137,8 @@ import b.ai.core.model.voice.AsrPresets
 import b.ai.core.data.io.Backup
 import b.ai.native.security.Guard
 import b.ai.core.cfg.app.Cfg
+import b.ai.device.sys.island.Island
+import b.ai.device.sys.island.Vendor
 import b.ai.core.cfg.app.Lang
 import b.ai.net.mcp.Mcp
 import b.ai.native.security.Mask
@@ -188,6 +194,22 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.res.stringResource
 import b.ai.R
+//miuix 风格滑杆自绘要用的一批：Canvas 画轨道、pointerInput 吃拖动、offset 摆滑块
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import b.ai.ui.theme.FontStore
+import b.ai.ui.theme.LocalAiFont
+import b.ai.ui.theme.LocalUserFont
+import kotlin.math.roundToInt
 
 private val SettingsTabs = listOf(
     FloatTab(R.string.se_001) { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
@@ -197,6 +219,9 @@ private val SettingsTabs = listOf(
     FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_006) { c -> Icon(Icons.Filled.Info, null, tint = c, modifier = Modifier.size(18.dp)) }
 ) //设置分类：模型 / 对话 / 外观 / 扩展 / 统计 / 关于（权限已并入对话，语音并入模型；索引按标签匹配）
+
+/** Markdown 排版预览用的样例：标题、正文、行内样式、列表、引用、代码块各一段，改参数立刻能看出差别 */
+private const val MD_PREVIEW = "## 小标题\n\n正文示例：这里有 `行内代码`、**加粗**和 *斜体*。\n\n- 一级列表项\n  - 二级列表项\n- 另一项\n\n> 引用的一行话\n\n```kotlin\nval hello = \"world\"\n```"
 
 /** 色系主题名字，索引与 theme 的 ThemeTint 一一对应 */
 private val TINT_NAMES = listOf(
@@ -233,7 +258,12 @@ private val SettingIndex = listOf(
     SettingEntry(R.string.se_032, R.string.se_003, hintRaw = ""),
     SettingEntry(R.string.se_033, R.string.se_003, R.string.se_034),
     SettingEntry(R.string.se_035, R.string.se_003, R.string.se_036),
-    SettingEntry(R.string.se_037, R.string.se_003, hintRaw = ""),
+    SettingEntry(R.string.se_037, R.string.se_003, hintRaw = "预测性返回 手势", pageId = "ui_nav"),
+    //外观总页整包：Markdown 排版、卡片外观、玻璃质感都在这一页，搜索命中后直接落进去
+    SettingEntry(R.string.se_pg_ui_theme, R.string.se_003, hintRaw = "卡片圆角 玻璃 背景 主题色 字号 输入框", pageId = "ui_look"),
+    SettingEntry(R.string.se_pg_md, R.string.se_003, hintRaw = "Markdown 行距 段间距 缩进 留白 代码字号 排版 预览", pageId = "ui_md"),
+    //外观新增的字体与控件外观：字体文件 / 各气泡字体 / 全局缩进 / 弹窗圆角 / miuix 滑块
+    SettingEntry(R.string.se_032, R.string.se_003, hintRaw = "字体 字体文件 气泡字体 导入 全局缩进 弹窗圆角 滑块 miuix 轨道 主题色", pageId = "ui_look"),
     SettingEntry(R.string.se_038, R.string.se_004, R.string.se_039),
     SettingEntry(R.string.se_040, R.string.se_004, R.string.se_041),
     SettingEntry(R.string.se_042, R.string.se_004, R.string.se_043),
@@ -504,9 +534,9 @@ fun SettingsScreen(
                         "chat_session" -> chatSessionSec(stats, onOpenStars)
                         "chat_tags" -> promptTagSec()
                         "chat_perm" -> chatPermSec()
-                        "ui_theme" -> uiThemeSec()
+                        "ui_look" -> uiLookSec()
+                        "ui_md" -> mdSec()
                         "ui_person" -> uiPersonSec(onOpenPet)
-                        "ui_input" -> uiInputSec()
                         "ui_nav" -> uiNavSec()
                         "ui_emoji" -> emojiSec()
                         "ext_auto" -> extAutoSec(
@@ -525,6 +555,7 @@ fun SettingsScreen(
                         )
                         "ext_tool" -> extToolSec()
                         "ext_ws" -> extWsSec()
+                        "ext_linux" -> extLinuxSec()
                         //生态与专区：返回条已经带标题，这里只列四个专区入口，不重复写标题
                         "ext_hub" -> item {
                             CardBox {
@@ -561,7 +592,7 @@ fun SettingsScreen(
     }
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open) {
         //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
         PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
@@ -620,6 +651,8 @@ fun SettingsScreen(
         if (triggerDraft) TriggerDialog(onClose = { triggerDraft = false })
         pick?.let { (t, l) -> PickSheet(t, l) { pick = null } }
         if (WsPurge.open) WsPurgeDialog { WsPurge.open = false }
+        //工作区「浏览」：目录选择器与绑定卡是同一个弹窗，在它内部切换
+        if (WorkspacePick.open) WorkspaceDialog { WorkspacePick.open = false }
     }
 } //设置界面
 
@@ -1221,6 +1254,28 @@ private fun LazyListScope.chatInjectSec() {
                 stringResource(R.string.se_wbounce_d),
                 Cfg.waifuBounce
             ) { Cfg.waifuBounce = it }
+            Spacer(Modifier.height(8.dp))
+            //更真实的分句引擎：切得更碎 + 气泡收窄到屏宽 3/7 + 更自然的弹出动画
+            CapSwitch(
+                stringResource(R.string.se_wreal_t),
+                stringResource(R.string.se_wreal_d),
+                Cfg.waifuReal
+            ) { Cfg.waifuReal = it }
+            Spacer(Modifier.height(8.dp))
+            //打字速度：既决定两条气泡的间隔，也决定「正在输入」停留多久
+            GlassSlider(
+                stringResource(R.string.se_wtype_t),
+                stringResource(R.string.se_wtype_v, Cfg.waifuTypeMs),
+                Cfg.waifuTypeMs.toFloat(),
+                20f..150f,
+                step = 5f
+            ) { Cfg.waifuTypeMs = it.toInt() }
+            Spacer(Modifier.height(8.dp))
+            CapSwitch(
+                stringResource(R.string.se_wtyping_t),
+                stringResource(R.string.se_wtyping_d),
+                Cfg.waifuTyping
+            ) { Cfg.waifuTyping = it }
         }
         Spacer(Modifier.height(8.dp))
         CapSwitch(
@@ -1627,8 +1682,9 @@ private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f,
 /**工具权限一次先铺多少条：几十个下拉同屏组合是设置页最贵的一帧 */
 private const val TOOL_PAGE = 12
 
-//外观分类：一张卡一个 item，视口外的卡不组合
-private fun LazyListScope.uiThemeSec() {
+//外观总页：语言 / 主题色 / 字号 / 背景 / 玻璃质感与卡片外观 / 输入框 / Markdown 排版 / 输入提示
+//（原「主题」与「输入与质感」两页合并：用户要的所有观感配置都收在这一页，不再分家）
+private fun LazyListScope.uiLookSec() {
     item {
         //切语言：存完配置要重建 Activity，界面才会真的换语言
         val act = LocalContext.current as? Activity
@@ -1718,6 +1774,114 @@ private fun LazyListScope.uiThemeSec() {
     }
     item {
         Spacer(Modifier.height(14.dp))
+        SectionTitle("字体", "全局字体 / 我方气泡 / AI 回复各设一份，导入后立刻生效")
+        CardBox {
+            //字体目录每次进页面重扫：用户可能刚用文件管理器把字体丢进 fonts
+            var fontVer by remember { mutableIntStateOf(0) }
+            val opts = remember(fontVer) { FontStore.options() }
+            val ctx = LocalContext.current
+            val pickFont = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+                if (uri != null) {
+                    val f = FontStore.import(ctx, uri)
+                    if (f != null) {
+                        fontVer = fontVer + 1
+                        Toast.makeText(ctx, "已导入 " + f.name, Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(ctx, "导入失败：只支持 ttf / otf / ttc", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } //导入字体
+            SelectField(
+                "全局字体",
+                FontStore.label(Cfg.uiFontFile),
+                opts,
+                desc = "所有没单独指定字体的文字都跟它走",
+                optionLabel = { if (it.isEmpty()) "系统默认" else FontStore.label(it) },
+                isSelected = { Cfg.uiFontFile == it },
+                onSelect = { Cfg.uiFontFile = it }
+            )
+            SelectField(
+                "我方气泡字体",
+                FontStore.label(Cfg.userFontFile),
+                opts,
+                optionLabel = { if (it.isEmpty()) "跟随全局" else FontStore.label(it) },
+                isSelected = { Cfg.userFontFile == it },
+                onSelect = { Cfg.userFontFile = it }
+            )
+            SelectField(
+                "AI 回复字体",
+                FontStore.label(Cfg.aiFontFile),
+                opts,
+                optionLabel = { if (it.isEmpty()) "跟随全局" else FontStore.label(it) },
+                isSelected = { Cfg.aiFontFile == it },
+                onSelect = { Cfg.aiFontFile = it }
+            )
+            Spacer(Modifier.height(8.dp))
+            GlassSlider(
+                "全局缩进",
+                "${Cfg.globalIndent} dp",
+                Cfg.globalIndent.toFloat(),
+                0f..32f,
+                1f
+            ) { Cfg.globalIndent = it.toInt() }
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GhostButton("导入字体文件", modifier = Modifier.height(36.dp)) {
+                    pickFont.launch(arrayOf("*/*"))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (opts.size <= 1) "还没有自定义字体：点左边导入 ttf / otf" else "已识别 ${opts.size - 1} 个字体文件",
+                    fontSize = 10.5.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("弹窗与滑块", "弹窗圆角、滑块配色")
+        CardBox {
+            GlassSlider(
+                "弹窗圆角",
+                "${Cfg.dialogCorner} dp",
+                Cfg.dialogCorner.toFloat(),
+                0f..32f,
+                2f
+            ) { Cfg.dialogCorner = it.toInt() }
+            GlassSlider(
+                "滑块轨道浓度",
+                "${Cfg.sliderTrack}%",
+                Cfg.sliderTrack.toFloat(),
+                5f..60f,
+                5f
+            ) { Cfg.sliderTrack = it.toInt() }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("滑块继承主题色", fontSize = 13.5.sp, color = TextPrimary)
+                    Text(
+                        if (Cfg.sliderAccent) "激活段与滑块描边跟主题色" else "淡灰轨道 + 白色滑块",
+                        fontSize = 10.5.sp,
+                        color = TextSecondary
+                    )
+                }
+                Switch(
+                    checked = Cfg.sliderAccent,
+                    onCheckedChange = { Cfg.sliderAccent = it },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = SurfaceWhite,
+                        checkedTrackColor = AccentBlue
+                    )
+                )
+            }
+        }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_bg), stringResource(R.string.se_bg_d))
         CardBox {
             SelectField(
@@ -1743,7 +1907,132 @@ private fun LazyListScope.uiThemeSec() {
             BgImagePick()
         }
     }
-} //主题与背景子页
+    //玻璃质感：卡片 / 底栏 / 模糊 / 折射 / 高光 / 乳白，外加两种模式都生效的卡片外观（不透明度、圆角）
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_glass_card),
+                stringResource(R.string.se_glass_card_d),
+                Cfg.glassCard
+            ) { Cfg.glassCard = it }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                stringResource(R.string.se_tactile),
+                stringResource(R.string.se_tactile_d),
+                Cfg.tactileBtn
+            ) { Cfg.tactileBtn = it }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                stringResource(R.string.se_glass_bar),
+                stringResource(R.string.se_glass_bar_d),
+                Cfg.glassBar
+            ) { Cfg.glassBar = it }
+            Spacer(Modifier.height(10.dp))
+            //模糊强度 0-20dp：0 只留折射，越大越糊；底栏与底部面板共用这个值
+            //走统一滑杆：这样才跟其它滑杆一样能继承主题色 / 调轨道浓度
+            GlassSlider(
+                stringResource(R.string.se_glass_blur),
+                stringResource(R.string.se_glass_blur_v, Cfg.glassBlur),
+                Cfg.glassBlur.toFloat(),
+                0f..20f,
+                step = 1f
+            ) { Cfg.glassBlur = it.toInt() }
+            Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
+            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
+            if (Cfg.glassCard) {
+                Spacer(Modifier.height(10.dp))
+                GlassSlider("折射强度", "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
+                    Cfg.glassLens = it.toInt()
+                }
+                Text("0 = 边缘不做透镜变形；越大边缘弯曲越明显", fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider("高光强度", "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
+                    Cfg.glassHi = it.toInt()
+                }
+                Text("卡片上沿那道亮边的浓度，50% 是默认", fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider("乳白遮罩", "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
+                    Cfg.glassVeil = it.toInt()
+                }
+                Text("压住背景保住文字可读，0% 完全透明", fontSize = 10.sp, color = TextSecondary)
+            }
+            //卡片不透明度：两种模式都生效——白卡模式直接调白底 alpha，玻璃模式按比例缩乳白遮罩
+            Spacer(Modifier.height(10.dp))
+            GlassSlider("卡片不透明度", "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
+                Cfg.cardAlpha = it.toInt()
+            }
+            Text("100% 是原来的观感；调低会露出背景，文本可读性也随之下降", fontSize = 10.sp, color = TextSecondary)
+            //卡片圆角：预设档位滑杆，不做输入框；白卡与玻璃卡共用
+            Spacer(Modifier.height(10.dp))
+            GlassSlider("卡片圆角", "${Cfg.cardCorner} dp", Cfg.cardCorner.toFloat(), 0f..32f, step = 4f) {
+                Cfg.cardCorner = it.toInt()
+            }
+            Text("0 = 直角，16dp 是默认，32dp 接近胶囊；白卡与玻璃卡一起变", fontSize = 10.sp, color = TextSecondary)
+        }
+    }
+    //输入框：浮动输入、全屏入口、超长粘贴转文件
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_196),
+                stringResource(R.string.se_197),
+                Cfg.floatInput
+            ) { Cfg.floatInput = it }
+            Spacer(Modifier.height(10.dp))
+            //新逻辑：超 700 字才出现全屏入口；关掉就让它一直挂在语音右边
+            CapSwitch(
+                stringResource(R.string.se_fullin_t),
+                stringResource(R.string.se_fullin_d),
+                Cfg.fullInputNew
+            ) { Cfg.fullInputNew = it }
+            Spacer(Modifier.height(10.dp))
+            //粘贴超长文本自动转文件：默认开，阈值滑杆 500 起、500 一档
+            CapSwitch(
+                stringResource(R.string.se_paste_t),
+                stringResource(R.string.se_paste_d),
+                Cfg.pasteToFile
+            ) { Cfg.pasteToFile = it }
+            if (Cfg.pasteToFile) {
+                Spacer(Modifier.height(6.dp))
+                //同上：统一走 miuix 滑杆，500 一档，能继承主题色
+                GlassSlider(
+                    stringResource(R.string.se_paste_limit),
+                    stringResource(R.string.se_paste_limit_v, Cfg.pasteLimit),
+                    Cfg.pasteLimit.toFloat(),
+                    500f..20000f,
+                    step = 500f
+                ) { Cfg.pasteLimit = it.toInt() }
+                Text(stringResource(R.string.se_paste_limit_d), fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+    }
+    //输入提示文案：输入框空白时的占位提示
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
+        CardBox {
+            Field(
+                label = stringResource(R.string.se_199),
+                value = Cfg.hintText,
+                onValueChange = { Cfg.hintText = it },
+                placeholder = stringResource(R.string.se_200),
+                singleLine = false,
+                minLines = 3
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (Cfg.hintText.isBlank()) stringResource(R.string.se2_hint_none)
+                else stringResource(R.string.se2_hint_n, Cfg.hintText.lines().count { it.isNotBlank() }),
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
+        }
+    }
+} //外观总页
 
 //个性化子页：头像、气泡胶囊与桌宠
 private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
@@ -1798,143 +2087,30 @@ private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
     }
     } //个性化子页
 
-//输入与质感子页：输入框、粘贴转文件、玻璃质感与提示文案
-private fun LazyListScope.uiInputSec() {
-    item {
-        SectionTitle(stringResource(R.string.se_033), stringResource(R.string.se_195))
-        CardBox {
-            CapSwitch(
-                stringResource(R.string.se_196),
-                stringResource(R.string.se_197),
-                Cfg.floatInput
-            ) { Cfg.floatInput = it }
-            Spacer(Modifier.height(10.dp))
-            //新逻辑：超 700 字才出现全屏入口；关掉就让它一直挂在语音右边
-            CapSwitch(
-                stringResource(R.string.se_fullin_t),
-                stringResource(R.string.se_fullin_d),
-                Cfg.fullInputNew
-            ) { Cfg.fullInputNew = it }
-            Spacer(Modifier.height(10.dp))
-            //粘贴超长文本自动转文件：默认开，阈值滑杆 500 起、500 一档
-            CapSwitch(
-                stringResource(R.string.se_paste_t),
-                stringResource(R.string.se_paste_d),
-                Cfg.pasteToFile
-            ) { Cfg.pasteToFile = it }
-            if (Cfg.pasteToFile) {
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.se_paste_limit), fontSize = 14.sp, color = TextPrimary)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        stringResource(R.string.se_paste_limit_v, Cfg.pasteLimit),
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                }
-                androidx.compose.material3.Slider(
-                    value = Cfg.pasteLimit.toFloat(),
-                    onValueChange = { Cfg.pasteLimit = (it / 500f).toInt() * 500 },
-                    valueRange = 500f..20000f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(stringResource(R.string.se_paste_limit_d), fontSize = 10.sp, color = TextSecondary)
-            }
-        }
-    }
-    item {
-        Spacer(Modifier.height(14.dp))
-        SectionTitle(stringResource(R.string.se_glass_t), stringResource(R.string.se_glass_d))
-        CardBox {
-            CapSwitch(
-                stringResource(R.string.se_glass_card),
-                stringResource(R.string.se_glass_card_d),
-                Cfg.glassCard
-            ) { Cfg.glassCard = it }
-            Spacer(Modifier.height(10.dp))
-            CapSwitch(
-                stringResource(R.string.se_tactile),
-                stringResource(R.string.se_tactile_d),
-                Cfg.tactileBtn
-            ) { Cfg.tactileBtn = it }
-            Spacer(Modifier.height(10.dp))
-            CapSwitch(
-                stringResource(R.string.se_glass_bar),
-                stringResource(R.string.se_glass_bar_d),
-                Cfg.glassBar
-            ) { Cfg.glassBar = it }
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.se_glass_blur), fontSize = 14.sp, color = TextPrimary)
-                Spacer(Modifier.weight(1f))
-                Text(stringResource(R.string.se_glass_blur_v, Cfg.glassBlur), fontSize = 11.sp, color = TextSecondary)
-            }
-            //模糊强度 0-20dp：0 只留折射，越大越糊；底栏与底部面板共用这个值
-            androidx.compose.material3.Slider(
-                value = Cfg.glassBlur.toFloat(),
-                onValueChange = { Cfg.glassBlur = it.toInt() },
-                valueRange = 0f..20f,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
-            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
-            if (Cfg.glassCard) {
-                Spacer(Modifier.height(10.dp))
-                GlassSlider("折射强度", "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
-                    Cfg.glassLens = it.toInt()
-                }
-                Text("0 = 边缘不做透镜变形；越大边缘弯曲越明显", fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider("高光强度", "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
-                    Cfg.glassHi = it.toInt()
-                }
-                Text("卡片上沿那道亮边的浓度，50% 是默认", fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider("乳白遮罩", "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
-                    Cfg.glassVeil = it.toInt()
-                }
-                Text("压住背景保住文字可读，0% 完全透明", fontSize = 10.sp, color = TextSecondary)
-            } else {
-                //没开玻璃卡片时才有意义：实底白卡要多透，直接决定卡片和背景图的关系
-                Spacer(Modifier.height(10.dp))
-                GlassSlider("卡片不透明度", "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
-                    Cfg.cardAlpha = it.toInt()
-                }
-                Text("100% 是原来的实底白卡；调低会露出背景，文本可读性也随之下降", fontSize = 10.sp, color = TextSecondary)
-            }
-        }
-    }
-    item {
-        Spacer(Modifier.height(14.dp))
-        SectionTitle(stringResource(R.string.se_035), stringResource(R.string.se_198))
-        CardBox {
-            Field(
-                label = stringResource(R.string.se_199),
-                value = Cfg.hintText,
-                onValueChange = { Cfg.hintText = it },
-                placeholder = stringResource(R.string.se_200),
-                singleLine = false,
-                minLines = 3
-            )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                if (Cfg.hintText.isBlank()) stringResource(R.string.se2_hint_none)
-                else stringResource(R.string.se2_hint_n, Cfg.hintText.lines().count { it.isNotBlank() }),
-                fontSize = 11.sp,
-                color = TextSecondary
-            )
-        }
-    }
-} //输入与质感子页
+//（原「输入与质感」子页内容已合并到「外观」总页 uiLookSec）
 
 private fun LazyListScope.uiNavSec() {
+    //悬浮聊天窗：先自查权限，再给开关，最后是窗口参数——三项都在一页里调完
     item {
         Spacer(Modifier.height(14.dp))
-        //悬浮聊天窗：常驻其他应用上层的简约聊天，回复按 Markdown 渲染
         SectionTitle("悬浮聊天窗", "在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调")
         CardBox {
             val fctx = LocalContext.current
+            val overlayOk = Pet.canShow(fctx)
+            val aliveOk = Perms.batteryFree(fctx)
+            //权限自查：没悬浮窗权限时开关打开也显示不出来，以前只表现为「点了没反应」
+            SelfCheckRow(
+                "悬浮窗权限",
+                if (overlayOk) "已授权，可以浮在别的应用上层" else "未授权，开关打开也不会显示",
+                overlayOk
+            ) { PetGrant.openOverlaySetting(fctx) }
+            Spacer(Modifier.height(8.dp))
+            SelfCheckRow(
+                "后台保活",
+                if (aliveOk) "已在电池优化白名单，切到后台不会被掐掉" else "不在白名单，锁屏久了悬浮窗可能被系统收走",
+                aliveOk
+            ) { Perms.openSpecial(fctx, Perms.SP_BATTERY) }
+            Spacer(Modifier.height(10.dp))
             CapSwitch(
                 "显示悬浮聊天窗",
                 if (Cfg.fcOn) "已显示：拖标题栏换位置，点右上角 × 收起" else "关着：打开后在别的应用上层也能直接聊",
@@ -1952,20 +2128,85 @@ private fun LazyListScope.uiNavSec() {
                     PetGrant.openOverlaySetting(fctx)
                 }
             }
+            //窗口参数：改完立刻 apply()，窗口不重建、位置不变
+            Spacer(Modifier.height(10.dp))
+            GlassSlider("悬浮窗宽度", "${Cfg.fcW} dp", Cfg.fcW.toFloat(), 220f..480f, step = 10f) {
+                Cfg.fcW = it.toInt()
+                FChat.apply()
+            }
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("悬浮窗高度", "${Cfg.fcH} dp", Cfg.fcH.toFloat(), 260f..900f, step = 20f) {
+                Cfg.fcH = it.toInt()
+                FChat.apply()
+            }
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("整窗透明度", "${Cfg.fcAlpha}%", Cfg.fcAlpha.toFloat(), 40f..100f, step = 5f) {
+                Cfg.fcAlpha = it.toInt()
+                FChat.apply()
+            }
+            Text("100% 完全不透明；调低能透出后面的内容，但字会更难认", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("回复字号", "${Cfg.fcFont} sp", Cfg.fcFont.toFloat(), 10f..22f, step = 1f) {
+                Cfg.fcFont = it.toInt()
+                FChat.apply()
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                //位置复位：把 fcX / fcY 归 -1，apply() 时会落回默认的右上角
+                GhostButton("位置复位到右上角", modifier = Modifier.height(36.dp)) {
+                    Cfg.fcX = -1
+                    Cfg.fcY = -1
+                    FChat.apply()
+                }
+                GhostButton(
+                    if (Cfg.fcOn) "立刻收起" else "立刻显示",
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    if (Cfg.fcOn) {
+                        Cfg.fcOn = false
+                        FChat.hide()
+                    } else if (Pet.canShow(fctx)) {
+                        Cfg.fcOn = true
+                        FChat.show(fctx)
+                    } else {
+                        PetGrant.openOverlaySetting(fctx)
+                    }
+                }
+            }
         }
     }
+    //返回手势：预测性返回 + 直达系统手势导航设置
     item {
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_037), stringResource(R.string.se2_back_sub))
         CardBox {
+            val gctx = LocalContext.current
             CapSwitch(
                 stringResource(R.string.se2_back_title),
                 stringResource(R.string.se2_back_desc),
                 Cfg.predictiveBack
             ) { Cfg.predictiveBack = it }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "安卓 13 起支持「预测性返回」：滑动手势时先把当前页缩小、露出上一页，中途松手还能取消。" +
+                    "系统没开这个能力时开关不会有效果，开关状态由应用自己记。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(8.dp))
+            GhostButton("去系统「手势导航」设置", modifier = Modifier.height(36.dp)) {
+                //直接跳到系统手势导航页：各家 ROM 的入口不同，跳不过去就退到应用详情页
+                runCatching {
+                    //用字面量 action：部分编译 SDK 里没有 ACTION_GESTURE_NAVIGATION_SETTINGS 这个常量
+                    gctx.startActivity(
+                        Intent("android.settings.GESTURE_NAVIGATION_SETTINGS")
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }.onFailure { Perms.openAppSettings(gctx) }
+            }
         }
     }
-} //外观分类：字号 / 输入框 / 手势
+} //外观分类：悬浮与手势
 
 //扩展分类：一张卡一个 item，没滚到的卡不组合（工具权限那张卡最重，几十个下拉）
 private fun LazyListScope.extAutoSec(
@@ -1973,6 +2214,42 @@ private fun LazyListScope.extAutoSec(
     onNewFlow: () -> Unit,
     onNewTrigger: () -> Unit
 ) {
+    //运行总览：三类自动化各自的开关状态，外加一键全停 / 全恢复
+    item {
+        SectionTitle("运行总览", "三类自动化各自的启用情况；不想被打扰时可以一键全停，之后一键恢复")
+        CardBox {
+            val tasks0 = Schedules.list
+            val flows0 = Flows.list
+            val rules0 = Triggers.list
+            Text(
+                "定时任务 " + tasks0.count { it.on } + "/" + tasks0.size +
+                    " · 工作流 " + flows0.count { it.on } + "/" + flows0.size +
+                    " · 通知触发 " + rules0.count { it.on } + "/" + rules0.size,
+                fontSize = 13.sp,
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton("全部暂停", modifier = Modifier.weight(1f).height(38.dp)) {
+                    //先取快照再逐个切：toggle 会改 state，边遍历边改会漏
+                    tasks0.filter { it.on }.forEach { Schedules.toggle(it.id, false) }
+                    flows0.filter { it.on }.forEach { Flows.toggle(it.id, false) }
+                    rules0.filter { it.on }.forEach { Triggers.toggle(it.id, false) }
+                }
+                GhostButton("全部恢复", modifier = Modifier.weight(1f).height(38.dp)) {
+                    tasks0.filterNot { it.on }.forEach { Schedules.toggle(it.id, true) }
+                    flows0.filterNot { it.on }.forEach { Flows.toggle(it.id, true) }
+                    rules0.filterNot { it.on }.forEach { Triggers.toggle(it.id, true) }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "全部恢复只把已有的条目重新打开，不会新建或改时间",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+    }
     item {
         SectionTitle(stringResource(R.string.se_044), stringResource(R.string.se2_task_sub))
         CardBox {
@@ -2082,7 +2359,153 @@ private fun LazyListScope.extAutoSec(
             }
         }
     }
+    //到点能不能跑起来：定时任务三件套（精确闹钟 / 通知 / 后台保活）缺一个就会「设了没动静」
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("到点能不能跑起来", "定时任务靠系统闹钟、通知、后台保活三件套，缺一样就会出现「设了没反应」")
+        CardBox {
+            val c = LocalContext.current
+            val exact = Alarms.canExact(c)
+            val noti = Build.VERSION.SDK_INT < 33 ||
+                Perms.granted(c, android.Manifest.permission.POST_NOTIFICATIONS)
+            val alive = Perms.batteryFree(c)
+            SelfCheckRow(
+                "精确闹钟",
+                if (exact) "已授权，按设定的时刻触发" else "未授权，系统会把触发时间往后挪几分钟到几十分钟",
+                exact
+            ) { Alarms.openExactAlarmSettings(c) }
+            Spacer(Modifier.height(8.dp))
+            SelfCheckRow(
+                "通知",
+                if (noti) "已开启，到点会弹通知" else "已关闭，到点不会提醒你（自动执行仍然会跑）",
+                noti
+            ) { Perms.openNotiSettings(c) }
+            Spacer(Modifier.height(8.dp))
+            SelfCheckRow(
+                "后台保活",
+                if (alive) "已在电池优化白名单，锁屏后任务不会被掐掉" else "不在白名单，锁屏 / 后台一段时间后可能被系统杀掉",
+                alive
+            ) { Perms.openSpecial(c, Perms.SP_BATTERY) }
+        }
+    }
+    //接下来要跑：定时任务与已排期的工作流按时间合并，只列前三条
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("接下来要跑", "定时任务与已排期的工作流按时间排的前三条")
+        CardBox {
+            val soon = (Schedules.active.map { it.at to it.prompt.replace("\n", " ").take(18) } +
+                Flows.list.filter { it.on && it.at > 0L }.map { it.at to ("工作流 · " + it.name) })
+                .sortedBy { it.first }
+                .take(3)
+            if (soon.isEmpty()) {
+                Text("还没有排好的计划。上面点「管理」新建一条，或给工作流设个时间。", fontSize = 12.sp, color = TextSecondary)
+            } else {
+                soon.forEachIndexed { i, (at, name) ->
+                    if (i > 0) Spacer(Modifier.height(6.dp))
+                    Text(Alarms.fmt(at) + "  ·  " + name, fontSize = 12.sp, color = TextPrimary)
+                }
+            }
+        }
+    }
+    //任务通知与灵动岛：原挂在「外观」页，本质是任务通知的显示策略，跟自动化放一起
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("任务通知与灵动岛", "每轮任务挂一条常驻通知，小米 / 华为等机型自动上岛；缺权限就只剩「跑了但没动静」")
+        CardBox {
+            val c = LocalContext.current
+            val notiOk = Build.VERSION.SDK_INT < 33 ||
+                Perms.granted(c, android.Manifest.permission.POST_NOTIFICATIONS)
+            val aliveOk = Perms.batteryFree(c)
+            SelfCheckRow(
+                "通知权限",
+                if (notiOk) "已开启，任务状态会实时出现在通知栏 / 岛上" else "已关闭，任务照常跑但看不到任何提示",
+                notiOk
+            ) { Perms.openNotiSettings(c) }
+            Spacer(Modifier.height(8.dp))
+            SelfCheckRow(
+                "后台保活",
+                if (aliveOk) "已在电池优化白名单，锁屏后通知不会被收走" else "不在白名单，锁屏久了通知可能被系统清掉",
+                aliveOk
+            ) { Perms.openSpecial(c, Perms.SP_BATTERY) }
+            Spacer(Modifier.height(10.dp))
+            Text("当前机型识别：${Vendor.rom.label}", fontSize = 10.sp, color = TextSecondary)
+            //通道级问题自查项覆盖不到（通知分类被关 / 厂商焦点通知没开），原样保留这条说明
+            val blocked = Island.blockedReason()
+            if (blocked != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    blocked,
+                    fontSize = 11.sp,
+                    color = DangerRed,
+                    modifier = Modifier
+                        .liquidBg(RoundedCornerShape(8.dp), tint = DangerRedSoft)
+                        .tap { Perms.openNotiSettings(c) }
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                )
+                Text(
+                    "点上面这行直达系统通知设置；OPPO / 一加还要在「电池」里允许后台运行，否则锁屏后通知会被系统收走",
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                "任务通知",
+                "每轮任务开始发一条常驻通知；小米 / 华为主机会自动挂到岛上",
+                Cfg.islandOn
+            ) { Cfg.islandOn = it }
+            Spacer(Modifier.height(10.dp))
+            CapSwitch(
+                "完成后继续驻留",
+                "任务跑完不立刻撤通知，先切成完成态在岛 / 通知栏留一会儿",
+                Cfg.islandDone
+            ) { Cfg.islandDone = it }
+            if (Cfg.islandDone) {
+                Spacer(Modifier.height(8.dp))
+                GlassSlider(
+                    "驻留时长",
+                    "${Cfg.islandDoneSec} 秒",
+                    Cfg.islandDoneSec.toFloat(),
+                    0f..300f,
+                    step = 10f
+                ) { Cfg.islandDoneSec = it.toInt() }
+                Text("0 秒 = 任务完成后立刻撤掉", fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+    }
 } //自动化子页
+
+/**
+ * 一行自查：状态徽标（已通过 / 未通过）+ 名称 + 说明；未通过时右侧给「去开启」，点了跳系统页。
+ * 徽标用文字而不是纯色圆点：圆点看不出到底是「装饰」还是「检查结果」。
+ */
+@Composable
+private fun SelfCheckRow(name: String, desc: String, ok: Boolean, onFix: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (ok) "已通过" else "未通过",
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (ok) OkGreen else DangerRed,
+            modifier = Modifier
+                .background(if (ok) OkGreen.copy(alpha = 0.12f) else DangerRedSoft, RoundedCornerShape(6.dp))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(name, fontSize = 13.sp, color = TextPrimary)
+            Text(desc, fontSize = 11.sp, color = if (ok) TextSecondary else DangerRed)
+        }
+        if (!ok) {
+            Text(
+                "去开启",
+                fontSize = 12.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { onFix() }.padding(horizontal = 8.dp, vertical = 6.dp)
+            )
+        }
+    }
+} //自查一行
 
 //接入子页：A2A 节点、搜索平台、MCP 服务
 private fun LazyListScope.extLinkSec(
@@ -2364,15 +2787,39 @@ private fun LazyListScope.extToolSec() {
 
 //工作区子页：数据根目录、本机 Linux 环境
 private fun LazyListScope.extWsSec() {
-    item {
-        //工作区绑定统一在对话页右上角 </> 里做，设置页只留一句指路
-        SectionTitle(stringResource(R.string.wp_hint_t), stringResource(R.string.wp_hint_d))
-    }
+    //前置检查：工作区能绑到共享存储的前提是「全部文件访问」，没给就会绑不进任意目录
     item {
         Spacer(Modifier.height(14.dp))
-        LinuxSection()
+        SectionTitle("工作区前置检查", "工作区就是 AI 读写文件的地方；这一项没过，绑目录时会一直失败")
+        CardBox {
+            val c = LocalContext.current
+            val allOk = Perms.allFiles()
+            SelfCheckRow(
+                "全部文件访问",
+                if (allOk) "已开启，可以读写共享存储里的任意目录" else "未开启，工作区只能落在应用自己的私有目录里",
+                allOk
+            ) { Perms.openAllFiles(c) }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "不同机型入口名字不一样：可能是「所有文件的管理权限」「文件和媒体」或「存储权限」；跑 Root / Shizuku 模式时不依赖它。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+    }
+    item {
+        //设置页内联整张工作区卡：数据根、绑定路径、目录统计与绑定操作都在这里，
+        //「浏览」按钮走 WorkspacePick，由设置页的弹窗挂载点接住并弹出目录选择器
+        WorkspaceSection(onBrowse = { WorkspacePick.open = true })
     }
 } //工作区子页
+
+/** Linux 沙箱单独一页：与工作区解耦，整页就是一个终端 + 一键装开发环境 */
+private fun LazyListScope.extLinuxSec() {
+    item {
+        LinuxTermPage()
+    }
+} //Linux 沙箱子页
 
 //还剩文件沙箱一个专区的计划清单：页面上先讲清会有什么，别点进去一片空白
 private val EX_BOX_PLAN = listOf(
@@ -2554,6 +3001,56 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     }
     }
 
+    //Rust 内核：并行接入阶段的可见入口，只跑自检，不参与任何业务读写（删掉这块即可回滚）
+    item {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var out by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf("") }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_kernel_t))
+    CardBox {
+        Text(stringResource(R.string.se_kernel_d), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            //版本 + 状态：没带内核的 ABI（v7a）如实说明，不假装成功
+            Text("v" + BxKernel.version().ifBlank { "—" }, fontSize = 12.sp, color = TextPrimary)
+            Spacer(Modifier.weight(1f))
+            val okNow = out.contains("\"ok\":true")
+            val (label, tint) = when {
+                !BxKernel.available -> stringResource(R.string.se_kernel_na) to TextSecondary
+                okNow -> stringResource(R.string.se_kernel_ok) to OkGreen
+                out.isBlank() -> stringResource(R.string.se_kernel_run) to TextSecondary
+                else -> stringResource(R.string.se_kernel_fail) to DangerRed
+            }
+            Text(label, fontSize = 11.sp, color = tint)
+        }
+        Spacer(Modifier.height(10.dp))
+        GhostButton(
+            if (busy) stringResource(R.string.se_kernel_busy) else stringResource(R.string.se_kernel_run),
+            modifier = Modifier.height(38.dp)
+        ) {
+            if (busy) return@GhostButton
+            busy = true
+            scope.launch {
+                //自检会真写盘（临时桶写完即删），放到 IO 线程跑
+                val r = withContext(Dispatchers.IO) { BxKernel.selfcheck() }
+                busy = false
+                out = r
+                err = if (r.isBlank()) BxKernel.lastError() else ""
+            }
+        }
+        if (out.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(out, fontSize = 9.sp, color = TextSecondary)
+        }
+        if (err.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(err, fontSize = 9.sp, color = DangerRed)
+        }
+    }
+    }
+
     item {
     val ctx = LocalContext.current
     Spacer(Modifier.height(14.dp))
@@ -2648,13 +3145,19 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
                 bkBusy = true
                 bkTip = ctx.getString(R.string.se_bk_doing)
                 scope.launch {
+                    //把导出过程里的每一行日志收起来：失败时把最后一条原因（头不对 / 密钥不对）直接给用户看
+                    val logs = java.util.Collections.synchronizedList(ArrayList<String>())
                     val ok = withContext(Dispatchers.IO) {
                         runCatching {
-                            ctx.contentResolver.openOutputStream(uri)?.use { out -> Backup.export(ctx, out) } ?: false
+                            ctx.contentResolver.openOutputStream(uri)?.use { out ->
+                                Backup.export(ctx, out, Cfg.bkSecrets) { logs.add(it) }
+                            } ?: false
                         }.getOrDefault(false)
                     }
                     bkBusy = false
-                    bkTip = ctx.getString(if (ok) R.string.se_bk_ok else R.string.se_bk_fail)
+                    bkTip = if (ok) ctx.getString(R.string.se_bk_ok)
+                    else logs.lastOrNull()?.let { ctx.getString(R.string.se_bk_fail_x, it) }
+                        ?: ctx.getString(R.string.se_bk_fail)
                 }
             }
         }
@@ -2664,17 +3167,30 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
                 bkBusy = true
                 bkTip = ctx.getString(R.string.se_bk_doing)
                 scope.launch {
+                    //同上：解不开 / 不是 zip 这类原因直接抛到界面上，不让用户只看到一句「失败」
+                    val logs = java.util.Collections.synchronizedList(ArrayList<String>())
                     val ok = withContext(Dispatchers.IO) {
                         runCatching {
-                            ctx.contentResolver.openInputStream(uri)?.use { ins -> Backup.stageImport(ctx, ins) } ?: false
+                            ctx.contentResolver.openInputStream(uri)?.use { ins ->
+                                Backup.stageImport(ctx, ins) { logs.add(it) }
+                            } ?: false
                         }.getOrDefault(false)
                     }
                     bkBusy = false
-                    bkTip = ctx.getString(if (ok) R.string.se_bk_imported else R.string.se_bk_bad)
+                    bkTip = if (ok) ctx.getString(R.string.se_bk_imported)
+                    else logs.lastOrNull()?.let { ctx.getString(R.string.se_bk_bad_x, it) }
+                        ?: ctx.getString(R.string.se_bk_bad)
                 }
             }
         }
         Text(stringResource(R.string.se_bk_note), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(8.dp))
+        //加密配置开关：默认开，导出时把凭据密文一起打进包里，换机能直接恢复
+        CapSwitch(
+            stringResource(R.string.se_bk_secrets),
+            stringResource(R.string.se_bk_secrets_d),
+            Cfg.bkSecrets
+        ) { Cfg.bkSecrets = it }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(stringResource(R.string.se_bk_export), modifier = Modifier.height(38.dp)) {
@@ -3571,246 +4087,6 @@ private fun NotiLimitRow() {
 } //通知注入条数
 
 @Composable
-private fun CmdLine(cmd: String, onCopy: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(cmd, fontSize = 10.sp, color = TextPrimary, modifier = Modifier.weight(1f))
-        PolicyChip(stringResource(R.string.se_297), false) { onCopy(cmd) }
-    }
-} //一行可复制命令
-
-@Composable
-private fun LinuxSection() {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    var log by remember { mutableStateOf("") }
-    var test by remember { mutableStateOf("") }
-    var installed by remember { mutableStateOf(Linux.installed()) }
-    var tick by remember { mutableStateOf(0) }
-    //依赖安装：单独一套按钮与日志，别和「解包」共用 busy
-    var depsTick by remember { mutableStateOf(0) }
-    var depsBusy by remember { mutableStateOf(false) }
-    var depsLog by remember { mutableStateOf("") }
-    var depsOk by remember { mutableStateOf(Linux.depsInstalled()) }
-    //终端式进度：总阶段数 + 当前阶段文案，配合逐行日志画进度条
-    var stepCur by remember { mutableStateOf(0) }
-    var stepTotal by remember { mutableStateOf(0) }
-    var stepText by remember { mutableStateOf("") }
-    LaunchedEffect(depsTick) {
-        if (depsTick == 0) {
-            depsOk = Linux.depsInstalled()
-            return@LaunchedEffect
-        }
-        depsBusy = true
-        depsLog = ctx.getString(R.string.se_298)
-        val main = Handler(Looper.getMainLooper())
-        val sb = StringBuilder()
-        withContext(Dispatchers.IO) {
-            Linux.installDeps { line ->
-                sb.append(line).append('\n')
-                val text = sb.toString()
-                main.post { depsLog = text }
-            }
-        }
-        depsOk = Linux.depsInstalled()
-        depsBusy = false
-    }
-    LaunchedEffect(tick) {
-        if (tick == 0) {
-            installed = Linux.installed()
-            return@LaunchedEffect
-        }
-        busy = true
-        stepCur = 0
-        stepTotal = 0
-        stepText = ""
-        log = ctx.getString(R.string.se_299)
-        val main = Handler(Looper.getMainLooper())
-        val sb = StringBuilder()
-        withContext(Dispatchers.IO) {
-            Linux.install(
-                force = installed,
-                onStep = { cur, total, txt ->
-                    main.post {
-                        stepCur = cur
-                        stepTotal = total
-                        stepText = txt
-                    }
-                }
-            ) { line ->
-                sb.append(line).append('\n')
-                val text = sb.toString()
-                main.post { log = text }
-            }
-        }
-        installed = Linux.installed()
-        busy = false
-    }
-    fun copy(text: String) {
-        val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-        cm.setPrimaryClip(ClipData.newPlainText("bai", text))
-    }
-
-    SectionTitle(
-        stringResource(R.string.se_300),
-        stringResource(R.string.se_301)
-    )
-    CardBox {
-        val mode = Cfg.workMode
-        Text(
-            when {
-                installed -> stringResource(R.string.se_302)
-                Linux.prootReady() -> stringResource(R.string.se_303)
-                else -> stringResource(R.string.se_304)
-            },
-            fontSize = 13.sp,
-            color = if (installed) OkGreen else TextSecondary
-        )
-        if (mode != WorkMode.ROOT) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                stringResource(R.string.se_305) +
-                    stringResource(R.string.wm_cur_fmt, stringResource(mode.labelRes)),
-                fontSize = 10.sp,
-                color = TextSecondary
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(if (busy) stringResource(R.string.se_307) else if (installed) stringResource(R.string.se_308) else stringResource(R.string.se_309), modifier = Modifier.height(38.dp)) {
-                if (!busy) tick++
-            }
-            GhostButton(
-                if (depsBusy) stringResource(R.string.se_310) else if (depsOk) stringResource(R.string.se_311) else stringResource(R.string.se_312),
-                modifier = Modifier.height(38.dp)
-            ) {
-                when {
-                    depsBusy || busy -> Unit
-                    !installed -> depsLog = ctx.getString(R.string.se_313)
-                    else -> depsTick++
-                }
-            }
-            GhostButton(stringResource(R.string.se_314), modifier = Modifier.height(38.dp)) {
-                scope.launch {
-                    test = ctx.getString(R.string.se_315)
-                    test = withContext(Dispatchers.IO) {
-                        val r = Linux.selfTest()
-                        if (r.ok) r.out else ctx.getString(R.string.se_316, r.code, r.out.take(300))
-                    }
-                }
-            }
-        }
-        //依赖状态和日志分开显示：状态一行看全貌，日志看 apt 到底卡在哪
-        if (installed) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                Linux.depReport().joinToString("  ") { (k, v) -> if (v) "✓$k" else "✗$k" },
-                fontSize = 10.sp,
-                color = if (depsOk) OkGreen else TextSecondary
-            )
-        }
-        if (depsLog.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            TerminalBox(
-                title = stringResource(R.string.se_310),
-                cur = if (depsBusy) 1 else 0,
-                total = if (depsBusy) 1 else 0,
-                step = if (depsBusy) stringResource(R.string.se_310) else "",
-                text = depsLog
-            )
-        }
-        if (log.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            TerminalBox(
-                title = stringResource(R.string.se_300),
-                cur = stepCur,
-                total = stepTotal,
-                step = if (busy) stepText else "",
-                text = log
-            )
-        }
-        if (test.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(test, fontSize = 10.sp, color = TextPrimary)
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.se_317), fontSize = 11.sp, color = TextSecondary)
-        CmdLine("apt-get update && apt-get install -y openjdk-17-jdk-headless") { copy(it) }
-        CmdLine("apt-get install -y git curl unzip python3 python3-pip") { copy(it) }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            stringResource(R.string.se_318) +
-                stringResource(R.string.se_319),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
-    }
-} //Linux 环境安装卡
-
-/** 终端式进度框：白底等宽字，顶部总进度条 + 当前步骤，日志一长就自动贴底 */
-@Composable
-private fun TerminalBox(
-    title: String,
-    cur: Int,
-    total: Int,
-    step: String,
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    val scroll = rememberScrollState()
-    //跟终端一样，来新行就滚到最底
-    LaunchedEffect(text) { scroll.scrollTo(scroll.maxValue) }
-    val frac = if (total <= 0) 0f else (cur.toFloat() / total).coerceIn(0f, 1f)
-    Column(
-        modifier
-            .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
-            .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(title, fontSize = 11.sp, color = TextPrimary, maxLines = 1)
-            Spacer(Modifier.weight(1f))
-            if (total > 0) Text("$cur/$total", fontSize = 10.sp, color = TextSecondary)
-        }
-        //总进度条：阶段粒度，细到 3dp 不抢眼
-        if (total > 0) {
-            Box(Modifier.fillMaxWidth().height(3.dp).background(SurfaceMuted)) {
-                Box(Modifier.fillMaxWidth(frac).height(3.dp).background(AccentBlue))
-            }
-        }
-        if (step.isNotBlank()) {
-            Text(
-                step,
-                fontSize = 10.sp,
-                color = AccentBlue,
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-            )
-        }
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 96.dp, max = 230.dp)
-                .verticalScroll(scroll)
-                .padding(horizontal = 10.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text,
-                fontSize = 10.sp,
-                lineHeight = 14.sp,
-                fontFamily = FontFamily.Monospace,
-                color = TextPrimary
-            )
-        }
-    }
-} //终端式进度框
-/** 背景图一行：选图 / 清除，图存在时下面跟一条模糊滑杆 */
-@Composable
 private fun BgImagePick() {
     val ctx = LocalContext.current
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -3909,7 +4185,16 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
     }
 } //桌宠入口
 
-/** 玻璃参数滑杆：标题 + 右侧当前值 + 带档位的滑杆 */
+/**
+ * miuix 风格滑杆：标题 + 右侧当前值 + 26dp 粗轨道 + **完整包裹轨道的白色圆形滑块**。
+ *
+ * 几何口径（三条必须一致，否则视觉上歪）：
+ * 1. 轨道高 26dp，滑块直径 32dp —— 滑块比轨道大 6dp，上下各包出 3dp，轨道从滑块中间穿过；
+ * 2. 滑块中心 x = 半滑块宽 + frac × (总宽 − 滑块宽)：两端各留半个滑块，首尾一定能取到极值；
+ * 3. 已填充段**画到滑块中心**为止，不是画到 width×frac —— 后者比分界点少半个滑块，看起来像脱节。
+ * 4. 手指 x → 值：先用 (x − 半滑块宽)/(总宽 − 滑块宽) 求比例，再按 step 吸附。
+ * 触控高度 44dp（Material 最小可点区），Canvas 与滑块都在其中垂直居中。
+ */
 @Composable
 private fun GlassSlider(
     label: String,
@@ -3924,12 +4209,108 @@ private fun GlassSlider(
         Spacer(Modifier.weight(1f))
         Text(valueText, fontSize = 11.sp, color = TextSecondary)
     }
-    val steps = (((range.endInclusive - range.start) / step) - 1).toInt().coerceAtLeast(0)
-    androidx.compose.material3.Slider(
-        value = value,
-        onValueChange = onChange,
-        valueRange = range,
-        steps = steps,
-        modifier = Modifier.fillMaxWidth()
-    )
-} //玻璃参数滑杆
+    val span = (range.endInclusive - range.start).takeIf { it > 0f } ?: 1f
+    val frac = ((value - range.start) / span).coerceIn(0f, 1f)
+    //颜色：轨道始终是淡灰（浓度可调），激活段与滑块描边按「是否继承主题」二选一
+    val trackColor = TextSecondary.copy(alpha = Cfg.sliderTrack / 100f)
+    val activeColor = if (Cfg.sliderAccent) AccentBlue else SurfaceWhite.copy(alpha = 0.92f)
+    val edgeColor = if (Cfg.sliderAccent) AccentBlue else BorderGray
+    var width by remember { mutableIntStateOf(0) }
+    val track = 26.dp
+    val thumb = 32.dp
+    val rowH = 44.dp
+    val thumbPx = with(LocalDensity.current) { thumb.toPx() }
+    val half = thumbPx / 2f
+    //手指 x → 值：Rust 侧 bx_slider_value 同一套公式（见 core/feature/compute/slider.rs），此处为绘制期直算
+    fun pick(x: Float) {
+        val w = width.toFloat()
+        if (w <= 0f) return
+        val usable = (w - thumbPx).coerceAtLeast(1f)
+        var v = range.start + ((x - half) / usable).coerceIn(0f, 1f) * span
+        if (step > 0f) v = range.start + (Math.round((v - range.start) / step) * step)
+        onChange(v.coerceIn(range.start, range.endInclusive))
+    } //坐标换值
+    //滑块中心 x（像素）与轨道可绘制宽度：Canvas 与 thumb 共用，保证分界点严丝合缝
+    val usable = (width - thumbPx).coerceAtLeast(0f)
+    val centerX = half + frac * usable
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(rowH)
+            .onSizeChanged { width = it.width }
+            .pointerInput(range, step, width) { detectTapGestures { pick(it.x) } }
+            .pointerInput(range, step, width) {
+                detectHorizontalDragGestures(onDragStart = { pick(it.x) }) { ch, _ -> pick(ch.position.x) }
+            },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        //轨道 + 已填充段：填充段延伸到滑块中心，圆角与轨道同高的一半
+        Canvas(Modifier.fillMaxWidth().height(track)) {
+            val h = size.height
+            val r = CornerRadius(h / 2f)
+            drawRoundRect(trackColor, size = Size(size.width, h), cornerRadius = r)
+            //填充宽度 = 滑块中心到左端；小于一个圆角直径时按直径画，避免圆角被压扁
+            if (frac > 0f) {
+                val fillW = centerX.coerceAtLeast(h)
+                drawRoundRect(activeColor, size = Size(fillW, h), cornerRadius = r)
+            }
+        }
+        //滑块：白色实心圆 + 细描边，直径 32dp 完整包住 26dp 轨道
+        Box(
+            Modifier
+                .offset { IntOffset((centerX - half).roundToInt(), 0) }
+                .size(thumb)
+                .shadow(3.dp, CircleShape)
+                .background(SurfaceWhite, CircleShape)
+                .border(1.dp, edgeColor, CircleShape)
+        )
+    }
+} //miuix 风格滑杆
+/**
+ * Markdown 排版独立成页：AI 回复正文的字号 / 行距 / 段间距 / 列表缩进 / 左右留白 / 代码字号，
+ * 改完立刻生效，卡片下方用聊天同一套 MdText 做实时预览。
+ */
+private fun LazyListScope.mdSec() {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(
+            "Markdown 显示",
+            "AI 回复的排版：字号、行距、段间距、列表缩进、左右留白与代码块字号；下面预览用的是聊天同一套渲染"
+        )
+        CardBox {
+            GlassSlider("正文字号", "${Cfg.mdFont} sp", Cfg.mdFont.toFloat(), 11f..18f, step = 1f) {
+                Cfg.mdFont = it.toInt()
+            }
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("行距", "${Cfg.mdLine}%", Cfg.mdLine.toFloat(), 100f..220f, step = 5f) {
+                Cfg.mdLine = it.toInt()
+            }
+            Text("100% = 贴着字高，密一点能多看几行；160% 上下读起来最松", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("段间距", "${Cfg.mdGap} dp", Cfg.mdGap.toFloat(), 0f..20f, step = 2f) {
+                Cfg.mdGap = it.toInt()
+            }
+            Text("段落、标题、列表、代码块之间空多少", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("列表缩进", "${Cfg.mdIndent} dp/级", Cfg.mdIndent.toFloat(), 0f..32f, step = 2f) {
+                Cfg.mdIndent = it.toInt()
+            }
+            Text("每深一层缩进多少；0 = 不缩进，只靠符号区分层级", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("左右内边距", "${Cfg.mdPad} dp", Cfg.mdPad.toFloat(), 0f..24f, step = 2f) {
+                Cfg.mdPad = it.toInt()
+            }
+            Text("正文离气泡边缘的距离；长文想留白就加，想贴边就归零", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(8.dp))
+            GlassSlider("代码字号", "${Cfg.mdCode} sp", Cfg.mdCode.toFloat(), 9f..16f, step = 1f) {
+                Cfg.mdCode = it.toInt()
+            }
+            Text("代码块与行内代码的字号，等宽字体单独一档", fontSize = 10.sp, color = TextSecondary)
+            Spacer(Modifier.height(12.dp))
+            Text("预览", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Spacer(Modifier.height(6.dp))
+            //预览直接用聊天同一套 MdText：改哪个参数，这里立刻能看出来
+            MdText(MD_PREVIEW)
+        }
+    }
+} //Markdown 排版子页

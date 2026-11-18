@@ -75,6 +75,22 @@ object Perms {
         }
     } //跳到本应用的系统权限页
 
+    /**
+     * 直达本应用的「通知设置」页。
+     * ColorOS / HyperOS / MIUI 对这个 action 都做了适配，比进应用详情再翻两级快；
+     * 老系统不认就退回应用详情页。
+     */
+    fun openNotiSettings(c: Context) {
+        runCatching {
+            val i = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, c.packageName)
+                .putExtra("app_package", c.packageName)
+                .putExtra("app_uid", c.applicationInfo.uid)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            c.startActivity(i)
+        }.onFailure { openAppSettings(c) }
+    } //直达通知设置
+
     fun openAllFiles(c: Context) {
         runCatching {
             val i = if (Build.VERSION.SDK_INT >= 30) {

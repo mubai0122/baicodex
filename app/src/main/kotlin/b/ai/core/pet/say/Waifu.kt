@@ -52,6 +52,45 @@ object Waifu {
         return clean.ifEmpty { listOf(text.trim()) }
     } //分句
 
-    /** 两条之间的停顿：按字数给，短句快、长句慢，夹在 200–900ms */
-    fun gapMs(s: String): Long = (s.length * 45L).coerceIn(200L, 900L)
+    /**
+     * 两条之间的停顿：按字数 × 打字速度（ms/字）给，短句快、长句慢。
+     * 下限 150ms 保证上一口气泡的弹出动画看得见，上限 5s 防止长句把整轮拖死。
+     */
+    fun gapMs(s: String, msPerChar: Int = 45): Long =
+        (s.length.toLong() * msPerChar.toLong()).coerceIn(150L, 5000L) //两条之间的停顿
+
+    //真实引擎用的两档上限：单条字数上限更小，逗号也当断点
+    private const val REAL_MAX = 26
+
+    /**
+     * 更真实的分句引擎：真人连发短消息不会一段话分两块，而是逗号处也会断开。
+     * 与 split() 的差别：
+     *   · 逗号 / 顿号 / 分号也当断点（但只在单句超过 REAL_MAX 时才断，短句不硬切）；
+     *   · 断点处的标点留在前一句，不做句末补齐；
+     *   · 切出来的每条互不合并，宁可多几条也不给一整块。
+     */
+    fun splitReal(text: String): List<String> {
+        val out = ArrayList<String>()
+        cut(text, SENT).forEach { raw ->
+            val s = raw.trim()
+            if (s.isEmpty()) return@forEach
+            if (s.length <= REAL_MAX) {
+                out.add(s)
+                return@forEach
+            }
+            //长句：逗号处直接断，每段不再合并，保证每条都短
+            cut(s, COMMA).forEach { piece ->
+                val t = piece.trim()
+                if (t.isEmpty()) return@forEach
+                //单段仍然过长（没有逗号的长串）：按 REAL_MAX 硬切
+                if (t.length <= REAL_MAX) {
+                    out.add(t)
+                } else {
+                    t.chunked(REAL_MAX).forEach { c -> if (c.isNotBlank()) out.add(c.trim()) }
+                }
+            }
+        }
+        val clean = out.filter { it.isNotBlank() }
+        return clean.ifEmpty { listOf(text.trim()) }
+    } //真实分句
 } //Waifu 分句

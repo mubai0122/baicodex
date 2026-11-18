@@ -50,6 +50,7 @@ add_library(baicodex SHARED
         runtime/guard.cpp
         runtime/secret.cpp
         jni/blur_jni.cpp
+        jni/calc_jni.cpp
         core/feature/llm/llm.cpp
         jni/llm_jni.cpp
         jni/crypto_jni.cpp
@@ -57,6 +58,7 @@ add_library(baicodex SHARED
         jni/edit_jni.cpp
         jni/guard_jni.cpp
         jni/js_jni.cpp
+        jni/kernel_jni.cpp
         jni/miot_jni.cpp
         jni/net_jni.cpp
         jni/secret_jni.cpp)
@@ -75,22 +77,28 @@ target_compile_features(baicodex PRIVATE cxx_std_17)
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     find_program(CARGO_BIN cargo)
     if(CARGO_BIN)
-        set(RUST_MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/../rust/baiguard/Cargo.toml)
-        set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/rust)
-        set(RUST_LIB ${RUST_TARGET_DIR}/aarch64-linux-android/release/libbaiguard.a)
-        #Rust 侧已拆成多模块，DEPENDS 必须把 src 下所有 .rs 都算上，改动子模块才会重编
-        file(GLOB_RECURSE RUST_SOURCES CONFIGURE_DEPENDS
-                ${CMAKE_CURRENT_SOURCE_DIR}/../rust/baiguard/src/*.rs)
-        add_custom_command(
-                OUTPUT ${RUST_LIB}
+        #Rust 内核在 app/src/main/rust/（原地摊平，无嵌套子层）：cpp/ → main/rust
+        set(RUST_MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/../rust/Cargo.toml)
+        #cargo 的 target 目录必须放在可执行的卷上：工程在 /storage（FUSE，noexec），
+        #依赖里的 build-script / proc-macro 产物在那上面会「Permission denied (os error 13)」。
+        #优先用宿主 HOME（Termux 里是可执行的），没有就退回构建目录（桌面 CI 上没问题）。
+        if(DEFINED ENV{HOME} AND NOT "$ENV{HOME}" STREQUAL "")
+            set(RUST_TARGET_DIR "$ENV{HOME}/.bcx-rust-target/baicodex")
+        else()
+            set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/rust)
+        endif()
+        set(RUST_LIB ${RUST_TARGET_DIR}/aarch64-linux-android/release/libbaicodex.a)
+        #不在 CMake 侧做依赖时间戳：工程在 /storage（FUSE），mtime 精度会让 ninja 认为
+        #build.ninja 永远「脏」（still dirty after 100 tries）；改成每次构建都调一次 cargo，
+        #增量由 cargo 自己判断（没变的 crate 不重编），比 GLOB_RECURSE CONFIGURE_DEPENDS 更稳。
+        add_custom_target(baicodex_rust ALL
                 COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${RUST_TARGET_DIR}
                         ${CARGO_BIN} build --release --target aarch64-linux-android
                         --manifest-path ${RUST_MANIFEST}
-                DEPENDS ${RUST_MANIFEST} ${RUST_SOURCES}
-                COMMENT "cargo build baiguard (aarch64-linux-android)"
+                BYPRODUCTS ${RUST_LIB}
+                COMMENT "cargo build baicodex (aarch64-linux-android)"
                 VERBATIM)
-        add_custom_target(baiguard_rust DEPENDS ${RUST_LIB})
-        add_dependencies(baicodex baiguard_rust)
+        add_dependencies(baicodex baicodex_rust)
         target_compile_definitions(baicodex PRIVATE BAI_RUST=1)
         target_link_libraries(baicodex PRIVATE ${RUST_LIB} log dl m)
         message(STATUS "Rust 层启用：${RUST_LIB}")

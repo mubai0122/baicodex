@@ -105,6 +105,10 @@
                 android:value="floating_pet_overlay" />
         </service>
         <service
+            android:name=".device.sys.island.IslandSvc"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service
             android:name=".device.shell.root.ShizukuShell"
             android:exported="true"
             android:process=":exec" />

@@ -51,6 +51,42 @@ object Linux {
     /** 不再挑工作方式：proot 在 native 目录里，普通 / Shizuku / Root 都能起 */
     fun canRun(): Boolean = proot.isFile
 
+    /** 内嵌终端用的一次启动描述：宿主环境变量 + 本机直接起进程的参数 + 交给 su -c 的整条命令行 */
+    class Launch(val env: Map<String, String>, val argv: List<String>, val cmdline: String)
+
+    /** guest 里的 shell：优先 bash（解包镜像自带），没有就退回 sh */
+    fun guestShell(): String = if (File(rootfs, "bin/bash").isFile) "/bin/bash" else "/bin/sh"
+
+    /**
+     * 组装「在 proot 里起常驻 shell」的启动方式；内嵌终端与一次性执行共用同一套环境。
+     * inner 是 guest 内要执行的 argv（第一个元素是程序本身）。proot 缺失返回 null。
+     */
+    fun launch(inner: List<String>): Launch? {
+        if (!proot.isFile) return null
+        //每次起 proot 前校一次：重装 APK 后 native 路径会变，软链 / 副本失效就是 CANNOT LINK
+        ensureTalloc()
+        val ld = ensureLoader()
+        val env = mapOf(
+            "LD_LIBRARY_PATH" to libs().absolutePath + ":" + nativeDir().absolutePath,
+            "PROOT_TMP_DIR" to tmp().absolutePath,
+            "PROOT_LOADER" to ld.absolutePath
+        )
+        val argv = ArrayList<String>(20)
+        argv += proot.absolutePath
+        argv += listOf("--link2symlink", "-0", "-r", rootfs.absolutePath)
+        argv += listOf("-b", "/dev", "-b", "/proc", "-b", "/sys", "-b", "/storage", "-b", "/sdcard")
+        argv += listOf("-w", "/root")
+        argv += inner
+        //交给 su -c 的是一条字符串：环境变量前缀 + 每个参数按 shell 规则转义
+        val cmdline = buildString {
+            env.forEach { (k, v) -> append(k).append("='").append(v).append("' ") }
+            argv.forEach { append(shq(it)).append(' ') }
+        }.trimEnd()
+        return Launch(env, argv, cmdline)
+    } //组装 proot 启动方式
+
+    private fun shq(s: String) = "'" + s.replace("'", "'\\''") + "'"
+
     private fun blocked(): ShellResult? = if (!proot.isFile) {
         ShellResult(-1, "[linux] 缺少 proot：APK 里的 libproot.so 没解压出来，重装一次 APK")
     } else null //本地起不来时 exec() 自动退回 Root 通道
@@ -135,20 +171,25 @@ object Linux {
         }
         onStep(4, total, "替换 rootfs")
         //校验通过再换上去：旧目录先改名兜底，新目录换名成功后才清掉旧的
+        //一律用 mv 走 shell（root 通道就是 root 执行）：Java 的 renameTo 在属主/label 混杂时直接返回 false，
+        //之前「旧 rootfs 改名失败，中止」就是这么来的
         val old = File(base(), "rootfs.old")
+        exec("rm -rf '${old.absolutePath}'", 120_000L)
+        if (rootfs.exists()) {
+            val mv1 = exec("mv '${rootfs.absolutePath}' '${old.absolutePath}'", 120_000L)
+            if (!mv1.ok || !old.exists()) {
+                onLog("旧 rootfs 改名失败(${mv1.code})：${mv1.out.take(300)}")
+                runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
+                return false
+            }
+        }
+        val mv2 = exec("mv '${stage.absolutePath}' '${rootfs.absolutePath}'", 120_000L)
+        if (!mv2.ok || !rootfs.exists()) {
+            onLog("新 rootfs 替换失败(${mv2.code})：${mv2.out.take(300)}，已回退")
+            runCatching { exec("mv '${old.absolutePath}' '${rootfs.absolutePath}'", 120_000L) }
+            return false
+        }
         runCatching { exec("rm -rf '${old.absolutePath}'", 120_000L) }
-        old.deleteRecursively()
-        if (rootfs.exists() && !rootfs.renameTo(old)) {
-            onLog("旧 rootfs 改名失败，中止")
-            runCatching { stage.deleteRecursively() }
-            return false
-        }
-        if (!stage.renameTo(rootfs)) {
-            onLog("新 rootfs 替换失败，已回退")
-            if (old.exists()) old.renameTo(rootfs)
-            return false
-        }
-        runCatching { old.deleteRecursively() }
         onStep(5, total, "修正属主")
         onLog("解包完成，修正属主…")
         //root 解开的文件属主是 root，改回应用自己：App 才能写 resolv.conf，删 rootfs 也不用惊动 root
@@ -162,11 +203,19 @@ object Linux {
             onLog("已补文件标签")
         }
 
-        onStep(7, total, "写 DNS 与主机名")
+        onStep(7, total, "写 DNS 与 apt 配置")
         //DNS 与主机名先写死，apt 能不能用全看这一步
         runCatching {
             File(rootfs, "etc/resolv.conf").writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
             File(rootfs, "etc/hostname").writeText("bai\n")
+            //本机只有 IPv4 出口，而 ports.ubuntu.com 解析出的 AAAA 会让 apt 一条一条等超时（实测卡十几分钟）：
+            //强制 IPv4 + 缩短超时 + 不重试，update 才能稳定在十几秒内跑完
+            File(rootfs, "etc/apt/apt.conf.d/99bai").apply { parentFile?.mkdirs() }.writeText(
+                "Acquire::ForceIPv4 \"true\";\n" +
+                    "Acquire::http::Timeout \"20\";\n" +
+                    "Acquire::https::Timeout \"20\";\n" +
+                    "Acquire::Retries \"1\";\n"
+            )
         }
         //先删镜像副本再报成功：以后要重装还能从 assets 或外置路径重新取
         runCatching { tar.delete() }

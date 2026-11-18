@@ -6,6 +6,7 @@ import b.ai.ui.widget.Tag
 import b.ai.ui.widget.ToolIcon
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
+import b.ai.core.cfg.app.Cfg
 import android.content.Context
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -93,7 +94,9 @@ fun HostInOverlay(active: Boolean, content: @Composable () -> Unit) {
 
 //玻璃卡片底：深色下是半透明深灰，不然弹窗在深色里会白成一块
 private val GlassWhite: Color get() = if (DarkColors) Color(0xF21B1F26) else Color(0xF2FFFFFF)
-private val CardShape = RoundedCornerShape(20.dp)
+
+/** 弹窗圆角：跟随设置里的「弹窗圆角」（0-32dp），底部吸附卡多给 4dp */
+private val CardShape: RoundedCornerShape get() = RoundedCornerShape(Cfg.dialogCorner.dp)
 
 /** 统一弹窗外壳：玻璃卡片，入场 scale+fade；传了 onDismiss 就支持点卡片外部关闭（强制弹窗不传） */
 @Composable
@@ -141,7 +144,7 @@ fun ScrimCard(onDismiss: (() -> Unit)? = null, content: @Composable ColumnScope.
     }
 } //统一弹窗外壳：玻璃卡片，入场 scale+fade，位置回传给背景模糊层
 
-private val SheetShape = RoundedCornerShape(24.dp)
+private val SheetShape: RoundedCornerShape get() = RoundedCornerShape((Cfg.dialogCorner + 4).dp)
 
 /** 底部吸附卡片：同 ScrimCard 的玻璃底，但从下往上滑入、最大占屏 maxFrac */
 @Composable

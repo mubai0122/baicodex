@@ -58,10 +58,13 @@ val SePages = listOf(
     SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 1),
     SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 1),
     //外观
-    SePage("ui_theme", R.string.se_pg_ui_theme, R.string.se_pg_ui_theme_sub, 2),
+    //外观总页：原来「主题」「输入与质感」两页合并成一页——语言 / 主题色 / 字号 / 背景 / 玻璃质感 /
+    //卡片外观（不透明度、圆角）/ 输入框 / Markdown 排版全在这里，一个子页改完所有观感
+    SePage("ui_look", R.string.se_pg_ui_theme, R.string.se_pg_ui_theme_sub, 2),
+    //Markdown 排版从外观总页拆出来单独一页：这一块参数多、改得勤，混在长页里不好找
+    SePage("ui_md", R.string.se_pg_md, R.string.se_pg_md_sub, 2),
     SePage("ui_person", R.string.se_pg_ui_person, R.string.se_pg_ui_person_sub, 2),
-    SePage("ui_input", R.string.se_pg_ui_input, R.string.se_pg_ui_input_sub, 2),
-    SePage("ui_nav", R.string.se_037, R.string.se2_back_sub, 2),
+    SePage("ui_nav", R.string.se_pg_ui_nav, R.string.se_pg_ui_nav_sub, 2),
     SePage("ui_emoji", R.string.se_pg_emoji, R.string.se_pg_emoji_sub, 2),
     //扩展
     SePage("ext_auto", R.string.se_pg_ext_auto, R.string.se_pg_ext_auto_sub, 3),
@@ -69,6 +72,7 @@ val SePages = listOf(
     SePage("ext_link", R.string.se_pg_ext_link, R.string.se_pg_ext_link_sub, 3),
     SePage("ext_tool", R.string.se_050, R.string.se_235, 3),
     SePage("ext_ws", R.string.se_pg_ext_ws, R.string.se_pg_ext_ws_sub, 3),
+    SePage("ext_linux", R.string.se_pg_linux, R.string.se_pg_linux_sub, 3),
     SePage("ext_hub", R.string.se_hub, R.string.se_hub_sub, 3),
     //生态与专区下的各专区：不列在扩展分类页上，只在 ext_hub 里列
     SePage("ext_mi", R.string.se_hub_mi, R.string.se_pg_mi_sub, 3, parent = "ext_hub"),
@@ -102,4 +106,4 @@ fun seCatOf(id: String): Int = sePage(id)?.cat ?: 0
  * modelTab / chatTab / uiTab / extTab 函数渲染，只是按 key 过滤出对应分区。
  * 底栏分类 → 该分类「默认分区」的 key（点底栏直达时用）。
  */
-val seDefaultKeyByCat = mapOf(0 to "model_cfg", 1 to "chat_ctx", 2 to "ui_theme", 3 to "ext_auto")
+val seDefaultKeyByCat = mapOf(0 to "model_cfg", 1 to "chat_ctx", 2 to "ui_look", 3 to "ext_auto")

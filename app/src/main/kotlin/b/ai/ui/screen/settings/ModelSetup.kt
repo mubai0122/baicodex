@@ -69,6 +69,9 @@ import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.DangerRed
+import b.ai.ui.theme.DangerRedSoft
+import b.ai.core.perm.Perms
+import b.ai.native.security.Vault
 import b.ai.ui.theme.OkGreen
 import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
@@ -198,7 +201,11 @@ fun ModelSetupPanel() {
             ctxTotal = fCtx,
             custom = custom
         )
-        if (effKey.isNotEmpty()) Cfg.setProfileKey(id, effKey)
+        if (effKey.isNotEmpty() && !Cfg.setProfileKey(id, effKey)) {
+            //凭据写失败必须当场说：Key 只在内存里活着，重启就变空（加密库没加载 / 落盘失败）
+            formErr = "API Key 没存进加密库：${Vault.lastError}"
+            return
+        }
         Profiles.upsert(p)
         Profiles.select(id)
         loadForm(p)
@@ -210,6 +217,8 @@ fun ModelSetupPanel() {
         }
         savedTo = ctx.getString(R.string.ms_saved_to, p.label)
         Toast.makeText(ctx, savedTo, Toast.LENGTH_SHORT).show()
+        //旧密文解不开时 Vault 会自动归档重建，这句要让人看到，否则他不知道为什么突然要重填 Key
+        if (Vault.lastError.isNotEmpty()) Toast.makeText(ctx, Vault.lastError, Toast.LENGTH_LONG).show()
     } //保存到当前配置
 
     //拉模型列表：只刷新候选，不动已勾选结果，用的是表单里的 base_url 与 Key
@@ -608,6 +617,33 @@ fun ModelSetupPanel() {
 @Composable
 fun ProfileList() {
     CardBox {
+        //写盘 / 加密库失败常驻提示：保存时那个 Toast 一闪就没了，用户要到重启后才发现配置没存上。
+        //三条来源分开报：models.json 写不进、凭据库写不进、凭据库解不开（桶被锁）
+        val errs = listOfNotNull(
+            Profiles.lastError.takeIf { it.isNotEmpty() },
+            Vault.lastError.takeIf { it.isNotEmpty() },
+            if (Vault.locked()) "凭据库解不开（旧版本的密钥对不上）：重新填一次 API Key 并保存，会自动归档旧库并重建" else null
+        )
+        if (errs.isNotEmpty()) {
+            val ctx = LocalContext.current
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .liquidBg(RoundedCornerShape(10.dp), tint = DangerRedSoft)
+                    .tap { Perms.openAllFiles(ctx) }
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                errs.forEach { e ->
+                    Text(e, fontSize = 11.sp, color = DangerRed)
+                }
+                Text(
+                    "点这里打开「所有文件访问」权限；开着「数据超强加密」时换成正确的备份密钥后重启即可恢复",
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            } //写盘失败提示
+            Spacer(Modifier.height(8.dp))
+        }
         Profiles.list.forEach { p ->
             ProfileRow(p)
             Spacer(Modifier.height(6.dp))

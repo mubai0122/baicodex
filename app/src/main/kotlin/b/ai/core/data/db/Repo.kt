@@ -316,7 +316,7 @@ object Repo {
             "SELECT IFNULL(m.parent_id,0) FROM message m JOIN path p ON m._id=p.id " +
             "WHERE IFNULL(m.parent_id,0)>0) " +
             "SELECT _id,role,content,tool_calls,tool_call_id,tool_name,error,reasoning,images,meta,starred," +
-                "IFNULL(parent_id,0),files,IFNULL(tool_ms,0) FROM message " +
+                "IFNULL(parent_id,0),files,IFNULL(tool_ms,0),IFNULL(err_kind,'') FROM message " +
             "WHERE _id IN (SELECT id FROM path WHERE id>0) ORDER BY _id ASC"
         r().rawQuery(sql, arrayOf(sessionId, sessionId)).use { c ->
             while (c.moveToNext()) {
@@ -338,7 +338,8 @@ object Repo {
                         starred = c.getInt(10) == 1,
                         parentId = c.getLong(11),
                         files = parseList(c.getString(12)),
-                        toolMs = c.getLong(13)
+                        toolMs = c.getLong(13),
+                        errKind = c.getString(14) ?: ""
                     )
                 )
             }
@@ -555,6 +556,7 @@ object Repo {
             put("images", if (m.images.isEmpty()) null else JSONArray(m.images).toString())
             put("files", if (m.files.isEmpty()) null else JSONArray(m.files).toString())
             put("tool_ms", m.toolMs)
+            put("err_kind", m.errKind.ifBlank { null })
             put("meta", m.meta?.toJson()?.toString())
             put("parent_id", parent)
             put("created_at", System.currentTimeMillis())

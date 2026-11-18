@@ -2,6 +2,7 @@ package b.ai.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -10,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import b.ai.core.cfg.app.Cfg
@@ -79,14 +81,23 @@ fun BaiTheme(content: @Composable () -> Unit) {
     //字号缩放：只改 fontScale，不动 density，dp 尺寸不受影响
     val base = LocalDensity.current
     val scale = Cfg.fontScale.coerceIn(0.8f, 1.4f)
+    //字体接线：全局字体 → LocalTextStyle（所有没显式指定 fontFamily 的 Text 都跟它走）；
+    //我方气泡 / AI 回复各有一套自己的 Local，留空时一律继承全局字体
+    val uiFam = FontStore.family(Cfg.uiFontFile) ?: FontFamily.Default
+    val aiFam = FontStore.family(Cfg.aiFontFile) ?: uiFam
+    val userFam = FontStore.family(Cfg.userFontFile) ?: uiFam
+    val baseStyle = LocalTextStyle.current
     CompositionLocalProvider(
-        LocalDensity provides Density(base.density, base.fontScale * scale)
+        LocalDensity provides Density(base.density, base.fontScale * scale),
+        LocalTextStyle provides baseStyle.copy(fontFamily = uiFam),
+        LocalAiFont provides aiFam,
+        LocalUserFont provides userFam
     ) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = Typography,
+            typography = appTypography(uiFam),
             shapes = AppShapes,
             content = content
         )
     }
-} //统一主题入口：深浅两套配色 + 全局字号缩放
+} //统一主题入口：深浅两套配色 + 全局字号缩放 + 全局字体

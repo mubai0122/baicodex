@@ -37,6 +37,7 @@ import b.ai.core.plugin.skill.Skills
 import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.model.voice.Speak
 import b.ai.core.model.chat.ToolCall
+import b.ai.device.sys.island.Island
 import b.ai.core.pet.say.Waifu
 import b.ai.core.model.chat.WorkMode
 import b.ai.core.plugin.skill.Workflows
@@ -95,6 +96,13 @@ data class PendingTool(
 data class RunningTool(val seq: Long, val name: String, val args: String, val fromSub: Boolean = false)
 
 object Agent {
+    /** 错误回复类型：模型 / 口令 / 地址没配好 —— 去配置落到「模型」页 */
+    const val ERR_MODEL = "model"
+    /** 错误回复类型：缺权限（无障碍 / 悬浮窗 / 其它授权）—— 去配置落到「外观」页的自查项 */
+    const val ERR_PERM = "perm"
+    /** 错误回复类型：本地环境没就绪（proot / 终端依赖）—— 去配置落到「扩展」页 */
+    const val ERR_ENV = "env"
+
     //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     private const val SUMMARY_PROMPT =
         "你是长对话的上下文压缩器。输出四段，段首标题原样照抄，不要序号、不要解释、不要前言：\n" +
@@ -113,73 +121,180 @@ object Agent {
 
     var messages by mutableStateOf<List<ChatMsg>>(emptyList())
         private set
-    var busy by mutableStateOf(false)
-        private set
-    var status by mutableStateOf("")
-        private set
-    var streamText by mutableStateOf("")
-        private set
-    var streamReason by mutableStateOf("")
-        private set
-    var busySince by mutableStateOf(0L)
-        private set
-    var pending by mutableStateOf<PendingTool?>(null)
-        private set
-    /** 正在执行的工具：界面据此立刻画转圈卡，别等结果回来才出现 */
-    var runningTools by mutableStateOf<List<RunningTool>>(emptyList())
-        private set
-    var ask by mutableStateOf<AskReq?>(null)
-        private set
-    var plan by mutableStateOf<PlanReq?>(null)
-        private set
     var sessionId by mutableStateOf<String?>(null)
         private set
     var sessions by mutableStateOf<List<SessionRow>>(emptyList())
         private set
     var sessionTitle by mutableStateOf("")
         private set
+    // ───────────────────────── 会话运行通道 ─────────────────────────
+    //以前整台引擎只有一份运行态（busy / job / stream…）：任一会话在跑，别的会话发消息就只能排队，
+    //还会被上一轮的 pump 牵走。现在按会话拆成 Run，一个会话一根通道，互相不排队、不打断；
+    //界面只读「当前显示会话」那一根的状态，切会话自动跟着换。
 
-    /** 一个回合里工具并发执行的上限：再多也不会更快，反而抢 IO 与内存 */
-    private const val PARALLEL_TOOLS = 4
+    private val runs = HashMap<String, Run>()
 
-    /**排队中的一条：内容和附件在这里冻结，轮到时原样发出 */
-    data class QueuedMsg(val id: Long, val sid: String?, val text: String, val images: List<String>, val files: List<String>)
+    /**当前显示会话的运行通道：界面上的 running 状态全部从它读 */
+    private var curRun by mutableStateOf<Run?>(null)
 
-    /**发送排队：忙的时候进来的消息按顺序等着，上一轮收工自动发下一条 */
-    var queue by mutableStateOf<List<QueuedMsg>>(emptyList())
-        private set
-    private var qid = 0L
+    private fun runOf(id: String): Run = runs.getOrPut(id) { Run(id) } //取会话的通道
+
+    /**切会话时把界面绑定换到新会话的通道上 */
+    private fun bindRun(id: String?) {
+        curRun = id?.let { runOf(it) }
+    } //绑定当前通道
+
+    /**给通道用的窄口子：读写界面消息列表（messages 是 private set，通道不能直接改） */
+    internal fun uiMessages(): List<ChatMsg> = messages
+    internal fun uiMessages(v: List<ChatMsg>) {
+        messages = v
+    } //界面消息读写
+
+    /**当前显示的是哪个会话：通道据此判断自己是不是在前台 */
+    internal fun curSid(): String? = sessionId
+
+    /**当前会话标题：灵动岛 / 通知的文案用 */
+    internal fun curTitle(): String = sessionTitle
 
     /**取资源文案用；不叫 ctx 是因为 runLoop 里有同名局部变量 */
     private val host: Context get() = App.self
 
-    private var job: Job? = null
-    /// 运行代际：停手或开新一轮就 +1，旧循环靠它自杀，别再往会话里写
-    private var gen = 0L
-    private var runGen = 0L
-    /** 最近一次追加的消息 id：气泡只会给这一条播弹出动画，历史一律静态；故意不用 State，免得整列表订阅 */
-    @Volatile
-    var lastAppendId = 0L
-    private var runSid: String? = null
-    private var runHistory: List<ChatMsg> = emptyList()
-    private var budgetScale = 1f
+    /**会话层协程（列表刷新 / 建会话这类，不跟某一条通道绑死） */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val chunks = MutableStateFlow("" to "")
-    private val sContent = StringBuilder()
-    private val sReason = StringBuilder()
 
-    init {
-        scope.launch {
-            chunks.collect { (t, r) ->
-                streamText = t
-                streamReason = r
-            }
+    // ──界面读的入口：一律转发到当前会话那一根通道 ──
+    val busy: Boolean get() = curRun?.busy == true
+    val busySince: Long get() = curRun?.busySince ?: 0L
+    var status: String
+        get() = curRun?.status ?: ""
+        set(v) {
+            curRun?.status = v
         }
-    } //增量回填主线程
+    val streamText: String get() = curRun?.streamText ?: ""
+    val streamReason: String get() = curRun?.streamReason ?: ""
+    val typing: Boolean get() = curRun?.typing == true
+    val pending: PendingTool? get() = curRun?.pending
+    val runningTools: List<RunningTool> get() = curRun?.runningTools ?: emptyList()
+    val ask: AskReq? get() = curRun?.ask
+    val plan: PlanReq? get() = curRun?.plan
+    val queue: List<QueuedMsg> get() = curRun?.queue ?: emptyList()
+    val lastAppendId: Long get() = curRun?.lastAppendId ?: 0L
 
-    fun runningHere(): Boolean = runSid == null || runSid == sessionId
+    /**当前会话是不是正在自己这儿跑（别的会话在跑不影响这个返回值） */
+    fun runningHere(): Boolean = curRun?.runningHere() ?: true
 
-    private fun hist(): List<ChatMsg> = if (runSid != null && runSid != sessionId) runHistory else messages
+    // ──通道转发的操作入口：界面调用一律落到当前会话那一根 ──
+    fun stop() {
+        curRun?.stop()
+    } //停手
+
+    fun resolve(allow: Boolean, permanent: Boolean) {
+        curRun?.resolve(allow, permanent)
+    } //工具确认回填
+
+    fun answerAsk(answers: List<String>) {
+        curRun?.answerAsk(answers)
+    } //作答回填
+
+    fun answerPlan(v: PlanVerdict) {
+        curRun?.answerPlan(v)
+    } //计划回填
+
+    /**发送：按 sessionId 分流到对应会话的通道上，互不排队 */
+    fun send(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        val id = sessionId
+        if (id != null) {
+            runOf(id).send(text, images, files)
+            return
+        }
+        //还没有会话：先落到最新会话（真没有就建一个），再走它自己的通道
+        scope.launch {
+            val s = withContext(Dispatchers.IO) { Repo.latestSession() ?: Repo.newSession() }
+            sessionId = s.id
+            adopt(s)
+            uiMessages(withContext(Dispatchers.IO) { Repo.messages(s.id) })
+            bindRun(s.id)
+            runOf(s.id).send(text, images, files)
+        }
+    } //发送
+
+    fun enqueue(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        curRun?.enqueue(text, images, files)
+    } //压入当前会话的队列
+
+    fun dropQueued(id: Long) {
+        curRun?.dropQueued(id)
+    } //撤掉一条
+
+    fun clearQueue() {
+        curRun?.clearQueue()
+    } //清空队列
+
+    fun pullQueued(id: Long): QueuedMsg? = curRun?.pullQueued(id)//取出队列条目
+
+    fun promoteQueued(id: Long) {
+        curRun?.promoteQueued(id)
+    } //提到最前
+
+    fun editResend(msgId: Long, text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        curRun?.editResend(msgId, text, images, files)
+    } //编辑重发
+
+    fun regenerate(msgId: Long, note: String? = null) {
+        curRun?.regenerate(msgId, note)
+    } //重新生成
+
+    fun retryErr(msgId: Long) {
+        curRun?.retryErr(msgId)
+    } //错误重发
+
+    fun resendErr(msgId: Long) {
+        curRun?.resendErr(msgId)
+    } //仍然重发
+
+    fun switchBranch(msgId: Long, dir: Int) {
+        curRun?.switchBranch(msgId, dir)
+    } //切分支
+
+    fun compactNow() {
+        curRun?.compactNow()
+    } //手动压缩
+
+    fun recompact(note: String? = null) {
+        curRun?.recompact(note)
+    } //重新总结
+
+    fun compressNow(): String = curRun?.compressNow() ?: host.getString(R.string.ag_compressing)
+
+    fun clearCurrent() {
+        curRun?.clearCurrent()
+    } //清空当前会话
+
+    /**全局配置（工作区 / 角色）只有一份：后台会话执行前要换上去、跑完换回来，靠这把锁串行化 */
+    internal val ctxGate = kotlinx.coroutines.sync.Mutex()
+
+    fun exportCurrent(): String? = curRun?.exportCurrent()//导出 Markdown
+
+    /**子智能体 / 工作流回头调工具卡片：按协程上下文找回发起它的那条通道 */
+    internal suspend fun beginTool(name: String, args: String, fromSub: Boolean = false): Long =
+        owner()?.beginTool(name, args, fromSub) ?: 0L
+
+    internal suspend fun endTool(seq: Long) {
+        owner()?.endTool(seq)
+    }
+
+    internal suspend fun confirmFromSub(name: String, args: JSONObject, callId: String): Boolean =
+        owner()?.confirmFromSub(name, args, callId) ?: false
+
+    /**通道标记：挂在运行协程的上下文里，子智能体派生出来的协程都能继承到 */
+    private class RunKey(val run: Run) : kotlin.coroutines.AbstractCoroutineContextElement(RunKey) {
+        companion object Key : kotlin.coroutines.CoroutineContext.Key<RunKey>
+    } //通道标记
+
+    /**当前协程属于哪条通道：找不到就退回界面显示的那条 */
+    private suspend fun owner(): Run? = currentCoroutineContext()[RunKey]?.run ?: curRun
+    /**排队中的一条：内容和附件在这里冻结，轮到时原样发出 */
+    data class QueuedMsg(val id: Long, val sid: String?, val text: String, val images: List<String>, val files: List<String>)
 
     fun refreshSessions() {
         scope.launch { reloadSessions() }
@@ -193,6 +308,7 @@ object Agent {
             sessionId = s.id
             adopt(s)
             messages = withContext(Dispatchers.IO) { Repo.messages(s.id) }
+            bindRun(s.id)
             reloadSessions()
         }
     } //重进 App 落在最新会话
@@ -218,7 +334,8 @@ object Agent {
         Cfg.personaId = personaId
         val bound = Personas.current()?.profileId?.trim().orEmpty()
         if (bound.isNotEmpty()) Cfg.profileId = bound
-        val sid = runSid ?: sessionId ?: return
+        //正在跑就用通道自己的会话 id，没跑就用界面当前会话
+        val sid = curRun?.runningSid ?: sessionId ?: return
         scope.launch { withContext(Dispatchers.IO) { Repo.setPersona(sid, personaId) } }
     } //当前会话换角色
 
@@ -226,7 +343,7 @@ object Agent {
         Cfg.sessionWorkspace = path
         Cfg.sessionWsManual = path.isNotBlank() && !Workspace.isAutoDir(path)
         Workspace.invalidate()
-        val sid = runSid ?: sessionId ?: return
+        val sid = curRun?.runningSid ?: sessionId ?: return
         scope.launch { withContext(Dispatchers.IO) { Repo.setWorkspace(sid, path) } }
     } //当前会话换工作区
 
@@ -242,6 +359,7 @@ object Agent {
             sessionId = s.id
             //先挂会话 id 再分配目录：分配结果要写回这一行，别落到上一个会话上
             Workspace.attachSession(s.id)
+            bindRun(s.id)
             messages = emptyList()
             status = ""
             val ws = withContext(Dispatchers.IO) {
@@ -268,11 +386,12 @@ object Agent {
             //打开也算一次交互：列表按最近交互排序，刚看的会话要浮上来
             withContext(Dispatchers.IO) { Repo.touch(id) }
             sessionId = id
+            bindRun(id)
             if (row != null) adopt(row) else Workspace.attachSession(id)
             messages = list
             reloadSessions()
-            //切回某个会话时，属于它的排队消息接着发
-            pump()
+            //切回某个会话时，属于它的排队消息接着发（只动它自己那条通道）
+            runOf(id).pump()
         }
     }
 
@@ -317,16 +436,24 @@ object Agent {
         if (ids.isEmpty()) return
         scope.launch {
             withContext(Dispatchers.IO) { ids.forEach { Repo.deleteSession(it) } }
+            //通道跟着会话一起销毁：残留的 job 先停掉，免得往已删的会话里写
+            ids.forEach { id ->
+                runs.remove(id)?.let { r ->
+                    if (r.runningSid != null) r.stop()
+                }
+            }
             if (sessionId in ids) {
                 val next = withContext(Dispatchers.IO) { Repo.latestSession() }
                 if (next == null) {
                     val s = withContext(Dispatchers.IO) { Repo.newSession() }
                     sessionId = s.id
+                    bindRun(s.id)
                     //新建的会话也要有自己的工作区，adopt 里统一分配并落库
                     adopt(s)
                     messages = emptyList()
                 } else {
                     sessionId = next.id
+                    bindRun(next.id)
                     //接着别的会话就要套用它的角色与工作区，不然工作区还停在被删掉的那条上
                     adopt(next)
                     messages = withContext(Dispatchers.IO) { Repo.messages(next.id) }
@@ -374,6 +501,204 @@ object Agent {
         return Repo.stats(sid)
     }
 
+
+    // ───────────────────────── 运行通道（按会话隔离）─────────────────────────
+    private class Run(val sid: String) {
+    var busy by mutableStateOf(false)
+        private set
+    var status by mutableStateOf("")
+    var streamText by mutableStateOf("")
+        private set
+    var streamReason by mutableStateOf("")
+        private set
+    var busySince by mutableStateOf(0L)
+        private set
+    /** 分句场景下「对方正在输入…」：这一条已发出、下一条还在等打字时长为 true */
+    var typing by mutableStateOf(false)
+        private set
+    var pending by mutableStateOf<PendingTool?>(null)
+        private set
+    /** 正在执行的工具：界面据此立刻画转圈卡，别等结果回来才出现 */
+    var runningTools by mutableStateOf<List<RunningTool>>(emptyList())
+        private set
+    var ask by mutableStateOf<AskReq?>(null)
+        private set
+    var plan by mutableStateOf<PlanReq?>(null)
+        private set
+    /**
+     * 错误处理走「消息回复式」：这一轮的用户消息照常留在会话里，
+     * 失败后追加一条 isError 的 assistant 回复，气泡上按 errKind 挂按钮：
+     *   · 不涉及操作（网络 / 服务端）→「重发」「仍然重发」两个；
+     *   · 涉及操作（缺配置 / 缺权限 / 缺环境）→ 再加一个「去配置」。
+     * 错误回复不参与请求体（buildPayload 会跳过），只作界面留痕。
+     */
+    private suspend fun replyErr(text: String, kind: String) {
+        runCatching { append(ChatMsg(role = "assistant", content = text, isError = true, errKind = kind)) }
+    } //追加错误回复
+
+    /** 异常 → 错误类型：配置 / 权限 / 环境三类要给「去配置」入口，其余当网络或服务端错误 */
+    private fun errKindOf(e: Throwable): String {
+        if (!Cfg.ready) return ERR_MODEL
+        val m = e.message.orEmpty()
+        val code = Regex("HTTP (\\d{3})").find(m)?.groupValues?.get(1)?.toIntOrNull()
+        if (code == 401 || code == 403 || code == 404) return ERR_MODEL
+        if (m.contains(host.getString(R.string.ag_err_kw_perm))) return ERR_PERM
+        if (m.contains(host.getString(R.string.ag_err_kw_env))) return ERR_ENV
+        return ""
+    } //错误分类
+
+    /** 记一次失败：把错误当成一条 AI 回复落到会话里 */
+    private suspend fun fail(e: Exception) {
+        status = ""
+        replyErr(e.message?.takeIf { it.isNotBlank() } ?: host.getString(R.string.ag_err_unknown), errKindOf(e))
+    } //记录失败
+
+    /**
+     * 错误气泡「重发」：把 head 退回该错误回复上方的用户消息，同一轮原样重跑。
+     * 错误气泡不在新分支上，界面上自然消失，聊天记录里也不留红条。
+     */
+    fun retryErr(msgId: Long) {
+        if (busy) return
+        val sid = sessionId ?: return
+        val i = messages.indexOfFirst { it.id == msgId }
+        if (i <= 0) return
+        val u = messages.subList(0, i).lastOrNull { it.role == "user" } ?: return
+        busy = true
+        val g = ++gen
+        runGen = g
+        job = scope.launch(RunKey(this@Run)) {
+            try {
+                runSid = sid
+                withContext(Dispatchers.IO) { Repo.headTo(sid, u.id) }
+                messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
+                runHistory = messages
+                runLoop()
+            } catch (e: CancellationException) {
+                status = host.getString(R.string.ag_stopped)
+            } catch (e: Exception) {
+                fail(e)
+            } finally {
+                finish(g)
+            }
+        }
+    } //重发（原地重跑这一轮）
+
+    /** 错误气泡「仍然重发」：无视这次失败，把当初那条用户消息当新消息再发一次 */
+    fun resendErr(msgId: Long) {
+        if (busy) return
+        val i = messages.indexOfFirst { it.id == msgId }
+        if (i <= 0) return
+        val u = messages.subList(0, i).lastOrNull { it.role == "user" } ?: return
+        send(u.content, u.images, u.files)
+    } //仍然重发（新发一条同样的消息）
+
+    /** 最近一条用户消息 id：重发时用它原地重跑 */
+    private fun lastUserId(): Long = messages.lastOrNull { it.role == "user" }?.id ?: -1L
+    /** 一个回合里工具并发执行的上限：再多也不会更快，反而抢 IO 与内存 */
+    private val PARALLEL_TOOLS = 4
+
+    /**发送排队：忙的时候进来的消息按顺序等着，上一轮收工自动发下一条 */
+    var queue by mutableStateOf<List<QueuedMsg>>(emptyList())
+        private set
+    private var qid = 0L
+
+    private var job: Job? = null
+    /// 运行代际：停手或开新一轮就 +1，旧循环靠它自杀，别再往会话里写
+    private var gen = 0L
+    private var runGen = 0L
+    /** 最近一次追加的消息 id：气泡只会给这一条播弹出动画，历史一律静态；故意不用 State，免得整列表订阅 */
+    @Volatile
+    var lastAppendId = 0L
+    private var runSid: String? = null
+    private var runHistory: List<ChatMsg> = emptyList()
+    private var budgetScale = 1f
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val chunks = MutableStateFlow("" to "")
+    private val sContent = StringBuilder()
+    private val sReason = StringBuilder()
+
+    init {
+        scope.launch {
+            chunks.collect { (t, r) ->
+                streamText = t
+                streamReason = r
+            }
+        }
+    } //增量回填主线程
+
+    // ──运行通道：每个会话各一份运行态，互不干扰 ──
+    /**本通道的会话 id：原代码里的 sessionId 在运行期就等于它 */
+    private val sessionId: String get() = sid
+
+    /**是不是当前显示的那个会话：灵动岛 / 胶囊 / 朗读这类全局 UI 只让前台会话驱动 */
+    private fun isFront(): Boolean = sid == curSid()
+
+    /**本通道看到的会话消息：正在看这个会话就直连界面列表，没在看就写自己的快照 */
+    private var messages: List<ChatMsg>
+        get() = if (sid == curSid()) uiMessages() else runHistory
+        set(v) {
+            if (sid == curSid()) uiMessages(v) else runHistory = v
+        }
+
+    private val host: Context get() = App.self
+
+    /**本通道的历史快照：请求体用这份，中途切会话也不会缺消息 */
+    private fun hist(): List<ChatMsg> = if (runHistory.isNotEmpty()) runHistory else messages
+
+    /**这条通道是不是空闲（按它自己的 runSid 判，不看别的会话） */
+    fun runningHere(): Boolean = runSid == null || runSid == sid
+
+    /**这条通道正在跑的会话 id：没在跑就是 null */
+    val runningSid: String? get() = runSid
+
+    // ──后台会话的配置上下文：工作区 / 角色在 Cfg 里只有一份，执行前换上去、跑完换回来 ──
+    private var myWs: String? = null
+    private var myManual = false
+    private var myPersona = ""
+    private var myProfile = ""
+
+    /**把全局 Cfg / Workspace 切成本通道自己的会话配置（只取一次，后面复用） */
+    private suspend fun applyCtx() {
+        if (myWs == null) {
+            val row = withContext(Dispatchers.IO) { Repo.session(sid) }
+            myWs = row?.workspace.orEmpty()
+            myManual = myWs!!.isNotEmpty() && !Workspace.isAutoDir(myWs!!)
+            myPersona = row?.persona.orEmpty()
+        }
+        Workspace.attachSession(sid)
+        Cfg.sessionWorkspace = myWs.orEmpty()
+        Cfg.sessionWsManual = myManual
+        Cfg.personaId = myPersona
+        Personas.current()?.profileId?.trim()?.takeIf { it.isNotEmpty() }?.let { Cfg.profileId = it }
+        Workspace.invalidate()
+    } //切到本会话的配置
+
+    /**
+     * 借全局配置用一下：前台会话本来就在位，直接跑；
+     * 后台会话要先把 Cfg / Workspace 换成自己的，跑完再还给前台，否则相对路径与角色会串。
+     */
+    private suspend fun <T> inCtx(block: suspend () -> T): T {
+        if (isFront()) return block()
+        return ctxGate.withLock {
+            val pSid = Workspace.sid
+            val pWs = Cfg.sessionWorkspace
+            val pManual = Cfg.sessionWsManual
+            val pPersona = Cfg.personaId
+            val pProfile = Cfg.profileId
+            applyCtx()
+            try {
+                block()
+            } finally {
+                Workspace.attachSession(pSid)
+                Cfg.sessionWorkspace = pWs
+                Cfg.sessionWsManual = pManual
+                Cfg.personaId = pPersona
+                Cfg.profileId = pProfile
+                Workspace.invalidate()
+            }
+        }
+    } //借全局配置执行
+
     fun stop() {
         //先清队列再取消：否则收尾的 pump 会把排队的第一条立刻又发出去
         queue = emptyList()
@@ -388,15 +713,19 @@ object Agent {
         plan?.let { if (!it.deferred.isCompleted) it.deferred.complete(PlanVerdict.Dismiss) }
         plan = null
         status = host.getString(R.string.ag_stopped)
+        //中途停掉时可能正挂在「正在输入」上，这里必须收掉，否则指示器会一直转
+        typing = false
         sContent.setLength(0)
         sReason.setLength(0)
         chunks.value = "" to ""
         busy = false
-                runSid = null
-                runHistory = emptyList()
-        b.ai.device.sys.host.Capsule.end()
+        runSid = null
+        runHistory = emptyList()
+        if (isFront()) b.ai.device.sys.host.Capsule.end()
         clearTools()
-    }
+        //用户主动停手：任务通知一并撤掉，不留一条永远「进行中」的假通知
+        runCatching { Island.cancel() }
+    } //停手
 
     fun resolve(allow: Boolean, permanent: Boolean) {
         val p = pending ?: return
@@ -412,32 +741,28 @@ object Agent {
             return
         }
         if (!Cfg.ready) {
-            appendLocalAsync(ChatMsg(role = "assistant", content = host.getString(R.string.ag_no_model), isError = true))
+            //先把这条当成用户消息发出去（会话里留痕），再用一条 AI 回复报错
+            scope.launch {
+                appendLocal(ChatMsg(role = "user", content = text, images = images, files = files))
+                appendLocal(
+                    ChatMsg(
+                        role = "assistant",
+                        content = host.getString(R.string.ag_no_model),
+                        isError = true,
+                        errKind = ERR_MODEL
+                    )
+                )
+            }
             return
         }
         busy = true
         //新一轮：代际 +1，旧循环拿到旧值会自己退出
         val g = ++gen
         runGen = g
-        job = scope.launch {
+        job = scope.launch(RunKey(this@Run)) {
             try {
-                if (sessionId == null) {
-                    val s = withContext(Dispatchers.IO) { Repo.latestSession() ?: Repo.newSession() }
-                    sessionId = s.id
-                    Workspace.attachSession(s.id)
-                    if (s.workspace.isNotBlank() || s.persona.isNotBlank()) {
-                        adopt(s)
-                    } else {
-                        withContext(Dispatchers.IO) {
-                            val dir = Workspace.newSessionWorkspace()
-                            Repo.setWorkspace(s.id, dir)
-                            Repo.setPersona(s.id, Cfg.personaId)
-                            Cfg.sessionWorkspace = dir
-                        }
-                    }
-                    messages = withContext(Dispatchers.IO) { Repo.messages(s.id) }
-                }
-                val sid = sessionId!!
+                //会话由 Agent.send 统一保证存在：这条通道只跑自己的会话，绝不碰别人的
+                val sid = this@Run.sid
                 runSid = sid
                 runHistory = messages
                 if (messages.none { it.role == "user" }) {
@@ -450,19 +775,11 @@ object Agent {
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
-                status = ""
+                //失败不写进会话：用户消息已经落库，这里追加一条错误回复（重发 / 仍然重发 / 去配置）
+                fail(e)
             } finally {
                 //只有最新那一轮才收尾：停手后用户可能已经开了新一轮，旧的收尾会把新状态清掉
-                if (gen == g) {
-                    busy = false
-                    runSid = null
-                    runHistory = emptyList()
-                    b.ai.device.sys.host.Capsule.end()
-                    clearTools()
-                    //放在最后：send 内部是 Main.immediate，先 pump 会把新一轮的字段又清一遍
-                    pump()
-                }
+                finish(g)
             }
         }
     } //发送并驱动循环
@@ -503,9 +820,29 @@ object Agent {
     } //队列条目提到最前
 
     /**收工后接着发下一条：只发属于当前会话的，别把消息串到别的会话里 */
-    private fun pump() {
+    /**
+     * 本轮回工的公共收尾：清运行态、撤胶囊与工具、把任务通知切成完成态，再推进队列。
+     * 四类入口（发送 / 编辑重发 / 同文本重发 / 重新生成）的 finally 统一走这里，
+     * 之前这段是四份复制粘贴，加一个收尾动作要改四处。
+     */
+    private fun finish(g: Long) {
+        if (gen != g) return
+        busy = false
+        runSid = null
+        runHistory = emptyList()
+        if (isFront()) b.ai.device.sys.host.Capsule.end()
+        clearTools()
+        //岛：先进「完成」态，驻留时长由 Island 内部的倒计时管；pump 起新一轮时会先撤掉这个倒计时
+        //只有前台会话才动这块全局 UI，后台会话静默收工，免得两个会话抢岛
+        if (isFront()) runCatching { Island.taskDone(curTitle(), host.getString(R.string.island_done)) }
+        //放在最后：send 内部是 Main.immediate，先 pump 会把新一轮的字段又清一遍
+        pump()
+    } //收工
+
+    /**收工后接着发下一条：只发属于自己这个会话的，别的会话的排队消息碰都不碰 */
+    internal fun pump() {
         if (busy || queue.isEmpty()) return
-        val n = queue.firstOrNull { it.sid == sessionId } ?: return
+        val n = queue.firstOrNull { it.sid == sid } ?: return
         queue = queue.filterNot { it.id == n.id }
         send(n.text, n.images, n.files)
     } //队列推进
@@ -521,7 +858,7 @@ object Agent {
         busy = true
         val g = ++gen
         runGen = g
-        job = scope.launch {
+        job = scope.launch(RunKey(this@Run)) {
             try {
                 runSid = sessionId
                 runHistory = messages
@@ -532,17 +869,9 @@ object Agent {
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
-                status = ""
+                fail(e)
             } finally {
-                if (gen == g) {
-                    busy = false
-                    runSid = null
-                    runHistory = emptyList()
-                    b.ai.device.sys.host.Capsule.end()
-                    clearTools()
-                    pump()
-                }
+                finish(g)
             }
         }
     } //编辑重发
@@ -563,7 +892,7 @@ object Agent {
         busy = true
         val g = ++gen
         runGen = g
-        job = scope.launch {
+        job = scope.launch(RunKey(this@Run)) {
             try {
                 runSid = sid
                 //head 就停在这条用户消息上：跑出来的回复挂在它下面，成了旧回复的兄弟
@@ -574,17 +903,9 @@ object Agent {
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
-                status = ""
+                fail(e)
             } finally {
-                if (gen == g) {
-                    busy = false
-                    runSid = null
-                    runHistory = emptyList()
-                    b.ai.device.sys.host.Capsule.end()
-                    clearTools()
-                    pump()
-                }
+                finish(g)
             }
         }
     } //同文本重发
@@ -600,7 +921,7 @@ object Agent {
                 runHistory = messages
         val g = ++gen
         runGen = g
-        job = scope.launch {
+        job = scope.launch(RunKey(this@Run)) {
             try {
                 rollbackTo(msgId)
                 val tip = note?.trim()
@@ -613,27 +934,19 @@ object Agent {
             } catch (e: CancellationException) {
                 status = host.getString(R.string.ag_stopped)
             } catch (e: Exception) {
-                appendLocal(ChatMsg(role = "assistant", content = host.getString(R.string.ag_err_fmt, e.message.orEmpty()), isError = true))
-                status = ""
+                fail(e)
             } finally {
-                if (gen == g) {
-                    busy = false
-                    runSid = null
-                    runHistory = emptyList()
-                    b.ai.device.sys.host.Capsule.end()
-                    clearTools()
-                    pump()
-                }
+                finish(g)
             }
         }
     } //重新生成
     
     private suspend fun rollbackTo(msgId: Long) {
-        val sid = runSid ?: sessionId ?: return
+        val sid = this.sid
         //只把 head 挪回父节点：旧回答留在树里成了另一个分支，不再被删掉
         withContext(Dispatchers.IO) { Repo.rollback(sid, msgId) }
         val list = withContext(Dispatchers.IO) { Repo.messages(sid) }
-        if (sid == sessionId) {
+        if (sid == curSid()) {
             messages = list
         } else {
             runHistory = list
@@ -691,12 +1004,15 @@ object Agent {
         val temp = Cfg.temperature.takeIf { it >= 0f }?.toDouble()
         status = host.getString(R.string.ag_ask_model)
         busySince = System.currentTimeMillis()
+        //任务通知：有灵动岛就挂岛，没有就是一条常驻通知；开关关掉时 Island 内部直接返回
+        //后台会话不抢岛：同一块全局 UI 只归前台会话
+        if (isFront()) runCatching { Island.taskStart(curTitle(), host.getString(R.string.island_running)) }
         compact(false)
         //无限轮：模型给完最终答案（本轮无工具调用）或用户点停止才退出
         while (ctx.isActive) {
             //代际变了（停手或已开新一轮）就立刻退，别把这一轮的结果写回去
             if (gen != runGen) throw CancellationException("superseded")
-            val payload = withContext(Dispatchers.IO) { buildPayload() }
+            val payload = withContext(Dispatchers.IO) { inCtx { buildPayload() } }
             val t0 = System.currentTimeMillis()
             val firstAt = java.util.concurrent.atomic.AtomicLong(0L)
             sContent.setLength(0)
@@ -778,17 +1094,35 @@ object Agent {
                     meta.promptTokens, meta.cachedTokens, meta.completionTokens
                 )
             }
-            val segs = if (calls.isEmpty() && Cfg.waifuMode) Waifu.split(shown) else listOf(shown)
+            //真实引擎分句更碎，普通模式仍是整段按句号切
+            val segs = if (calls.isEmpty() && Cfg.waifuMode) {
+                if (Cfg.waifuReal) Waifu.splitReal(shown) else Waifu.split(shown)
+            } else listOf(shown)
             segs.forEachIndexed { n, seg ->
                 val head = n == 0
-                if (!head) delay(Waifu.gapMs(seg))
+                val tail = n == segs.lastIndex
+                if (!head) {
+                    //分句间隙：可选用「对方正在输入」占位，时长 = 本条字数 × 打字速度
+                    val gap = Waifu.gapMs(seg, Cfg.waifuTypeMs)
+                    if (Cfg.waifuTyping && segs.size > 1) {
+                        typing = true
+                        try {
+                            delay(gap)
+                        } finally {
+                            typing = false
+                        }
+                    } else {
+                        delay(gap)
+                    }
+                }
                 append(
                     ChatMsg(
                         role = "assistant",
                         content = seg,
                         toolCalls = if (head) calls else emptyList(),
                         reasoning = if (head) think else "",
-                        meta = if (head) meta else null
+                        //统计只挂在最后一条：分句时它会显示在所有气泡之后，不在中间那条框里
+                        meta = if (tail) meta else null
                     )
                 )
             }
@@ -822,12 +1156,12 @@ object Agent {
                             continue
                         }
                         PlanVerdict.Dismiss -> {
-                            Speak.say(shown)
+                            if (isFront()) Speak.say(shown)
                             break
                         }
                     }
                 }
-                Speak.say(shown)
+                if (isFront()) Speak.say(shown)
                 break
             }
             //模型一返回调用就先把卡片全摆出来转圈：排队里的、等确认的、等作答的都看得见
@@ -858,11 +1192,13 @@ object Agent {
                         status = host.getString(R.string.ag_sub_start, tasks.size)
                         busySince = System.currentTimeMillis()
                         val tExec = System.currentTimeMillis()
-                        val text = SubAgents.run(
-                            tasks, qa.optInt("rounds", SubAgents.DEFAULT_ROUNDS),
-                            onStatus = { s -> status = s },
-                            confirm = { n, a, id -> confirmFromSub(n, a, id) }
-                        )
+                        val text = inCtx {
+                            SubAgents.run(
+                                tasks, qa.optInt("rounds", SubAgents.DEFAULT_ROUNDS),
+                                onStatus = { s -> status = s },
+                                confirm = { n, a, id -> confirmFromSub(n, a, id) }
+                            )
+                        }
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
                         appendToolMsg(c, text, Route.SANDBOX, false, System.currentTimeMillis() - tExec)
@@ -879,11 +1215,13 @@ object Agent {
                         status = "工作流「" + flow.name + "」开始，共 " + flow.steps.size + " 步"
                         busySince = System.currentTimeMillis()
                         val tExec = System.currentTimeMillis()
-                        val out = FlowRunner.run(
-                            flow,
-                            onStatus = { s -> status = s },
-                            confirm = { n, a, id -> confirmFromSub(n, a, id) }
-                        )
+                        val out = inCtx {
+                            FlowRunner.run(
+                                flow,
+                                onStatus = { s -> status = s },
+                                confirm = { n, a, id -> confirmFromSub(n, a, id) }
+                            )
+                        }
                         if (flow.id.isNotBlank()) Flows.mark(flow.id, out.ok, out.text)
                         status = host.getString(R.string.ag_think_again)
                         busySince = System.currentTimeMillis()
@@ -924,13 +1262,13 @@ object Agent {
                     //顶部胶囊：「正在执行 xx」，有无障碍走无障碍窗层，没有则靠悬浮窗权限。
                     //screen start 之后胶囊已常驻，这里只改文案；quiet 那一次干脆别先亮。
                     if (!quietCall(c.name, args)) {
-                        b.ai.device.sys.host.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
+                        if (isFront()) b.ai.device.sys.host.Capsule.show(host.getString(R.string.ag_capsule_fmt, Tools.label(c.name)))
                     }
                     val tTool = System.currentTimeMillis()
                     val out = try {
-                        withContext(Dispatchers.IO) { Tools.execute(c.name, args) }
+                        inCtx { withContext(Dispatchers.IO) { Tools.execute(c.name, args) } }
                     } finally {
-                        b.ai.device.sys.host.Capsule.hide()
+                        if (isFront()) b.ai.device.sys.host.Capsule.hide()
                     }
                     appendToolMsg(c, out.text, out.route, !out.ok, System.currentTimeMillis() - tTool)
                 } finally {
@@ -1025,7 +1363,7 @@ object Agent {
     private suspend fun execOne(c: ToolCall): ToolOut {
         val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }
         val t0 = System.currentTimeMillis()
-        val r = runCatching { withContext(Dispatchers.IO) { Tools.execute(c.name, args) } }
+        val r = runCatching { inCtx { withContext(Dispatchers.IO) { Tools.execute(c.name, args) } } }
         val ms = System.currentTimeMillis() - t0
         val o = r.getOrNull()
         return if (o != null) {
@@ -1421,6 +1759,8 @@ object Agent {
             when (m.role) {
                 "system" -> return@forEach
                 "assistant" -> {
+                    //错误回复只是给用户看的留痕，不进请求体：否则模型会把自己的报错当成上一句回答
+                    if (m.isError) return@forEach
                     flush("后续对话已到达但未返回执行结果")
                     arr.put(m.toApiJson())
                     m.toolCalls.forEach { open[it.id] = it.name }
@@ -1688,11 +2028,11 @@ object Agent {
     private suspend fun append(m: ChatMsg) {
         //停手或已经被新一轮顶替的旧循环不许再落库：否则界面显示「已停止」，几秒后又冒出半截回复
         if (runGen != 0L && gen != runGen) throw CancellationException("superseded")
-        val sid = runSid ?: sessionId ?: return
+        val sid = this.sid
         val saved = withContext(Dispatchers.IO) { Repo.append(sid, m) }
         lastAppendId = saved.id
-        //归属会话不是眼前这个就别动界面列表，否则新会话里会冒出别人会话的回复
-        if (sid == sessionId) {
+        //正在看这个会话才动界面列表，否则只更新本通道的快照：绝不让别人的会话冒出这条回复
+        if (sid == curSid()) {
             messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
             //本轮正在跑就把快照一起跟上，防止中途切会话后请求体缺最新几条
             if (runSid != null) runHistory = messages
@@ -1702,18 +2042,16 @@ object Agent {
     } //落库并刷新（SQLite 走 IO，主线程只拿结果）
 
     private suspend fun appendLocal(m: ChatMsg) {
-        val sid = runSid ?: sessionId
-            ?: withContext(Dispatchers.IO) { Repo.latestSession()?.id ?: Repo.newSession().id }
-        if (sessionId == null) sessionId = sid
+        val sid = this.sid
         val saved = withContext(Dispatchers.IO) { Repo.append(sid, m) }
-        if (sid == sessionId) {
+        if (sid == curSid()) {
             messages = withContext(Dispatchers.IO) { Repo.messages(sid) }
             //本轮正在跑就把快照一起跟上，防止中途切会话后请求体缺最新几条
             if (runSid != null) runHistory = messages
         } else {
             runHistory = runHistory + saved
         }
-    } //无会话时兜底落库
+    } //落库并刷新（只写本通道的会话，不兜底建会话）
 
     private fun appendLocalAsync(m: ChatMsg) {
         scope.launch { appendLocal(m) }
@@ -1732,5 +2070,5 @@ object Agent {
                 toolMs = ms.coerceAtLeast(0L)
             )
         )
-    } //工具结果回传记录
-}
+    } //运行通道
+}}

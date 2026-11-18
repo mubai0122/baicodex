@@ -118,9 +118,14 @@ object Profiles {
 
     /** 外部存储晚挂载（开机自启 / 后台起进程）时补一次读盘：界面回来后调，幂等 */
     fun retry() {
-        //延后读盘与读不出来都要能救回来：权限/属主修好后回到应用就自动恢复，不用重启
-        if (blocked() && Paths.externalOk()) init()
+        //延后读盘与读不出来都要能救回来：权限/属主修好后回到应用就自动恢复，不用重启。
+        //上次写盘失败（例如用户没给「所有文件访问」）同样要重试：否则配置只活在私有快照里，
+        //用户在设置页看不到任何变化，只能靠重启触发
+        if (blocked() || writeFailed) init()
     } //延后读盘与只读状态的重试
+
+    /** 上一次落盘是否失败：决定 retry() 要不要再写一遍 */
+    private var writeFailed = false
 
     private fun legacy(): ModelProfile = ModelProfile(
         id = "default",
@@ -207,6 +212,7 @@ object Profiles {
         //写失败不许当成功：以前这里返回值直接丢掉，界面照样提示「已保存」，重启才发现没了
         lastError = Store.why(FILE, json)
         Cfg.modelsFileAt = if (lastError.isEmpty()) rev else 0L
+        writeFailed = lastError.isNotEmpty()
     } //整表落盘
 
     /** 切换配置：整组提供商 / Key / 模型 / 能力一起换掉 */
@@ -249,15 +255,19 @@ object Profiles {
     /** 把当前 Cfg 的状态写回选中条目：实时跟随，改一个字段就落一次 */
     fun capture() {
         val cur = selected ?: return
+        //Key 为空时不能拿空值覆盖：Vault 在启动早期还没解出来、或桶被锁时读到的是空串，
+        //一次无脑 capture 就会把用户原来的 Key 永久清掉（这是"Key 重启后没了"的一条真实路径）。
+        //要清 Key 只有一条路：删掉这条配置（remove 里显式写空）。
+        val key = if (Cfg.apiKey.isBlank()) cur.apiKey else Cfg.apiKey
         //Key 单独进私有 SP，文件里只留非敏感字段
-        Cfg.setProfileKey(cur.id, Cfg.apiKey)
+        Cfg.setProfileKey(cur.id, key)
         val custom = Cfg.profileCustom && Cfg.profileName.isNotBlank()
         val p = cur.copy(
             name = if (custom) Cfg.profileName.trim() else autoLabel(Cfg.providerId, Cfg.model),
             custom = custom,
             providerId = Cfg.providerId,
             baseUrl = Cfg.baseUrl,
-            apiKey = Cfg.apiKey,
+            apiKey = key,
             model = Cfg.model,
             models = Cfg.profileModels,
             vision = Cfg.modelVision,
