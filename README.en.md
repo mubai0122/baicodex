@@ -57,7 +57,10 @@
 
 **Phone (light)**　　**Phone (dark)**
 
-<img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="Phone light"> <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="Phone dark">
+<p align="center">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261119" width="220" alt="Phone light">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261119" width="220" alt="Phone dark">
+</p>
 
 ---
 

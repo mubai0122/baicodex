@@ -57,7 +57,10 @@
 
 **スマホ（ライト）**　　**スマホ（ダーク）**
 
-<img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="スマホ ライト"> <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="スマホ ダーク">
+<p align="center">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261119" width="220" alt="スマホ ライト">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261119" width="220" alt="スマホ ダーク">
+</p>
 
 ---
 

@@ -57,7 +57,10 @@
 
 **手机浅色**　　**手机深色**
 
-<img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261108" width="280" alt="手机 浅色"> <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261108" width="280" alt="手机 深色">
+<p align="center">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-light.png?v=20261119" width="220" alt="手机 浅色">
+  <img src="https://agent.ai.baiccb.cn/show/phone-clip-dark.png?v=20261119" width="220" alt="手机 深色">
+</p>
 
 ---
 
