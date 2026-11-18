@@ -66,6 +66,9 @@ object Tools {
     const val MAKE_DIR = "make_dir"
     const val DELETE = "delete_file"
     const val SHELL = "exec_shell"
+    /** 终端查看 / 输入：命令卡住或要答交互提示时，先看画面再发键，不用重跑整条命令 */
+    const val TERM_VIEW = "term_view"
+    const val TERM_SEND = "term_send"
     const val LINUX = "linux_shell"
     const val WEB_SEARCH = "web_search"
     const val RAIL = "rail_query"
@@ -148,7 +151,7 @@ object Tools {
     val all: List<String>
         get() {
             val l = ArrayList<String>()
-            l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, RAIL, MEMORY, MEMORY_READ, MEMORY_DEL, ASK, SCREEN))
+            l.addAll(listOf(READ, WRITE, EDIT, MAKE_DIR, DELETE, SHELL, TERM_VIEW, TERM_SEND, RAIL, MEMORY, MEMORY_READ, MEMORY_DEL, ASK, SCREEN))
             l.addAll(
                 listOf(
                     LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, PING, CURL, PAGE, APKTOOL,
@@ -173,6 +176,7 @@ object Tools {
     /** 计划模式禁掉的工具：一切会落地改动或有长期副作用的能力 */
     private val PLAN_OFF = setOf(
         WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, MEMORY_DEL, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
+        TERM_SEND,
         FLOW_RUN, FLOW_SAVE, A2A, LAN,
         SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT,
         MI_WRITE, MI_ACTION, MUSIC_LOGIN, MUSIC_CACHE
@@ -204,6 +208,8 @@ object Tools {
         MAKE_DIR -> "创建目录"
         DELETE -> "删除文件"
         SHELL -> "执行命令"
+        TERM_VIEW -> "查看终端内容"
+        TERM_SEND -> "向终端输入"
         LINUX -> "Linux 命令"
         WEB_SEARCH -> "联网搜索"
         RAIL -> "火车票查询"
@@ -371,6 +377,34 @@ object Tools {
                         "功能键，配合 session 用，传了就不执行 command：" +
                             "ctrl-c 打断会话里正在跑的命令、ctrl-d 写 EOF、enter 回车"
                     )
+                )
+            )
+        )
+        //终端查看 / 输入：排障用。命令卡住、看不到进度时先 view 看回显，再 send 发键（如分页器 q）
+        arr.put(
+            fn(
+                TERM_VIEW,
+                "查看某个终端会话最近的回显画面（最后若干行）。命令长时间没输出、怀疑卡住时先调用它看清当前状态，" +
+                    "再决定发什么键或用 keys=ctrl-c 结束，避免盲目打断。",
+                toolIn(
+                    JSONObject().put("session", str("会话名，和 exec_shell 用的是同一套；不填=main"))
+                        .put("tail", num("返回最后多少行，默认 80，最多 800"))
+                )
+            )
+        )
+        arr.put(
+            fn(
+                TERM_SEND,
+                "向终端会话的 stdin 写文本：回答 y/n 确认、给分页器（less/more）发 q、在 REPL 里敲内容等。" +
+                    "配合 term_view 用：先 view 看画面，再 send 对应输入。",
+                toolIn(
+                    JSONObject().put("session", str("会话名，和 exec_shell 用的是同一套；不填=main"))
+                        .put("text", str("要写入的文本，例如 q、y、help"))
+                        .put(
+                            "enter",
+                            JSONObject().put("type", "boolean").put("description", "写完是否补一个回车，默认 false")
+                        ),
+                    "text"
                 )
             )
         )
@@ -1177,6 +1211,9 @@ object Tools {
             args.optString("session"),
             args.optString("keys")
         ).governed()
+        //终端排障：先看画面（term_view），再决定发什么键（term_send / exec_shell 的 keys）
+        TERM_VIEW -> termView(args).governed()
+        TERM_SEND -> termSend(args).governed()
         LINUX -> execLinux(args.optString("command")).governed()
         WEB_SEARCH -> search(args).governed()
         RAIL -> rail(args).governed()
@@ -1952,6 +1989,26 @@ object Tools {
             ToolOutcome(false, "请求失败：" + (it.message ?: it.javaClass.simpleName), Route.SANDBOX)
         }
     } //直发 HTTP
+
+    /**
+     * 查看终端会话最近的回显：命令卡住 / 看不到进度时先调它。
+     * 只读，不改状态，所以计划模式下也允许。
+     */
+    private fun termView(a: JSONObject): ToolOutcome {
+        val r = Term.view(a.optString("session"), a.optInt("tail", 80))
+        return ToolOutcome(r.ok, r.out, routeNow())
+    } //查看终端内容
+
+    /**
+     * 向终端会话 stdin 写文本：分页器发 q、交互确认 y/n、REPL 输入等。
+     * 会改变会话状态，计划模式下被 PLAN_OFF 拦掉。
+     */
+    private fun termSend(a: JSONObject): ToolOutcome {
+        val text = a.optString("text")
+        if (text.isEmpty()) return ToolOutcome(false, "text 为空：要写什么就传什么，例如 q、y、help", Route.SANDBOX)
+        val r = Term.send(a.optString("session"), text, a.optBoolean("enter", false))
+        return ToolOutcome(r.ok, r.out, routeNow())
+    } //向终端输入
 
     private fun apk(a: JSONObject): ToolOutcome {
         val r = Apk.run(

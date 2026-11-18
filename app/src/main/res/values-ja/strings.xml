@@ -8,6 +8,16 @@
     <string name="ob_step3">3/5 ワークフローを選択</string>
     <string name="ob_step4">4/5 実行環境をインストール</string>
     <string name="ob_step5">5/5 モデルを設定</string>
+    <string name="ob_step_grant">3/6 権限とバックグラウンド</string>
+    <string name="ob_grant_note">以下を有効にすると、AI がファイルの読み書き、バックグラウンド実行、他アプリ上へのピル表示を安定して行えます。今はスキップして、あとで「設定 → 権限」から有効にしても構いません。</string>
+    <string name="ob_grant_files">すべてのファイルへのアクセス</string>
+    <string name="ob_grant_files_desc">Android 11 以降は「すべてのファイルへのアクセス」を個別に有効にする必要があります。そうしないとワークスペース・バックアップ・ダウンロードが公開フォルダに書き込めません。</string>
+    <string name="ob_grant_go">有効にする</string>
+    <string name="ob_grant_special">バッテリーとオーバーレイ：ロック後にタスクが停止されるのを防ぎ、「実行中」のピルを他アプリ上に表示します。</string>
+    <string name="ob_grant_runtime">マイク・通知などの実行時権限：音声入力にはマイク、タスク完了通知には通知が必要です。システムのダイアログですべて許可してください。</string>
+    <string name="ob_grant_runtime_go">権限をリクエスト</string>
+    <string name="ob_grant_on">有効</string>
+    <string name="ob_grant_off">無効</string>
     <string name="ob_normal_msg">App 自身のサンドボックス権限を使用；/sdcard にはストレージ権限が必要</string>
     <string name="ob_shizuku_ok">許可済み（Shizuku）</string>
     <string name="ob_shizuku_deny">許可が拒否されました。もう一度タップして申請できます</string>

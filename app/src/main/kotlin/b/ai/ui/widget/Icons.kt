@@ -72,6 +72,20 @@ fun IcBack(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
     }
 } //矢量返回箭头
 
+/** 自绘右箭头（前进），引导页的圆形下一步按钮用它 */
+@Composable
+fun IcArrowRight(color: Color, side: Dp = 20.dp, stroke: Dp = 2.1.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx - r, cy), Offset(cx + r * 0.72f, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + r * 0.72f, cy), Offset(cx + r * 0.1f, cy - r * 0.62f), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + r * 0.72f, cy), Offset(cx + r * 0.1f, cy + r * 0.62f), w, StrokeCap.Round)
+    }
+} //矢量右箭头
+
 /** 自绘全屏展开：四角折线，用在输入区右下角开全屏编辑 */
 @Composable
 fun IcExpand(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {

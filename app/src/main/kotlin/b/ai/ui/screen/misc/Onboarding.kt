@@ -9,6 +9,7 @@ import b.ai.ui.screen.settings.ModelSetupPanel
 import b.ai.ui.screen.settings.SpecialPermCard
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.ChoiceRow
+import b.ai.ui.widget.CircleArrowButton
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.IcTick
 import b.ai.ui.widget.PrimaryButton
@@ -19,6 +20,14 @@ import android.Manifest
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,9 +166,10 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     0 -> R.string.ob_step_lang
                     1 -> R.string.ob_step1
                     2 -> R.string.ob_step2
-                    3 -> R.string.ob_step3
-                    4 -> R.string.ob_step4
-                    5 -> R.string.ob_step5
+                    3 -> R.string.ob_step_grant
+                    4 -> R.string.ob_step3
+                    5 -> R.string.ob_step4
+                    6 -> R.string.ob_step5
                     else -> R.string.ob_step_tos
                 }
             ),
@@ -168,81 +178,108 @@ fun OnboardingScreen(onDone: () -> Unit) {
         )
         Spacer(Modifier.height(10.dp))
 
-        when (step) {
-            0 -> StepLang()
-            1 -> StepMode()
-            2 -> StepPermission(
-                zwSupport = zwSupport,
-                modeMsg = modeMsg,
-                modeOk = modeOk,
-                onRecheck = {
-                    Router.reset()
-                    tick++
-                },
-                onRequestShizuku = {
-                    shizMsg = null
-                    Shiz.ask { r ->
-                        when (r) {
-                            Shiz.Perm.GRANTED -> {
-                                modeOk = true
-                                modeMsg = ctx.getString(R.string.ob_shizuku_ok)
-                            }
+//步骤切换的过渡：前进从右侧滑入、后退从左侧滑入，旧页反向淡出，方向感一致
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                val fwd = targetState >= initialState
+                (
+                    slideInHorizontally(
+                        animationSpec = spring(dampingRatio = 0.88f, stiffness = 420f),
+                        initialOffsetX = { w -> if (fwd) w else -w }
+                    ) + fadeIn(tween(160))
+                ).togetherWith(
+                    slideOutHorizontally(
+                        animationSpec = tween(200),
+                        targetOffsetX = { w -> if (fwd) -w else w }
+                    ) + fadeOut(tween(140))
+                )
+            },
+            label = "obStep"
+        ) { s ->
+            Box(Modifier.fillMaxWidth()) {
+                when (s) {
+                    0 -> StepLang()
+                    1 -> StepMode()
+                    2 -> StepPermission(
+                        zwSupport = zwSupport,
+                        modeMsg = modeMsg,
+                        modeOk = modeOk,
+                        onRecheck = {
+                            Router.reset()
+                            tick++
+                        },
+                        onRequestShizuku = {
+                            shizMsg = null
+                            Shiz.ask { r ->
+                                when (r) {
+                                    Shiz.Perm.GRANTED -> {
+                                        modeOk = true
+                                        modeMsg = ctx.getString(R.string.ob_shizuku_ok)
+                                    }
 
-                            Shiz.Perm.NEVER_ASK -> shizMsg = ctx.getString(R.string.shiz_manual)
-                            Shiz.Perm.NO_SERVICE -> shizMsg = ctx.getString(R.string.shiz_no_service)
-                            Shiz.Perm.ERROR -> shizMsg = ctx.getString(R.string.shiz_timeout)
-                            else -> shizMsg = ctx.getString(R.string.ob_shizuku_deny)
+                                    Shiz.Perm.NEVER_ASK -> shizMsg = ctx.getString(R.string.shiz_manual)
+                                    Shiz.Perm.NO_SERVICE -> shizMsg = ctx.getString(R.string.shiz_no_service)
+                                    Shiz.Perm.ERROR -> shizMsg = ctx.getString(R.string.shiz_timeout)
+                                    else -> shizMsg = ctx.getString(R.string.ob_shizuku_deny)
+                                }
+                            }
+                        },
+                        shizMsg = shizMsg,
+                        onOpenShizuku = { Shiz.openManager(ctx) }
+                    )
+                    3 -> StepGrant()
+                    4 -> StepWorkflow()
+                    5 -> StepEnv()
+                    6 -> Column {
+                        CardBox { ModelSetupPanel() }
+                        Spacer(Modifier.height(12.dp))
+                        //藏在最后一步的小开关：不想被评价弹窗打扰就勾这里
+                        Row(
+                            Modifier.fillMaxWidth().tap { Cfg.noRate = !Cfg.noRate },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(15.dp)
+                                    .liquidBg(RoundedCornerShape(5.dp), tint = if (Cfg.noRate) AccentBlue else SurfaceMuted),
+                                contentAlignment = Alignment.Center
+                            ) { if (Cfg.noRate) IcTick(Color.White, 9.dp) }
+                            Spacer(Modifier.width(8.dp))
+                            Text(stringResource(R.string.rate_off), fontSize = 10.sp, color = TextSecondary)
                         }
                     }
-                },
-                shizMsg = shizMsg,
-                onOpenShizuku = { Shiz.openManager(ctx) }
-            )
-            3 -> StepWorkflow()
-            4 -> StepEnv()
-            5 -> Column {
-                CardBox { ModelSetupPanel() }
-                Spacer(Modifier.height(12.dp))
-                //藏在最后一步的小开关：不想被评价弹窗打扰就勾这里
-                Row(
-                    Modifier.fillMaxWidth().tap { Cfg.noRate = !Cfg.noRate },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier
-                            .size(15.dp)
-                            .liquidBg(RoundedCornerShape(5.dp), tint = if (Cfg.noRate) AccentBlue else SurfaceMuted),
-                        contentAlignment = Alignment.Center
-                    ) { if (Cfg.noRate) IcTick(Color.White, 9.dp) }
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.rate_off), fontSize = 10.sp, color = TextSecondary)
+                    else -> TosBody(tosOk, { tosOk = it }, Modifier.height(320.dp))
                 }
             }
-            else -> TosBody(tosOk, { tosOk = it }, Modifier.height(320.dp))
-        }
+        } //步骤内容 + 过渡动画
 
         Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             if (step > 0) {
                 GhostButton(stringResource(R.string.ob_prev)) { step-- }
                 Spacer(Modifier.width(10.dp))
             }
-            if (step == 5) {
+            if (step == 6) {
                 //跳过 API key 也要过协议，所以直接落到下一步
-                GhostButton(stringResource(R.string.ob_skip)) { step = 6 }
+                GhostButton(stringResource(R.string.ob_skip)) { step = 7 }
                 Spacer(Modifier.width(10.dp))
             }
-            PrimaryButton(
-                text = stringResource(if (step < 6) R.string.ob_next else R.string.tos_agree),
-                enabled = when {
-                    step < 5 -> true
-                    step == 5 -> Cfg.ready
-                    else -> tosOk
-                }
-            ) {
-                if (step < 6) {
-                    step++
-                } else {
+            if (step < 7) {
+                //「下一步」是圆形箭头：主操作只留一个圆，小屏也不挤
+                CircleArrowButton(
+                    enabled = step < 6 || Cfg.ready,
+                    desc = stringResource(R.string.ob_next)
+                ) { step++ }
+            } else {
+                PrimaryButton(
+                    text = stringResource(R.string.tos_agree),
+                    enabled = tosOk
+                ) {
                     //同意协议才进应用，并把同意状态上报一次
                     Cfg.tosAgreed = Tos.version()
                     Cfg.onboarded = true
@@ -302,6 +339,80 @@ private fun StepMode() {
         }
     }
 }
+
+@Composable
+private fun StepGrant() {
+    val ctx = LocalContext.current
+    //状态轮询：从系统设置页返回后自动刷新，不用手动点
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(1500)
+            tick++
+        }
+    }
+    //进入本步主动弹一次「所有文件访问」：Android 11+ 这个是特殊权限，只能跳系统页手动开
+    var autoOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (!autoOpened && Build.VERSION.SDK_INT >= 30 && !Perms.allFiles()) {
+            autoOpened = true
+            Perms.openAllFiles(ctx)
+        }
+    }
+    CardBox {
+        Text(stringResource(R.string.ob_grant_note), fontSize = 13.sp, color = TextPrimary)
+        Spacer(Modifier.height(10.dp))
+        //全部文件访问：Android 11+ 才有，开了工作区 / 备份 / 下载才能写进公共目录
+        if (Build.VERSION.SDK_INT >= 30) {
+            val filesOn = remember(tick) { Perms.allFiles() }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.ob_grant_files), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(if (filesOn) R.string.ob_grant_on else R.string.ob_grant_off),
+                            fontSize = 11.sp,
+                            color = if (filesOn) OkGreen else DangerRed
+                        )
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(stringResource(R.string.ob_grant_files_desc), fontSize = 11.sp, color = TextSecondary)
+                }
+                Spacer(Modifier.width(10.dp))
+                if (filesOn) {
+                    Text("✓", fontSize = 14.sp, color = OkGreen)
+                } else {
+                    GhostButton(stringResource(R.string.ob_grant_go)) {
+                        Perms.openAllFiles(ctx)
+                        tick++
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
+        //电池保活 + 悬浮窗：交给通用特殊权限卡，内部自带 1.5s 轮询
+        SpecialPermCard(
+            listOf(Perms.SP_BATTERY, Perms.SP_OVERLAY),
+            stringResource(R.string.ob_grant_special)
+        )
+    }
+    Spacer(Modifier.height(12.dp))
+    //运行期权限：麦克风 / 通知（13+）等，走系统授权弹窗
+    CardBox {
+        Text(stringResource(R.string.ob_grant_runtime), fontSize = 13.sp, color = TextPrimary)
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            GhostButton(stringResource(R.string.ob_grant_runtime_go)) {
+                val act = ctx as? Activity ?: return@GhostButton
+                ActivityCompat.requestPermissions(act, Perms.runtime().toTypedArray(), 1002)
+            }
+        }
+    }
+} //权限授予步骤
 
 @Composable
 private fun StepPermission(

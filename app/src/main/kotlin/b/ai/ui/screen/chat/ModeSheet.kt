@@ -47,6 +47,7 @@ internal fun ModeCard(onClose: () -> Unit) {
         SheetHead(stringResource(R.string.mode_title), onClose)
         Column(
             Modifier
+                .weight(1f, fill = false)
                 .heightIn(max = 420.dp)
                 .verticalScroll(glassScrollState())
         ) {

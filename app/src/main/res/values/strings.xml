@@ -8,6 +8,16 @@
     <string name="ob_step3">3/5 选择工作流</string>
     <string name="ob_step4">4/5 装运行环境</string>
     <string name="ob_step5">5/5 配置模型</string>
+    <string name="ob_step_grant">3/6 授权与保活</string>
+    <string name="ob_grant_note">把下面这些开齐，AI 才能稳定读写文件、后台跑任务、在别的应用上显示胶囊。现在不开启也能先用，之后可在设置 → 权限里随时补开。</string>
+    <string name="ob_grant_files">全部文件访问</string>
+    <string name="ob_grant_files_desc">Android 11 起需要单独开启「所有文件访问」，否则工作区、备份、下载都写不进公共目录。</string>
+    <string name="ob_grant_go">去开启</string>
+    <string name="ob_grant_special">电池保活与悬浮窗：前者避免锁屏后任务被系统掐掉，后者让「正在进行 xx」的胶囊浮在其他应用上层。</string>
+    <string name="ob_grant_runtime">麦克风、通知等运行权限：语音输入要麦克风，任务完成提醒要通知。系统弹窗里全部允许即可。</string>
+    <string name="ob_grant_runtime_go">申请运行权限</string>
+    <string name="ob_grant_on">已开启</string>
+    <string name="ob_grant_off">未开启</string>
     <string name="ob_normal_msg">使用 App 自身沙箱权限；/sdcard 需存储权限</string>
     <string name="ob_shizuku_ok">已授权（Shizuku）</string>
     <string name="ob_shizuku_deny">授权被拒绝，可再点一次申请</string>

@@ -8,6 +8,16 @@
     <string name="ob_step3">3/5 Choisir un workflow</string>
     <string name="ob_step4">4/5 Installer l\'environnement</string>
     <string name="ob_step5">5/5 Configurer le modèle</string>
+    <string name="ob_step_grant">3/6 Autorisations et arrière-plan</string>
+    <string name="ob_grant_note">Activez les éléments ci-dessous pour que l’IA puisse lire/écrire les fichiers, exécuter des tâches en arrière-plan et afficher la pastille au-dessus des autres applis. Vous pouvez passer et les activer plus tard dans Réglages → Autorisations.</string>
+    <string name="ob_grant_files">Accès à tous les fichiers</string>
+    <string name="ob_grant_files_desc">Depuis Android 11, il faut activer séparément « Accès à tous les fichiers », sinon les espaces de travail, sauvegardes et téléchargements ne peuvent pas écrire dans les dossiers publics.</string>
+    <string name="ob_grant_go">Activer</string>
+    <string name="ob_grant_special">Batterie et superposition : évite que les tâches soient tuées en veille et affiche la pastille « en cours » au-dessus des autres applis.</string>
+    <string name="ob_grant_runtime">Micro, notifications et autres autorisations runtime : la saisie vocale a besoin du micro, les rappels de fin de tâche des notifications. Autorisez tout dans la boîte système.</string>
+    <string name="ob_grant_runtime_go">Demander les autorisations</string>
+    <string name="ob_grant_on">Activé</string>
+    <string name="ob_grant_off">Désactivé</string>
     <string name="ob_normal_msg">Utilise le bac à sable de l\'app ; /sdcard nécessite l\'accès au stockage</string>
     <string name="ob_shizuku_ok">Accordé (Shizuku)</string>
     <string name="ob_shizuku_deny">Autorisation refusée, appuyez à nouveau pour réessayer</string>

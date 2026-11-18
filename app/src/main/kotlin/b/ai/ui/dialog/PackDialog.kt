@@ -111,6 +111,7 @@ fun PackDialog(pack: SkillPack, onClose: () -> Unit) {
         Box(
             Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .heightIn(max = 430.dp)
                 .verticalScroll(glassScrollState())
         ) {

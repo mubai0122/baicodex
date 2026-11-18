@@ -53,6 +53,8 @@ object Term {
     ) {
         val lock = Any()
         val backlog = ArrayList<String>()
+        /** 滚动回显：所有输出行（含已被消费的）都留一份，供 term_view 随时查看「画面」 */
+        val recent = ArrayList<String>()
 
         @Volatile
         var cur: Cmd? = null
@@ -162,6 +164,48 @@ object Term {
         }
     } //向会话发功能键
 
+    /**
+     * 查看会话最近的回显「画面」：命令卡住、看不到进度时先调它。
+     * tail 控制返回最后多少行（默认 80）；会话不存在直接报错，提示先开会话。
+     */
+    fun view(session: String, tail: Int): ShellResult {
+        val name = session.ifBlank { "main" }
+        val s = synchronized(pool) { pool[name] }
+            ?: return ShellResult(-1, "会话「$name」不存在：先在同一个 session 里跑过命令把它开起来")
+        val n = tail.coerceIn(1, MAX_LINES)
+        val snap = synchronized(s.recent) {
+            when {
+                s.recent.size <= n -> ArrayList(s.recent)
+                else -> ArrayList(s.recent.subList(s.recent.size - n, s.recent.size))
+            }
+        }
+        val state = if (s.alive) "存活" else "已退出"
+        val head = "[会话 " + name + " · " + state + " · cwd=" + s.cwd.ifBlank { "?" } + "]\n"
+        val body = if (snap.isEmpty()) "(暂无输出)" else snap.joinToString("\n")
+        return ShellResult(0, head + body)
+    } //查看终端内容
+
+    /**
+     * 向会话 stdin 写文本：回答 y/n、敲 REPL、给分页器发 q 都用它。
+     * enter=true 时自动补一个回车。会话不存在会新开一个。
+     * 注意：非 PTY 会话，写入的是 sh 的 stdin；命令若在后台子进程里自己读 stdin 未必生效，
+     * 这种场景只能看 term_view 的回显 + 用 keys=ctrl-c 结束。
+     */
+    fun send(session: String, text: String, enter: Boolean): ShellResult {
+        val name = session.ifBlank { "main" }
+        var s = synchronized(pool) { pool[name] }
+        if (s == null || !s.alive) {
+            synchronized(pool) { pool.remove(name) }
+            s = sess(name) ?: return ShellResult(-1, "开不了会话「$name」（当前通道不支持常驻 shell）")
+        }
+        val payload = if (enter) text + "\n" else text
+        if (payload.isEmpty()) return ShellResult(-1, "要写入的内容为空")
+        runCatching { s.write(payload) }.onFailure {
+            return ShellResult(-1, "写入失败：" + (it.message ?: "会话可能已退出"))
+        }
+        return ShellResult(0, "已向会话「$name」写入：" + payload.replace("\n", "\\n"))
+    } //向终端输入
+
     fun close(name: String): Boolean {
         val s = synchronized(pool) { pool.remove(name) } ?: return false
         s.close()
@@ -249,10 +293,20 @@ object Term {
                 return
             }
             synchronized(c.lines) { if (c.lines.size < MAX_LINES) c.lines.add(line) }
+            keep(s, line)
             return
         }
         synchronized(s.backlog) { if (s.backlog.size < MAX_LINES) s.backlog.add(line) }
+        keep(s, line)
     } //一行输出归到当前命令
+
+    /** 把输出行追加进滚动回显，超 MAX_LINES 从头部丢；sentinel 行不会走到这里 */
+    private fun keep(s: Sess, line: String) {
+        synchronized(s.recent) {
+            if (s.recent.size >= MAX_LINES) s.recent.removeAt(0)
+            s.recent.add(line)
+        }
+    } //记一份回显
 
     private fun killPid(tag: String, pid: Int): ShellResult = when (tag) {
         "root" -> Root.run("kill -INT $pid", 15_000L)

@@ -3073,7 +3073,7 @@ private fun McpDialog(
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
         )
-        Column(Modifier.heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
+        Column(Modifier.weight(1f, fill = false).heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
             Field(stringResource(R.string.mcp_name), name, { name = it }, placeholder = stringResource(R.string.mcp_name_ph))
             Field(stringResource(R.string.mcp_url), url, { url = it }, placeholder = stringResource(R.string.mcp_url_ph))
             Spacer(Modifier.height(10.dp))
@@ -3228,7 +3228,7 @@ private fun SkillDialog(
             color = TextPrimary
         )
         Spacer(Modifier.height(4.dp))
-        Column(Modifier.heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
+        Column(Modifier.weight(1f, fill = false).heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
             Field(stringResource(R.string.se_258), name, { name = it }, placeholder = stringResource(R.string.se_259))
             Field(stringResource(R.string.se_260), desc, { desc = it }, placeholder = stringResource(R.string.se_261))
             Field(
@@ -3354,7 +3354,7 @@ private fun PersonaDialog(
             color = TextSecondary
         )
         Spacer(Modifier.height(6.dp))
-        Column(Modifier.heightIn(max = 400.dp).verticalScroll(glassScrollState())) {
+        Column(Modifier.weight(1f, fill = false).heightIn(max = 400.dp).verticalScroll(glassScrollState())) {
             //头像走图片：选一张落私有目录，聊天里 AI 头像选「跟角色卡」时就用它
             AvatarPick(
                 stringResource(R.string.se_271),

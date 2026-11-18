@@ -279,7 +279,7 @@ private fun Root() {
     LaunchedEffect(Cfg.onboarded) {
         if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
     }
-    val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || upd != null || updHis != null || ann != null ||
+    val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || (upd != null) || updHis != null || ann != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
     //抽屉开合只订阅布尔，不读进度：组合期读 anim.value 会让抽屉每移一帧就重组整个 Root

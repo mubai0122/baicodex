@@ -96,6 +96,7 @@ fun TaskDialog(onClose: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .heightIn(max = 380.dp)
                 .verticalScroll(glassScrollState())
         ) {

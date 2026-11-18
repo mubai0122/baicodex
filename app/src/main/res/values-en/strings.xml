@@ -8,6 +8,16 @@
     <string name="ob_step3">3/5 Pick a workflow</string>
     <string name="ob_step4">4/5 Install runtime</string>
     <string name="ob_step5">5/5 Set up the model</string>
+    <string name="ob_step_grant">3/6 Permissions and background</string>
+    <string name="ob_grant_note">Turn the following on so the AI can reliably read/write files, run background tasks and show the status pill over other apps. You can skip for now and enable them later in Settings → Permissions.</string>
+    <string name="ob_grant_files">All files access</string>
+    <string name="ob_grant_files_desc">Since Android 11 you must enable “All files access” separately, otherwise workspaces, backups and downloads cannot write to public folders.</string>
+    <string name="ob_grant_go">Enable</string>
+    <string name="ob_grant_special">Battery and overlay: keep tasks from being killed while locked, and show the “running xx” pill over other apps.</string>
+    <string name="ob_grant_runtime">Microphone, notifications and other runtime permissions: voice input needs the mic; completion reminders need notifications. Allow all in the system dialog.</string>
+    <string name="ob_grant_runtime_go">Request permissions</string>
+    <string name="ob_grant_on">On</string>
+    <string name="ob_grant_off">Off</string>
     <string name="ob_normal_msg">Uses the app sandbox only; /sdcard needs storage permission</string>
     <string name="ob_shizuku_ok">Granted (Shizuku)</string>
     <string name="ob_shizuku_deny">Permission denied, tap again to retry</string>

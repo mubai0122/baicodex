@@ -154,6 +154,7 @@ fun SessionSheet(onClose: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .heightIn(max = 400.dp)
                     .verticalScroll(glassScrollState())
             ) {

@@ -712,6 +712,7 @@ private fun LocalPickDialog(
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .heightIn(max = 360.dp)
                     .verticalScroll(glassScrollState())
             ) {
@@ -755,6 +756,7 @@ private fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose:
         Column(
             Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .heightIn(max = 400.dp)
                 .verticalScroll(glassScrollState())
         ) {

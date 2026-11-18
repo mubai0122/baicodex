@@ -263,6 +263,7 @@ object Cfg {
         mem("dev_show", false).value = p.getBoolean("dev_show", false)
         mem("dev_on", false).value = p.getBoolean("dev_on", false)
         mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
+        //备份密钥更换提醒是否已处理（1.17.2）：不读回来的话每次启动都会再拦一次
         mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
         mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
         mem("a2a_token", "").value = Vault.get("a2a_token")
@@ -402,6 +403,11 @@ object Cfg {
     var fbToken: String
         get() = mem("fb_token", "").value
         set(v) { mem("fb_token", "").value = v; Vault.put("fb_token", v, Vault.USER) }
+
+    /**
+     * 备份密钥更换提醒是否已处理（1.17.2）：启动时扫到本机有 .baicodex 备份就拦一次，
+     * 用户导入完或明确放弃后置真，本机不再重复提示。
+     */
 
     /** 插件广场里用的邮箱：上传要收验证码与审核结果，记下来省得每次重填 */
     var plEmail: String

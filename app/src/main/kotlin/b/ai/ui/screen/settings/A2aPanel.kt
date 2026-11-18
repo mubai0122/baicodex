@@ -101,6 +101,7 @@ fun A2aPanel(onClose: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .weight(1f, fill = false)
                 .heightIn(max = 440.dp)
                 .verticalScroll(glassScrollState())
         ) {

@@ -160,6 +160,7 @@ fun AskSheet(req: AskReq) {
         Spacer(Modifier.height(8.dp))
         Column(
             Modifier
+                .weight(1f, fill = false)
                 .heightIn(max = 320.dp)
                 .verticalScroll(glassScrollState())
         ) {

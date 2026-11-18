@@ -88,6 +88,7 @@ fun MemorySheet(onClose: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .heightIn(max = 430.dp)
                     .verticalScroll(glassScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)

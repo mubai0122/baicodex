@@ -51,6 +51,11 @@ import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.composed
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -74,6 +79,24 @@ fun Modifier.tap(enabled: Boolean = true, onClick: () -> Unit): Modifier = compo
     val src = remember { MutableInteractionSource() }
     clickable(interactionSource = src, indication = null, enabled = enabled, onClick = onClick)
 }
+
+/**
+ * 按压回弹：按下缩到 96%，松手用低阻尼弹簧弹回。
+ * 全站按钮共用这一份，引导页、弹窗、设置页的按钮手感因此完全一致。
+ */
+@Composable
+fun Modifier.pressFx(src: InteractionSource, down: Float = 0.96f): Modifier {
+    val pressed by src.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) down else 1f,
+        animationSpec = spring(dampingRatio = 0.42f, stiffness = 900f),
+        label = "pressFx"
+    )
+    return this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }
+} //按压回弹
 
 /** 无原生涟漪的长按：消息气泡用它打开操作菜单 */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -132,10 +155,12 @@ fun SectionTitle(text: String, sub: String? = null) {
 
 @Composable
 fun PrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(46.dp),
+        interactionSource = src,
+        modifier = modifier.height(46.dp).pressFx(src),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = AccentBlue,
@@ -149,16 +174,42 @@ fun PrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Mo
 /** 次要按钮：玻璃底 + 描边，材质跟卡片一致（原来用 OutlinedButton，是 Material 的白底描边） */
 @Composable
 fun GhostButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val src = remember { MutableInteractionSource() }
     Box(
         modifier
             .height(42.dp)
+            .pressFx(src)
             .liquidBg(RoundedCornerShape(12.dp), veil = 0.22f, gate = 0.dp)
             .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
-            .tap { onClick() }
+            .clickable(interactionSource = src, indication = null, onClick = onClick)
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) { Text(text, fontSize = 13.sp, color = TextPrimary) }
 } //次要按钮
+
+/**
+ * 圆形箭头按钮：引导流程的「下一步」用它。
+ * 主操作只留一个圆，底部行不再被一条宽按钮占满，小屏上也不挤。
+ */
+@Composable
+fun CircleArrowButton(
+    enabled: Boolean = true,
+    size: Dp = 52.dp,
+    desc: String = "",
+    onClick: () -> Unit
+) {
+    val src = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .size(size)
+            .pressFx(src, down = 0.9f)
+            .liquidBg(CircleShape, tint = if (enabled) AccentBlue else AccentBlue.copy(alpha = 0.35f), always = true)
+            .clickable(interactionSource = src, indication = null, enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        IcArrowRight(Color.White, side = size * 0.42f, stroke = 2.2.dp)
+    }
+} //圆形箭头按钮
 
 @Composable
 fun Tag(text: String, fg: Color = AccentBlue, bg: Color = AccentBlueSoft) {

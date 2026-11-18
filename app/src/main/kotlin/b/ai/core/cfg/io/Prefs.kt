@@ -3,6 +3,7 @@ package b.ai.core.cfg.io
 import android.content.Context
 import android.os.Build
 import b.ai.BuildConfig
+import b.ai.core.data.io.BackupCrypt
 import b.ai.core.data.io.Layout
 import org.json.JSONArray
 import org.json.JSONObject
@@ -83,7 +84,17 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
     /** 落盘密钥：从备份密钥派生，一份软件密钥，跟本机硬件无关 */
     private val key: ByteArray by lazy {
         MessageDigest.getInstance("SHA-256").digest(("baicodex-prefs|" + BuildConfig.BAI_BK_KEY).toByteArray())
-    }
+    } //当前密钥
+
+    /**
+     * 历史落盘密钥：1.17.2 换了 baicodex.backup.key，老设备上的分片还是历史串派生的。
+     * 只用于「读出来再按新密钥重写」，不参与任何写入。
+     */
+    private val legacyKeys: List<ByteArray> by lazy {
+        BackupCrypt.LEGACY_KEYS.map {
+            MessageDigest.getInstance("SHA-256").digest(("baicodex-prefs|" + it).toByteArray())
+        }
+    } //历史密钥表
 
     init {
         migrate()
@@ -127,12 +138,27 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
         loaded.add(s)
         val f = shardFile(s)
         if (!f.isFile) return
-        val o = runCatching { unseal(f) }.getOrNull()
+        var o = runCatching { unseal(f, key) }.getOrNull()
+        var legacy = false
+        if (o == null) {
+            //1.17.2 换了备份密钥：老分片按历史密钥逐个再试，能解开就当场按新密钥重写，用户设置不丢
+            for (k in legacyKeys) {
+                o = runCatching { unseal(f, k) }.getOrNull()
+                if (o != null) break
+            }
+            legacy = o != null
+            if (legacy) android.util.Log.w("Prefs", "分片 ${f.name} 用历史密钥解开，按新密钥重写")
+        }
         if (o == null) {
             android.util.Log.w("Prefs", "分片读不出 ${f.name}（密钥换过或文件损坏）")
             return
         }
         o.keys().forEach { k -> dec(o.getString(k))?.let { v -> map[k] = v } }
+        //旧密钥解开的片立刻回写：不等下一次改动，避免进程被杀时旧密文还留在盘上
+        if (legacy) {
+            dirty.add(s)
+            writeDirty()
+        }
     } //按需读分片
 
     fun getString(key: String, def: String?): String? = synchronized(lock) {
@@ -282,7 +308,7 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
         if (!replace(tmp, target)) throw IllegalStateException("替换写不动")
     } //加密写分片
 
-    private fun unseal(f: File): JSONObject? {
+    private fun unseal(f: File, k: ByteArray): JSONObject? {
         val raw = f.readBytes()
         val skip = MAGIC.length + 1 + NONCE
         if (raw.size <= skip) return null
@@ -291,7 +317,7 @@ class Prefs internal constructor(private val ctx: Context, val name: String) {
         val head = raw.copyOfRange(0, MAGIC.length + 1)
         val nonce = raw.copyOfRange(MAGIC.length + 1, skip)
         val c = Cipher.getInstance("AES/GCM/NoPadding")
-        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(TAG_BITS, nonce))
+        c.init(Cipher.DECRYPT_MODE, SecretKeySpec(k, "AES"), GCMParameterSpec(TAG_BITS, nonce))
         c.updateAAD(head)
         return JSONObject(String(c.doFinal(raw, skip, raw.size - skip), Charsets.UTF_8))
     } //解密读分片
