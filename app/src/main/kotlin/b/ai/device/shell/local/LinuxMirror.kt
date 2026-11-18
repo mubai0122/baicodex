@@ -79,10 +79,11 @@ object LinuxMirror {
     /**
      * 极简兜底：镜像地址全部由服务端 nodes.php 下发，本地不维护镜像源清单。
      * 这里只在「清单接口完全拉不到」时留两条 GitHub 直连，保证新装机器还有一次机会。
+     * 注意：GitHub raw 对大小写敏感，路径必须与仓库里的目录名逐字符一致（assets/Linux）。
      */
     val FALLBACK_NODES: List<Node> = listOf(
-        Node("gh", "GitHub 源", "https://raw.githubusercontent.com/mubai0122/baicodex/main/app/src/main/assets/linux/rootfs.tgz"),
-        Node("ghfast", "ghfast.top", "https://ghfast.top/https://raw.githubusercontent.com/mubai0122/baicodex/main/app/src/main/assets/linux/rootfs.tgz")
+        Node("gh", "GitHub 源", "https://raw.githubusercontent.com/mubai0122/baicodex/main/app/src/main/assets/Linux/rootfs.tgz"),
+        Node("ghfast", "ghfast.top", "https://ghfast.top/https://raw.githubusercontent.com/mubai0122/baicodex/main/app/src/main/assets/Linux/rootfs.tgz")
     )
 
     /** 兜底文件元信息：服务端拿不到时不做 sha256 校验（size/sha 未知就跳过校验） */
