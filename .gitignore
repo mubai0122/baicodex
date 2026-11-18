@@ -20,6 +20,7 @@ logs/
 
 #崩溃日志
 crashlogs/
+*.log
 
 #本机配置与密钥（模板见 local.properties.todo；种子索引在 gradle/seeds.gradle.kts）
 local.properties
