@@ -35,7 +35,7 @@
     <string name="ob_req_storage">Grant storage permission</string>
     <string name="ob_wf_desc">Only shifts the emphasis of the system prompt, does not change the tool set</string>
     <string name="ob_env_title">Install the runtime?</string>
-    <string name="ob_env_body">Built-in Ubuntu 24.04: apt installs, builds and scripts all run inside it, no Termux needed. About 105MB, unpacking takes 1-3 minutes. Skip with Next if you do not need it; you can always install it later in Settings → Extensions → Linux.</string>
+    <string name="ob_env_body">Built-in Ubuntu 24.04: apt installs, builds and scripts all run inside it, no Termux needed. About 29 MB, unpacking takes 1-3 minutes. Skip with Next if you do not need it; you can always install it later in Settings → Extensions → Linux.</string>
     <string name="ob_env_mode">Currently running in %1$s mode; the built-in Ubuntu only works in Root mode. Go back and switch to Root first.</string>
     <string name="ob_env_ready">Status: ready</string>
     <string name="ob_env_missing">Status: not installed</string>
@@ -66,6 +66,16 @@
     <string name="sl_cleared">Current chat cleared</string>
     <string name="sl_nothing">Nothing to export yet</string>
     <string name="sl_exported">Exported: %1$s</string>
+    <string name="up_probe_fetch">Fetching mirror list…</string>
+    <string name="up_probe_start">%1$d mirror nodes, testing speed…</string>
+    <string name="up_probe_one">Testing %1$d/%2$d · %3$s %4$s</string>
+    <string name="up_probe_fallback">Mirror list unavailable (%1$s), using direct link</string>
+    <string name="up_probe_none">No mirror reachable, retrying with direct link</string>
+    <string name="up_no_mirror">No download node available: %1$s</string>
+    <string name="up_node">Downloading from %1$s (%2$d/%3$d)</string>
+    <string name="up_node_fail">%1$s failed: %2$s</string>
+    <string name="up_dl_title">Downloading %1$s / %2$s · %3$s</string>
+    <string name="up_btn_probe">Testing %1$d%%</string>
     <string name="up_startdl">Starting download…</string>
     <string name="up_done">Downloaded (%1$dMB), opening installer…</string>
     <string name="up_fail">Download failed: %1$s</string>
@@ -458,9 +468,10 @@
     <string name="ob2_installing">Installing…</string>
     <string name="ob2_reinstall">Reinstall</string>
     <string name="ob2_install">Install bundled Ubuntu</string>
+    <string name="ob2_mirror_src">Mirror source</string>
     <string name="ob2_selftest">Self-test</string>
     <string name="dw_multi">Select</string>
-    <string name="ob2_linux_d">Bundled Ubuntu 24.04: install deps, compile and run scripts inside it — no Termux needed. About 105 MB, unpacking takes 1–3 minutes. Skip with Next if you don\'t need it; you can install it later in Settings → Extensions → Linux.</string>
+    <string name="ob2_linux_d">Bundled Ubuntu 24.04: install deps, compile and run scripts inside it — no Termux needed. About 29 MB, fetched from a mirror node at install time, unpacking takes 1–3 minutes. Skip with Next if you don\'t need it; you can install it later in Settings → Extensions → Linux.</string>
     <string name="ob2_linux_warn">Currently in %1$s mode; the bundled Ubuntu only runs in Root mode. Go back one step and switch to Root first.</string>
     <string name="se_001">Model</string>
     <string name="se_002">Chat</string>

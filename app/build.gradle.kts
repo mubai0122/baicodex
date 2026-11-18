@@ -41,6 +41,10 @@ val miotRegion: String = seed("miot.region", "cn").takeIf { s ->
 } ?: "cn"
 
 android {
+    //镜像不进 APK：rootfs 29MB，安装时按服务端下发的节点下载；仓库里保留原件供第三方节点引用
+    androidResources {
+        ignoreAssetsPattern = "rootfs.tgz"
+    }
     namespace = "b.ai"
     compileSdk = 37
     ndkVersion = "28.2.13676358"
@@ -49,8 +53,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 49
-        versionName = "1.18.0"
+        versionCode = 50
+        versionName = "1.18.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -58,7 +62,6 @@ android {
         buildConfigField("String", "MIOT_CLIENT_ID", "\"$miotClientId\"")
         buildConfigField("String", "MIOT_REDIRECT", "\"$miotRedirect\"")
         buildConfigField("String", "MIOT_REGION", "\"$miotRegion\"")
-        //种子注入：表里每一行都出一个 BuildConfig 字段，缺键就是空串
         SEEDS.forEach { row -> buildConfigField("String", row[0], seedLiteral(row[1], "")) }
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
@@ -86,7 +89,6 @@ android {
         abortOnError = false
     } //关掉 lintVital 检查
 
-    //release 签名：keystore 路径与口令只放 local.properties（不进 git），缺失则出未签名包
     val signProps: Properties = Properties().also { p ->
         val f = rootProject.file("local.properties")
         if (f.exists()) f.inputStream().use { p.load(it) }
@@ -105,7 +107,6 @@ android {
     } //签名配置
     buildTypes {
         release {
-            //keystore 存在就用它签，缺文件时保持未签名，不阻断编译
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
@@ -116,7 +117,6 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            //debug 也用 release 签名：这样 debug 包能直接覆盖已装的正式版，测试不用先卸载
             signingConfig = signingConfigs.findByName("release")
         }
     } //releaseR8
@@ -128,8 +128,6 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            //libOpenCL.so 只是链接期桩（从设备 /vendor 拉的），运行期由系统 linker 提供；
-            //打进 APK 会让 App 加载到私有目录那份，在 Android 10+ 的命名空间里反而受限
             excludes += "**/libOpenCL.so"
         }
     }

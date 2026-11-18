@@ -6,6 +6,7 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.A11yPermCard
 import b.ai.ui.screen.settings.ModelSetupPanel
+import b.ai.ui.screen.settings.MirrorPickerDialog
 import b.ai.ui.screen.settings.SpecialPermCard
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.ChoiceRow
@@ -73,6 +74,7 @@ import b.ai.net.doc.Consent
 import b.ai.core.model.chat.WorkMode
 import b.ai.core.plugin.skill.Workflows
 import b.ai.device.shell.local.Linux
+import b.ai.device.shell.local.LinuxMirror
 import b.ai.device.sys.probe.Router
 import b.ai.device.shell.root.Shiz
 import b.ai.ui.theme.AccentBlue
@@ -500,6 +502,7 @@ private fun StepEnv() {
     var ready by remember { mutableStateOf(Linux.installed()) }
     var log by remember { mutableStateOf("") }
     var self by remember { mutableStateOf("") }
+    var showMirror by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val canRun = Linux.canRun()
     CardBox {
@@ -553,6 +556,24 @@ private fun StepEnv() {
                 }
             }
         }
+        Spacer(Modifier.height(8.dp))
+        val mLabel = run {
+            val mid = Cfg.linuxMirrorNode
+            if (mid.isBlank()) "自动（测速择优）"
+            else LinuxMirror.FALLBACK_NODES.firstOrNull { it.id == mid }?.name ?: mid
+        }
+        //镜像源：跟设置页同一个选择器，装环境前就能指定节点
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.ob2_mirror_src), fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "$mLabel ▸",
+                fontSize = 11.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { showMirror = true }
+            )
+        }
+        if (showMirror) MirrorPickerDialog { showMirror = false }
         if (log.isNotBlank()) {
             Spacer(Modifier.height(10.dp))
             Text(log, fontSize = 11.sp, color = TextSecondary, fontFamily = FontFamily.Monospace)

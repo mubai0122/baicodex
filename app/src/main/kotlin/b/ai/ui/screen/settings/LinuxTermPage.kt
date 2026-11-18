@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.core.cfg.app.Cfg
 import b.ai.device.shell.local.Linux
 import b.ai.device.shell.local.LinuxTerm
+import b.ai.device.shell.local.LinuxMirror
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DangerRed
@@ -73,6 +74,7 @@ fun LinuxTermPage() {
     var ready by remember { mutableStateOf(LinuxTerm.ready) }
     var envOk by remember { mutableStateOf(Linux.installed()) }
     var input by remember { mutableStateOf("") }
+    var showMirror by remember { mutableStateOf(false) }
 
     //订阅终端回调：进页面挂上、退页面摘掉，避免页面销毁后还在写已释放的 state
     DisposableEffect(Unit) {
@@ -142,6 +144,24 @@ fun LinuxTermPage() {
             }
         }
 
+        Spacer(Modifier.height(8.dp))
+        val mirrorLabel = run {
+            val mid = Cfg.linuxMirrorNode
+            if (mid.isBlank()) "自动（测速择优）"
+            else LinuxMirror.FALLBACK_NODES.firstOrNull { it.id == mid }?.name ?: mid
+        }
+        //镜像源：装环境时按这里的选择决定下载节点；「自动」= 客户端测速择优（TTFB ≤ 200ms 优先）
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("镜像源", fontSize = 11.sp, color = TextSecondary)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "$mirrorLabel ▸",
+                fontSize = 11.sp,
+                color = AccentBlue,
+                modifier = Modifier.tap { showMirror = true }
+            )
+        }
+        if (showMirror) MirrorPickerDialog { showMirror = false }
         Spacer(Modifier.height(12.dp))
         Text("常用开发环境", fontSize = 12.sp, color = TextSecondary)
         //两列网格：点一下就把安装命令丢进终端，输出实时刷在下面

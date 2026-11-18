@@ -30,10 +30,10 @@ object Linux {
 
     /** 外置下载兜底：/sdcard/BaiAgent/linux/ubuntu.tar.gz，或 assets 里自带的镜像 */
     private const val EXT_TAR = "/sdcard/BaiAgent/linux/ubuntu.tar.gz"
-    private const val ASSET_PROOT = "linux/proot"
-    private const val ASSET_LOADER = "linux/loader"
-    private const val ASSET_TALLOC = "linux/libtalloc.so.2"
-    private const val ASSET_TAR = "linux/rootfs.tgz"
+    private const val ASSET_PROOT = "Linux/proot"
+    private const val ASSET_LOADER = "Linux/loader"
+    private const val ASSET_TALLOC = "Linux/libtalloc.so.2"
+    private const val ASSET_TAR = "Linux/rootfs.tgz"
 
     /** 本地执行用不了时的哨兵退出码：见到它就退回 Root 通道 */
     private const val NO_LOCAL = -999
@@ -135,22 +135,48 @@ object Linux {
         val tar = tarball()
         if (!tar.isFile) {
             val ext = File(EXT_TAR)
-            when {
-                ext.isFile -> {
-                    onLog("用外置镜像 ${ext.absolutePath}")
-                    if (!ext.copyTo(tar, overwrite = true).isFile) {
-                        onLog("复制镜像失败")
+            if (ext.isFile) {
+                //优先级最高：用户自己放进来的镜像，离线场景靠它
+                onLog("用外置镜像 ${ext.absolutePath}")
+                if (!ext.copyTo(tar, overwrite = true).isFile) {
+                    onLog("复制镜像失败")
+                    return false
+                }
+            } else {
+                //内置镜像不再打进 APK：联网后并行测速，择优（或用户手动指定）下载
+                val src = Cfg.linuxMirrorNode
+                onLog(
+                    "镜像源：" + (if (src.isBlank()) "自动（并行测速择优，TTFB ≤ ${LinuxMirror.fastTtfbMs}ms 优先）"
+                    else "手动 ${src}") + "（设置 → Linux 沙箱 → 镜像源 可改）"
+                )
+                onLog("本地没有镜像，开始从镜像节点下载…")
+                var lastPct = -1
+                val okDl = LinuxMirror.fetch(
+                    dst = tar,
+                    manualId = Cfg.linuxMirrorNode,
+                    onLog = { line -> onLog(line) },
+                    onProgress = { got, total ->
+                        //进度按 5% 节流，避免日志被刷屏
+                        if (total > 0) {
+                            val pct = (got * 100 / total).toInt()
+                            if (pct >= lastPct + 5) {
+                                lastPct = pct
+                                onLog("下载 $pct%（${got / 1024 / 1024} / ${total / 1024 / 1024} MB）")
+                            }
+                        }
+                    }
+                )
+                if (!okDl || !tar.isFile) {
+                    //最后兑底：老包可能还带 assets 镜像，能拿到就用
+                    if (!copyAsset(ASSET_TAR, tar)) {
+                        onLog("没有可用的 Ubuntu 镜像：下载失败，且本地 $EXT_TAR 不存在")
                         return false
                     }
                 }
-                else -> if (!copyAsset(ASSET_TAR, tar)) {
-                    onLog("没有可用的 Ubuntu 镜像：assets/$ASSET_TAR 或 $EXT_TAR")
-                    return false
-                }
             }
         }
-        onLog("镜像 ${tar.length() / 1024 / 1024} MB，开始解包…")
         //解包到 rootfs.new：中途被打断也不会把现有 rootfs 弄成半成品
+        onLog("镜像 ${tar.length() / 1024 / 1024} MB，开始解包…")
         val stage = File(base(), "rootfs.new")
         runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
         stage.deleteRecursively()
@@ -175,6 +201,16 @@ object Linux {
         //之前「旧 rootfs 改名失败，中止」就是这么来的
         val old = File(base(), "rootfs.old")
         exec("rm -rf '${old.absolutePath}'", 120_000L)
+        //上一轮中断可能留下半成品 rootfs.old：rm -rf 删不掉时 mv 会报 "Directory not empty"，
+        //所以再上 root 删一次，仍删不掉就改个名让位，别让整次安装卡死在第 4 步
+        if (old.exists()) runCatching {
+            Root.run("rm -rf '${old.absolutePath}'", 120_000L)
+        }
+        if (old.exists()) {
+            val sway = File(base(), "rootfs.old.${System.currentTimeMillis()}")
+            onLog("旧 rootfs.old 删不掉，改名让位：${sway.name}")
+            runCatching { exec("mv '${old.absolutePath}' '${sway.absolutePath}'", 120_000L) }
+        }
         if (rootfs.exists()) {
             val mv1 = exec("mv '${rootfs.absolutePath}' '${old.absolutePath}'", 120_000L)
             if (!mv1.ok || !old.exists()) {

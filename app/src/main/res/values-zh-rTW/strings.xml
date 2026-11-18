@@ -35,7 +35,7 @@
     <string name="ob_req_storage">申請儲存權限</string>
     <string name="ob_wf_desc">只影響 system prompt 的側重，不改工具集</string>
     <string name="ob_env_title">要裝執行環境嗎？</string>
-    <string name="ob_env_body">內建 Ubuntu 24.04：apt 裝依賴、編譯、跑腳本都在裡面，不依賴 Termux。約 105MB，解包 1-3 分鐘。不需要就點「下一步」跳過，之後隨時能在 設定 → 擴充 → Linux 環境 裡裝。</string>
+    <string name="ob_env_body">內建 Ubuntu 24.04：apt 裝依賴、編譯、跑腳本都在裡面，不依賴 Termux。約 29MB（裝的時候自動從鏡像節點下載），解包 1-3 分鐘。不需要就點「下一步」跳過，之後隨時能在 設定 → 擴充 → Linux 環境 裡裝。</string>
     <string name="ob_env_mode">目前是 %1$s 模式，內建 Ubuntu 只有 Root 模式能跑；要裝先回上一步切成 Root。</string>
     <string name="ob_env_ready">環境狀態：已就緒</string>
     <string name="ob_env_missing">環境狀態：未安裝</string>
@@ -66,6 +66,16 @@
     <string name="sl_cleared">已清空目前會話</string>
     <string name="sl_nothing">還沒有內容可匯出</string>
     <string name="sl_exported">已匯出：%1$s</string>
+    <string name="up_probe_fetch">取得鏡像清單…</string>
+    <string name="up_probe_start">%1$d 個鏡像節點，正在測速…</string>
+    <string name="up_probe_one">測速 %1$d/%2$d · %3$s %4$s</string>
+    <string name="up_probe_fallback">鏡像清單不可用（%1$s），改用直連</string>
+    <string name="up_probe_none">測速節點全部不可用，改用直鏈重試</string>
+    <string name="up_no_mirror">取不到下載節點：%1$s</string>
+    <string name="up_node">從 %1$s 下載（%2$d/%3$d）</string>
+    <string name="up_node_fail">%1$s 下載失敗：%2$s</string>
+    <string name="up_dl_title">下載 %1$s / %2$s · %3$s</string>
+    <string name="up_btn_probe">測速中 %1$d%%</string>
     <string name="up_startdl">開始下載…</string>
     <string name="up_done">下載完成（%1$dMB），正在開啟安裝器…</string>
     <string name="up_fail">下載失敗：%1$s</string>
@@ -458,9 +468,10 @@
     <string name="ob2_installing">安裝中…</string>
     <string name="ob2_reinstall">重新安裝</string>
     <string name="ob2_install">安裝內建 Ubuntu</string>
+    <string name="ob2_mirror_src">鏡像來源</string>
     <string name="ob2_selftest">自檢</string>
     <string name="dw_multi">多選</string>
-    <string name="ob2_linux_d">內建 Ubuntu 24.04：apt 裝依賴、編譯、跑腳本都在裡面，不依賴 Termux。約 105MB，解包 1-3 分鐘。不需要就點「下一步」跳過，之後隨時能在 設定 → 擴充 → Linux 環境 裡裝。</string>
+    <string name="ob2_linux_d">內建 Ubuntu 24.04：apt 裝依賴、編譯、跑腳本都在裡面，不依賴 Termux。約 29MB（裝的時候自動從鏡像節點下載），解包 1-3 分鐘。不需要就點「下一步」跳過，之後隨時能在 設定 → 擴充 → Linux 環境 裡裝。</string>
     <string name="ob2_linux_warn">目前是 %1$s 模式，內建 Ubuntu 只有 Root 模式能跑；要裝先回上一步切成 Root。</string>
     <string name="se_001">模型</string>
     <string name="se_002">對話</string>

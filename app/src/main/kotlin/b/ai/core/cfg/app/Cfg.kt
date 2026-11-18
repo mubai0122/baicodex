@@ -266,6 +266,7 @@ object Cfg {
         mem("dev_show", false).value = p.getBoolean("dev_show", false)
         mem("dev_on", false).value = p.getBoolean("dev_on", false)
         mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
+        mem("linux_mirror_node", "").value = p.getString("linux_mirror_node", "")!!
         //备份密钥更换提醒是否已处理（1.17.2）：不读回来的话每次启动都会再拦一次
         mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
         mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
@@ -1061,6 +1062,11 @@ object Cfg {
     var devOn: Boolean
         get() = mem("dev_on", false).value
         set(v) { mem("dev_on", false).value = v; put("dev_on", v) }
+
+    /** 手动指定的 Ubuntu 镜像节点 id（对应服务端清单里的 id）；空串表示自动测速择优 */
+    var linuxMirrorNode: String
+        get() = mem("linux_mirror_node", "").value
+        set(v) { mem("linux_mirror_node", "").value = v; put("linux_mirror_node", v) }
 
     /** 当前选中配置的显示名；只在 profileCustom=true 时生效 */
     var profileName: String

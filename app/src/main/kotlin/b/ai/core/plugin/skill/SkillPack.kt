@@ -207,12 +207,12 @@ object SkillPacks {
         names.forEach { n ->
             val dst = File(root, n)
             if (!dst.exists()) {
-                runCatching { copyRes(am, "skills/$n", dst) }
+                runCatching { copyRes(am, "Skills/$n", dst) }
                 return@forEach
             }
             //已存在的包只补 SKILL.md 这种新增说明文件，其余一律不动用户改过的内容
             val md = File(dst, "SKILL.md")
-            if (!md.exists()) runCatching { copyRes(am, "skills/$n/SKILL.md", md) }
+            if (!md.exists()) runCatching { copyRes(am, "Skills/$n/SKILL.md", md) }
         }
     } //铺内置技能包
 

@@ -35,7 +35,7 @@
     <string name="ob_req_storage">Autoriser le stockage</string>
     <string name="ob_wf_desc">Ne change que l\'accent du prompt système, pas les outils</string>
     <string name="ob_env_title">Installer l\'environnement d\'exécution ?</string>
-    <string name="ob_env_body">Ubuntu 24.04 intégré : apt, compilation et scripts s\'exécutent à l\'intérieur, sans Termux. Environ 105 Mo, 1 à 3 min d\'extraction. Ignorez avec Suivant si inutile ; installation possible plus tard dans Réglages → Extensions → Linux.</string>
+    <string name="ob_env_body">Ubuntu 24.04 intégré : apt, compilation et scripts s\'exécutent à l\'intérieur, sans Termux. Environ 29 Mo, telecharge depuis un miroir au moment de installation, 1 à 3 min d\'extraction. Ignorez avec Suivant si inutile ; installation possible plus tard dans Réglages → Extensions → Linux.</string>
     <string name="ob_env_mode">Mode %1$s actif : l\'Ubuntu intégré ne fonctionne qu\'en mode Root. Revenez à l\'étape précédente et passez en Root.</string>
     <string name="ob_env_ready">État : prêt</string>
     <string name="ob_env_missing">État : non installé</string>
@@ -66,6 +66,16 @@
     <string name="sl_cleared">Conversation effacée</string>
     <string name="sl_nothing">Rien à exporter pour l\'instant</string>
     <string name="sl_exported">Exporté : %1$s</string>
+    <string name="up_probe_fetch">Récupération de la liste des miroirs…</string>
+    <string name="up_probe_start">%1$d miroirs, test de vitesse…</string>
+    <string name="up_probe_one">Test %1$d/%2$d · %3$s %4$s</string>
+    <string name="up_probe_fallback">Liste des miroirs indisponible (%1$s), lien direct utilisé</string>
+    <string name="up_probe_none">Aucun miroir disponible, nouvelle tentative en direct</string>
+    <string name="up_no_mirror">Aucun nœud de téléchargement : %1$s</string>
+    <string name="up_node">Téléchargement depuis %1$s (%2$d/%3$d)</string>
+    <string name="up_node_fail">Échec de %1$s : %2$s</string>
+    <string name="up_dl_title">Téléchargement %1$s / %2$s · %3$s</string>
+    <string name="up_btn_probe">Test %1$d%%</string>
     <string name="up_startdl">Téléchargement…</string>
     <string name="up_done">Téléchargé (%1$d Mo), ouverture de l\'installateur…</string>
     <string name="up_fail">Échec du téléchargement : %1$s</string>
@@ -458,9 +468,10 @@
     <string name="ob2_installing">Installation…</string>
     <string name="ob2_reinstall">Réinstaller</string>
     <string name="ob2_install">Installer Ubuntu intégré</string>
+    <string name="ob2_mirror_src">Source miroir</string>
     <string name="ob2_selftest">Auto-test</string>
     <string name="dw_multi">Sélection</string>
-    <string name="ob2_linux_d">Ubuntu 24.04 intégré : installation des dépendances, compilation et scripts s\'y exécutent, sans Termux. Environ 105 Mo, décompression en 1 à 3 minutes. Passez avec Suivant si inutile ; installable plus tard dans Réglages → Extensions → Linux.</string>
+    <string name="ob2_linux_d">Ubuntu 24.04 intégré : installation des dépendances, compilation et scripts s\'y exécutent, sans Termux. Environ 29 Mo, telecharge depuis un miroir au moment de installation, décompression en 1 à 3 minutes. Passez avec Suivant si inutile ; installable plus tard dans Réglages → Extensions → Linux.</string>
     <string name="ob2_linux_warn">Mode %1$s actuel ; l\'Ubuntu intégré ne fonctionne qu\'en mode Root. Revenez à l\'étape précédente et passez en Root.</string>
     <string name="se_001">Modèle</string>
     <string name="se_002">Conversation</string>

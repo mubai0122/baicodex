@@ -81,7 +81,7 @@ object Tos {
     fun load(): String = runCatching {
         val d = doc
         if (d != null && d.lang == langKey() && d.body.isNotBlank()) return@runCatching d.body
-        val name = if (langKey() == "zh") "tos/zh.txt" else "tos/en.txt"
+        val name = if (langKey() == "zh") "Tos/zh.txt" else "Tos/en.txt"
         b.ai.App.self.assets.open(name).bufferedReader().use { it.readText() }
     }.getOrDefault("") //读协议正文
 } //用户协议

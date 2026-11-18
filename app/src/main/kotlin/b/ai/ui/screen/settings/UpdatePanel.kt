@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import b.ai.core.misc.apk.ApkInstall
 import b.ai.net.api.update.Update
+import b.ai.net.api.update.UpdateMirror
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.SurfaceMuted
@@ -86,10 +87,18 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     val force = info.forceUpdateRequired
     val direct = info.downloadDirectUrl
     val jump = info.downloadJumpUrl
-    //-1 = 没开始；0..100 = 下载中；101 = 已下完并拉起安装器
-    var pct by remember { mutableStateOf(-1) }
+    //阶段：0 未开始 / 1 拉清单并测速选镜像 / 2 下载 / 3 已下完、正在装
+    var stage by remember { mutableStateOf(0) }
+    //测速进度：按「已出结果的节点数 / 总节点数」推进，与下载进度互不干扰
+    var probePct by remember { mutableStateOf(0) }
+    var probeMsg by remember { mutableStateOf("") }
+    //下载进度：字节口径，既能算百分比也能显示 MB 与速度
+    var dlDone by remember { mutableStateOf(0L) }
+    var dlTotal by remember { mutableStateOf(0L) }
+    var dlSpeed by remember { mutableStateOf(0L) }
     var msg by remember { mutableStateOf("") }
     val main = remember { Handler(Looper.getMainLooper()) }
+    val busy = stage in 1..3
 
     /** 本地已下好且指纹对得上的包：权限页来回一趟、弹窗关掉重开都不该重下 */
     fun cachedCopy(): File? {
@@ -105,18 +114,22 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
 
     /** 交给安装器：有 root / Shizuku 就静默装，没有才拉系统安装器 */
     suspend fun installNow(f: File) {
+        stage = 3
         msg = ctx.getString(R.string.up_installer)
         val r = withContext(Dispatchers.IO) { ApkInstall.install(ctx, f) }
         msg = r.msg
-        pct = if (r.ok) 101 else -1
+        if (!r.ok) stage = 0 //装不上就复位，允许用户重试
     } //装包
 
-    /** 下载并安装：本地已经有完整包就直接装，不重复下载 */
+    /** 拉清单 → 测速选镜像 → 下载 → 校验 → 装包；节点失败自动换下一个 */
     fun startDownload() {
-        if (pct in 0..100) return
-        pct = 0
+        if (busy) return
+        stage = 1
+        probePct = 0
+        probeMsg = ctx.getString(R.string.up_probe_fetch)
         msg = ctx.getString(R.string.up_startdl)
         scope.launch {
+            //本地有完整包：直接装，不重新下载
             val ready = withContext(Dispatchers.IO) { runCatching { cachedCopy() }.getOrNull() }
             if (ready != null) {
                 msg = ctx.getString(R.string.up_reuse, ready.length() / 1024 / 1024)
@@ -124,31 +137,100 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 return@launch
             }
             val dest = File(Layout.dir(ctx, Layout.APK), "bai-${info.latestCode}.apk")
-            val r = withContext(Dispatchers.IO) {
-                runCatching {
-                    Update.download(direct, dest) { p -> main.post { pct = p.coerceAtLeast(0) } }
+            //节点全部由服务端清单下发，客户端不硬编码任何镜像地址
+            val manifest = withContext(Dispatchers.IO) { UpdateMirror.fetchManifest() }
+            val nodes = manifest?.nodes ?: direct.takeIf { it.isNotBlank() }
+                ?.let { listOf(UpdateMirror.Node("direct", "官方直链", it)) }
+                .orEmpty()
+            if (nodes.isEmpty()) {
+                stage = 0
+                msg = ctx.getString(R.string.up_no_mirror, UpdateMirror.lastError.ifBlank { "清单为空" })
+                return@launch
+            }
+            if (manifest == null) msg = ctx.getString(R.string.up_probe_fallback, UpdateMirror.lastError)
+            probeMsg = ctx.getString(R.string.up_probe_start, nodes.size)
+
+            //并行测速：每出一个结果就推进一次进度条，界面始终知道在测哪个节点
+            val probes = withContext(Dispatchers.IO) {
+                UpdateMirror.probeAll(nodes) { p, done, total ->
+                    main.post {
+                        probePct = (done * 100 / total.coerceAtLeast(1)).coerceIn(0, 100)
+                        probeMsg = ctx.getString(
+                            R.string.up_probe_one,
+                            done, total, p.node.name,
+                            if (p.ok) "TTFB ${p.ttfbMs}ms / ${p.speedText()}" else "不可用"
+                        )
+                    }
                 }
             }
-            r.onSuccess { f ->
-                //下完先算指纹：服务端给了 sha256 就必须对得上，对不上就是包坏了，删掉重试
-                val sum = withContext(Dispatchers.IO) { runCatching { Update.sha256(f) }.getOrDefault("") }
-                if (info.sha256.isNotBlank() && sum != info.sha256) {
-                    runCatching { f.delete() }
-                    msg = ctx.getString(R.string.up_bad_pkg)
-                    pct = -1
-                    return@onSuccess
+            probePct = 100
+            val best = UpdateMirror.pick(probes)
+            if (best == null && manifest != null) msg = ctx.getString(R.string.up_probe_none)
+
+            //下载顺序：择优优先，其余可用节点依次兜底；最多试 3 个
+            val queue = UpdateMirror.order(probes).filter { it.ok }.map { it.node }
+                .ifEmpty { nodes }.take(3)
+            stage = 2
+            dlDone = 0L
+            dlTotal = manifest?.meta?.size ?: 0L
+            var pkg: File? = null
+            for ((i, node) in queue.withIndex()) {
+                msg = ctx.getString(R.string.up_node, node.name, i + 1, queue.size)
+                dlDone = 0L
+                dlSpeed = 0L
+                val r = withContext(Dispatchers.IO) {
+                    runCatching {
+                        var lastT = 0L
+                        var lastD = 0L
+                        UpdateMirror.download(node.url, dest) { done, total ->
+                            val now = System.currentTimeMillis()
+                            //400ms 节流：每个 64KB 都刷 UI 会拖慢下载
+                            if (now - lastT >= 400) {
+                                val spd = if (lastT > 0) (done - lastD) * 1000 / (now - lastT) else 0L
+                                lastT = now
+                                lastD = done
+                                main.post {
+                                    dlDone = done
+                                    if (total > 0) dlTotal = total
+                                    dlSpeed = spd
+                                }
+                            }
+                        }
+                    }
                 }
-                if (sum.isNotBlank()) withContext(Dispatchers.IO) {
-                    runCatching { File(f.absolutePath + ".sha").writeText(sum) }
+                val f = r.getOrNull()
+                if (f != null) {
+                    pkg = f
+                    break
                 }
-                msg = ctx.getString(R.string.up_done, f.length() / 1024 / 1024)
-                installNow(f)
-            }.onFailure {
-                msg = ctx.getString(R.string.up_fail, it.message?.take(80) ?: "")
-                pct = -1
+                msg = ctx.getString(
+                    R.string.up_node_fail, node.name,
+                    r.exceptionOrNull()?.message?.take(60) ?: ""
+                )
             }
+            val file = pkg
+            if (file == null) {
+                stage = 0
+                return@launch
+            }
+            if (dlTotal > 0) dlDone = dlTotal
+
+            //指纹校验：服务端给了 sha256 就必须对上，对不上说明包坏了
+            val want = manifest?.meta?.sha256.orEmpty().ifBlank { info.sha256 }
+            val sum = withContext(Dispatchers.IO) { runCatching { Update.sha256(file) }.getOrDefault("") }
+            if (want.isNotBlank() && !sum.equals(want, ignoreCase = true)) {
+                runCatching { file.delete() }
+                msg = ctx.getString(R.string.up_bad_pkg)
+                stage = 0
+                return@launch
+            }
+            if (sum.isNotBlank()) withContext(Dispatchers.IO) {
+                runCatching { File(file.absolutePath + ".sha").writeText(sum) }
+            }
+            msg = ctx.getString(R.string.up_done, file.length() / 1024 / 1024)
+            installNow(file)
         }
-    } //下载并安装
+    } //拉清单+测速+下载+装包
 
     //强制更新不传 onDismiss：点卡片外部关不掉
     //系统返回键也要吞掉，否则 ScrimCard 拦不住的返回能绕过强制更新
@@ -189,22 +271,25 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             }
         }
         Spacer(Modifier.height(8.dp))
-        //下载进度条：只有拿得到 contentLength 时才显示百分比，未知长度只显示「下载中」
-        if (pct in 0..100) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .liquidBg(RoundedCornerShape(3.dp), tint = SurfaceMuted)
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth((if (pct <= 0) 2 else pct) / 100f)
-                        .height(6.dp)
-                        .liquidBg(RoundedCornerShape(3.dp), tint = AccentBlue)
-                )
-            }
-            Spacer(Modifier.height(6.dp))
+        //第一条：测速选镜像（0→100 表示已测完的节点比例）
+        if (stage >= 1) {
+            UpBar(
+                title = probeMsg.ifBlank { ctx.getString(R.string.up_probe_fetch) },
+                pct = probePct
+            )
+        }
+        //第二条：下载（字节口径，单独一条，不与测速混用）
+        if (stage >= 2) {
+            val pct = if (dlTotal > 0) (dlDone * 100 / dlTotal).toInt().coerceIn(0, 100) else -1
+            UpBar(
+                title = ctx.getString(
+                    R.string.up_dl_title,
+                    sizeText(dlDone),
+                    if (dlTotal > 0) sizeText(dlTotal) else "?",
+                    if (dlSpeed > 0) speedText(dlSpeed) else "…"
+                ),
+                pct = pct
+            )
         }
         if (msg.isNotBlank()) {
             Text(msg, fontSize = 11.sp, color = TextSecondary)
@@ -225,9 +310,13 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 //直链优先：下完自动拉起安装器，不需要用户再找包
                 direct.isNotBlank() -> {
                     Text(
-                        when {
-                            pct in 0..100 -> if (pct <= 0) ctx.getString(R.string.up_prep) else ctx.getString(R.string.up_downloading, pct)
-                            pct == 101 -> msg.ifBlank { ctx.getString(R.string.up_installer) }
+                        when (stage) {
+                            1 -> ctx.getString(R.string.up_btn_probe, probePct)
+                            2 -> if (dlTotal > 0) ctx.getString(
+                                R.string.up_downloading,
+                                (dlDone * 100 / dlTotal).toInt().coerceIn(0, 100)
+                            ) else ctx.getString(R.string.up_prep)
+                            3 -> msg.ifBlank { ctx.getString(R.string.up_installer) }
                             else -> ctx.getString(R.string.up_dl_install)
                         },
                         fontSize = 12.sp,
@@ -285,7 +374,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
-                        .weight(if (direct.isBlank() && jump.isBlank()) 1f else 1f)
+                        .weight(1f)
                         .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
                         .tap { onClose() }
                         .padding(vertical = 11.dp)
@@ -294,6 +383,43 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
         }
     }
 } //检查更新弹窗
+
+/** 一条细进度条 + 一行说明：测速与下载各用一条，互不干扰 */
+@Composable
+private fun UpBar(title: String, pct: Int) {
+    Text(title, fontSize = 11.sp, color = TextSecondary)
+    Spacer(Modifier.height(4.dp))
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(6.dp)
+            .liquidBg(RoundedCornerShape(3.dp), tint = SurfaceMuted)
+    ) {
+        //未知总长（pct < 0）时只画一小段，表示在动但不装作知道进度
+        val f = if (pct < 0) 0.12f else (pct.coerceIn(0, 100).coerceAtLeast(2)) / 100f
+        Box(
+            Modifier
+                .fillMaxWidth(f)
+                .height(6.dp)
+                .liquidBg(RoundedCornerShape(3.dp), tint = AccentBlue)
+        )
+    }
+    Spacer(Modifier.height(6.dp))
+} //进度条
+
+/** 字节数转人看的体积 */
+private fun sizeText(b: Long): String = when {
+    b <= 0 -> "0 KB"
+    b < 1024 * 1024 -> "${b / 1024} KB"
+    else -> String.format("%.1f MB", b / 1024.0 / 1024.0)
+} //体积文本
+
+/** 速度转人看的字符串 */
+private fun speedText(bps: Long): String = when {
+    bps <= 0 -> "0 KB/s"
+    bps < 1024 * 1024 -> "${bps / 1024} KB/s"
+    else -> String.format("%.1f MB/s", bps / 1024.0 / 1024.0)
+} //速度文本
 
 /** 用系统浏览器打开下载页，打不开就静默失败（弹窗里已有提示文案） */
 private fun openBrowser(ctx: Context, url: String) {

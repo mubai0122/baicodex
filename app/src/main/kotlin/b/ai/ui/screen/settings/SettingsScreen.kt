@@ -237,47 +237,96 @@ private val TINT_NAMES = listOf(
 
 /** 设置项索引：搜索只查这张表，命中后直接跳到对应 tab；tab 写标签而不是数字，避免换顺序时错位 */
 private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes: Int = 0, val hintRaw: String = "", val pageId: String? = null)
+/** 页面级搜索词：新增子页只要加进 SePages 就能被搜到，不用再手写索引 */
+private val PageHints = mapOf(
+    "model_cfg" to "提供商 APIKey 模型 能力 深度思考 切换",
+    "model_param" to "温度 top_p token 参数 思考强度",
+    "model_voice" to "TTS 朗读 音色 语速 语音识别 STT 麦克风",
+    "model_mem" to "记忆 长期记忆 偏好 自动整理",
+    "model_local" to "GGUF 本地模型 离线 量化 推理",
+    "chat_ctx" to "上下文 轮数 压缩 摘要 用量",
+    "chat_inject" to "注入 时间 系统提示 回复信息",
+    "chat_session" to "会话 历史 导出 收藏夹 工作区",
+    "chat_tags" to "提示词 标签 片段 全局启用",
+    "chat_perm" to "权限 工作方式 Shizuku Root 无障碍 悬浮窗 实验性",
+    "ui_look" to "语言 主题色 字号 背景 玻璃质感 卡片 圆角 输入框 字体 深色",
+    "ui_md" to "Markdown 行距 段间距 代码字号 留白 排版",
+    "ui_person" to "头像 气泡 胶囊 桌宠",
+    "ui_nav" to "悬浮聊天窗 手势 预测性返回 底栏 导航",
+    "ui_emoji" to "表情 自定义 贴纸 分类 重置",
+    "ext_auto" to "自动化 定时任务 工作流 通知触发",
+    "ext_agent" to "角色 人设 技能 系统提示 技能包 专区",
+    "ext_link" to "接入 MCP A2A 搜索平台 节点 服务",
+    "ext_tool" to "工具 权限 开关 能力 路由 工具链",
+    "ext_ws" to "工作区 目录 根目录 绑定 目录树",
+    "ext_linux" to "Linux Ubuntu 沙箱 终端 proot 镜像源 依赖 自检 测速",
+    "ext_hub" to "生态 专区 插件 广场 市场",
+    "ext_mi" to "小米 米家 IoT 智能家居 设备",
+    "ext_mi_login" to "小米 登录 账号 授权 扫码",
+    "ext_mi_dev" to "小米 设备 局域网 扫描 属性 台账",
+    "ext_mi_ch" to "小米 通道 区域 诊断",
+    "ext_music" to "音乐 网易云 QQ音乐 酷我 音质",
+    "ext_lan" to "局域网 配对码 发现 传输 端口",
+    "ext_box" to "盒子 目录 白名单 读写 越界",
+    "stat" to "统计 用量 token 次数 分布 方格",
+    "about" to "关于 版本 更新 开源许可 反馈 开发者模式"
+)
 
-private val SettingIndex = listOf(
-    SettingEntry(R.string.se_007, R.string.se_001, R.string.se_008),
-    SettingEntry(R.string.se_009, R.string.se_001, R.string.se_010),
-    SettingEntry(R.string.se_011, R.string.se_001, R.string.se_012),
-    SettingEntry(R.string.se_013, R.string.se_001, R.string.se_014),
-    SettingEntry(R.string.se_v_in_t, R.string.se_001, R.string.se_v_in_d),
-    SettingEntry(R.string.se_v_out_t, R.string.se_001, R.string.se_v_out_d),
-    SettingEntry(R.string.se_124, R.string.se_001, R.string.se_125),
-    SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016),
-    SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018),
-    SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020),
-    SettingEntry(R.string.se_021, R.string.se_002, R.string.se_022),
-    SettingEntry(R.string.se_023, R.string.se_002, R.string.se_024),
-    SettingEntry(R.string.se_025, R.string.se_002, R.string.se_026),
-    SettingEntry(R.string.se_027, R.string.se_002, R.string.se_028),
-    SettingEntry(R.string.se_029, R.string.se_002, hintRaw = ""),
-    SettingEntry(R.string.se_030, R.string.se_003, R.string.se_031),
-    SettingEntry(R.string.se_032, R.string.se_003, hintRaw = ""),
-    SettingEntry(R.string.se_033, R.string.se_003, R.string.se_034),
-    SettingEntry(R.string.se_035, R.string.se_003, R.string.se_036),
+/** 页面级索引：从 SePages 自动展开，命中后直接落到该子页 */
+private val pageEntries: List<SettingEntry> by lazy {
+    //cat → 底栏标签：0 模型 / 1 对话 / 2 外观 / 3 扩展 / 4 统计 / 5 关于
+    val tabs = listOf(R.string.se_001, R.string.se_002, R.string.se_003, R.string.se_005, R.string.se_004, R.string.se_006)
+    SePages.map { p ->
+        SettingEntry(
+            labelRes = p.titleRes,
+            tabRes = tabs.getOrElse(p.cat) { R.string.se_001 },
+            hintRes = p.subRes,
+            hintRaw = PageHints[p.id].orEmpty(),
+            pageId = p.id
+        )
+    }
+} //页面级索引
+
+private val SettingIndex = pageEntries + listOf(
+    SettingEntry(R.string.se_007, R.string.se_001, R.string.se_008, pageId = "model_cfg"),
+    SettingEntry(R.string.se_009, R.string.se_001, R.string.se_010, pageId = "model_cfg"),
+    SettingEntry(R.string.se_011, R.string.se_001, R.string.se_012, pageId = "model_cfg"),
+    SettingEntry(R.string.se_013, R.string.se_001, R.string.se_014, pageId = "model_param"),
+    SettingEntry(R.string.se_v_in_t, R.string.se_001, R.string.se_v_in_d, pageId = "model_voice"),
+    SettingEntry(R.string.se_v_out_t, R.string.se_001, R.string.se_v_out_d, pageId = "model_voice"),
+    SettingEntry(R.string.se_124, R.string.se_001, R.string.se_125, pageId = "model_voice"),
+    SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016, pageId = "chat_ctx"),
+    SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018, pageId = "chat_inject"),
+    SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020, pageId = "chat_inject"),
+    SettingEntry(R.string.se_021, R.string.se_002, R.string.se_022, pageId = "chat_session"),
+    SettingEntry(R.string.se_023, R.string.se_002, R.string.se_024, pageId = "chat_session"),
+    SettingEntry(R.string.se_025, R.string.se_002, R.string.se_026, pageId = "chat_perm"),
+    SettingEntry(R.string.se_027, R.string.se_002, R.string.se_028, pageId = "chat_perm"),
+    SettingEntry(R.string.se_029, R.string.se_002, hintRaw = "", pageId = "chat_perm"),
+    SettingEntry(R.string.se_030, R.string.se_003, R.string.se_031, pageId = "ui_look"),
+    SettingEntry(R.string.se_032, R.string.se_003, hintRaw = "", pageId = "ui_look"),
+    SettingEntry(R.string.se_033, R.string.se_003, R.string.se_034, pageId = "ui_look"),
+    SettingEntry(R.string.se_035, R.string.se_003, R.string.se_036, pageId = "ui_look"),
     SettingEntry(R.string.se_037, R.string.se_003, hintRaw = "预测性返回 手势", pageId = "ui_nav"),
     //外观总页整包：Markdown 排版、卡片外观、玻璃质感都在这一页，搜索命中后直接落进去
     SettingEntry(R.string.se_pg_ui_theme, R.string.se_003, hintRaw = "卡片圆角 玻璃 背景 主题色 字号 输入框", pageId = "ui_look"),
     SettingEntry(R.string.se_pg_md, R.string.se_003, hintRaw = "Markdown 行距 段间距 缩进 留白 代码字号 排版 预览", pageId = "ui_md"),
     //外观新增的字体与控件外观：字体文件 / 各气泡字体 / 全局缩进 / 弹窗圆角 / miuix 滑块
     SettingEntry(R.string.se_032, R.string.se_003, hintRaw = "字体 字体文件 气泡字体 导入 全局缩进 弹窗圆角 滑块 miuix 轨道 主题色", pageId = "ui_look"),
-    SettingEntry(R.string.se_038, R.string.se_004, R.string.se_039),
-    SettingEntry(R.string.se_040, R.string.se_004, R.string.se_041),
-    SettingEntry(R.string.se_042, R.string.se_004, R.string.se_043),
-    SettingEntry(R.string.se_044, R.string.se_005, R.string.se_045),
-    SettingEntry(R.string.se_046, R.string.se_005, hintRaw = "web_search"),
-    SettingEntry(R.string.se_047, R.string.se_005, hintRaw = ""),
-    SettingEntry(R.string.se_048, R.string.se_005, hintRaw = ""),
-    SettingEntry(R.string.se_049, R.string.se_005, hintRaw = ""),
-    SettingEntry(R.string.mcp_title, R.string.se_005, R.string.mcp_sub),
-    SettingEntry(R.string.se_050, R.string.se_005, hintRaw = ""),
-    SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK"),
-    SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053),
-    SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055),
-    SettingEntry(R.string.se_gd_title, R.string.se_006, R.string.se_sec_sub)
+    SettingEntry(R.string.se_038, R.string.se_004, R.string.se_039, pageId = "stat"),
+    SettingEntry(R.string.se_040, R.string.se_004, R.string.se_041, pageId = "stat"),
+    SettingEntry(R.string.se_042, R.string.se_004, R.string.se_043, pageId = "stat"),
+    SettingEntry(R.string.se_044, R.string.se_005, R.string.se_045, pageId = "ext_auto"),
+    SettingEntry(R.string.se_046, R.string.se_005, hintRaw = "web_search", pageId = "ext_link"),
+    SettingEntry(R.string.se_047, R.string.se_005, hintRaw = "", pageId = "ext_agent"),
+    SettingEntry(R.string.se_048, R.string.se_005, hintRaw = "", pageId = "ext_agent"),
+    SettingEntry(R.string.se_049, R.string.se_005, hintRaw = "", pageId = "ext_agent"),
+    SettingEntry(R.string.mcp_title, R.string.se_005, R.string.mcp_sub, pageId = "ext_link"),
+    SettingEntry(R.string.se_050, R.string.se_005, hintRaw = "", pageId = "ext_tool"),
+    SettingEntry(R.string.se_051, R.string.se_005, hintRaw = "JDK / gradle / Android SDK", pageId = "ext_tool"),
+    SettingEntry(R.string.se_052, R.string.se_005, R.string.se_053, pageId = "ext_linux"),
+    SettingEntry(R.string.se_054, R.string.se_006, R.string.se_055, pageId = "about"),
+    SettingEntry(R.string.se_gd_title, R.string.se_006, R.string.se_sec_sub, pageId = "about")
 ) //搜索索引
 
 /** 按标签找 tab 下标，找不到就落回 0 */

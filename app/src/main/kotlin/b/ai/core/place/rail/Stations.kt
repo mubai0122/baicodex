@@ -25,7 +25,7 @@ object Stations {
         if (loaded) return
         loaded = true
         val raw = runCatching {
-            c.applicationContext.assets.open("station_name.js").bufferedReader().use { it.readText() }
+            c.applicationContext.assets.open("Tools/TICKET/station_name.js").bufferedReader().use { it.readText() }
         }.getOrNull() ?: return
         all = parse(raw)
     } //读 assets 站表
