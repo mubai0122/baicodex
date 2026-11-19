@@ -1793,6 +1793,7 @@
     <string name="island_stop">停止任务</string>
     <string name="island_task_title">Baicodex 任务</string>
     <string name="island_running">正在执行任务…</string>
+    <string name="island_bg_keep">任务在后台继续运行</string>
     <string name="island_done">任务已完成</string>
     <string name="ag_err_unknown">发送失败，原因未知</string>
     <string name="cs_fail_title">发送失败</string>

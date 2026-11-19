@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import b.ai.App
 import b.ai.R
 import b.ai.core.cfg.app.Cfg
+import b.ai.device.sys.keep.Keep
 
 object Island {
     private val main = Handler(Looper.getMainLooper())
@@ -41,12 +42,17 @@ object Island {
         pending = null
     } //取消倒计时
 
-    /** 一轮任务开始：发常驻通知；开关关掉就什么都不做 */
+    /** 一轮任务开始：必须有前台服务 + CPU 锁，islandOn 只决定通知样式 */
     fun taskStart(title: String, text: String) {
-        if (!Cfg.islandOn) return
         clearPending()
         running = true
-        impl.show(IslandSpec(title.ifBlank { defaultTitle() }, text, -1, Stage.RUN))
+        //保活与「要不要显示任务通知」解耦：任务在跑就必须有前台服务与唤醒锁，
+        //否则进程一进后台就被系统冻结（1.18.4 用户反馈的「切后台 AI 不跑了」就是这个）
+        Keep.acquire()
+        val t = title.ifBlank { defaultTitle() }
+        //islandOn 关掉时仍起前台服务，只把正文换成最简说明，避免用户以为后台在偷偷跑
+        val body = if (Cfg.islandOn) text else App.self.getString(R.string.island_bg_keep)
+        impl.show(IslandSpec(t, body, -1, Stage.RUN))
     } //任务开始
 
     /** 中途更新：只在任务进行中调用，不会重置驻留倒计时 */
@@ -61,6 +67,8 @@ object Island {
      */
     fun taskDone(title: String, text: String) {
         running = false
+        //任务收工：CPU / Wi-Fi 锁立刻还回去，完成态只剩一条通知，不需要保活
+        Keep.release()
         if (!Cfg.islandOn) {
             clearPending()
             impl.cancel()
@@ -85,6 +93,8 @@ object Island {
     fun cancel() {
         running = false
         clearPending()
+        //用户停手 / 进程收尾：锁一定要还，否则白耗电
+        Keep.release()
         impl.cancel()
     } //立即撤
 

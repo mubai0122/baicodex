@@ -1,7 +1,6 @@
 package b.ai.ui.screen.chat
 import b.ai.ui.input.SheetHead
 import b.ai.ui.input.SheetShell
-import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
@@ -13,12 +12,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
@@ -40,17 +36,14 @@ import b.ai.ui.theme.TextSecondary
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 
-/** 运行模式卡片：一档一行，带一句说明，点中即存盘并关面板；贴在输入区上沿，跟其他面板同一套外壳 */
+/** 运行模式卡片：一档一行，带一句说明，点中即存盘并关面板；贴输入区上沿，跟其他面板同一套外壳 */
 @Composable
 internal fun ModeCard(onClose: () -> Unit) {
     SheetShell {
         SheetHead(stringResource(R.string.mode_title), onClose)
-        Column(
-            Modifier
-                .weight(1f, fill = false)
-                .heightIn(max = 420.dp)
-                .verticalScroll(glassScrollState())
-        ) {
+        //注意：SheetShell 内部已经是「限高 + verticalScroll」的 Column，这里不能再套滚动或 weight，
+        //否则子项高度约束无界，weight 分配不到高度会把内容压成 0（弹窗空白）
+        Column(Modifier.fillMaxWidth()) {
             AgentMode.entries.forEach { m ->
                 val on = Cfg.agentMode == m
                 Row(
