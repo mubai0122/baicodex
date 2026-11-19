@@ -87,8 +87,11 @@ object UpdateMirror {
 
     /**
      * 拉服务端镜像清单。失败返回 null，调用方退回 get.php 的直链。
+     *
+     * @param abi 本机选定的架构；服务端按 abi 分块下发（根下 abis[abi] = {file, nodes}）时取该块，
+     *            没有分块就退回顶层 file/nodes（老清单格式）
      */
-    fun fetchManifest(timeoutMs: Int = 6_000): Manifest? {
+    fun fetchManifest(timeoutMs: Int = 6_000, abi: String? = null): Manifest? {
         var conn: HttpURLConnection? = null
         return try {
             conn = (URL(endpoint()).openConnection() as HttpURLConnection).apply {
@@ -108,7 +111,7 @@ object UpdateMirror {
                 lastError = "HTTP $code：${raw.take(120)}"
                 null
             } else {
-                val m = runCatching { parseManifest(raw) }.getOrElse { e ->
+                val m = runCatching { parseManifest(raw, abi) }.getOrElse { e ->
                     lastError = "解析异常：${e.message ?: e.javaClass.simpleName}；原文 ${raw.take(120)}"
                     null
                 }
@@ -125,11 +128,13 @@ object UpdateMirror {
     } //拉清单
 
     /** 解析清单 JSON：没 url 的节点直接跳过，避免下载阶段才炸 */
-    internal fun parseManifest(raw: String): Manifest? {
+    internal fun parseManifest(raw: String, abi: String? = null): Manifest? {
         val o = runCatching { JSONObject(raw) }.getOrNull() ?: return null
         //服务端可能包一层 {ok, ...} 或 {code, data:{...}}，两种都认
         val root = o.optJSONObject("data") ?: o
-        val f = root.optJSONObject("file")
+        //按 abi 分块下发时，file 与 nodes 都取该块；没有分块就用顶层（老格式）
+        val abiBlock = abi?.let { root.optJSONObject("abis")?.optJSONObject(it) }
+        val f = abiBlock?.optJSONObject("file") ?: root.optJSONObject("file")
         val meta = Meta(
             name = f?.optString("name").orEmpty().ifBlank { "update.apk" },
             size = f?.optLong("size", 0L) ?: 0L,
@@ -137,7 +142,7 @@ object UpdateMirror {
         )
         val thMs = root.optJSONObject("threshold")?.optLong("ttfbMs", FAST_TTFB_MS) ?: FAST_TTFB_MS
         if (thMs > 0) fastTtfbMs = thMs
-        val arr = root.optJSONArray("nodes") ?: return null
+        val arr = abiBlock?.optJSONArray("nodes") ?: root.optJSONArray("nodes") ?: return null
         val nodes = ArrayList<Node>(arr.length())
         for (i in 0 until arr.length()) {
             val n = arr.optJSONObject(i) ?: continue

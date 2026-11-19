@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import b.ai.core.misc.apk.ApkInstall
 import b.ai.net.api.update.Update
+import b.ai.net.api.update.Update.pickAbi
 import b.ai.net.api.update.UpdateMirror
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.DangerRed
@@ -85,8 +86,14 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val force = info.forceUpdateRequired
-    val direct = info.downloadDirectUrl
+    //按本机 ABI 选包：接口给了 abis 就用对应架构的直链与指纹，没给就退回 downloadDirectUrl
+    val picked = remember(info) { info.pickAbi() }
+    val direct = picked?.url?.takeIf { it.isNotBlank() } ?: info.downloadDirectUrl
     val jump = info.downloadJumpUrl
+    //服务端给的包指纹：manifest / abis / 顶层三级兜底，取第一个非空的
+    val pkgSha = picked?.sha256?.ifBlank { null } ?: info.sha256
+    //本地缓存名带 ABI：两种架构的包不能互相覆盖，否则装上去就是「应用未安装」
+    val pkgName = remember(info, picked) { "bai-${info.latestCode}-${picked?.abi ?: "any"}.apk" }
     //阶段：0 未开始 / 1 拉清单并测速选镜像 / 2 下载 / 3 已下完、正在装
     var stage by remember { mutableStateOf(0) }
     //测速进度：按「已出结果的节点数 / 总节点数」推进，与下载进度互不干扰
@@ -102,10 +109,10 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
 
     /** 本地已下好且指纹对得上的包：权限页来回一趟、弹窗关掉重开都不该重下 */
     fun cachedCopy(): File? {
-        val f = File(Layout.dir(ctx, Layout.APK), "bai-${info.latestCode}.apk")
+        val f = File(Layout.dir(ctx, Layout.APK), pkgName)
         if (!f.isFile || f.length() <= 0) return null
         //服务端给了 sha256 就按它验，没给就看上次下载成功时留下的旁注
-        val want = info.sha256.ifBlank {
+        val want = pkgSha.ifBlank {
             runCatching { File(f.absolutePath + ".sha").readText().trim() }.getOrDefault("")
         }.lowercase()
         if (want.length != 64) return null
@@ -136,9 +143,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 installNow(ready)
                 return@launch
             }
-            val dest = File(Layout.dir(ctx, Layout.APK), "bai-${info.latestCode}.apk")
-            //节点全部由服务端清单下发，客户端不硬编码任何镜像地址
-            val manifest = withContext(Dispatchers.IO) { UpdateMirror.fetchManifest() }
+            val dest = File(Layout.dir(ctx, Layout.APK), pkgName)
+            //节点全部由服务端清单下发，客户端不硬编码任何镜像地址；按本机 ABI 取对应那一块
+            val manifest = withContext(Dispatchers.IO) { UpdateMirror.fetchManifest(abi = picked?.abi) }
             val nodes = manifest?.nodes ?: direct.takeIf { it.isNotBlank() }
                 ?.let { listOf(UpdateMirror.Node("direct", "官方直链", it)) }
                 .orEmpty()
@@ -172,7 +179,7 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                 .ifEmpty { nodes }.take(3)
             stage = 2
             dlDone = 0L
-            dlTotal = manifest?.meta?.size ?: 0L
+            dlTotal = manifest?.meta?.size?.takeIf { it > 0 } ?: picked?.size ?: 0L
             var pkg: File? = null
             for ((i, node) in queue.withIndex()) {
                 msg = ctx.getString(R.string.up_node, node.name, i + 1, queue.size)
@@ -215,8 +222,8 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             }
             if (dlTotal > 0) dlDone = dlTotal
 
-            //指纹校验：服务端给了 sha256 就必须对上，对不上说明包坏了
-            val want = manifest?.meta?.sha256.orEmpty().ifBlank { info.sha256 }
+            //指纹校验：服务端给了 sha256 就必须对上，对不上说明包坏了（本机 ABI 的包优先）
+            val want = manifest?.meta?.sha256.orEmpty().ifBlank { pkgSha }
             val sum = withContext(Dispatchers.IO) { runCatching { Update.sha256(file) }.getOrDefault("") }
             if (want.isNotBlank() && !sum.equals(want, ignoreCase = true)) {
                 runCatching { file.delete() }
@@ -247,7 +254,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             listOf(
                 info.subtitle,
                 ctx.getString(R.string.up_ver, info.latestVersion),
-                info.updateDate
+                info.updateDate,
+                //本机自动选中的包：让用户知道下的是哪个架构，出问题好排查
+                picked?.abi?.let { "$it 包" } ?: ""
             ).filter { it.isNotBlank() }.joinToString(" · "),
             fontSize = 11.sp,
             color = TextSecondary

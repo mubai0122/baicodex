@@ -43,8 +43,6 @@ android {
 
     androidResources {
         ignoreAssetsPattern = "rootfs.tgz"
-        //只保留真实提供的 5 种语言：依赖库自带的其它 locale 会被资源收缩器整批删掉，
-        //resources.arsc 能小一截（系统语言不在这 5 种里时回落到默认中文）
         localeFilters += listOf("zh", "en", "fr", "ja", "zh-rTW")
     }
     namespace = "b.ai"
@@ -55,8 +53,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 52
-        versionName = "1.18.3"
+        versionCode = 53
+        versionName = "1.18.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -175,12 +173,12 @@ stringfog {
 
 val copyAbiApks by tasks.registering(Copy::class) {
     dependsOn("assembleRelease")
-    val outDir = layout.buildDirectory.dir("outputs/apk/release")
-    from(outDir) {
+    //不写回 AGP 的 outputs/apk/release：Gradle 9 会报「隐式依赖」错误，统一放到 outputs/apk/abi
+    from(layout.buildDirectory.dir("outputs/apk/release")) {
         include("app-arm64-v8a-release.apk", "app-armeabi-v7a-release.apk")
         rename { n ->
             if (n.startsWith("app-arm64-v8a")) "app-release-v8a.apk" else "app-release-v7a.apk"
         }
     }
-    into(outDir)
+    into(layout.buildDirectory.dir("outputs/apk/abi"))
 } //分包产物改名

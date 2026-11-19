@@ -34,8 +34,23 @@ object Update {
         val downloadJumpUrl: String = "",
         val downloadDirectUrl: String = "",
         /** 服务端给的包指纹：有就按它校验本地已下载的包，没有就退回旁注文件 */
-        val sha256: String = ""
+        val sha256: String = "",
+        /** 按 ABI 拆分的包：分包发版后才有，旧接口返回空 */
+        val abis: List<AbiPkg> = emptyList()
     )
+
+    /** 本机第一个能在 abis 里对上的包；一个都对不上返回 null（调用方退回 downloadDirectUrl） */
+    fun Info.pickAbi(): AbiPkg? {
+        if (abis.isEmpty()) return null
+        for (a in Build.SUPPORTED_ABIS) {
+            abis.firstOrNull { it.abi == a && it.url.isNotBlank() }?.let { return it }
+        }
+        //个别老设备只报 armeabi（不带 v7a 后缀），按 32 位包处理
+        if (Build.SUPPORTED_ABIS.any { it == "armeabi" }) {
+            abis.firstOrNull { it.abi == "armeabi-v7a" && it.url.isNotBlank() }?.let { return it }
+        }
+        return null
+    } //按 ABI 选包
 
     /** 更新历史里的一条记录 */
     data class His(
@@ -45,6 +60,19 @@ object Update {
         val title: String = "",
         val subtitle: String = "",
         val content: String = ""
+    )
+
+    /**
+     * 一个按 ABI 拆出来的安装包。
+     * 分包发版后 get.php 会在 data.abis 里按架构下发各自的直链与指纹，
+     * 客户端按本机 SUPPORTED_ABIS 自己挑，不用用户选。
+     */
+    data class AbiPkg(
+        val abi: String = "",
+        val name: String = "",
+        val url: String = "",
+        val sha256: String = "",
+        val size: Long = 0L
     )
 
     /** 客户端 versionCode：API 28 起 versionCode 字段废弃，改读 longVersionCode */
@@ -80,13 +108,30 @@ object Update {
             forceUpdateRequired = d.optBoolean("forceUpdateRequired", false),
             downloadJumpUrl = d.str("downloadJumpUrl"),
             downloadDirectUrl = d.str("downloadDirectUrl"),
-            sha256 = d.str("sha256").lowercase()
+            sha256 = d.str("sha256").lowercase(),
+            abis = d.optJSONObject("abis")?.let { o ->
+                val out = ArrayList<AbiPkg>(o.length())
+                o.keys().forEach { k ->
+                    val p = o.optJSONObject(k) ?: return@forEach
+                    out.add(
+                        AbiPkg(
+                            abi = k,
+                            name = p.str("name"),
+                            url = p.str("url"),
+                            sha256 = p.str("sha256").lowercase(),
+                            size = p.optLong("size", 0L)
+                        )
+                    )
+                }
+                out
+            }.orEmpty()
         )
         Log.i(
             TAG,
             "检查更新 client=$code latest=${info.latestCode} hasUpdate=${info.hasUpdate} " +
                 "force=${info.forceUpdateRequired} enabled=${info.updateEnabled} " +
-                "direct=${info.downloadDirectUrl.isNotBlank()} jump=${info.downloadJumpUrl.isNotBlank()}"
+                "direct=${info.downloadDirectUrl.isNotBlank()} jump=${info.downloadJumpUrl.isNotBlank()} " +
+                "abis=${info.abis.joinToString { it.abi }} pick=${info.pickAbi()?.abi ?: "-"}"
         )
         return info
     } //检查更新
