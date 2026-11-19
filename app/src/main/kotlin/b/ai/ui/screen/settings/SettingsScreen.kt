@@ -309,7 +309,7 @@ private val SettingIndex = pageEntries + listOf(
     SettingEntry(R.string.se_035, R.string.se_003, R.string.se_036, pageId = "ui_look"),
     SettingEntry(R.string.se_037, R.string.se_003, hintRaw = "预测性返回 手势", pageId = "ui_nav"),
     //外观总页整包：Markdown 排版、卡片外观、玻璃质感都在这一页，搜索命中后直接落进去
-    SettingEntry(R.string.se_pg_ui_theme, R.string.se_003, hintRaw = "卡片圆角 玻璃 背景 主题色 字号 输入框", pageId = "ui_look"),
+    SettingEntry(R.string.se_pg_ui_theme, R.string.se_003, hintRaw = "卡片圆角 玻璃 背景 主题色 字号 输入框 回到底部按钮", pageId = "ui_look"),
     SettingEntry(R.string.se_pg_md, R.string.se_003, hintRaw = "Markdown 行距 段间距 缩进 留白 代码字号 排版 预览", pageId = "ui_md"),
     //外观新增的字体与控件外观：字体文件 / 各气泡字体 / 全局缩进 / 弹窗圆角 / miuix 滑块
     SettingEntry(R.string.se_032, R.string.se_003, hintRaw = "字体 字体文件 气泡字体 导入 全局缩进 弹窗圆角 滑块 miuix 轨道 主题色", pageId = "ui_look"),
@@ -1731,6 +1731,9 @@ private val FontPresets = listOf(R.string.se_163 to 0.9f, R.string.se_164 to 1f,
 /**工具权限一次先铺多少条：几十个下拉同屏组合是设置页最贵的一帧 */
 private const val TOOL_PAGE = 12
 
+//回到底部圆钮的三档配色文案：0 默认白 / 1 继承液态玻璃 / 2 继承主题色
+private fun scrollBtnStyleLabels() = listOf("默认白", "继承液态玻璃", "继承主题色")
+
 //外观总页：语言 / 主题色 / 字号 / 背景 / 玻璃质感与卡片外观 / 输入框 / Markdown 排版 / 输入提示
 //（原「主题」与「输入与质感」两页合并：用户要的所有观感配置都收在这一页，不再分家）
 private fun LazyListScope.uiLookSec() {
@@ -2019,6 +2022,17 @@ private fun LazyListScope.uiLookSec() {
                 Cfg.cardCorner = it.toInt()
             }
             Text("0 = 直角，16dp 是默认，32dp 接近胶囊；白卡与玻璃卡一起变", fontSize = 10.sp, color = TextSecondary)
+            //回到底部圆钮的配色：三档都给白卡 / 玻璃卡两种模式用，选哪个当场生效
+            Spacer(Modifier.height(10.dp))
+            SelectField(
+                label = "回到底部按钮",
+                value = scrollBtnStyleLabels()[Cfg.scrollBtnStyle],
+                options = listOf(0, 1, 2),
+                desc = "聊天页右下角那颗圆钮的底与图标配色",
+                optionLabel = { scrollBtnStyleLabels()[it] },
+                isSelected = { it == Cfg.scrollBtnStyle },
+                onSelect = { Cfg.scrollBtnStyle = it }
+            )
         }
     }
     //输入框：浮动输入、全屏入口、超长粘贴转文件

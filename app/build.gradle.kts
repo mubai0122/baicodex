@@ -41,7 +41,6 @@ val miotRegion: String = seed("miot.region", "cn").takeIf { s ->
 } ?: "cn"
 
 android {
-    //镜像不进 APK：rootfs 29MB，安装时按服务端下发的节点下载；仓库里保留原件供第三方节点引用
     androidResources {
         ignoreAssetsPattern = "rootfs.tgz"
     }
@@ -53,8 +52,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 50
-        versionName = "1.18.1"
+        versionCode = 51
+        versionName = "1.18.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")

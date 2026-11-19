@@ -843,6 +843,16 @@ object Cfg {
     var cardCorner: Int
         get() = mem("card_corner", 16).value
         set(v) { mem("card_corner", 16).value = v.coerceIn(0, 32); put("card_corner", v.coerceIn(0, 32)) }
+    /**
+     * 回到底部圆钮的配色档：
+     * 0 = 默认白（白底 + 深色图标，不跟玻璃也不跟主题）
+     * 1 = 继承液态玻璃（开玻璃就是玻璃，关玻璃退回白底）
+     * 2 = 继承主题色（主题色淡底 + 主题色图标）
+     */
+    var scrollBtnStyle: Int
+        get() = mem("scroll_btn_style", 0).value
+        set(v) { mem("scroll_btn_style", 0).value = v.coerceIn(0, 2); put("scroll_btn_style", v.coerceIn(0, 2)) }
+
     /** Linux 终端字号（sp）：9-14 之间，屏幕小 / 想一屏多看几行时调小 */
     var termFont: Int
         get() = mem("term_font", 10).value

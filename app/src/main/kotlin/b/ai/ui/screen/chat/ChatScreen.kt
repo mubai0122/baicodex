@@ -45,6 +45,7 @@ import b.ai.ui.widget.ImgThumbs
 import b.ai.ui.widget.ImgView
 import b.ai.ui.widget.ImgViewerDialog
 import b.ai.ui.widget.MdText
+import b.ai.ui.widget.ScrollDownButton
 import b.ai.ui.widget.Tag
 import b.ai.ui.widget.ToolIcon
 import b.ai.ui.dialog.ScrimCard
@@ -560,29 +561,21 @@ fun ChatScreen(
                         item("typing") { TypingBubble() }
                     }
                 }
-                //回到底部：翻在历史里时浮在右下角，点它带动画跳回最新一条；AI 输出中图标变蓝提示有新内容
+                //回到底部：翻在历史里时浮在右下角，点它带动画跳回最新一条；
+                //AI 进行中时圆钮外圈转一道主题色光弧（见 ScrollDownButton），配色三档走 Cfg.scrollBtnStyle
                 if (!atBottom) {
-                    Box(
-                        Modifier
+                    ScrollDownButton(
+                        busy = Agent.busy,
+                        modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(end = 14.dp, bottom = 10.dp)
-                            .size(38.dp)
-                            .liquidBg(CircleShape, tint = if (Agent.busy) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
-                            .tap {
-                                follow = true
-                                scope.launch {
-                                    val n = listState.layoutInfo.totalItemsCount
-                                    if (n > 0) listState.animateScrollToItem(n - 1)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+                            //外框比圆钮大一圈（环的留白），padding 相应收小，视觉位置与改造前一致
+                            .padding(end = 10.dp, bottom = 6.dp)
                     ) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = if (Agent.busy) AccentBlue else TextPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        follow = true
+                        scope.launch {
+                            val n = listState.layoutInfo.totalItemsCount
+                            if (n > 0) listState.animateScrollToItem(n - 1)
+                        }
                     }
                 }
             }
