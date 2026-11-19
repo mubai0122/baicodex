@@ -101,6 +101,7 @@ object LocalEngine {
             val reason = when (rc) {
                 -2 -> "提示超出上下文（调小上下文长度或减少历史）"
                 -3 -> throw LlmException("已停止")
+                -5 -> "模型输出回调不可用（release 混淆导致），请升级到修复后的版本"
                 else -> Llama.lastErr().ifBlank { "推理失败($rc)" }
             }
             throw LlmException(reason)

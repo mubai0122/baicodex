@@ -67,7 +67,7 @@ object Llama {
         if (loaded && c != 0L) runCatching { nativeSetSampling(c, temp, topP, topK, repeatPenalty, seed) }
     } //采样参数：temp<=0 贪心，seed<0 随机
 
-    /** 跑一轮：返回 >=0 生成 token 数，-1 参数错，-2 提示超上下文，-3 取消，-4 推理失败 */
+    /** 跑一轮：返回 >=0 生成 token 数，-1 参数错，-2 提示超上下文，-3 取消，-4 推理失败，-5 回调接口不可用 */
     fun run(c: Long, prompt: String, maxTokens: Int = 256, onToken: OnToken? = null): Int =
         if (!loaded || c == 0L) -1 else runCatching { nativeRun(c, prompt, maxTokens, onToken) }.getOrDefault(-4)
 

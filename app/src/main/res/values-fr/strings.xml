@@ -831,6 +831,8 @@
     <string name="ag_stopped">Arrêté</string>
     <string name="ag_err_fmt">Erreur : %1$s</string>
     <string name="ag_no_model">Aucun modèle configuré : renseignez base_url / API key / modèle dans les réglages.</string>
+    <string name="ag_no_local_pick">Aucun modèle local sélectionné : allez dans Réglages → Modèle → Modèle local, importez ou téléchargez un GGUF, puis choisissez Modèle local dans la config du modèle et cochez-le.</string>
+    <string name="ag_no_local_file">Le fichier du modèle local a disparu (supprimé ou déplacé) : réimportez un GGUF et sélectionnez-le dans la config du modèle.</string>
     <string name="ag_ask_model">Interrogation du modèle…</string>
     <string name="ag_stream_fallback">Streaming indisponible, passage en requête complète…</string>
     <string name="ag_key_retry">Nouvel essai avec une autre clé…</string>

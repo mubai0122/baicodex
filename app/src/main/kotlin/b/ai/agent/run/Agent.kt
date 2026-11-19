@@ -741,13 +741,21 @@ object Agent {
             return
         }
         if (!Cfg.ready) {
+            //本地这条不给「去填 base_url」的误导：分开说清是没选 GGUF、文件失效，还是云端配置没填全
+            val why = when {
+                Cfg.providerId == Providers.LOCAL && Cfg.llmModel.isBlank() ->
+                    host.getString(R.string.ag_no_local_pick)
+                Cfg.providerId == Providers.LOCAL ->
+                    host.getString(R.string.ag_no_local_file)
+                else -> host.getString(R.string.ag_no_model)
+            }
             //先把这条当成用户消息发出去（会话里留痕），再用一条 AI 回复报错
             scope.launch {
                 appendLocal(ChatMsg(role = "user", content = text, images = images, files = files))
                 appendLocal(
                     ChatMsg(
                         role = "assistant",
-                        content = host.getString(R.string.ag_no_model),
+                        content = why,
                         isError = true,
                         errKind = ERR_MODEL
                     )

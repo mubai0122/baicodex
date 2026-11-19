@@ -22,6 +22,7 @@ void bai_llm_set_sampling(uint64_t c, float temp, float topP, int topK, float re
 
 //生成：每轮先清 KV 再整段喂 prompt，逐 token 回调文本片段
 //返回 >=0 实际生成 token 数；-1 参数错，-2 提示超上下文，-3 被取消，-4 推理失败
+//（-5 由 JNI 层给：Kotlin 侧回调接口不可用，通常是 release 混淆改了方法名）
 int bai_llm_run(uint64_t c, const char *prompt, int maxTokens, void (*onToken)(void *, const char *), void *ud);
 
 //取消正在跑的生成：只置标志，循环里下一 token 前生效

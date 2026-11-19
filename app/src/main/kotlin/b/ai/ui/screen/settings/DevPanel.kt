@@ -237,8 +237,12 @@ private fun DevToolsPage(onBack: () -> Unit) {
 /** 单条 ping：只看通不通、回没回正文，不看内容质量 */
 private fun testChat(): String = runCatching {
     val key = Cfg.apiKey
-    if (Cfg.baseUrl.isBlank()) return "未配置 base_url"
-    if (key.isBlank()) return "未配置 API Key"
+    //本地后端不碰 base_url / Key：键为空是正常的，别在这里误报「未配置」
+    val local = b.ai.core.llm.LocalEngine.route()
+    if (!local) {
+        if (Cfg.baseUrl.isBlank()) return "未配置 base_url"
+        if (key.isBlank()) return "未配置 API Key"
+    }
     val m = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth)
     val msgs = JSONArray().put(JSONObject().put("role", "user").put("content", "ping，只回 ok 两个字符"))
     val t0 = SystemClock.elapsedRealtime()

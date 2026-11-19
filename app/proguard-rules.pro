@@ -1,6 +1,9 @@
 -keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute S
+
+-allowaccessmodification
+-optimizationpasses 3
 -keep class b.ai.MainActivity { *; }
 -keep class b.ai.App { *; }
 -keep class b.ai.device.shell.root.ShizukuShell { *; }
@@ -24,6 +27,11 @@
 -keepclassmembers class **$Bridge {
     public java.lang.String call(java.lang.String, java.lang.String);
 }
+-keep interface b.ai.native.llm.Llama$OnToken { *; }
+-keepclassmembers interface b.ai.native.llm.Llama$OnToken {
+    public void on(java.lang.String);
+}
+-keep class * implements b.ai.native.llm.Llama$OnToken { *; }
 -keepclassmembers enum * {
     public static **[] values();
     public static ** valueOf(java.lang.String);

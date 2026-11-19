@@ -42,6 +42,86 @@ std::string fromArr(JNIEnv *env, jobjectArray arr, int i) {
     if (s != nullptr) env->DeleteLocalRef(s);
     return out;
 } //从字符串数组取第 i 项
+
+/**
+ * 找 token 回调方法 `void on(String)`。
+ * release 包开 R8，`Llama$OnToken` 这个 fun interface 的方法名可能被改名（混淆不认 JNI 字符串），
+ * 所以先按名字找，找不到再用反射按签名兜底：参数唯一且是 String、返回 void。
+ */
+jmethodID findOn(JNIEnv *env, jclass cls) {
+    jmethodID m = env->GetMethodID(cls, "on", "(Ljava/lang/String;)V");
+    if (m != nullptr) return m;
+    env->ExceptionClear();
+    //反射兜底：遍历方法，按签名挑唯一一个 void(String)
+    jclass clsCls = env->FindClass("java/lang/Class");
+    if (clsCls == nullptr) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    jmethodID mMethods = env->GetMethodID(clsCls, "getMethods", "()[Ljava/lang/reflect/Method;");
+    jmethodID mName = nullptr;
+    jmethodID mParams = nullptr;
+    if (mMethods != nullptr) {
+        jclass mCls = env->FindClass("java/lang/reflect/Method");
+        if (mCls != nullptr) {
+            mName = env->GetMethodID(mCls, "getName", "()Ljava/lang/String;");
+            mParams = env->GetMethodID(mCls, "getParameterTypes", "()[Ljava/lang/Class;");
+            env->DeleteLocalRef(mCls);
+        } else {
+            env->ExceptionClear();
+        }
+    }
+    if (mMethods == nullptr || mName == nullptr || mParams == nullptr) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    auto all = static_cast<jobjectArray>(env->CallObjectMethod(cls, mMethods));
+    jmethodID found = nullptr;
+    if (all != nullptr && !env->ExceptionCheck()) {
+        const jsize n = env->GetArrayLength(all);
+        for (jsize i = 0; i < n && found == nullptr; ++i) {
+            auto mi = static_cast<jobject>(env->GetObjectArrayElement(all, i));
+            if (mi == nullptr) {
+                env->ExceptionClear();
+                continue;
+            }
+            auto types = static_cast<jobjectArray>(env->CallObjectMethod(mi, mParams));
+            const jsize np = types != nullptr ? env->GetArrayLength(types) : 0; //只要恰好 1 个参数
+            bool hit = np == 1;
+            if (hit) {
+                auto t = static_cast<jclass>(env->GetObjectArrayElement(types, 0));
+                if (t != nullptr) {
+                    jclass sCls = env->FindClass("java/lang/String"); //参数类型必须是 String
+                    if (sCls != nullptr) hit = env->IsSameObject(t, sCls);
+                    env->ExceptionClear();
+                    env->DeleteLocalRef(sCls);
+                    env->DeleteLocalRef(t);
+                } else {
+                    hit = false;
+                    env->ExceptionClear();
+                }
+            }
+            if (types != nullptr) env->DeleteLocalRef(types);
+            if (hit) {
+                auto nm = static_cast<jstring>(env->CallObjectMethod(mi, mName));
+                if (nm != nullptr) {
+                    std::string name = toStd(env, nm);
+                    env->DeleteLocalRef(nm);
+                    found = env->GetMethodID(cls, name.c_str(), "(Ljava/lang/String;)V");
+                    if (found == nullptr) env->ExceptionClear();
+                } else {
+                    env->ExceptionClear();
+                }
+            }
+            env->DeleteLocalRef(mi);
+        }
+        env->DeleteLocalRef(all);
+    } else {
+        env->ExceptionClear();
+    }
+    env->DeleteLocalRef(clsCls);
+    return found;
+} //按名找 on(String)，失败则反射按签名兜底
 } //namespace
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -82,11 +162,11 @@ Java_b_ai_native_llm_Llama_nativeRun(JNIEnv *env, jobject, jlong c, jstring prom
     ctx.env = env;
     ctx.obj = cb;
     jclass cls = env->GetObjectClass(cb);
-    ctx.mid = env->GetMethodID(cls, "on", "(Ljava/lang/String;)V");
+    ctx.mid = findOn(env, cls); //混淆过的包按名字找不到，内部已按签名兜底
     env->DeleteLocalRef(cls);
     if (ctx.mid == nullptr) {
         env->ExceptionClear();
-        return -1;
+        return -5; //-5 表示回调接口不可用，跟 -1（参数错）区分开，方便 UI 说人话
     }
     return bai_llm_run(static_cast<uint64_t>(c), p.c_str(), maxTokens, onTok, &ctx);
 } //跑一轮生成：token 逐个回调给 Kotlin

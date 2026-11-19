@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.profile.Profiles
 import b.ai.core.llm.DevMem
 import b.ai.core.llm.LocalEngine
 import b.ai.core.llm.ModelHub
@@ -168,7 +169,10 @@ private fun LocalModelBody() {
                     Cfg.llmModel = f.absolutePath
                     val desc = meta["desc"].orEmpty()
                     val nctx = meta["n_ctx_train"] ?: "?"
-                    note = "已加载：${f.name}（$desc · 训练上下文 $nctx）"
+                    //加载即用：顺手把聊天后端切到这条本地模型，省得用户回聊天页还要去「模型配置」里再选一遍
+                    val lbl = runCatching { Profiles.useLocal(f) }.getOrDefault("")
+                    note = "已加载：${f.name}（$desc · 训练上下文 $nctx）" +
+                        if (lbl.isNotEmpty()) "\n聊天后端已切到「$lbl」" else ""
                 }
             }
         }
@@ -206,7 +210,12 @@ private fun LocalModelBody() {
                     val tps = if (ms > 0) rc * 1000L / ms else 0L
                     "完成：$rc token / ${ms}ms（约 $tps tok/s）"
                 } else {
-                    "生成失败($rc)：" + err.ifBlank { "未知原因" }
+                    "生成失败($rc)：" + when (rc) {
+                        -2 -> "提示超出上下文"
+                        -3 -> "已取消"
+                        -5 -> "输出回调不可用（release 混淆），请升级 APK"
+                        else -> err.ifBlank { "未知原因" }
+                    }
                 }
             }
         }
@@ -235,7 +244,10 @@ private fun LocalModelBody() {
                     val tps = if (ms > 0) rc * 1000L / ms else 0L
                     "连通性测试通过：${ms}ms 收到 ${txt.length} 字（$rc token，约 $tps tok/s）\n回复摘要：${txt.take(40)}"
                 } else {
-                    "连通性测试失败($rc)：" + err.ifBlank { "模型没有返回任何内容" }
+                    "连通性测试失败($rc)：" + when (rc) {
+                        -5 -> "输出回调不可用（release 混淆），请升级 APK"
+                        else -> err.ifBlank { "模型没有返回任何内容" }
+                    }
                 }
             }
         }

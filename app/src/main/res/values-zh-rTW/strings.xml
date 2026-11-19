@@ -831,6 +831,8 @@
     <string name="ag_stopped">已停止</string>
     <string name="ag_err_fmt">出錯了：%1$s</string>
     <string name="ag_no_model">還沒設定模型：請到設定裡填 base_url / API key / 模型。</string>
+    <string name="ag_no_local_pick">還沒選本地模型：到 設定 → 模型 → 本地模型 裡匯入或下載一個 GGUF，再在「模型配置」裡選「本地模型」並勾上它。</string>
+    <string name="ag_no_local_file">本地模型檔案不見了（可能被刪或移到別處）：重新匯入一個 GGUF，再在「模型配置」裡選它。</string>
     <string name="ag_ask_model">正在請求模型…</string>
     <string name="ag_stream_fallback">串流不可用，改走整包請求…</string>
     <string name="ag_key_retry">換個 Key 重試…</string>

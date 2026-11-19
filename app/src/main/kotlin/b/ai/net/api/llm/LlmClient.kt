@@ -3,6 +3,7 @@ import b.ai.agent.tool.Tools
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.llm.LocalEngine
 import b.ai.core.model.chat.AuthStyle
+import b.ai.native.llm.Llama
 import kotlinx.coroutines.CancellationException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -35,6 +36,14 @@ class LlmClient(
         if (b.endsWith("/chat/completions")) b = b.removeSuffix("/chat/completions").trimEnd('/')
         return b
     } //base_url 容错
+
+    /** 没配 base_url 时分两种原因：本地后端开着但推理库不可用，别让人白去填 Key */
+    private fun noBase(): Nothing {
+        if (Cfg.llmLocal && !Llama.available()) {
+            throw LlmException("本地推理库不可用：这个安装包没带当前 CPU 架构的 so，请换官方 arm64 包")
+        }
+        throw LlmException("base_url 未配置")
+    } //未配置后端时给准确原因
 
     private fun conn(path: String): HttpURLConnection {
         val c = URL(base + path).openConnection() as HttpURLConnection
@@ -134,7 +143,7 @@ class LlmClient(
     ): JSONObject {
         //本地模式：整条链路切到 llama.cpp，base_url 与 apiKey 都不参与
         if (!forceRemote && LocalEngine.route()) return LocalEngine.chat(messages, temperature)
-        if (base.isBlank()) throw LlmException("base_url 未配置")
+        if (base.isBlank()) noBase()
         val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
         return messageOf(exec(conn("/chat/completions"), body.toString()))
     } //对话：带 tools 定义
@@ -156,7 +165,7 @@ class LlmClient(
     ): JSONObject {
         //本地模式：token 回调语义保持一致，取消走 Llama.cancel
         if (!forceRemote && LocalEngine.route()) return LocalEngine.stream(messages, temperature, shouldStop, onDelta)
-        if (base.isBlank()) throw LlmException("base_url 未配置")
+        if (base.isBlank()) noBase()
         val c = conn("/chat/completions").apply {
             setRequestProperty("Accept", "text/event-stream")
             setRequestProperty("Cache-Control", "no-cache")

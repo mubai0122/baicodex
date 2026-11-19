@@ -831,6 +831,8 @@
     <string name="ag_stopped">停止しました</string>
     <string name="ag_err_fmt">エラー：%1$s</string>
     <string name="ag_no_model">モデル未設定：設定で base_url / API key / モデルを入力してください。</string>
+    <string name="ag_no_local_pick">ローカルモデルが未選択です：設定 → モデル → ローカルモデル で GGUF を読み込むかダウンロードし、「モデル設定」で「ローカルモデル」を選んでチェックしてください。</string>
+    <string name="ag_no_local_file">ローカルモデルのファイルが見つかりません（削除または移動された可能性）：「モデル設定」で GGUF を選び直してください。</string>
     <string name="ag_ask_model">モデルに問い合わせ中…</string>
     <string name="ag_stream_fallback">ストリーミング不可、一括リクエストに切替…</string>
     <string name="ag_key_retry">別の Key で再試行…</string>

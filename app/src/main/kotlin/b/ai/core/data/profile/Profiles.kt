@@ -222,6 +222,33 @@ object Profiles {
         apply(p)
     } //切换
 
+    /**
+     * 把某个 GGUF 设成聊天用的后端：没有对应的「本地模型」配置就新建一条并选中。
+     * 本地模型页加载成功后调这里——否则用户加载完模型回去聊天，后端还停在云端，
+     * 又会弹「请填 base_url / API key」。返回配置名给界面提示用。
+     */
+    fun useLocal(f: File): String {
+        val exist = cache.value.firstOrNull { it.providerId == Providers.LOCAL && it.model == f.name }
+        val p = exist ?: ModelProfile(
+            id = "p" + System.currentTimeMillis(),
+            name = "",
+            providerId = Providers.LOCAL,
+            baseUrl = "",
+            apiKey = "",
+            model = f.name,
+            models = listOf(f.name),
+            //本地小模型默认关掉视觉 / 工具调用 / 推理链，免得请求带上用不了的能力
+            vision = false,
+            toolCall = false,
+            reasoning = false
+        ).also { upsert(it) }
+        select(p.id)
+        //文件可能不在公共模型目录（用户从别处导入后加载的）：select 里找不到会清空，这里显式兜住
+        Cfg.llmLocal = true
+        Cfg.llmModel = f.absolutePath
+        return p.label
+    } //加载模型即切成聊天后端
+
     private fun apply(p: ModelProfile) {
         Cfg.providerId = p.providerId
         Cfg.baseUrl = p.baseUrl
@@ -231,7 +258,12 @@ object Profiles {
         if (p.providerId == Providers.LOCAL) {
             Cfg.llmLocal = true
             val f = File(b.ai.core.llm.ModelHub.dir(), p.model)
-            if (f.isFile) Cfg.llmModel = f.absolutePath
+            if (f.isFile) {
+                Cfg.llmModel = f.absolutePath
+            } else if (File(Cfg.llmModel).name != p.model) {
+                //公共目录里已经没有这个文件：清掉旧路径，否则会拿上一条模型的文件冒充当前这条
+                Cfg.llmModel = ""
+            }
         } else {
             Cfg.llmLocal = false
         }

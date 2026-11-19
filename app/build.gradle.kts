@@ -39,10 +39,13 @@ val miotRedirect: String = seed("miot.redirect", "").takeIf { s -> s.startsWith(
 val miotRegion: String = seed("miot.region", "cn").takeIf { s ->
     s.isNotEmpty() && s.length <= 10 && s.all { it.isLowerCase() || it.isDigit() }
 } ?: "cn"
-
 android {
+
     androidResources {
         ignoreAssetsPattern = "rootfs.tgz"
+        //只保留真实提供的 5 种语言：依赖库自带的其它 locale 会被资源收缩器整批删掉，
+        //resources.arsc 能小一截（系统语言不在这 5 种里时回落到默认中文）
+        localeFilters += listOf("zh", "en", "fr", "ja", "zh-rTW")
     }
     namespace = "b.ai"
     compileSdk = 37
@@ -52,8 +55,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 51
-        versionName = "1.18.2"
+        versionCode = 52
+        versionName = "1.18.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -62,16 +65,23 @@ android {
         buildConfigField("String", "MIOT_REDIRECT", "\"$miotRedirect\"")
         buildConfigField("String", "MIOT_REGION", "\"$miotRegion\"")
         SEEDS.forEach { row -> buildConfigField("String", row[0], seedLiteral(row[1], "")) }
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
-        
+        //ABI 目标由外层 splits.abi.include 决定：两处同时写会报 Conflicting configuration
+
         if (baiAesSeed != null) {
             externalNativeBuild {
                 cmake { arguments.add("-DBAI_KEY_HEX=$baiAesSeed") }
             }
         }
     } //默认配置
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    } //ABI 分包
 
     externalNativeBuild {
         cmake {
@@ -162,3 +172,15 @@ stringfog {
     randomKeyPerString.set(true)
     randomKeyLength.set(16)
 }
+
+val copyAbiApks by tasks.registering(Copy::class) {
+    dependsOn("assembleRelease")
+    val outDir = layout.buildDirectory.dir("outputs/apk/release")
+    from(outDir) {
+        include("app-arm64-v8a-release.apk", "app-armeabi-v7a-release.apk")
+        rename { n ->
+            if (n.startsWith("app-arm64-v8a")) "app-release-v8a.apk" else "app-release-v7a.apk"
+        }
+    }
+    into(outDir)
+} //分包产物改名

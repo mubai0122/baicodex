@@ -844,6 +844,8 @@
     <string name="ag_stopped">已停止</string>
     <string name="ag_err_fmt">出错了：%1$s</string>
     <string name="ag_no_model">还没配置模型：请到设置里填 base_url / API key / 模型。</string>
+    <string name="ag_no_local_pick">还没选本地模型：到 设置 → 模型 → 本地模型 里导入或下载一个 GGUF，再在「模型配置」里选「本地模型」并勾上它。</string>
+    <string name="ag_no_local_file">本地模型文件不见了（可能被删或挪走）：重新导入一个 GGUF，再在「模型配置」里选它。</string>
     <string name="ag_ask_model">正在请求模型…</string>
     <string name="ag_stream_fallback">流式不可用，改走整包请求…</string>
     <string name="ag_key_retry">换个 Key 重试…</string>

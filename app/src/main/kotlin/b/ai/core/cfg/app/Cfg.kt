@@ -8,6 +8,7 @@ import android.content.Context
 import b.ai.core.cfg.io.Prefs
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import java.io.File
 
 /** 全局配置：data/prefs/bai_cfg/ 下 8 个加密分片落盘 + Compose 状态镜像 */
 object Cfg {
@@ -1483,8 +1484,13 @@ object Cfg {
         put("policy_$tool", policy)
     }
 
+    /**本地后端是否可用：跟 LocalEngine.route() 同一套条件（这里不引用它：cfg 是底层，避免反向依赖） */
+    val localReady: Boolean
+        get() = llmLocal && llmModel.isNotBlank() && File(llmModel).isFile
+
+    /**能不能直接发消息：走本地只看模型文件在不在，走云端才要 base_url + Key + 模型名 */
     val ready: Boolean
-        get() = baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
+        get() = localReady || (baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank())
 
     /** 每个会话各自一份输入框草稿：切走再回来、杀进程重进都不丢 */
     fun draft(sid: String): String =
