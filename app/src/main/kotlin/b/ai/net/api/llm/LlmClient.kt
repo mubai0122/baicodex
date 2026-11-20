@@ -1,0 +1,323 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:16
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+package b.ai.net.api.llm
+import b.ai.agent.tool.Tools
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.llm.LocalEngine
+import b.ai.core.model.chat.AuthStyle
+import b.ai.native.llm.Llama
+import kotlinx.coroutines.CancellationException
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+class LlmException(message: String) : Exception(message)
+
+/**Android 的 org.json 里 optString 遇到 JSON null 会返回字面量 ""（JSONObject.NULL.toString 就是 ""）， 正文恒为 null 就是踩这个坑；统一走这个取值 */
+internal fun JSONObject.text(name: String, def: String = ""): String =
+    if (isNull(name)) def else optString(name, def)
+
+/** 极简 OpenAI 兼容客户端：只依赖 HttpURLConnection */
+class LlmClient(
+    baseUrl: String,
+    private val apiKey: String,
+    private val auth: AuthStyle,
+    /** 连通性测试用：开着本地模型开关时也要把请求真发到云端，不能被本地引擎接管 */
+    private val forceRemote: Boolean = false
+) {
+    companion object {
+        /** 最大模式下至少下发的单轮上限：比自己设的小值抬上来，比这个还大就按用户设的走 */
+        private const val MAX_CAP = 8192
+    }
+
+    private val base = normalize(baseUrl)
+
+    private fun normalize(u: String): String {
+        var b = u.trim().trimEnd('/')
+        if (b.endsWith("/chat/completions")) b = b.removeSuffix("/chat/completions").trimEnd('/')
+        return b
+    } //base_url 容错
+
+    /** 没配 base_url 时分两种原因：本地后端开着但推理库不可用，别让人白去填 Key */
+    private fun noBase(): Nothing {
+        if (Cfg.llmLocal && !Llama.available()) {
+            throw LlmException("本地推理库不可用：这个安装包没带当前 CPU 架构的 so，请换官方 arm64 包")
+        }
+        throw LlmException("base_url 未配置")
+    } //未配置后端时给准确原因
+
+    private fun conn(path: String): HttpURLConnection {
+        val c = URL(base + path).openConnection() as HttpURLConnection
+        c.connectTimeout = 20_000
+        c.readTimeout = 300_000
+        c.requestMethod = "POST"
+        c.doOutput = true
+        c.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        when (auth) {
+            AuthStyle.BEARER -> c.setRequestProperty("Authorization", "Bearer $apiKey")
+            AuthStyle.X_API_KEY -> c.setRequestProperty("api-key", apiKey)
+            AuthStyle.NONE -> Unit
+        }
+        return c
+    } //建立连接并按鉴权方式带头
+
+    private fun exec(c: HttpURLConnection, body: String?): String {
+        return try {
+            if (body != null) c.outputStream.use { it.write(body.toByteArray()) }
+            val code = c.responseCode
+            val text = (if (code in 200..299) c.inputStream else c.errorStream)
+                ?.bufferedReader()?.use { it.readText() } ?: ""
+            if (code !in 200..299) throw LlmException("HTTP $code: ${text.take(600)}")
+            text
+        } catch (e: LlmException) {
+            throw e
+        } catch (e: IOException) {
+            throw LlmException("网络错误: ${e.message ?: e.javaClass.simpleName}")
+        } finally {
+            c.disconnect()
+        }
+    } //收发并统一错误文本
+
+    /** 组装请求体（tools + 采样参数 + 厂商私有字段） */
+    private fun bodyOf(
+        model: String,
+        messages: JSONArray,
+        temperature: Double?,
+        think: Boolean,
+        thinkEffort: String,
+        extraParams: String?,
+        tools: JSONArray? = null
+    ): JSONObject {
+        val body = JSONObject()
+            .put("model", model)
+            .put("messages", messages)
+        //模型不支持工具调用就别发 tools，发了有的中转站直接 400
+        if (b.ai.core.cfg.app.Cfg.modelToolCall) {
+            //传了就按传的来（分智能体只下发只读工具），传空数组等于这轮不给工具
+            val defs = tools ?: b.ai.agent.tool.Tools.definitions()
+            if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
+        }
+        //原生 search：勾了才声明各家自己的联网工具，服务端检索完把结果注入上下文
+        NativeSearch.inject(body, b.ai.core.cfg.app.Cfg.providerId, b.ai.core.cfg.app.Cfg.baseUrl)
+        temperature?.let { body.put("temperature", it) }
+        //单轮上限：最大模式显式抬到下限 8192（各家服务端默认值普遍偏小，DeepSeek 是 4096），否则按配置的 max_tokens
+        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
+        if (maxTok > 0) body.put("max_tokens", maxTok)
+        //思考与原生联网搜索互斥：本轮实际带上了服务端联网工具时，思考一律不发（工具与思考同时下发多数厂商会报错）
+        val searchOn = NativeSearch.on(
+            b.ai.core.cfg.app.Cfg.providerId,
+            b.ai.core.cfg.app.Cfg.baseUrl
+        )
+        //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
+        //先让规则表说话：命中规则的模型按规则写（各家字段不同，用户可在设置里改）
+        val ruleDone = if (!searchOn) {
+            ThinkRules.apply(body, model, think, b.ai.core.cfg.app.Cfg.thinkLevel)
+        } else false
+        //思考能力兜底：模型不在思考白名单里（且规则表也没命中）时，就算配置里还留着 think=true 也不下发
+        val canThink = b.ai.core.model.chat.Thinking.supported(b.ai.core.cfg.app.Cfg.providerId, model)
+        if (think && canThink && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn && !ruleDone) {
+            body.put("reasoning_effort", thinkEffort)
+        }
+        //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
+        val ds = b.ai.core.cfg.app.Cfg.providerId.contains("deepseek", true) ||
+            b.ai.core.cfg.app.Cfg.baseUrl.contains("deepseek", true)
+        //DeepSeek 硬约束（实测 400）：client tools 只能和 deepseek_web_search 一起、且必须在思考模式下使用。
+        //所以带了原生联网搜索时不能再显式关思考，否则服务端直接拒绝：
+        //  tools: client tools can only be used together with deepseek_web_search in thinking mode
+        //（这是唯一一处「互斥」失效的厂商，属于服务端强制要求，不改就会被 400 挡死）
+        if (ds && !think && !searchOn && !ruleDone) {
+            body.put("thinking", JSONObject().put("type", "disabled"))
+        }
+        //创造性 / 重复控制参数：负数或 0 表示不下发，交给服务端默认值
+        if (b.ai.core.cfg.app.Cfg.topP >= 0f) body.put("top_p", b.ai.core.cfg.app.Cfg.topP.toDouble())
+        if (b.ai.core.cfg.app.Cfg.topK > 0) body.put("top_k", b.ai.core.cfg.app.Cfg.topK)
+        if (b.ai.core.cfg.app.Cfg.presencePenalty > -9f) {
+            body.put("presence_penalty", b.ai.core.cfg.app.Cfg.presencePenalty.toDouble())
+        }
+        if (b.ai.core.cfg.app.Cfg.frequencyPenalty > -9f) {
+            body.put("frequency_penalty", b.ai.core.cfg.app.Cfg.frequencyPenalty.toDouble())
+        }
+        if (b.ai.core.cfg.app.Cfg.repeatPenalty > 0f) {
+            body.put("repeat_penalty", b.ai.core.cfg.app.Cfg.repeatPenalty.toDouble())
+        }
+        //附加参数浅合并，用来补厂商私有字段（如 thinking / enable_thinking）
+        if (!extraParams.isNullOrBlank()) {
+            runCatching { JSONObject(extraParams) }.getOrNull()?.let { extra ->
+                extra.keys().forEach { k -> body.put(k, extra.get(k)) }
+            }
+        }
+        return body
+    } //请求体
+
+    private fun messageOf(raw: String): JSONObject {
+        val obj = runCatching { JSONObject(raw) }
+            .getOrElse { throw LlmException("响应不是 JSON: ${raw.take(300)}") }
+        val choices = obj.optJSONArray("choices")
+            ?: throw LlmException("响应缺失 choices: ${raw.take(300)}")
+        val msg = choices.getJSONObject(0).optJSONObject("message")
+            ?: throw LlmException("响应缺失 message: ${raw.take(300)}")
+        //usage 挂在响应顶层，顺手带进 message 里，调用方用来算 token 与速度
+        obj.optJSONObject("usage")?.let { msg.put("usage", it) }
+        return msg
+    } //取出 choices[0].message
+
+    /** 返回 choices[0].message 对象 */
+    fun chat(
+        model: String,
+        messages: JSONArray,
+        temperature: Double? = null,
+        think: Boolean = false,
+        thinkEffort: String = "medium",
+        extraParams: String? = null,
+        tools: JSONArray? = null
+    ): JSONObject {
+        //本地模式：整条链路切到 llama.cpp，base_url 与 apiKey 都不参与
+        if (!forceRemote && LocalEngine.route()) return LocalEngine.chat(messages, temperature)
+        if (base.isBlank()) noBase()
+        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
+        return messageOf(exec(conn("/chat/completions"), body.toString()))
+    } //对话：带 tools 定义
+
+    /**
+     * 流式对话：逐块回调增量（content / reasoning），返回拼好的 message 对象（tool_calls 也按 index 合并）。
+     * 服务端忽略 stream=true（返回普通 JSON）时自动按整包解析，不抛错。
+     */
+    fun chatStream(
+        model: String,
+        messages: JSONArray,
+        temperature: Double? = null,
+        think: Boolean = false,
+        thinkEffort: String = "medium",
+        extraParams: String? = null,
+        tools: JSONArray? = null,
+        shouldStop: () -> Boolean = { false },
+        onDelta: (String, String) -> Unit
+    ): JSONObject {
+        //本地模式：token 回调语义保持一致，取消走 Llama.cancel
+        if (!forceRemote && LocalEngine.route()) return LocalEngine.stream(messages, temperature, shouldStop, onDelta)
+        if (base.isBlank()) noBase()
+        val c = conn("/chat/completions").apply {
+            setRequestProperty("Accept", "text/event-stream")
+            setRequestProperty("Cache-Control", "no-cache")
+        }
+        val body = bodyOf(model, messages, temperature, think, thinkEffort, extraParams, tools)
+            .put("stream", true)
+        return try {
+            c.outputStream.use { it.write(body.toString().toByteArray()) }
+            val code = c.responseCode
+            if (code !in 200..299) {
+                val err = c.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
+                throw LlmException("HTTP $code: ${err.take(600)}")
+            }
+            val ctype = c.contentType ?: ""
+            if (!ctype.contains("event-stream", true)) {
+                //端点没走 SSE，退回整包
+                return messageOf(c.inputStream.bufferedReader().use { it.readText() })
+            }
+            val content = StringBuilder()
+            val reason = StringBuilder()
+            val calls = LinkedHashMap<Int, JSONObject>()
+            var usage: JSONObject? = null
+            c.inputStream.bufferedReader().use { r ->
+                while (true) {
+                    //用户点「停止」时靠这里跳出读流，HttpURLConnection 的 read 不会自己响应取消
+                    if (shouldStop()) throw CancellationException("已停止")
+                    val line = r.readLine() ?: break
+                    if (!line.startsWith("data:")) continue
+                    val data = line.removePrefix("data:").trim()
+                    if (data.isEmpty()) continue
+                    if (data == "[DONE]") break
+                    val o = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                    //用量可能挂在最后一个 chunk 上（choices 为空），先收下再解析增量
+                    o.optJSONObject("usage")?.let { usage = it }
+                    val delta = o.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("delta")
+                        ?: continue
+                    val t = delta.text("content")
+                    val rz = delta.text("reasoning_content")
+                        .ifBlank { delta.text("reasoning") }
+                    if (t.isNotEmpty()) {
+                        content.append(t)
+                        onDelta(t, "")
+                    }
+                    if (rz.isNotEmpty()) {
+                        reason.append(rz)
+                        onDelta("", rz)
+                    }
+                    val tc = delta.optJSONArray("tool_calls") ?: continue
+                    for (i in 0 until tc.length()) {
+                        val part = tc.optJSONObject(i) ?: continue
+                        val idx = part.optInt("index", i)
+                        val cur = calls.getOrPut(idx) {
+                            JSONObject().put("id", "").put("name", "").put("arguments", "")
+                        }
+                        val pid = part.text("id")
+                        if (pid.isNotEmpty()) cur.put("id", pid)
+                        val fn = part.optJSONObject("function") ?: continue
+                        val fnName = fn.text("name")
+                        if (fnName.isNotEmpty()) cur.put("name", fnName)
+                        val frag = fn.text("arguments")
+                        if (frag.isNotEmpty()) {
+                            cur.put("arguments", cur.optString("arguments", "") + frag)
+                        }
+                    }
+                }
+            }
+            val arr = JSONArray()
+            calls.entries.sortedBy { it.key }.forEach { (_, v) ->
+                val args = v.optString("arguments", "").ifBlank { "{}" }
+                arr.put(
+                    JSONObject()
+                        .put("id", v.optString("id"))
+                        .put("type", "function")
+                        .put(
+                            "function",
+                            JSONObject().put("name", v.optString("name")).put("arguments", args)
+                        )
+                )
+            }
+            JSONObject()
+                .put("content", content.toString())
+                .put("reasoning_content", reason.toString())
+                .put("tool_calls", arr)
+                .also { out -> usage?.let { out.put("usage", it) } }
+        } catch (e: LlmException) {
+            throw e
+        } catch (e: IOException) {
+            throw LlmException("网络错误: ${e.message ?: e.javaClass.simpleName}")
+        } finally {
+            c.disconnect()
+        }
+    } //流式对话
+
+    /** 拉取 /models，兼容 data[].id / models[].slug 等格式 */
+    fun listModels(): List<String> {
+        if (base.isBlank()) throw LlmException("base_url 未配置")
+        val raw = exec(conn("/models").apply { requestMethod = "GET"; doOutput = false }, null)
+        val obj = runCatching { JSONObject(raw) }.getOrElse {
+            return raw.split('\n').map { it.trim().trim('"', ',') }.filter { it.contains("/") || it.length > 2 }
+        }
+        val arr = obj.optJSONArray("data") ?: obj.optJSONArray("models") ?: JSONArray()
+        val out = ArrayList<String>()
+        for (i in 0 until arr.length()) {
+            val item = arr.optJSONObject(i) ?: continue
+            val id = item.optString("id").ifBlank {
+                item.optString("slug").ifBlank { item.optString("name") }
+            }
+            if (id.isNotBlank()) out.add(id)
+        }
+        return out.distinct()
+    } //动态模型列表
+}

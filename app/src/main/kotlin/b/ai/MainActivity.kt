@@ -1,0 +1,532 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:03
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+package b.ai
+import b.ai.device.sys.a11y.AutoA11y
+import b.ai.device.app.FChat
+import b.ai.device.pet.Pet
+import b.ai.device.sys.host.PetGrant
+import b.ai.device.pet.PetSvc
+import b.ai.net.api.site.Announce
+import b.ai.ui.screen.settings.AnnounceUi
+import b.ai.ui.overlay.Ime
+
+import android.content.Context
+import android.content.Intent
+import android.app.Activity
+import android.graphics.Color
+import android.os.Bundle
+import android.os.SystemClock
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.animation.core.Animatable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import b.ai.agent.run.Agent
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.cfg.app.Lang
+import b.ai.core.perm.Perms
+import b.ai.device.sys.alarm.Alarms
+import b.ai.net.api.account.Auth
+import b.ai.net.doc.Consent
+import b.ai.net.doc.Isuse
+import b.ai.net.api.update.Update
+import b.ai.ui.screen.user.AccDialogs
+import b.ai.ui.screen.user.AccUi
+import b.ai.ui.screen.settings.AnnounceDialog
+import b.ai.ui.screen.settings.SeNav
+import b.ai.ui.dialog.AskSheet
+import b.ai.ui.screen.settings.A11yAuto
+import b.ai.ui.screen.settings.A11yAutoDialog
+import b.ai.ui.screen.settings.A11ySetup
+import b.ai.ui.screen.settings.A11ySetupDialog
+import b.ai.ui.glass.BackdropHost
+import b.ai.ui.screen.chat.ChatScreen
+import b.ai.ui.overlay.DrawerCtl
+import b.ai.ui.overlay.DrawerHost
+import b.ai.ui.overlay.DrawerPanel
+import b.ai.ui.screen.misc.FeedbackDetailScreen
+import b.ai.ui.screen.misc.FeedbackScreen
+import b.ai.ui.dialog.HaltDialog
+import b.ai.ui.screen.settings.IntentInbox
+import b.ai.ui.screen.user.JoinGroupDialog
+import b.ai.ui.screen.misc.OnboardingScreen
+import b.ai.ui.dialog.Overlay
+import b.ai.ui.dialog.PermNoticeDialog
+import b.ai.ui.screen.pet.PetPermAsk
+import b.ai.ui.screen.pet.PetScreen
+import b.ai.ui.screen.settings.SettingsScreen
+import b.ai.ui.screen.settings.WorkspaceScreen
+import b.ai.ui.screen.settings.MemorySheet
+import b.ai.ui.screen.misc.MigrateGate
+import b.ai.ui.screen.chat.PlanSheet
+import b.ai.ui.screen.market.PluginMarket
+import b.ai.ui.screen.user.StarSheet
+import b.ai.ui.screen.user.Rate
+import b.ai.ui.screen.user.StarDialog
+import b.ai.ui.dialog.ToolConfirmDialog
+import b.ai.ui.screen.misc.Tos
+import b.ai.ui.screen.misc.TosScreen
+import b.ai.ui.screen.settings.UpdateDialog
+import b.ai.ui.screen.settings.UpdateHistoryDialog
+import b.ai.ui.screen.settings.UpdateTipDialog
+import b.ai.ui.screen.settings.UpdateUi
+import b.ai.ui.theme.BaiTheme
+import b.ai.core.model.voice.Speak
+import b.ai.ui.theme.BgGray
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.system.exitProcess
+
+class MainActivity : ComponentActivity() {
+    //本次前台开始的时刻（elapsedRealtime），onPause 时结算成累计使用时长
+    private var fgSince = 0L
+    //换语言后要生效就得重建 Activity，所以 Context 在 attach 阶段就包成选定语言
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Lang.wrap(newBase))
+    } //包语言后的 Context
+    //离开前台就把这段时长累加进 used_sec：只用来判定「用满 2 小时要不要邀请评价」
+    override fun onPause() {
+        if (fgSince > 0) {
+            val add = ((SystemClock.elapsedRealtime() - fgSince) / 1000L).toInt()
+            if (add > 0) Cfg.usedSec = Cfg.usedSec + add
+            fgSince = 0L
+        }
+        super.onPause()
+    } //累计前台时长
+    //进程退出前把 TTS 引擎关掉，否则念到一半退出会漏声音
+    override fun onDestroy() {
+        Speak.release()
+        super.onDestroy()
+    } //释放朗读引擎
+
+    /** 禁止截图：加上 FLAG_SECURE 后截屏与录屏拿到的就是黑屏，设置里改开关时即时生效 */
+    fun applySecure(on: Boolean) {
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    } //防截取标记
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val tf = android.os.SystemClock.uptimeMillis()
+        readTaskPrompt(intent)
+        //禁止截图：开关开着就在最早期给窗口打上防截取标记，系统层直接取不到画面
+        applySecure(Cfg.noShot)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        )
+        //键盘高度兜底：部分 ROM（鸿蒙 4）不上报 ime insets，靠它把输入框顶上来
+        b.ai.ui.overlay.Ime.attach(this)
+        setContent {
+            BaiTheme {
+                Root()
+                android.util.Log.w("Boot", "composition done +" + (android.os.SystemClock.uptimeMillis() - tf) + "ms")
+            }
+        }
+        val vto = window.decorView.viewTreeObserver
+        vto.addOnDrawListener(object : android.view.ViewTreeObserver.OnDrawListener {
+            //只记第一帧：OnDrawListener 每帧都会回调，这里若没摘干净就是每帧一条日志（实测 368 条）
+            private var done = false
+            override fun onDraw() {
+                if (done) return
+                done = true
+                android.util.Log.w("Boot", "first frame drawn +" + (android.os.SystemClock.uptimeMillis() - tf) + "ms")
+                //派发中直接 remove 不生效，挪到下一帧之前再摘
+                window.decorView.post { runCatching { vto.removeOnDrawListener(this) } }
+            }
+        })
+    } //入口：透明状态栏/导航条 + 浅色主题
+
+    //每次回到前台补一次无障碍：系统常把它掐掉，Shizuku 在的话直接写回 secure 设置
+    override fun onResume() {
+        super.onResume()
+        //回到前台重新开始计时，并顺手判一次要不要弹评价调研
+        fgSince = SystemClock.elapsedRealtime()
+        Rate.check()
+        //悬浮聊天窗：开关开着就补挂一次，进程重启后窗口是会丢的
+        if (Cfg.fcOn) runCatching { b.ai.device.app.FChat.show(this) }
+        if (!b.ai.device.sys.a11y.AutoA11y.need(this)) return
+        Thread({ runCatching { b.ai.device.sys.a11y.AutoA11y.run(this) } }, "auto-a11y").apply { isDaemon = true }.start()
+    } //自动补无障碍
+
+    //通知点开而不是冷启动时也会走这里，重新把任务内容送进输入框
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readTaskPrompt(intent)
+    }
+
+    private fun readTaskPrompt(i: Intent?) {
+        val p = i?.getStringExtra(Alarms.EXTRA_PROMPT) ?: return
+        if (p.isNotBlank()) {
+            IntentInbox.prompt = p
+            i.removeExtra(Alarms.EXTRA_PROMPT)
+        }
+    } //取出定时任务携带的提示词
+}
+
+@Composable
+private fun Root() {
+    //启动门：检测到旧版工作区就必须先迁移，没迁完不进主界面（详情见 MigrateGate）
+    var gateOpen by remember { mutableStateOf(true) }
+    if (gateOpen) {
+        MigrateGate { gateOpen = false }
+        return
+    }
+    //协议版本先按本地兜底版本判：服务端版本在后台刷新，网络绝不许挡首帧
+    var needTos by remember { mutableStateOf(Cfg.tosAgreed < Tos.version()) }
+    //后台刷一次远端版本：刷到比本地已同意版本更高，再补弹一次（只会弹一次，同意后版本就对齐了）
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { Tos.loadRemote() }
+        if (Cfg.tosAgreed < Tos.version()) needTos = true
+    }
+    if (needTos) {
+        TosScreen(changed = Cfg.tosAgreed > 0) {
+            Cfg.tosAgreed = Tos.version()
+            Consent.reportIfNeeded()
+            needTos = false
+        }
+        return
+    }
+    var screen by remember { mutableStateOf(if (Cfg.onboarded) "chat" else "setup") }
+    //抽屉动效自己管：进度 0..1，动画中途换目标就从当前位置接着走（打断）
+    val scope = rememberCoroutineScope()
+    val drawerCtl = remember(scope) { DrawerCtl(Animatable(0f), scope) }
+    val ctx = LocalContext.current
+    //进应用即申请全部运行期权限：拒绝过一次之后只提示、不反复弹系统框
+    var missing by remember { mutableStateOf(Perms.missing(ctx)) }
+    var permNotice by remember { mutableStateOf(false) }
+    //桌宠默认全局展示：没悬浮窗权限就先弹一次授权
+    var petPerm by remember { mutableStateOf(false) }
+    //收藏夹面板：必须挂在根弹窗层，抽屉内部挂弹窗会被抽屉盖住且无法点外部关闭
+    var starsOpen by remember { mutableStateOf(false) }
+    //永久记忆面板：同样走根弹窗层
+    var memOpen by remember { mutableStateOf(false) }
+    //返回手势进度：0 = 没在滑，1 = 滑过阈值，用来驱动设置页跟手位移
+    var backFx by remember { mutableFloatStateOf(0f) }
+    //设置页从哪一页进：聊天页的模型面板点「模型配置」直接落到模型 tab
+    var settingsTab by remember { mutableStateOf(0) }
+    //反馈详情页看哪一条：从反馈页点「我的反馈」进来时带上编号
+    var fbId by remember { mutableStateOf(0) }
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        missing = Perms.missing(ctx)
+        permNotice = missing.isNotEmpty()
+    }
+    //停机开关：服务端说停止运营就只留退出提示，别的弹窗一律不参与
+    var halted by remember { mutableStateOf(false) }
+    //「加入我们」卡片：更新卡片关掉之后再弹，同一版本只弹一次
+    var joinOpen by remember { mutableStateOf(false) }
+    //启动检查是否已经走完：没走完不弹群卡片，免得抢在更新卡片前面
+    var updChecked by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        Agent.ensureSession()
+        if (missing.isNotEmpty()) permLauncher.launch(Perms.runtime().toTypedArray())
+        //停机开关先读：关掉之后检查更新没有意义，直接进退出分支
+        if (!withContext(Dispatchers.IO) { Isuse.on() }) {
+            halted = true
+            return@LaunchedEffect
+        }
+        //启动静默检查更新：确实有新版本才弹卡片，网络失败一声不响
+        val info = withContext(Dispatchers.IO) { runCatching { Update.check() }.getOrNull() }
+        if (info != null && info.updateEnabled && info.hasUpdate) UpdateUi.prompt = info
+        updChecked = true
+        //公告：always=true 的每次都弹，否则同一 id 只弹一次；拉不到就当没有
+        val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.site.Announce.check() }.getOrNull() }
+        if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.screen.settings.AnnounceUi.cur = annItem
+    }
+
+    val upd = UpdateUi.prompt
+    val updHis = UpdateUi.history
+    val updTip = UpdateUi.tip
+    val ann = b.ai.ui.screen.settings.AnnounceUi.cur
+    //群卡片要等更新卡片关掉：先看完版本更新再邀请进群，避免两张卡片抢同一个槽
+    LaunchedEffect(updChecked, upd, updHis) {
+        if (!updChecked || halted || upd != null || updHis != null) return@LaunchedEffect
+        if (!Cfg.onboarded || Cfg.joinDismissed || Cfg.joinSeen >= Update.clientCode()) return@LaunchedEffect
+        Cfg.joinSeen = Update.clientCode()
+        joinOpen = true
+    }
+    //独立的无障碍激活流程：引导走完（进主界面）就弹一次，系统里已经开着也照样走；跑完记一笔
+    LaunchedEffect(Cfg.onboarded) {
+        if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
+    }
+    val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || (upd != null) || updHis != null || ann != null ||
+        starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
+    val dialogOn = active
+    //抽屉开合只订阅布尔，不读进度：组合期读 anim.value 会让抽屉每移一帧就重组整个 Root
+    val drawerActive by produceState(initialValue = drawerCtl.active, drawerCtl) {
+        snapshotFlow { drawerCtl.active }.distinctUntilChanged().collect { value = it }
+    }
+    //抽屉一开始动就起模糊，不等抽屉动画跑完，视觉上才是跟手
+    val drawerOpening = drawerActive
+    val anyOverlay = active || drawerOpening
+
+    //深色模式下状态栏/导航条要换成浅色图标，不然黑图标贴在深底上看不见
+    val wantDark = when (Cfg.darkTheme) {
+        1 -> false
+        2 -> true
+        else -> androidx.compose.foundation.isSystemInDarkTheme()
+    }
+    val act = ctx as? ComponentActivity
+    LaunchedEffect(wantDark) {
+        act?.enableEdgeToEdge(
+            statusBarStyle = if (wantDark) SystemBarStyle.dark(Color.TRANSPARENT)
+            else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = if (wantDark) SystemBarStyle.dark(Color.TRANSPARENT)
+            else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        )
+    }
+
+    //只在启动时判一次：无障碍在跑或者已有悬浮窗权限就不会弹
+    LaunchedEffect(Unit) {
+        if (Cfg.petOn && Cfg.petGlobal && Cfg.onboarded && !b.ai.device.pet.Pet.canShow(ctx)) petPerm = true
+    }
+    //返回键：抽屉开着先关抽屉；开了「预测性手势支持」就用系统手势直接拖着抽屉收，而不是点了才动
+    BackHandler(enabled = drawerActive && !Cfg.predictiveBack) {
+        drawerCtl.close()
+    }
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && drawerActive) { progress ->
+        var done = false
+        try {
+            //手势进度 0→1 直接映射成抽屉 1→0：手指滑多少抽屉收多少
+            progress.collect { e -> drawerCtl.follow(1f - e.progress) }
+            done = true
+        } finally {
+            //滑过阈值松手就是真关闭，中途放弃就弹回全开
+            if (done) drawerCtl.close() else drawerCtl.open()
+        }
+    }
+    //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
+    BackHandler(enabled = starsOpen) { starsOpen = false }
+    BackHandler(enabled = memOpen) { memOpen = false }
+    //设置页有二级栈时返回先退子页，退到分类页才退出设置
+    val seDeep = screen == "settings" && SeNav.stack.isNotEmpty()
+    BackHandler(enabled = !Cfg.predictiveBack && seDeep) { SeNav.pop() }
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && seDeep && !drawerActive) { progress ->
+        try {
+            progress.collect { e -> backFx = e.progress }
+            SeNav.pop()
+        } catch (e: CancellationException) {
+            throw e
+        } finally {
+            backFx = 0f
+        }
+    }
+    //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页
+    BackHandler(enabled = !Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace")) {
+        screen = if (screen == "pet") "settings" else "chat"
+    }
+    //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace") && !drawerActive) { progress ->
+        try {
+            progress.collect { e -> backFx = e.progress }
+            screen = if (screen == "pet") "settings" else "chat"
+        } catch (e: CancellationException) {
+            throw e
+        } finally {
+            backFx = 0f
+        }
+    }
+
+    //抽屉放在背景层外面，否则它自己也会被录进模糊层
+    DrawerHost(
+        ctl = drawerCtl,
+        gestures = screen == "chat" && !dialogOn,
+        panel = {
+            DrawerPanel(
+                onNewChat = {
+                    Agent.newSession()
+                    screen = "chat"
+                    drawerCtl.close()
+                },
+                onOpenSettings = {
+                    screen = "settings"
+                    drawerCtl.close()
+                },
+                onOpenPlugins = {
+                    screen = "plugins"
+                    drawerCtl.close()
+                },
+                onOpenAccount = {
+                    drawerCtl.close()
+                    AccUi.open(if (Auth.logged) "edit" else "login")
+                },
+                onClose = { drawerCtl.close() }
+            )
+        }
+    ) {
+        //键盘：官方上报走 WindowInsets.ime，不上报的 ROM（鸿蒙 4 这类）才用 Ime.fallback 补。
+        //两者互斥（Ime 里官方有值时 fallback 归零），所以不会叠出双倍留白
+        val imeFallbackDp = with(LocalDensity.current) { b.ai.ui.overlay.Ime.fallback.toDp() }
+        //聊天页自己把键盘留白加在输入区上：这里再套一层就是双份，而且键盘动画每秒几十帧改 padding，整页都要重排
+        val imeMod = if (screen == "chat") Modifier
+        else Modifier.padding(bottom = imeFallbackDp).windowInsetsPadding(WindowInsets.ime)
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(BgGray)
+                .then(imeMod)
+        ) {
+            BackdropHost(
+                active = anyOverlay,
+                scrim = dialogOn,
+                content = {
+                    Box(Modifier.fillMaxSize()) {
+                        when (screen) {
+                            "setup" -> OnboardingScreen { screen = "chat" }
+                            "settings" -> SettingsScreen(
+                                backProgress = backFx,
+                                initialTab = settingsTab,
+                                onBack = { screen = "chat" },
+                                onOpenFeedback = { screen = "feedback" },
+                                onOpenPet = { screen = "pet" },
+                                //收藏夹与记忆面板都挂在根弹窗层，设置页只负责发信号
+                                onOpenStars = { starsOpen = true },
+                                onOpenMemory = { memOpen = true }
+                            )
+                            "pet" -> PetScreen(backProgress = backFx, onBack = { screen = "settings" })
+                            "workspace" -> WorkspaceScreen(backProgress = backFx, onBack = { screen = "chat" })
+                            "feedback" -> FeedbackScreen(
+                                onBack = { screen = "settings" },
+                                onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
+                            )
+                            "fb_detail" -> FeedbackDetailScreen(fbId) { screen = "feedback" }
+                            "plugins" -> PluginMarket(onBack = { screen = "chat" })
+                            else -> ChatScreen(
+                                onOpenDrawer = { drawerCtl.open() },
+                                onOpenSettings = { t ->
+                                    settingsTab = t
+                                    screen = "settings"
+                                },
+                                onOpenWorkspace = { screen = "workspace" }
+                            )
+                        }
+                    }
+                },
+                overlay = {
+                    val p = Agent.pending
+                    val q = Agent.ask
+                    val pl = Agent.plan
+                    when {
+                        //停机是最高优先级：别的弹窗一律让位，只剩退出
+                        halted -> HaltDialog {
+                            (ctx as? Activity)?.finishAffinity()
+                            exitProcess(0)
+                        }
+                        q != null -> AskSheet(q)
+                        pl != null -> PlanSheet(pl)
+                        p != null -> ToolConfirmDialog(p)
+                        //账号卡：抽屉与插件广场都只改 AccUi.mode，卡片统一挂在这一层
+                        AccUi.mode.isNotEmpty() -> AccDialogs()
+                        petPerm -> PetPermAsk(
+                            onClose = { petPerm = false },
+                            onGrant = {
+                                petPerm = false
+                                b.ai.device.sys.host.PetGrant.grant(ctx) { r ->
+                                    if (r.ok && Cfg.petGlobal) b.ai.device.pet.PetSvc.start(ctx)
+                                }
+                            },
+                            onOpen = {
+                                petPerm = false
+                                b.ai.device.sys.host.PetGrant.openOverlaySetting(ctx)
+                            }
+                        )
+                        permNotice -> PermNoticeDialog(
+                            missing = missing,
+                            onRetry = {
+                                permNotice = false
+                                permLauncher.launch(Perms.runtime().toTypedArray())
+                            },
+                            onSettings = {
+                                permNotice = false
+                                Perms.openAppSettings(ctx)
+                            },
+                            onClose = { permNotice = false }
+                        )
+                        upd != null -> UpdateDialog(upd) { UpdateUi.close() }
+                        updHis != null -> UpdateHistoryDialog(updHis) { UpdateUi.close() }
+                        updTip != null -> UpdateTipDialog(updTip) { UpdateUi.close() }
+                        ann != null -> AnnounceDialog(ann) {
+                            //always=true 的公告不记已读，下次进应用还弹
+                            if (!ann.always) Cfg.annSeen = ann.id
+                            b.ai.ui.screen.settings.AnnounceUi.close()
+                        }
+                        memOpen -> MemorySheet { memOpen = false }
+                        //独立激活流程优先于聊天页的失败弹窗，避免两个弹窗抢同一个 Overlay 槽
+                        //一键激活优先：它本身就是从无障碍卡片点出来的，别被激活流程弹窗压住
+                        A11yAuto.open.value -> A11yAutoDialog { A11yAuto.open.value = false }
+                        A11ySetup.open.value -> A11ySetupDialog {
+                            A11ySetup.open.value = false
+                            Cfg.a11yDone = true
+                        }
+                        starsOpen -> StarSheet(
+                            onClose = { starsOpen = false },
+                            onOpen = { sid ->
+                                starsOpen = false
+                                screen = "chat"
+                                Agent.openSession(sid)
+                            }
+                        )
+                        //评价调研：用满 2 小时才出现，弹过或用户关掉就再也不来
+                        Rate.ask -> StarDialog(manual = Rate.manual) { never ->
+                            if (never) Cfg.noRate = true
+                            //手动点开的这次不算「已经弹过」，不改 starShown，将来自动邀请照旧
+                            if (!Rate.manual) Cfg.starShown = true
+                            Rate.ask = false
+                            Rate.manual = false
+                        }
+                        //群卡片排在最后：其它弹窗都在它之上，勾了永不提醒就彻底不弹
+                        joinOpen -> JoinGroupDialog { never ->
+                            if (never) Cfg.joinDismissed = true
+                            joinOpen = false
+                        }
+                        else -> Overlay.content?.invoke()
+                    }
+                }
+            )
+        }
+    }
+} //根容器：抽屉 + 内容层录制 + 卡片区真模糊 + 全局弹窗层

@@ -1,0 +1,70 @@
+#构建产物与依赖缓存
+build/
+.gradle/
+.kotlin/
+app/build/
+app/build.sh
+
+#参考源码（体积大，不进版本库）
+_operit/
+_dsp/
+
+#工作区：临时文件、构建日志、历史产物、一次性脚本归档，一律放这里
+.work/
+#老的临时与日志目录（内容已并入 .work/，留着防手滑重建）
+logs/
+.tmp/
+
+#本地备份
+.backup/
+
+#崩溃日志
+crashlogs/
+*.log
+
+#本机配置与密钥（模板见 local.properties.todo；种子索引在 gradle/seeds.gradle.kts）
+local.properties
+scripts/.up.token
+#产物与备份
+*.apk
+*.aab
+#AIDE 扫描索引，不是源码
+workspace.json
+workspace.json.bak
+#内部文档（模型锚点与变更账本），不对外
+.docs/
+
+#本地工具脚本（构建 / 发版 / i18n），不进版本库
+scripts/
+
+#python
+__pycache__/
+*.pyc
+app/.cxx/
+.cxx/
+#第三方库源码（体积大，按需本地放入）
+app/src/main/cpp/_third_party/
+
+# Rust 内核（cargo 产物；源码在 app/src/main/rust/，产物一律不进库）
+app/src/main/rust/target/
+app/src/main/rust/baiguard/target/
+app/src/main/rust/android/app/build/
+
+# 桌面端：前端依赖与产物、旧 Kotlin 方案的 Gradle 产物
+desktop/web/node_modules/
+desktop/web/*/dist/
+desktop/web/*/*/dist/
+desktop/dist/
+desktop/legacy-kotlin/build/
+desktop/legacy-kotlin/.gradle/
+# 桌面端整套先不进库（2026-11 按用户要求临时排除）
+desktop/
+desktop/legacy-kotlin/.kotlin/
+
+#签名库不入库
+/baicodex-release.jks
+*.jks
+*.keystore
+
+#打许可
+app/src/main/许可.sh

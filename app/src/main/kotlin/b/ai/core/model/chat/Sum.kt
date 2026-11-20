@@ -1,0 +1,65 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:08
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+package b.ai.core.model.chat
+import b.ai.core.cfg.app.Cfg
+import b.ai.core.data.profile.Profiles
+import b.ai.core.plugin.skill.Providers
+import b.ai.net.api.llm.text
+
+import b.ai.net.api.llm.LlmClient
+import org.json.JSONArray
+import org.json.JSONObject
+
+/** 一次性总结：走设置里的「总结模型」，没配就跟随当前聊天模型；同步阻塞，调用方必须在 IO 线程 */
+object Sum {
+    /** 喂给总结模型的输入上限：再长就在末尾截断，避免把整份搜索结果原样灌进去 */
+    const val MAX_IN = 16_000
+
+    /** 摘要档位名：0 简洁 / 1 详细 / 2 全面，设置页与压缩提示词共用一份 */
+    fun levelName(level: Int): String = when (level.coerceIn(0, 2)) {
+        0 -> "简洁"
+        1 -> "详细"
+        else -> "全面"
+    } //档位名
+
+    /** 档位的人话说明：字数上限由 Cfg.summaryWords 给，这里只讲取舍 */
+    fun levelHint(level: Int): String = when (level.coerceIn(0, 2)) {
+        0 -> "上限 1000 字，可能跟随轮次丢失关键"
+        1 -> "上限 2000 字，推荐"
+        else -> "不限字数，最推荐"
+    } //档位说明
+
+    /** 返回 baseUrl / apiKey / providerId / model：由「功能模型」统一决定，没配就跟随当前聊天 */
+    fun llm(): Array<String> = b.ai.core.model.chat.FnModel.conn(b.ai.core.model.chat.FnModel.SUMMARY)
+
+    /** 当前总结模型名，用于在结果里标明是谁归纳的 */
+    fun label(): String = llm()[3].ifBlank { "未配置" }
+
+    /** 跑一次总结：失败返回 null（调用方自己决定要不要提示），不带工具定义 */
+    fun run(system: String, user: String, cap: Int = MAX_IN): String? {
+        val m = llm()
+        if (m[0].isBlank() || m[3].isBlank()) return null
+        val text = if (user.length > cap) user.take(cap) + "\n…（已截断）" else user
+        val pay = JSONArray().apply {
+            put(JSONObject().put("role", "system").put("content", system))
+            put(JSONObject().put("role", "user").put("content", text))
+        }
+        val msg = runCatching {
+            LlmClient(m[0], m[1], Providers.byId(m[2]).auth)
+                .chat(m[3], pay, temperature = 0.2, tools = JSONArray())
+        }.getOrNull() ?: return null
+        return msg.optString("content").trim().ifBlank { null }
+    } //跑一次总结
+} //总结模型

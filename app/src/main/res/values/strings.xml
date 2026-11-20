@@ -1,0 +1,2609 @@
+<resources>
+    <string name="app_name">Baicodex</string>
+
+    <!-- 引导流程 -->
+    <string name="ob_sub">设备上的本地 AI Agent</string>
+    <string name="ob_step1">1/5 选择工作方式</string>
+    <string name="ob_step2">2/5 检查权限</string>
+    <string name="ob_step3">3/5 选择工作流</string>
+    <string name="ob_step4">4/5 装运行环境</string>
+    <string name="ob_step5">5/5 配置模型</string>
+    <string name="ob_step_grant">3/6 授权与保活</string>
+    <string name="ob_grant_note">把下面这些开齐，AI 才能稳定读写文件、后台跑任务、在别的应用上显示胶囊。现在不开启也能先用，之后可在设置 → 权限里随时补开。</string>
+    <string name="ob_grant_files">全部文件访问</string>
+    <string name="ob_grant_files_desc">Android 11 起需要单独开启「所有文件访问」，否则工作区、备份、下载都写不进公共目录。</string>
+    <string name="ob_grant_go">去开启</string>
+    <string name="ob_grant_special">电池保活与悬浮窗：前者避免锁屏后任务被系统掐掉，后者让「正在进行 xx」的胶囊浮在其他应用上层。</string>
+    <string name="ob_grant_runtime">麦克风、通知等运行权限：语音输入要麦克风，任务完成提醒要通知。系统弹窗里全部允许即可。</string>
+    <string name="ob_grant_runtime_go">申请运行权限</string>
+    <string name="ob_grant_on">已开启</string>
+    <string name="ob_grant_off">未开启</string>
+    <string name="ob_normal_msg">使用 App 自身沙箱权限；/sdcard 需存储权限</string>
+    <string name="ob_shizuku_ok">已授权（Shizuku）</string>
+    <string name="ob_shizuku_deny">授权被拒绝，可再点一次申请</string>
+    <string name="ob_zw_title">设备支持零宽路径</string>
+    <string name="ob_zw_body">实测发现用零宽变换后的路径可以读到 Android/data 与 Android/obb。是否开启该拓展？\n\n命中方式：%1$s\n开启后普通用户模式也能读写其他 App 的数据目录；这属于系统漏洞利用，ROM 更新后可能失效。</string>
+    <string name="ob_zw_later">暂不开启</string>
+    <string name="ob_zw_enable">开启零宽</string>
+    <string name="ob_cur_mode">当前工作方式：%1$s</string>
+    <string name="ob_detecting">检测中…</string>
+    <string name="ob_zw_probe">零宽路径检测：%1$s</string>
+    <string name="ob_zw_yes">支持（%1$s）</string>
+    <string name="ob_zw_no">不支持</string>
+    <string name="ob_recheck">重新检测</string>
+    <string name="ob_req_shizuku">申请 Shizuku 授权</string>
+    <string name="ob_req_storage">申请存储权限</string>
+    <string name="ob_wf_desc">只影响 system prompt 的侧重，不改工具集</string>
+    <string name="ob_env_title">要装运行环境吗？</string>
+    <string name="ob_env_body">内置 Ubuntu 24.04：apt 装依赖、编译、跑脚本都在里面，不依赖 Termux。约 29MB（装的时候自动从镜像节点下载），解包 1-3 分钟。不需要就点「下一步」跳过，之后随时能在 设置 → 扩展 → Linux 环境 里装。</string>
+    <string name="ob_env_mode">当前是 %1$s 模式，内置 Ubuntu 只有 Root 模式能跑；要装先回上一步切成 Root。</string>
+    <string name="ob_env_ready">环境状态：已就绪</string>
+    <string name="ob_env_missing">环境状态：未安装</string>
+    <string name="ob_env_installing">安装中…</string>
+    <string name="ob_env_reinstall">重新安装</string>
+    <string name="ob_env_install">安装内置 Ubuntu</string>
+    <string name="ob_env_self">自检</string>
+    <string name="ob_prev">上一步</string>
+    <string name="ob_skip">跳过</string>
+    <string name="ob_next">下一步</string>
+    <string name="ob_start">开始使用</string>
+    <string name="sl_new">新会话</string>
+    <string name="sl_new_d">开一个干净的新对话</string>
+    <string name="sl_clear">清空</string>
+    <string name="sl_clear_d">清掉当前会话的消息，会话本身保留</string>
+    <string name="sl_comp">压缩</string>
+    <string name="sl_comp_d">把前面的历史压成摘要，省上下文</string>
+    <string name="sl_exp">导出</string>
+    <string name="sl_exp_d">把当前会话导出成 Markdown，路径写进剪贴板</string>
+    <string name="sl_stat">统计</string>
+    <string name="sl_stat_d">跳到设置里的用量统计</string>
+    <string name="sl_persona">角色</string>
+    <string name="sl_persona_d">换智能体角色，下一句开始生效</string>
+    <string name="sl_voice">语音</string>
+    <string name="sl_voice_d">把草稿读出来再插入输入框</string>
+    <string name="sl_title">快捷指令</string>
+    <string name="sl_sub">点一条直接执行，不会发给模型</string>
+    <string name="sl_cleared">已清空当前会话</string>
+    <string name="sl_nothing">还没有内容可导出</string>
+    <string name="sl_exported">已导出：%1$s</string>
+    <string name="up_probe_fetch">拉取镜像清单…</string>
+    <string name="up_probe_start">%1$d 个镜像节点，正在测速…</string>
+    <string name="up_probe_one">测速 %1$d/%2$d · %3$s %4$s</string>
+    <string name="up_probe_fallback">镜像清单不可用（%1$s），改用直连</string>
+    <string name="up_probe_none">测速节点全部不可用，改用直链重试</string>
+    <string name="up_no_mirror">拿不到下载节点：%1$s</string>
+    <string name="up_node">从 %1$s 下载（%2$d/%3$d）</string>
+    <string name="up_node_fail">%1$s 下载失败：%2$s</string>
+    <string name="up_dl_title">下载 %1$s / %2$s · %3$s</string>
+    <string name="up_btn_probe">测速中 %1$d%%</string>
+    <string name="up_startdl">开始下载…</string>
+    <string name="up_done">下载完成（%1$dMB），正在打开安装器…</string>
+    <string name="up_fail">下载失败：%1$s</string>
+    <string name="up_new">发现新版本</string>
+    <string name="up_ver">版本 %1$s</string>
+    <string name="up_no_content">本次更新没有写说明</string>
+    <string name="up_no_url_force">上游未返回下载地址，这个版本需要更新后才能使用；请从发布渠道获取安装包。</string>
+    <string name="up_no_url">上游未返回下载地址，有新版本时可以到发布渠道获取安装包。</string>
+    <string name="up_prep">准备下载…</string>
+    <string name="up_downloading">下载中 %1$d%%</string>
+    <string name="up_installer">安装器已打开</string>
+    <string name="up_reuse">复用已下载的安装包（%1$dMB），不重复下载</string>
+    <string name="up_bad_pkg">下载的安装包校验不通过，已删除，请重试</string>
+    <string name="up_dl_install">下载并安装</string>
+    <string name="up_open_page">打开下载页</string>
+    <string name="up_exit">退出应用</string>
+    <string name="up_page">下载页</string>
+    <string name="up_later">稍后再说</string>
+    <string name="up_hist">更新历史</string>
+    <string name="up_hist_sub">共 %1$d 条，最新在上</string>
+    <string name="up_hist_empty">服务端还没有更新记录</string>
+    <string name="up_ver2">版本 %1$s</string>
+    <string name="up_close">关闭</string>
+    <string name="mn_files">文件</string>
+    <string name="mn_all">@ 技能 / 工具 / 文件</string>
+    <string name="mn_match">匹配「%1$s」</string>
+    <string name="mn_files_tip">点目录继续进，点文件填路径</string>
+    <string name="mn_files_cmd">@files 接路径</string>
+    <string name="mn_loading">读取中…</string>
+    <string name="mn_empty_dir">这个路径下没有可列的内容</string>
+    <string name="mn_dir">目录</string>
+    <string name="mn_no_match">没有匹配「%1$s」的技能、工具或工作区文件，试试 @files 浏览目录</string>
+    <string name="mn_skills">技能</string>
+    <string name="mn_no_skill">还没有技能：设置 → 扩展 → 技能专区 里添加</string>
+    <string name="mn_off">（未启用）</string>
+    <string name="mn_chars">%1$d 字</string>
+    <string name="mn_tools">工具</string>
+    <string name="mn_ws_files">工作区文件</string>
+    <string name="mn_ws_empty">工作区里没有匹配「%1$s」的文件</string>
+    <string name="mn_files_desc">接路径浏览，起点是</string>
+    <string name="mn_use_skill">用技能《%1$s》：\n</string>
+    <string name="dh_trunc">\n…（共 %1$d 字符）</string>
+    <string name="dh_high">高危</string>
+    <string name="dh_high_msg">高危操作：请确认命令/路径没有手滑（删库、覆盖系统文件不可恢复）。</string>
+    <string name="dh_deny_forever">永久拒绝</string>
+    <string name="dh_deny">拒绝</string>
+    <string name="dh_allow_forever">永久同意</string>
+    <string name="dh_allow">同意</string>
+    <string name="dh_policy_tip">永久策略可在设置→工具权限里改回</string>
+    <string name="dh_perm_title">还缺这些权限</string>
+    <string name="dh_perm_body">这些权限没给，工具调用会被直接拒绝，读写文件、选图、语音输入都用不了。可以再去系统设置里重新开启。</string>
+    <string name="dh_perm_later">先这样</string>
+    <string name="dh_perm_again">重新申请</string>
+    <string name="dh_perm_settings">去设置</string>
+    <string name="dh_close">关闭</string>
+    <string name="ms_name">配置名</string>
+    <string name="ms_auto">用自动名</string>
+    <string name="ms_showing">当前显示：「%1$s」</string>
+    <string name="ms_provider">厂商</string>
+    <string name="ms_provider_sub">点开列表选，选完自动填 base_url，仍可手改</string>
+    <string name="ms_need_base">需手填 base_url</string>
+    <string name="ms_pick">选择 ›</string>
+    <string name="ms_keys_hint">sk-…（多 Key 一行一个）</string>
+    <string name="ms_no_model">未选模型</string>
+    <string name="ms_pull_first">先拉取模型，或直接在下面手填</string>
+    <string name="ms_pulled">已拉取 %1$d 个，点开选</string>
+    <string name="ms_fetching">获取中…</string>
+    <string name="ms_fetch">获取模型</string>
+    <string name="ms_no_models">接口没有返回模型，换个 BASEURL（一般要带 /v1）再试，或在下面手填模型名</string>
+    <string name="ms_get_models_tip">走 GET {base_url}/models；拿到后弹窗里选，也可手动填</string>
+    <string name="ms_model_name">模型名</string>
+    <string name="ms_model_hint">手动填写，如 deepseek-chat</string>
+    <string name="ms_max_tok">单轮最大 token</string>
+    <string name="ms_default">默认</string>
+    <string name="ms_max_tok_tip">0/默认表示不下发 max_tokens，跟随服务端；设太小会把长回答截断。</string>
+    <string name="ms_save">保存到当前配置</string>
+    <string name="ms_saved_to">写回「%1$s」</string>
+    <string name="ms_add">新增配置</string>
+    <string name="ms_add_sub">复制当前配置再改，适合同厂商加第二个模型</string>
+    <string name="ms_add_provider">新增供应商</string>
+    <string name="ms_add_provider_sub">选完厂商再填 Key，然后勾选要用的模型</string>
+    <string name="ms_add_model_hint">列表里没有？手打模型名，逗号分隔可加多个</string>
+    <string name="ms_add_model_tip">多个模型用半角逗号「,」隔开，例如 a,b,c；回车或点「添加」直接加进列表</string>
+    <string name="ms_add_ok">添加</string>
+    <string name="ms_models_t">模型列表</string>
+    <string name="ms_models_sub">勾上要用的模型，聊天页只在这几个里挑</string>
+    <string name="ms_models_picked">已选 %1$d 个</string>
+    <string name="ms_models_none">还没勾选模型</string>
+    <string name="ms_models_pick">选择模型</string>
+    <string name="ms_select_all">全选</string>
+    <string name="ms_clear_all">清空</string>
+    <string name="ms_multi_ok">确定</string>
+    <string name="ms_multi_cancel">取消</string>
+    <string name="ms_multi_empty">这条配置还没勾模型，去设置里选一下</string>
+    <string name="ms_multi_go">去设置里选模型</string>
+    <string name="ms_multi_hint">只列设置里勾过的模型，换一批去设置里改</string>
+    <string name="ms_edit_tip">改完点下面的「保存到当前配置」才生效，没保存的改动切走就丢。</string>
+    <string name="ms_no_base">无 base_url</string>
+    <string name="ms_pick_provider">选择厂商</string>
+    <string name="ms_pick_provider_sub">选完会自动把 base_url 填进表单，可以再改</string>
+    <string name="ms_pick_model">选择模型</string>
+    <string name="ms_model_count">共 %1$d 个，来自 {base_url}/models</string>
+    <string name="ms_new_cfg">新配置</string>
+    <string name="tk_title">定时任务</string>
+    <string name="tk_close">关闭</string>
+    <string name="tk_exact">精确闹钟</string>
+    <string name="tk_grant">去授权</string>
+    <string name="tk_battery">免电池优化</string>
+    <string name="tk_to_settings">去设置</string>
+    <string name="tk_notice">通知</string>
+    <string name="tk_what">到点做什么</string>
+    <string name="tk_what_hint">例：查一下今天杭州到上海的余票，汇总给我</string>
+    <string name="tk_time">时间 HH:mm</string>
+    <string name="tk_date">日期（仅一次）</string>
+    <string name="tk_daily">每天重复</string>
+    <string name="tk_once">仅一次</string>
+    <string name="tk_auto">到点自动执行</string>
+    <string name="tk_save">保存</string>
+    <string name="tk_err_no_prompt">先写到点要做什么</string>
+    <string name="tk_err_time">时间格式不对，要 HH:mm（如 08:30）</string>
+    <string name="tk_list">已排的任务</string>
+    <string name="tk_empty">还没有任务</string>
+    <string name="tk_ready">已就绪</string>
+    <string name="tk_off">未开启</string>
+    <string name="tk_del">删</string>
+    <string name="tk_every">每天</string>
+    <string name="tk_paused">（已停）</string>
+    <string name="tk_note">说明：到点会发通知；勾了「自动执行」且应用进程活着、模型空闲时，会直接开一轮，需要确认的高危工具会留在应用里等你点同意。想在息屏也准点，务必给本应用开自启动白名单（各 ROM 在 设置 → 应用 → 自启动 里）。</string>
+    <string name="dw_search">搜会话内容</string>
+    <string name="dw_selected">已选 %1$d 条</string>
+    <string name="dw_all">全选</string>
+    <string name="dw_cancel">取消</string>
+    <string name="dw_empty">还没有会话，点底部「新对话」开始</string>
+    <string name="dw_no_match">没有匹配的会话</string>
+    <string name="dw_new">新对话</string>
+    <string name="dw_export">导出</string>
+    <string name="dw_settings">设置</string>
+    <string name="dw_rename">改名</string>
+    <string name="dw_save">保存</string>
+    <string name="dw_pinned">已置顶</string>
+    <string name="dw_unpin">取消置顶</string>
+    <string name="dw_pin">置顶</string>
+    <string name="dw_rename_menu">重命名</string>
+    <string name="dw_del_confirm">确认删除</string>
+    <string name="dw_del">删除</string>
+    <string name="dw_none">当前会话为空，没导出</string>
+    <string name="dw_exported">已导出：%1$s</string>
+    <string name="dw_deleted">已删除 %1$d 条会话</string>
+    <string name="cs_hint">请输入问题</string>
+    <string name="cs_attach">附件</string>
+    <string name="cs_stopped">已停止</string>
+    <string name="cs_stop">停止</string>
+    <string name="cs_pick_model">选择模型</string>
+    <string name="cs_see_images">看这些图片</string>
+    <string name="cs_see_files">看这些附件文件</string>
+    <string name="cs_edit_resend">编辑后重发</string>
+    <string name="cs_regen_hint">带上提示重新生成</string>
+    <string name="cs_edit_desc">改完发一条新的，原消息留在分支里，用 ‹ n/m › 切回</string>
+    <string name="cs_regen_hint_desc">补充你想要的改动，再重新生成这条</string>
+    <string name="cs_send">发送</string>
+    <string name="cs_regen">重新生成</string>
+    <string name="cs_default_persona">默认助手</string>
+    <string name="cs_think">深度思考</string>
+    <string name="cs_think_off">直接回答</string>
+    <string name="cs_persona_title">智能体角色</string>
+    <string name="cs_persona_sub">切换后从下一句开始生效，历史消息不动</string>
+    <string name="cs_persona_none">不加载任何角色提示</string>
+    <string name="cs_persona_unnamed">未命名角色</string>
+    <string name="cs_persona_manage">管理角色</string>
+    <string name="cs_persona_manage_sub">新增 / 改内容 / 删除在 设置 → 扩展</string>
+    <string name="cs_greet_n1">夜深了，还有任务吗？</string>
+    <string name="cs_greet_n2">夜深了，有什么安排？</string>
+    <string name="cs_greet_n3">夜深了，还没睡觉吗？</string>
+    <string name="cs_greet_a1">早，今天怎么样？</string>
+    <string name="cs_greet_a2">早，睡得好吗？</string>
+    <string name="cs_greet_g1">欢迎回来，今天有什么需要帮助的？</string>
+    <string name="cs_greet_g2">欢迎回来，今天需要做什么？</string>
+    <string name="cs_greet_g3">欢迎回来，今天有什么安排？</string>
+    <string name="cs_greet_g4">你好，今天有什么需要帮助的？</string>
+    <string name="cs_greet_g5">你好，今天需要做什么？</string>
+    <string name="cs_greet_g6">你好，今天有什么安排？</string>
+    <string name="cs_greet_g7">欢迎回来，今天怎么样？</string>
+    <string name="cs_empty_tip">它会自己拆步骤、调工具、逐个问你确认。输入 @ 可插入技能 / 工具 / 文件。</string>
+    <string name="cs_max">最大</string>
+    <string name="cs_listening">识别中</string>
+    <string name="cs_voice">语音</string>
+    <string name="cs_voice_hold">长按说话</string>
+    <string name="cs_voice_end">松开结束</string>
+    <string name="cs_voice_cancel">松开取消</string>
+    <string name="cs_keyboard">键盘</string>
+    <string name="cs_config">配置</string>
+    <string name="cs_fullscreen">全屏输入</string>
+    <string name="cs_think_proc">思考过程</string>
+    <string name="cs_collapse">收起</string>
+    <string name="cs_expand">展开</string>
+    <string name="cs_part_diff">部分修改</string>
+    <string name="cs_no_output">（无输出）</string>
+    <string name="cs_fail">失败</string>
+    <string name="cs_done">完成</string>
+    <string name="cs_detail">详情 ›</string>
+    <string name="cs_op_read">读</string>
+    <string name="cs_op_write">写</string>
+    <string name="cs_op_create">建</string>
+    <string name="cs_op_delete">删</string>
+    <string name="cs_op_search">搜</string>
+    <string name="cs_op_shell">令</string>
+    <string name="cs_params">参数</string>
+    <string name="cs_copied">已复制</string>
+    <string name="cs_copy_output">复制输出</string>
+    <string name="cs_close">关闭</string>
+    <string name="cs_summary">上下文摘要</string>
+    <string name="cs_summary_done">已压缩早期对话</string>
+    <string name="cs_msg_ops">操作消息</string>
+    <string name="cs_copy_all">复制全部内容</string>
+    <string name="cs_this_msg">这条消息</string>
+    <string name="cs_this_reply">这条回复</string>
+    <string name="cs_no_content">（无内容）</string>
+    <string name="cs_edit_resend_desc">改文字就存成另一个版本；文字没动就只重跑这条的回复</string>
+    <string name="cs_regen_desc">从这条开始重新请求，后面已有的内容会被删掉</string>
+    <string name="cs_regen_hint_desc2">先补一句要求，再重新生成这条</string>
+    <string name="cs_copy_content">复制内容</string>
+    <string name="cs_copy_content_desc">把这段文字放进剪贴板</string>
+    <string name="cs_cancel">取消</string>
+    <string name="cs_chars_unit">%1$d 字</string>
+    <string name="cs_typing">对方正在输入</string>
+    <string name="cs_think_effort">深度思考 · %1$s</string>
+    <string name="cs_think_chars">思考中 · %1$d 字</string>
+    <string name="cs_reason_chars">%1$d 字 · 展开</string>
+    <string name="cs_out_chars">输出 · %1$d 字</string>
+    <string name="cs_elapsed">耗时\u0020</string>
+    <string name="cs_first">首字\u0020</string>
+    <string name="cs_regen_hint2">带提示重新生成</string>
+    <string name="ip_title">添加内容</string>
+    <string name="ip_img">图片</string>
+    <string name="ip_img_d">进多模态，模型直接看图</string>
+    <string name="ip_file">文件</string>
+    <string name="ip_file_d">任意文档，路径插进输入框</string>
+    <string name="ip_audio">音频</string>
+    <string name="ip_audio_d">录音 / 语音文件</string>
+    <string name="ip_video">视频</string>
+    <string name="ip_video_d">视频文件，路径插进输入框</string>
+    <string name="ip_music">音乐</string>
+    <string name="ip_music_d">歌曲与音频素材</string>
+    <string name="ip_skill">技能包</string>
+    <string name="ip_skill_d">把内置技能带进这一轮</string>
+    <string name="ip_off">（未启用）</string>
+    <string name="ip_cfg">本轮配置</string>
+    <string name="ip_model">模型</string>
+    <string name="ip_think">深度思考</string>
+    <string name="ip_think_off">直接回答</string>
+    <string name="ip_strength">思考强度</string>
+    <string name="ip_budget">工具结果预算</string>
+    <string name="ip_budget_max">max（不限）</string>
+    <string name="ip_lv_low">低</string>
+    <string name="ip_lv_mid">中</string>
+    <string name="ip_lv_high">高</string>
+    <string name="ip_max">最大模式</string>
+    <string name="ip_max_d">不下发 max_tokens，思考只由开关控制</string>
+    <string name="ip_max_off">按配置的 max_tokens 走</string>
+    <string name="ip_no_profile">还没有模型配置，先加一个再用</string>
+    <string name="ip_no_model">未填模型名</string>
+    <string name="ip_profile">模型配置</string>
+    <string name="ip_profile_sub">厂商 / Key / 模型名</string>
+    <string name="ss_title">会话历史</string>
+    <string name="ss_close">关闭</string>
+    <string name="ss_rename">重命名：%1$s</string>
+    <string name="ss_cancel">取消</string>
+    <string name="ss_save">保存</string>
+    <string name="ss_empty">还没有会话</string>
+    <string name="ss_current">当前</string>
+    <string name="ss_count">%1$d 条</string>
+    <string name="ss_rename_btn">改名</string>
+    <string name="ss_del_confirm">确认删除</string>
+    <string name="ss_del">删除</string>
+    <string name="ss_new">新会话</string>
+    <string name="cm_pick_image">选图</string>
+    <string name="cm_clear_avatar">清除头像</string>
+    <string name="md_copied">已复制</string>
+    <string name="md_copy">复制</string>
+    <string name="th_image">图</string>
+    <string name="th_long">长图</string>
+    <string name="ch_title">添加内容</string>
+    <string name="ch_sub">选一类塞进输入区，模型按路径自己读</string>
+    <string name="ch_img">图片</string>
+    <string name="ch_img_d">进多模态，模型直接看图</string>
+    <string name="ch_file">文件</string>
+    <string name="ch_file_d">任意文档，路径插进输入框</string>
+    <string name="ch_audio">音频</string>
+    <string name="ch_audio_d">录音 / 语音文件</string>
+    <string name="ch_video">视频</string>
+    <string name="ch_video_d">视频文件，路径插进输入框</string>
+    <string name="ch_music">音乐</string>
+    <string name="ch_music_d">歌曲与音频素材</string>
+    <string name="ch_skill">技能包</string>
+    <string name="ch_skill_d">内置技能带进本轮，让模型照步骤做</string>
+    <string name="ch_skill_sub">点一条带进输入框，随本轮消息发给模型</string>
+    <string name="ch_on">（已启用）</string>
+    <string name="ch_skill_tip">技能内容在 设置 → 对话 → 技能专区 里增删改</string>
+    <string name="ch_cfg">本轮配置</string>
+    <string name="ch_cfg_sub">改完对下一轮请求立刻生效</string>
+    <string name="ch_model">模型</string>
+    <string name="ch_no_model">未选模型</string>
+    <string name="ch_think">深度思考</string>
+    <string name="ch_think_off">不思考，直接回答</string>
+    <string name="ch_max">最大模式</string>
+    <string name="ch_max_d">不下发 max_tokens，思考顶到 high</string>
+    <string name="ch_max_off">按配置的 max_tokens 走</string>
+    <string name="ch_tip">增删模型配置去 设置 → 模型；压缩阈值在 设置 → 对话</string>
+    <string name="ch_effort">下发 reasoning_effort=%1$s</string>
+    <string name="ip_skill_pre">按这条技能做：</string>
+    <string name="st_total">总计</string>
+    <string name="st_total_d">全部历史累计，口径是服务商回报的 prompt / completion</string>
+    <string name="st_total_tok">总 token</string>
+    <string name="st_in">输入 prompt</string>
+    <string name="st_in_cache">输入（缓存）</string>
+    <string name="st_out">输出 completion</string>
+    <string name="st_cache_rate">缓存命中率 %1$.1f%%（缓存部分已含在输入里，不另计）</string>
+    <string name="st_range">按范围统计</string>
+    <string name="st_range_d">1 / 7 / 30 / 90 天，或自己填起止日期（yyyy-MM-dd）</string>
+    <string name="st_d1">1 天</string>
+    <string name="st_d7">7 天</string>
+    <string name="st_d30">30 天</string>
+    <string name="st_d90">90 天</string>
+    <string name="st_custom">自定义</string>
+    <string name="st_from">开始 2025-10-01</string>
+    <string name="st_to">结束 2025-10-31</string>
+    <string name="st_grid">本月方格图</string>
+    <string name="st_less">少</string>
+    <string name="st_more">多</string>
+    <string name="st_models">模型分类</string>
+    <string name="st_models_d">按模型累计 token 与花费；点右侧「单独配价」给这个模型设输入 / 输出 / 缓存单价</string>
+    <string name="st_empty">还没有用量记录，聊几句再来</string>
+    <string name="st_month">月活跃</string>
+    <string name="st_month_d">近 6 个月每月有记录的天数</string>
+    <string name="st_no_data">这段时间没有数据</string>
+    <string name="wp_title">工作区</string>
+    <string name="wp_title_d">相对路径都落在工作区里，命令也默认在这里执行</string>
+    <string name="wp_auto">新会话自动绑定工作区</string>
+    <string name="wp_auto_d">开启后每个会话各开一个独立目录；关闭则所有会话共用一个默认工作区</string>
+    <string name="wp_unbound">未绑定（空工作区）</string>
+    <string name="wp_none">现在不绑任何目录：相对路径不生效，模型只能用绝对路径；想绑定就填下面的路径再点「绑定」</string>
+    <string name="wp_path">工作区路径</string>
+    <string name="wp_bind">绑定</string>
+    <string name="wp_bound_ok">已绑定，索引已生成</string>
+    <string name="wp_bind_fail">绑定失败：路径为空、建不出目录，或选的是数据根 / 外部存储根</string>
+    <string name="wp_reset">恢复默认</string>
+    <string name="wp_reset_ok">已解绑，改回自动分配的目录</string>
+    <string name="wp_reset_unbound">已解绑，当前是空工作区</string>
+    <string name="wp_reindex">重建索引</string>
+    <string name="wp_reindex_none">没有可索引的内容</string>
+    <string name="wp_tree">目录树预览（每层前 40 项，进系统提示的就是这份）</string>
+    <string name="wp_scanning">扫描中…</string>
+    <string name="wp_tree_empty">目录是空的；把文件丢进来或让模型直接写相对路径</string>
+    <string name="st_month_fmt">%1$s 月</string>
+    <string name="st_rounds">%1$d 轮</string>
+    <string name="st_active">%1$d 天有记录</string>
+    <string name="st_tok_days">token · %1$d 天</string>
+    <string name="st_split">输入 %1$s（缓存 %2$s） · 输出 %3$s</string>
+    <string name="st_day_tip">%1$s：%2$s token（输入 %3$s 含缓存 %4$s / 输出 %5$s）</string>
+    <string name="st_grid_d">本月共 %1$d 天；方格越浓表示当天用得越多，没用的天是浅灰</string>
+    <string name="st_grid_note">%1$d / %2$d 天有记录</string>
+    <string name="wp_bound">已绑定：%1$s</string>
+    <string name="wp_cur">本会话工作区：%1$s</string>
+    <string name="wp_default">默认工作区：%1$s</string>
+    <string name="wp_shared">全局默认工作区：%1$s</string>
+    <string name="wp_stat">%1$d 个文件 / %2$d 个目录 / %3$s</string>
+    <string name="wp_reindex_ok">索引已重写为 %1$s（%2$d 条）</string>
+    <string name="wp_close">关闭</string>
+    <string name="wp_browse">浏览目录…</string>
+    <string name="wp_pick_title">选择目录</string>
+    <string name="wp_pick_up">上一级</string>
+    <string name="wp_pick_dir">目录</string>
+    <string name="wp_pick_empty">这个目录是空的</string>
+    <string name="wp_pick_err">读不出这个目录：%1$s</string>
+    <string name="wp_pick_here">选这个目录</string>
+    <string name="wp_pick_cancel">返回</string>
+    <string name="wp_pick_hint">选中的目录只绑到本会话</string>
+    <string name="wp_rt_ws">默认工作区</string>
+    <string name="wp_rt_app">应用目录</string>
+    <string name="wp_rt_base">数据根</string>
+    <string name="wp_rt_dl">下载</string>
+    <string name="wp_rt_doc">文档</string>
+    <string name="wp_rt_pic">图片</string>
+    <string name="wp_rt_sd">SD 卡</string>
+    <string name="wp_hint_t">工作区</string>
+    <string name="wp_hint_d">在对话页右上角 &lt;/&gt; 里绑定；绑定后相对路径都落在那个目录</string>
+    <string name="ob2_mode_fmt">当前工作方式：%1$s</string>
+    <string name="ob2_detecting">检测中…</string>
+    <string name="ob2_zero_pre">零宽路径检测：</string>
+    <string name="ob2_zero_yes">支持（%1$s）</string>
+    <string name="ob2_zero_no">不支持</string>
+    <string name="ob2_recheck">重新检测</string>
+    <string name="ob2_shiz">申请 Shizuku 授权</string>
+    <string name="ob2_storage">申请存储权限</string>
+    <string name="ob2_mode_d">只影响 system prompt 的侧重，不改工具集</string>
+    <string name="ob2_linux_q">要装运行环境吗？</string>
+    <string name="ob2_env_ok">环境状态：已就绪</string>
+    <string name="ob2_env_no">环境状态：未安装</string>
+    <string name="ob2_installing">安装中…</string>
+    <string name="ob2_reinstall">重新安装</string>
+    <string name="ob2_install">安装内置 Ubuntu</string>
+    <string name="ob2_mirror_src">镜像源</string>
+    <string name="ob2_selftest">自检</string>
+    <string name="dw_multi">多选</string>
+    <string name="ob2_linux_d">内置 Ubuntu 24.04：apt 装依赖、编译、跑脚本都在里面，不依赖 Termux。约 29MB（装的时候自动从镜像节点下载），解包 1-3 分钟。不需要就点「下一步」跳过，之后随时能在 设置 → 扩展 → Linux 环境 里装。</string>
+    <string name="ob2_linux_warn">当前是 %1$s 模式，内置 Ubuntu 只有 Root 模式能跑；要装先回上一步切成 Root。</string>
+    <string name="se_001">模型</string>
+    <string name="se_002">对话</string>
+    <string name="se_003">外观</string>
+    <string name="se_004">统计</string>
+    <string name="se_005">扩展</string>
+    <string name="se_006">关于</string>
+    <string name="se_007">模型配置</string>
+    <string name="se_008">一条一套提供商 + Key + 模型</string>
+    <string name="se_009">当前配置</string>
+    <string name="se_010">整组切换</string>
+    <string name="se_011">模型能力</string>
+    <string name="se_012">模型真支持的能力</string>
+    <string name="se_013">深度思考</string>
+    <string name="se_014">先推理再回答</string>
+    <string name="se_015">上下文压缩</string>
+    <string name="se_016">早期对话压成摘要</string>
+    <string name="se_017">注入</string>
+    <string name="se_018">本机实时信息拼进系统提示</string>
+    <string name="se_019">回复信息</string>
+    <string name="se_020">回复下方那行小字</string>
+    <string name="se_021">会话</string>
+    <string name="se_022">切换与删除</string>
+    <string name="se_023">工作区信息</string>
+    <string name="se_024">所有工作区与未被绑定的目录</string>
+    <string name="se_025">权限工作方式</string>
+    <string name="se_026">自动选路</string>
+    <string name="se_027">系统权限</string>
+    <string name="se_028">重新申请</string>
+    <string name="se_029">实验性功能</string>
+    <string name="se_030">主题</string>
+    <string name="se_031">深色模式</string>
+    <string name="se_032">字体大小</string>
+    <string name="se_033">输入框</string>
+    <string name="se_034">悬浮模式</string>
+    <string name="se_035">输入提示</string>
+    <string name="se_036">占位文字</string>
+    <string name="se_037">导航手势</string>
+    <string name="se_038">用量统计</string>
+    <string name="se_039">总 token / 柱状图 / 方格图 / 模型分类 / 月活跃</string>
+    <string name="se_040">模型分类</string>
+    <string name="se_041">各模型累计 token</string>
+    <string name="se_042">本月方格图</string>
+    <string name="se_043">按天热力图</string>
+    <string name="se_044">定时任务</string>
+    <string name="se_045">到点通知与自动执行</string>
+    <string name="se_046">搜索平台</string>
+    <string name="se_047">智能体角色</string>
+    <string name="se_048">自定义系统提示</string>
+    <string name="se_049">技能专区</string>
+    <string name="se_050">工具权限</string>
+    <string name="se_051">编译工具链</string>
+    <string name="se_052">Linux 环境</string>
+    <string name="se_053">内置 Ubuntu</string>
+    <string name="se_054">检查更新</string>
+    <string name="se_055">版本号与更新历史</string>
+    <string name="se_056">设置</string>
+    <string name="se_057">搜索</string>
+    <string name="se_058">搜索设置</string>
+    <string name="se_059">返回</string>
+    <string name="se_060">搜设置项，如 主题 / Linux / 工具链</string>
+    <string name="se_063">输入关键词搜索设置项，例如「主题」「Linux」「工具链」</string>
+    <string name="se_064">一条一套提供商 + Key + 模型，点一下整组切换</string>
+    <string name="se_065">勾上模型真支持的能力；没勾的能力请求体里会自动去掉，不会把请求打成 400</string>
+    <string name="se_066">图片输入（视觉）</string>
+    <string name="se_067">发图时按多模态数组上传</string>
+    <string name="se_068">发图时降级为一行文字说明，模型看不到图</string>
+    <string name="se_069">工具调用（function calling）</string>
+    <string name="se_070">请求体带 tools，模型能读写文件 / 执行命令</string>
+    <string name="se_071">请求体不带 tools，模型只能纯文本回答</string>
+    <string name="se_072">推理 / 思考参数</string>
+    <string name="se_073">开思考时下发 reasoning_effort</string>
+    <string name="se_074">不下发 reasoning_effort，避免不认该字段的接口报错</string>
+    <string name="se_075">开启后模型先推理再回答，思考过程会折叠显示在回复上方</string>
+    <string name="se_386">原生联网搜索（服务端）</string>
+    <string name="se_387">请求体已声明厂商自带联网工具，检索由服务端执行并注入上下文</string>
+    <string name="se_388">不下发联网声明，模型只能靠本地工具或自身知识回答</string>
+    <string name="se_389">当前厂商未接入原生联网，勾选也不会下发</string>
+    <string name="se_076">思考模式</string>
+    <string name="se_077">请求会下发 reasoning_effort</string>
+    <string name="se_078">直接回答，不下发思考参数</string>
+    <string name="se_079">思考强度</string>
+    <string name="se_080">最大模式</string>
+    <string name="se_081">不下发 max_tokens，思考强度顶到 high，回答尽量写满</string>
+    <string name="se_082">按配置的 max_tokens 与思考强度走</string>
+    <string name="se_083">采样温度</string>
+    <string name="se_084">默认</string>
+    <string name="se_085">温度越低越稳定、越高越发散；选「默认」表示不下发 temperature，跟随服务端。</string>
+    <string name="se_086">附加请求参数（JSON）</string>
+    <string name="se_087">参数内容</string>
+    <string name="se_088">有的中转站/厂商用私有字段开思考，这里直接拼到请求体顶层，</string>
+    <string name="se_089">例如 {"enable_thinking":true} 或 {"thinking":{"type":"enabled"}}。留空不加。</string>
+    <string name="se_090">上下文与压缩</string>
+    <string name="se_091">超出预算时把早期对话压成摘要，避免整段历史反复上送</string>
+    <string name="se_092">自动压缩</string>
+    <string name="se_094">模型窗口（总上下文 token）</string>
+    <string name="se_097">按总上下文窗口的百分比折算字符数触发压缩；调低压得更勤、更省 token，调高更保记忆。</string>
+    <string name="se_098">压缩后保留最近条数</string>
+    <string name="se_100">未压缩条数到多少触发（与字符预算先到先压）</string>
+    <string name="se_101">立即总结</string>
+    <string name="se_102">任务进行中，结束后再试</string>
+    <string name="se_103">手动把早期消息压成一条摘要</string>
+    <string name="se_104">把本机实时信息拼进系统提示，模型不用反问你</string>
+    <string name="se_105">注入当前时间</string>
+    <string name="se_106">带上年月日、时分、星期</string>
+    <string name="se_107">不注入时间</string>
+    <string name="se_108">注入电量</string>
+    <string name="se_109">带上电量百分比与是否充电</string>
+    <string name="se_110">不注入电量</string>
+    <string name="se_tab_jump">设置 → %1$s</string>
+    <string name="se_111">注入位置</string>
+    <string name="se_112">不注入位置</string>
+    <string name="se_113">带上最后已知经纬度与精度</string>
+    <string name="se_114">缺定位权限，打开开关会弹系统授权</string>
+    <string name="se_115">每条回答下面那行小字显示什么</string>
+    <string name="se_116">用量</string>
+    <string name="se_117">总 token 与 tok/s</string>
+    <string name="se_118">不显示用量</string>
+    <string name="se_119">请求信息</string>
+    <string name="se_120">时间 / 供应商 / 模型 / 首响 / 总耗时</string>
+    <string name="se_121">只显示正文</string>
+    <string name="se_122">语音</string>
+    <string name="se_123">说和听都用系统能力，不联网、不传云端</string>
+    <string name="se_124">朗读回复</string>
+    <string name="se_125">每轮最终回答用系统 TTS 念出来，点停止同时断声</string>
+    <string name="se_126">只显示文字，不念</string>
+    <string name="se_127">语音朗读已开启</string>
+    <string name="se_128">语音输入在输入框左侧的麦克风按钮：点一下开始，说完自动填进输入框。首次使用会申请麦克风权限。</string>
+    <string name="se_129">切换与删除都在左侧抽屉；关掉 App 重进落在最新会话</string>
+    <string name="se_131">新建会话</string>
+    <string name="se_132">每个会话一个独立目录；没被任何会话绑定的可以一键删掉</string>
+    <string name="se_133">读取中…</string>
+    <string name="se_134">还没有工作区：发过消息、或绑定过目录之后才会出现</string>
+    <string name="se_135">（当前）</string>
+    <string name="se_137">未被会话绑定</string>
+    <string name="se_140">确认删除</string>
+    <string name="se_142">取消</string>
+    <string name="se_143">删除</string>
+    <string name="se_144">刷新</string>
+    <string name="se_145">当前使用中的、还有会话绑定的目录不显示删除按钮，删不了</string>
+    <string name="se_146">切换后工具会自动按新路径选路</string>
+    <string name="se_147">缺权限时工具调用会被直接拒绝，可在这里重新申请或跳设置</string>
+    <string name="se_148">运行期权限</string>
+    <string name="se_149">已全部授予</string>
+    <string name="se_150">缺：</string>
+    <string name="se_151">申请权限</string>
+    <string name="se_152">系统设置页</string>
+    <string name="se_153">所有文件访问（Android 11+ 特殊权限）：</string>
+    <string name="se_154">已开启</string>
+    <string name="se_155">未开启</string>
+    <string name="se_156">去开启全盘读写</string>
+    <string name="se_157">零宽路径</string>
+    <string name="se_159">可直接读写</string>
+    <string name="se_160">开启后普通用户模式下会尝试用零宽变换路径读写 Android/data 与 Android/obb；</string>
+    <string name="se_161">属于系统漏洞利用，ROM 更新后可能失效，失败会直接报权限错误。</string>
+    <string name="se_162">重新探测</string>
+    <string name="se_163">小</string>
+    <string name="se_164">标准</string>
+    <string name="se_165">大</string>
+    <string name="se_166">特大</string>
+    <string name="se_167">语言</string>
+    <string name="se_168">界面文字语言；跟随系统就用系统语言，切完立刻生效</string>
+    <string name="se_169">个性化</string>
+    <string name="se_170">聊天里显示头像；AI 头像可以跟角色卡，也可以单独指定一张</string>
+    <string name="se_171">在聊天里显示头像</string>
+    <string name="se_172">关掉就回到纯文字气泡，位置留给正文</string>
+    <string name="se_173">消息强制高圆角</string>
+    <string name="se_174">所有消息气泡用 16dp 大圆角，带一点方形，文字不顶弧线</string>
+    <string name="se_175">Waifu模式</string>
+    <string name="se_wbounce_t">分句气泡动画增强</string>
+    <string name="se_wbounce_d">Waifu 模式下的每条小句弹出时带回弹，像苹果 Messages 那样一条条弹出来</string>
+    <string name="se_wreal_t">使用更真实的分句引擎</string>
+    <string name="se_wreal_d">分句更碎（逗号处也断），气泡宽度收到屏幕的 3/7，弹出动画换成淡入上浮的缓动，更像真人连发短消息</string>
+    <string name="se_wtype_t">分句打字速度</string>
+    <string name="se_wtype_v">%1$d ms/字</string>
+    <string name="se_wtyping_t">模拟对方正在输入</string>
+    <string name="se_wtyping_d">两条分句之间显示「正在输入…」提示，停留时长 = 本条字数 × 打字速度</string>
+    <string name="se_176">启用后，AI 的回复将按标点分割逐句发送，营造更自然的对话体验</string>
+    <string name="se_177">我的头像</string>
+    <string name="se_178">用户消息右侧显示；没设置就是默认人形</string>
+    <string name="se_179">AI 头像</string>
+    <string name="se_180">选「跟角色卡」就用角色自己的图，选「自定义」用下面这张</string>
+    <string name="se_181">跟当前智能体角色</string>
+    <string name="se_182">角色卡有图就用角色的，没有就用默认人形</string>
+    <string name="se_183">用上面这张自定义图</string>
+    <string name="se_184">还没选图，选了就切过来</string>
+    <string name="se_186">所有角色共用这一张</string>
+    <string name="se_185">深色模式跟随系统或手动固定，切换立刻生效</string>
+    <string name="se_187">跟随系统</string>
+    <string name="se_188">浅色</string>
+    <string name="se_189">深色</string>
+    <string name="se_190">固定浅色，系统切深色也不跟</string>
+    <string name="se_191">固定深色，夜间不刺眼</string>
+    <string name="se_192">跟系统设置走，系统深色时自动变深</string>
+    <string name="se_193">整体缩放文字，dp 尺寸不变；点一下立刻生效，不用重启</string>
+    <string name="se_195">悬浮模式只让输入框本体浮起来，四周留白，不铺整块背景</string>
+    <string name="se_196">悬浮输入框</string>
+    <string name="se_fullin_t">使用全新的全屏输入逻辑</string>
+    <string name="se_paste_t">粘贴长文本转文件</string>
+    <string name="se_paste_d">粘贴超过阈值的文字自动存成工作区文件，输入框只留一行说明</string>
+    <string name="se_paste_limit">转存阈值（字）</string>
+    <string name="se_paste_limit_v">%1$d 字</string>
+    <string name="se_paste_limit_d">500 到 20000 字，默认 3000</string>
+    <string name="se_fullin_d">输入超过 700 字时，语音右边出现全屏输入入口；关掉则入口常驻</string>
+    <string name="cs_fullscreen_entry">全屏</string>
+    <string name="cs_paste_file">「粘贴 %1$d 字，已转存为文件：%2$s」</string>
+    <string name="cs_tool_sub">分智能体·</string>
+    <string name="se_197">输入框和发送键单独浮起来、带投影，周围保持页面底色；关掉回到贴底样式</string>
+    <string name="se_198">输入框空着时显示的文字；一行一条，多条就每次随机取一条</string>
+    <string name="se_199">占位文字（每行一条）</string>
+    <string name="se_200">请输入问题</string>
+    <string name="se_font_cur">当前 %1$d%%</string>
+    <string name="se_226">例如：回答一律用中文，先给结论再给步骤</string>
+    <string name="se_227">未填写：只用内置规则</string>
+    <string name="se_229">把操作流程写成技能，启用后会拼进系统提示，模型照着执行</string>
+    <string name="se_230">还没有技能</string>
+    <string name="se_231">技能就是一份提示词：写清楚触发场景、要走的命令、判断条件。</string>
+    <string name="se_232">启用后每次请求都会带给模型，不用每次重新解释。</string>
+    <string name="se_233">新增技能</string>
+    <string name="se_235">永久同意/拒绝与工具弹窗同步</string>
+    <string name="se_tools_more">展开全部 %1$d 个工具</string>
+    <string name="se_238">每次确认</string>
+    <string name="se_239">永久同意</string>
+    <string name="se_240">永久拒绝</string>
+    <string name="se_241">跑在本机的 AI Agent：模型直连，读写文件、执行命令都在设备上完成。</string>
+    <string name="se_242">版本号</string>
+    <string name="se_243">最新版本</string>
+    <string name="se_244">点「检查更新」获取</string>
+    <string name="se_245">检查中…</string>
+    <string name="se_250">更新历史</string>
+    <string name="se_252">相关链接</string>
+    <string name="se_253">官网</string>
+    <string name="se_254">还没建库</string>
+    <string name="se_256">编辑</string>
+    <string name="se_257">编辑技能</string>
+    <string name="se_258">名称</string>
+    <string name="se_259">例如：装 APK 并抓日志</string>
+    <string name="se_260">一句话说明</string>
+    <string name="se_261">什么时候该用它</string>
+    <string name="se_262">技能正文</string>
+    <string name="se_263">按步骤写清楚命令、路径与判断条件</string>
+    <string name="se_264">保存</string>
+    <string name="se_265">未命名角色</string>
+    <string name="se_267">已删配置</string>
+    <string name="se_268">已选</string>
+    <string name="se_269">编辑角色</string>
+    <string name="se_270">角色卡决定模型的身份、口吻、开场白与示例风格；人设与后置指令会拼进系统提示最前面。</string>
+    <string name="se_271">角色头像</string>
+    <string name="se_272">没设置就用默认人形</string>
+    <string name="se_273">聊天里显示这张</string>
+    <string name="se_274">角色名</string>
+    <string name="se_275">例如：命令行老手</string>
+    <string name="se_276">一句话简介</string>
+    <string name="se_277">列表里显示，一行说完</string>
+    <string name="se_278">人设正文</string>
+    <string name="se_279">写清楚身份、说话方式、优先做什么、禁止做什么</string>
+    <string name="se_280">适用场景</string>
+    <string name="se_281">什么情况下用这张卡，例如：线上排障、审方案</string>
+    <string name="se_282">开场白</string>
+    <string name="se_283">新建会话时自动发出的第一句 AI 消息，留空就没有</string>
+    <string name="se_284">示例对话</string>
+    <string name="se_285">一行一轮，例如：\n用户：xxx\n助手：yyy</string>
+    <string name="se_286">后置指令</string>
+    <string name="se_287">放在系统提示最后，比人设更强势，例如：回答不超过 30 行</string>
+    <string name="se_288">绑定模型：</string>
+    <string name="se_289">跟随当前</string>
+    <string name="se_290">解绑</string>
+    <string name="se_291">编译 APK 要 Termux 里的 JDK + gradle + Android SDK：这里只检测状态并给命令，不自动装</string>
+    <string name="se_292">正在检测…</string>
+    <string name="se_293">检测失败</string>
+    <string name="se_294">重新检测</string>
+    <string name="se_295">复制装依赖命令</string>
+    <string name="se_296">在 Termux 里按顺序执行（点右侧复制）：</string>
+    <string name="se_297">复制</string>
+    <string name="se_298">开始装依赖…</string>
+    <string name="se_299">开始安装…</string>
+    <string name="se_300">Linux 环境（内置 Ubuntu 24.04）</string>
+    <string name="se_301">自带 proot + Ubuntu 根文件系统，解包到应用私有目录：apt 装依赖、编译、跑脚本都在里面，不依赖 Termux</string>
+    <string name="se_302">已安装：Ubuntu 可以用了</string>
+    <string name="se_303">proot 已就位，Ubuntu 还没解包</string>
+    <string name="se_304">未安装</string>
+    <string name="se_305">proot 已作为 native 库打进 APK，普通 / Shizuku / Root 三种模式都能跑，不再要求 Root。</string>
+    <string name="se_307">安装中…</string>
+    <string name="se_308">重新解包</string>
+    <string name="se_309">安装 Ubuntu</string>
+    <string name="se_310">装依赖中…</string>
+    <string name="se_311">重装依赖</string>
+    <string name="se_312">一键装依赖</string>
+    <string name="se_313">先装 Ubuntu 环境，再装依赖</string>
+    <string name="se_314">自检</string>
+    <string name="se_315">自检中…</string>
+    <string name="se_317">装好之后，让模型用 linux_shell 工具在里面跑命令，例如：</string>
+    <string name="se_318">宿主 Android 侧（pm / am / uiautomator）仍用 exec_shell；</string>
+    <string name="se_319">/sdcard 在 Ubuntu 里是同一个路径，写出的文件两边都看得见。</string>
+    <string name="se_316">失败(%1$d)：%2$s</string>
+    <string name="cd_t1">一键构建</string>
+    <string name="cd_d1">编译并安装 APK</string>
+    <string name="cd_t2">逆向分析</string>
+    <string name="cd_d2">看包名、权限、dex、硬编码</string>
+    <string name="cd_t3">编译策划</string>
+    <string name="cd_d3">一句话出完整开发计划</string>
+    <string name="cd_t4">行程规划</string>
+    <string name="cd_d4">12306 余票 + 中转</string>
+    <string name="cd_t5">操作助手</string>
+    <string name="cd_d5">看屏幕并点按应用</string>
+    <string name="cd_t6">写代码</string>
+    <string name="cd_d6">工作区里写并跑脚本</string>
+    <string name="per_n1">代码搭子</string>
+    <string name="per_d1">话少的资深工程师，只给代码和关键那一句</string>
+    <string name="per_o1">要改哪个文件？贴代码或者给路径。</string>
+    <string name="per_n2">严谨审阅</string>
+    <string name="per_d2">先挑问题再给结论，每条都带依据</string>
+    <string name="per_o2">把要审的东西贴上来，我先按严重程度列风险，再给结论。</string>
+    <string name="per_n3">运维值班</string>
+    <string name="per_d3">先给命令再说后果，破坏性操作先亮红牌</string>
+    <string name="per_o3">什么现象？把报错和最近改动给我，我先给只读命令。</string>
+    <string name="per_n4">文字打磨</string>
+    <string name="per_d4">只给成品，不加点评</string>
+    <string name="per_n5">口语翻译</string>
+    <string name="per_d5">只给译文，专名首次出现带原文</string>
+    <string name="per_brief_fmt">%1$d 字人设</string>
+    <string name="per_empty">空角色卡</string>
+    <string name="per_unnamed">未命名角色</string>
+    <string name="wm_normal">普通用户</string>
+    <string name="wm_normal_d">App 沙箱权限，可选零宽路径拓展</string>
+    <string name="wm_shizuku">Shizuku</string>
+    <string name="wm_shizuku_d">Binder 桥接，得到 shell(UID 2000) 能力</string>
+    <string name="wm_root">Root</string>
+    <string name="wm_root_d">su -c 直接执行，无限制</string>
+    <string name="wm_cur_fmt">当前：%1$s</string>
+    <string name="rt_sandbox">沙箱</string>
+    <string name="rt_all">全文件</string>
+    <string name="rt_zero">零宽</string>
+    <string name="rt_shizuku">Shizuku</string>
+    <string name="rt_root">root</string>
+    <string name="pr_mic">麦克风</string>
+    <string name="pr_notify">通知</string>
+    <string name="pr_images">图片</string>
+    <string name="pr_videos">视频</string>
+    <string name="pr_audio">音频</string>
+    <string name="pr_audio_sel">部分图片</string>
+    <string name="pr_read_store">读取存储</string>
+    <string name="pr_write_store">写入存储</string>
+    <string name="rz_orig">原路径</string>
+    <string name="rz_dot">尾随点</string>
+    <string name="rz_slash">双斜杠</string>
+    <string name="rz_in">段内零宽</string>
+    <string name="rz_tail">尾随零宽</string>
+    <string name="rz_post">段后零宽</string>
+    <string name="rz_unknown">未知</string>
+    <string name="rz_unavail">不可用</string>
+    <string name="dz_checking">检测中…</string>
+    <string name="dz_all">可直接读写（所有文件访问）</string>
+    <string name="dz_native">可直接读写（原路径）</string>
+    <string name="dz_zero">零宽路径（%1$s）</string>
+    <string name="dz_unsupported">零宽已开启但本机不支持</string>
+    <string name="dz_locked">不可访问（需要 Shizuku / root 或零宽）</string>
+    <string name="se_zone_cur">当前检测：%1$s</string>
+    <string name="shiz_not_run">已安装 Shizuku，但服务未运行：先打开 Shizuku App 启动服务</string>
+    <string name="shiz_not_installed">未安装 Shizuku：需先安装 Shizuku，再用 adb 或 root 启动服务</string>
+    <string name="shiz_old">Shizuku 服务版本过旧（v%1$d &lt; 11），请升级 Shizuku</string>
+    <string name="shiz_back_root">root 后端</string>
+    <string name="shiz_back_adb">adb 后端</string>
+    <string name="shiz_ready">已授权（服务 v%1$d，UID %2$d · %3$s）</string>
+    <string name="shiz_no_perm">Shizuku 已运行但本应用未授权：点「申请 Shizuku 授权」</string>
+    <string name="ag_new_session">新会话</string>
+    <string name="ag_unnamed">未命名会话</string>
+    <string name="ag_stopped">已停止</string>
+    <string name="ag_err_fmt">出错了：%1$s</string>
+    <string name="ag_no_model">还没配置模型：请到设置里填 base_url / API key / 模型。</string>
+    <string name="ag_no_local_pick">还没选本地模型：到 设置 → 模型 → 本地模型 里导入或下载一个 GGUF，再在「模型配置」里选「本地模型」并勾上它。</string>
+    <string name="ag_no_local_file">本地模型文件不见了（可能被删或挪走）：重新导入一个 GGUF，再在「模型配置」里选它。</string>
+    <string name="ag_ask_model">正在请求模型…</string>
+    <string name="ag_stream_fallback">流式不可用，改走整包请求…</string>
+    <string name="ag_key_retry">换个 Key 重试…</string>
+    <string name="ag_tidy">整理回复…</string>
+    <string name="ag_think_again">继续推理…</string>
+    <string name="ag_compress_run">正在压缩上下文…</string>
+    <string name="ag_compress_done">已生成上下文摘要</string>
+    <string name="ag_compress_skip">内容太少或模型未返回，未压缩</string>
+    <string name="ag_compress_busy">正在跑，稍后再压</string>
+    <string name="ag_compress_none">没有可压缩的内容</string>
+    <string name="ag_compressing">正在压缩…</string>
+    <string name="ag_wait_fmt">等待确认 %1$s（%2$d/%3$d）</string>
+    <string name="ag_run_fmt">执行 %1$s（%2$d/%3$d）…</string>
+    <string name="ag_ask_fmt">等待作答（%1$d/%2$d）</string>
+    <string name="ag_sub_start">派 %1$d 个分智能体并行处理</string>
+    <string name="ag_sub_ask">分智能体等待确认 %1$s</string>
+    <string name="ag_sub_run">%1$d/%2$d 分智能体：%3$s</string>
+    <string name="ag_sub_done">分智能体完成 %1$d/%2$d</string>
+    <string name="qa_title">AI 向你提问</string>
+    <string name="qa_multi">可多选</string>
+    <string name="qa_other">自己填写</string>
+    <string name="qa_hint">输入你的答案…</string>
+    <string name="qa_prev">上一题</string>
+    <string name="qa_next">下一题</string>
+    <string name="qa_submit">提交</string>
+    <string name="qa_skip">跳过</string>
+    <string name="mode_title">运行模式</string>
+    <string name="mode_plan">计划</string>
+    <string name="mode_plan_desc">只调研和出方案，不改文件；确认后再切执行模式</string>
+    <string name="mode_standard">标准</string>
+    <string name="mode_standard_desc">全工具日常执行：能读能改能跑命令</string>
+    <string name="mode_code">代码</string>
+    <string name="mode_code_desc">全工具，但把多步操作合并成脚本一次跑完，少来回</string>
+    <string name="mode_minimal">极简</string>
+    <string name="mode_minimal_desc">只留文件四件套加 exec_shell，剥掉搜索、记忆、MCP</string>
+    <string name="mode_creator">创造</string>
+    <string name="mode_creator_desc">标准之上允许改自己的提示词、技能包与配置</string>
+    <string name="pl_title">计划待确认</string>
+    <string name="pl_desc">确认后退出计划模式，按这份计划开始执行</string>
+    <string name="pl_note_hint">想改哪一步？写一句意见，模型会重出一版</string>
+    <string name="pl_revise">继续确认</string>
+    <string name="pl_confirm">确定执行</string>
+    <string name="pl_cancel">先不执行</string>
+    <string name="pl_blank_note">计划还不够细，先把细节补全再给一版完整的</string>
+    <string name="pl_wait">等待确认计划</string>
+    <string name="ag_no_regen">当前会话里没有这条回复，无法重新生成</string>
+    <string name="ag_no_user_msg">没有可用的用户消息，无法重新生成</string>
+    <string name="ag_ex_user">**用户**</string>
+    <string name="ag_ex_assistant">**助手**</string>
+    <string name="ag_ex_think">思考过程</string>
+    <string name="ag_ex_summary">&gt; 上下文摘要：</string>
+    <string name="se2_cur_msgs">当前会话 %1$d 条 / %2$d 字</string>
+    <string name="se2_pct">压缩阈值 %1$d%%</string>
+    <string name="se2_kchar">约 %1$dk 字</string>
+    <string name="se2_ktok">约 %1$dk token</string>
+    <string name="ms_ctx_total">上下文窗口</string>
+    <string name="ms_ctx_total_tip">这条配置自己的上下文窗口；选「默认」则跟随设置里的全局值。DeepSeek 1M、多数模型 128k</string>
+    <string name="se2_ctx_own">当前配置单独指定了窗口，改这里的全局值不生效；要改就到模型编辑页改「上下文窗口」</string>
+    <string name="se_hub">生态与专区</string>
+    <string name="se_hub_sub">米家、音乐、局域网互联、文件沙箱的入口都在这里</string>
+    <string name="se_hub_soon">专区正在逐个接入，接好一个上线一个</string>
+    <string name="se_hub_mi">米家设备</string>
+    <string name="se_hub_music">音乐平台</string>
+    <string name="se_hub_lan">局域网互联</string>
+    <string name="se_hub_box">文件沙箱</string>
+    <string name="se_hub_soon_tag">建设中</string>
+    <string name="se2_n_items">%1$d 条</string>
+    <string name="se2_rec">%1$d 条记录 · %2$d 字 · 共 %3$d 个会话</string>
+    <string name="se2_ws_files">%1$d 个文件 · %2$s · </string>
+    <string name="se2_ws_bound">绑定 </string>
+    <string name="se2_ws_more"> 等 %1$d 个会话</string>
+    <string name="se2_ws_deleted">已删除 %1$s</string>
+    <string name="ws_mig_t">迁移到新目录</string>
+    <string name="ws_mig_d">旧版工作区散落在 baicode/ 下，迁移会搬进 baicode/workspace/ 并同步会话里的路径</string>
+    <string name="ws_mig_btn">一键迁移（%1$d 个）</string>
+    <string name="ws_mig_step">正在迁移 %1$d/%2$d：%3$s（%4$d 个文件 · %5$s）</string>
+    <string name="ws_mig_none">没有需要迁移的旧工作区</string>
+    <string name="ws_mig_done">迁移完成：%1$d 个</string>
+    <string name="ws_mig_fail">迁移失败：%1$s（源目录已保留）</string>
+    <string name="skp_t">技能包</string>
+    <string name="skp_d">baicode/skill 下一包一目录，改完点重新扫描</string>
+    <string name="skp_count">%1$d 个包 · %2$d 个函数</string>
+    <string name="skp_rescan">重新扫描</string>
+    <string name="skp_broken">以下函数校验没过，不会被调用：</string>
+    <string name="skp_secret_t">技能密钥</string>
+    <string name="skp_secret_d">技能包里的 \$secret.xxx 从这里取值，明文存在数据根</string>
+    <string name="skp_secret_none">还没有配密钥</string>
+    <string name="skp_secret_del">删除</string>
+    <string name="skp_secret_name">名字（如 gh）</string>
+    <string name="skp_secret_val">值（token / 密码）</string>
+    <string name="skp_secret_save">保存密钥</string>
+    <string name="skp_secret_bad">名字只能用字母数字下划线，且不能数字开头</string>
+    <string name="skp_secret_empty">值不能为空</string>
+    <string name="skp_secret_saved">已保存 %1$s</string>
+    <string name="se2_hint_none">当前：请输入问题</string>
+    <string name="se2_hint_n">当前：%1$d 条里随机一条</string>
+    <string name="se2_back_sub">系统级 back-to-home、跨任务动画在 targetSdk 36+ 默认开启，应用侧关不掉；这里管的是应用内跟手动画</string>
+    <string name="se2_back_title">预测性手势支持</string>
+    <string name="se2_back_desc">开启后设置页跟着返回手势缩放淡出，滑过阈值才退回聊天、中途松手归位；关闭则直接切回</string>
+    <string name="se2_task_sub">到点发通知；勾了「到点自动执行」且模型空闲时会自己跑一轮</string>
+    <string name="se2_task_none">还没有任务</string>
+    <string name="se2_task_n">已排 %1$d 条（启用 %2$d 条）</string>
+    <string name="se2_task_hint">定时让模型干一件事，比如每天 08:30 汇总余票</string>
+    <string name="se2_task_off">任务都停用了，点管理里打开</string>
+    <string name="se2_manage">管理</string>
+    <string name="se2_search_sub">搜索是可选的技能：选了平台并填好 Key，才会把 web_search 下发给模型</string>
+    <string name="se2_search_empty">平台清单待补充</string>
+    <string name="se2_search_empty2">往 core/Search.kt 的 providers 里加一行、在 Tools.search 里加一个分支，这里就会出现平台选择和 Key 输入框。当前未选平台，模型拿不到 web_search。</string>
+    <string name="se2_search_off">不使用</string>
+    <string name="se2_search_needless">%1$s 不需要配置，选中即可用</string>
+    <string name="se2_search_ok">已配置，模型可以自己调 web_search</string>
+    <string name="se2_search_miss">还缺 %1$s：调用会直接返回未配置提示</string>
+    <string name="se2_persona_sub">每个会话各自记角色；这里选中的是当前会话用的，切换会话会跟着换</string>
+    <string name="se2_persona_none">默认助手</string>
+    <string name="se2_persona_none_sub">不加载任何角色提示</string>
+    <string name="se2_persona_add">新增角色</string>
+    <string name="se2_prompt_sub">拼在角色之后、工作流之前；留空不加，默认留空</string>
+    <string name="se2_prompt_label">系统提示</string>
+    <string name="se2_prompt_len">已填写 %1$d 字，每次请求都会带上</string>
+    <string name="se2_skill_enabled">已启用 %1$d / %2$d</string>
+    <string name="se2_upd_off">服务端已关闭更新提示（最新 %1$s）</string>
+    <string name="se2_upd_new">发现新版本 %1$s</string>
+    <string name="se2_upd_latest">已是最新版本 %1$s</string>
+    <string name="se2_upd_fail">检查失败：%1$s</string>
+    <string name="se2_upd_hist_fail">读取更新历史失败：%1$s</string>
+    <string name="se2_skill_len">%1$d 字</string>
+    <string name="se2_bind_fmt"> · 绑 %1$s</string>
+    <string name="se2_risk_high">高危 · %1$s</string>
+    <string name="se2_risk_normal">普通 · %1$s</string>
+    <string name="vo_no_service">系统没有可用的语音识别服务</string>
+    <string name="vo_init_fail">语音识别初始化失败</string>
+    <string name="vo_start_fail">启动语音识别失败</string>
+    <string name="vo_audio">录音出错</string>
+    <string name="vo_client">系统识别服务不可用（本机服务仅限系统应用）</string>
+    <string name="vo_fallback">本机系统识别不可用，已改用接口识别</string>
+    <string name="vo_need_api">本机系统识别不可用，请到设置 → 模型 → 语音识别改为接口方式并填写接口</string>
+    <string name="se_tint_t">色系</string>
+    <string name="se_tint_d">深/浅色之下再选一套配色，带渐变的会顺带染背景</string>
+    <string name="se_tint_0">默认蓝</string>
+    <string name="se_tint_1">冰川（淡青→淡粉）</string>
+    <string name="se_tint_2">春野（淡绿→淡黄）</string>
+    <string name="se_tint_3">紫罗兰</string>
+    <string name="se_tint_4">珊瑚橙</string>
+    <string name="se_tint_5">石墨灰</string>
+    <string name="se_tint_6">玫红</string>
+    <string name="se_tint_7">青柠</string>
+    <string name="se_glass_blur">模糊强度</string>
+    <string name="se_glass_blur_d">玻璃底栏与底部面板共用，0 只留折射</string>
+    <string name="se_glass_blur_v">%1$d dp</string>
+    <string name="vo_perm">没有麦克风权限</string>
+    <string name="vo_net">网络错误</string>
+    <string name="vo_net_timeout">网络超时</string>
+    <string name="vo_no_match">没听清，再说一次</string>
+    <string name="vo_busy">识别器忙</string>
+    <string name="vo_server">语音服务报错</string>
+    <string name="vo_speech_timeout">没检测到说话</string>
+    <string name="vo_fail_fmt">识别失败(%1$d)</string>
+    <string name="tc_java">JDK（java）</string>
+    <string name="tc_javac">编译器（javac）</string>
+    <string name="tc_gradle">gradle</string>
+    <string name="tc_aapt2">aapt2（资源打包）</string>
+    <string name="tc_apksigner">apksigner（签名）</string>
+    <string name="tc_zipalign">zipalign（对齐）</string>
+    <string name="tc_unzip">unzip（解包）</string>
+    <string name="tc_curl">curl（下载）</string>
+    <string name="tc_git">git</string>
+    <string name="tc_sdk">Android SDK（platforms）</string>
+    <string name="tc_project_fmt">工程目录 %1$s</string>
+    <string name="tc_sep">、</string>
+    <string name="tc_note_normal">当前是「普通用户」模式：读不到 Termux 私有目录。切到 Root 或 Shizuku 才能检测</string>
+    <string name="tc_note_empty">探测没拿到结果（exit=%1$d）：%2$s</string>
+    <string name="tc_note_ok">工具链齐全，可以直接编译</string>
+    <string name="tc_note_miss">缺 %1$s</string>
+    <string name="sk_build">构建并安装本机应用</string>
+    <string name="sk_build_d">用户说编译 / 打包 / 出 APK 时按这条走</string>
+    <string name="sk_reverse">APK 逆向速查</string>
+    <string name="sk_reverse_d">分析别人 APK 的包名、权限、组件与硬编码</string>
+    <string name="sk_ui">操作助手（点屏幕）</string>
+    <string name="sk_ui_d">按用户描述在界面上点、滑、输入</string>
+    <string name="sk_rail">12306 查票</string>
+    <string name="sk_rail_d">余票 / 中转 / 经停，一律用 rail_query</string>
+    <string name="sk_media">音视频处理（ffmpeg）</string>
+    <string name="sk_media_d">抽音轨 / 截取片段 / 转码 / 压缩，先探工具再动手</string>
+    <string name="sk_doc">资料整理成文档</string>
+    <string name="sk_doc_d">把散落的笔记 / 日志 / 网页内容收拢成一份 markdown</string>
+    <string name="sk_log">日志排错</string>
+    <string name="sk_log_d">应用崩溃 / 脚本报错，按证据定位而不是靠猜</string>
+    <string name="sk_unnamed">未命名技能</string>
+    <string name="ws_del_root">这是数据根，不能删</string>
+    <string name="ws_del_gone">目录已经不存在</string>
+    <string name="ws_del_inuse">这是当前使用中的工作区，先换一个再删</string>
+    <string name="ws_del_bound">还有会话绑定着它，先解绑再删</string>
+    <string name="ws_del_fail">删除失败，可能没有写权限</string>
+    <string name="ws_del_default">这是全局默认工作区，不能删</string>
+    <string name="mcp_title">MCP 服务</string>
+    <string name="mcp_sub">连上本地或远程的 MCP 服务，把它的能力交给模型调用</string>
+    <string name="mcp_none">还没有 MCP 服务</string>
+    <string name="mcp_none_sub">点下面「新增服务」填地址；Termux 的原生 MCP 一般是 http://127.0.0.1:8081/mcp</string>
+    <string name="mcp_add">新增服务</string>
+    <string name="mcp_count_all">共 %1$d 项能力</string>
+    <string name="mcp_row_sub">%1$s · %2$s · %3$d 项能力</string>
+    <string name="mcp_refresh">刷新</string>
+    <string name="mcp_testing">连接中…</string>
+    <string name="mcp_edit">编辑</string>
+    <string name="mcp_ok">「%1$s」已拉到 %2$d 项能力</string>
+    <string name="mcp_fail">「%1$s」连接失败：%2$s</string>
+    <string name="mcp_no_tool">服务没有返回任何能力</string>
+    <string name="mcp_new_title">新增 MCP 服务</string>
+    <string name="mcp_edit_title">编辑 MCP 服务</string>
+    <string name="mcp_name">名称</string>
+    <string name="mcp_name_ph">Termux</string>
+    <string name="mcp_url">地址</string>
+    <string name="mcp_url_ph">http://127.0.0.1:8081/mcp</string>
+    <string name="mcp_kind">类型</string>
+    <string name="mcp_kind_mcp">MCP</string>
+    <string name="mcp_kind_rest">REST 桥</string>
+    <string name="mcp_kind_hint">MCP 走 JSON-RPC，端点一般以 /mcp 结尾；REST 桥是 termux-mcp 的 8080，能力清单来自 GET /tools</string>
+    <string name="mcp_token">Token（可选）</string>
+    <string name="mcp_token_ph">非本机地址才需要</string>
+    <string name="mcp_test">测试连接</string>
+    <string name="mcp_test_ok">连接成功，%1$d 项能力</string>
+    <string name="mcp_test_fail">连接失败：%1$s</string>
+    <string name="mcp_need_url">地址不能为空</string>
+    <string name="mcp_group">MCP 能力</string>
+    <string name="mcp_use_pre">用 MCP 能力 %1$s（服务 %2$s）完成下面的任务：</string>
+    <string name="dw_stars">收藏</string>
+    <string name="star_title">收藏夹</string>
+    <string name="star_empty">还没有收藏的消息：长按任意消息，选「收藏」即可</string>
+    <string name="star_untitled">未命名会话</string>
+    <string name="star_unstar">取消收藏</string>
+    <string name="cs_star">收藏</string>
+    <string name="cs_star_desc">收进收藏夹，之后从侧边栏「收藏」翻回来</string>
+    <string name="cs_star_off">取消收藏</string>
+    <string name="cs_star_off_desc">把这条从收藏夹里移除</string>
+    <string name="cs_speak">朗读</string>
+    <string name="cs_speak_desc">用系统语音把这条念一遍</string>
+    <string name="cs_del_msg">删除这条</string>
+    <string name="cs_del_msg_desc">从当前会话里移除，不可恢复</string>
+    <string name="cs_del_msg_confirm">再点一次确认删除</string>
+    <string name="st_price">模型价格</string>
+    <string name="st_price_d">元 / 百万 token；填 0 表示不计价，只统计 token</string>
+    <string name="st_price_in">输入</string>
+    <string name="st_price_out">输出</string>
+    <string name="st_price_cache">缓存命中</string>
+    <string name="st_price_note">改完立即按新价格重算；缓存命中按缓存价算，不重复计输入价</string>
+    <string name="st_cost_total">累计费用 %1$s</string>
+    <string name="st_cost_range">本区间费用 %1$s</string>
+    <string name="st_cost_off">未设置价格，费用不计</string>
+    <string name="st_chart_bar">柱状</string>
+    <string name="st_chart_line">折线</string>
+    <string name="st_price_scope">没单独配价的模型按上面三项默认价算</string>
+    <string name="st_cost_of">花费 %1$s</string>
+    <string name="st_cost_none">该模型未计价（三项都是 0）</string>
+    <string name="st_model_price">单独配价</string>
+    <string name="st_model_price_t">只对这个模型生效；输入 / 输出 / 缓存，元每百万 token</string>
+    <string name="st_price_save">保存</string>
+    <string name="st_price_clear">清除</string>
+    <string name="se_glass_t">质感与玻璃</string>
+    <string name="se_glass_d">卡片、按钮、底栏的立体感与磨砂质感</string>
+    <string name="se_glass_card">液态玻璃卡片</string>
+    <string name="se_glass_card_d">卡片换成半透玻璃，手指按下的位置会浮出一团柔光</string>
+    <string name="se_tactile">开启质感按钮</string>
+    <string name="se_tactile_d">深度思考、最大、语音、发送改成带厚度的立体按钮</string>
+    <string name="se_glass_bar">液态玻璃底栏</string>
+    <string name="se_glass_bar_d">设置页底部那条悬浮胶囊换成玻璃质感</string>
+    <string name="se_bg">页面背景</string>
+    <string name="se_bg_d">聊天与设置页的底色样式</string>
+    <string name="se_bg_plain">纯色</string>
+    <string name="se_bg_grad">柔光渐变</string>
+    <string name="se_bg_dots">点阵</string>
+    <string name="se_bk">备份与恢复</string>
+    <string name="se_bk_d">整库导出成一个加密备份，换机或清数据前先备一份</string>
+    <string name="se_bk_doing">处理中…</string>
+    <string name="se_bk_ok">已导出到所选位置</string>
+    <string name="se_bk_fail">导出失败，换个位置再试</string>
+    <string name="se_bk_imported">已导入，重启 App 后生效</string>
+    <string name="se_bk_bad">这个文件不是可用的备份（密钥不对或已损坏）</string>
+    <string name="se_bk_export">导出备份</string>
+    <string name="se_bk_import">导入备份</string>
+    <string name="se_bk_note">备份含数据库、全部设置、技能 / 角色 / 模型清单与头像；导出为加密的 .baicodex，导入时自动解密，密钥不在备份里；工作区文件与 Linux 环境不打包。导入只看文件内容，扩展名是 .bin / .zip 也能识别</string>
+    <string name="se_bk_secrets">导出加密配置</string>
+    <string name="se_bk_secrets_d">把 API Key / SSH / GitHub 令牌 / 技能密钥等加密配置一起打包，换机后可一并恢复；它们是密文，只有同版本的 Baicodex 能解开</string>
+    <string name="se_bk_fail_x">导出失败：%1$s</string>
+    <string name="se_bk_bad_x">导入失败：%1$s</string>
+    <string name="dw_memory">记忆</string>
+    <string name="mem_title">永久记忆</string>
+    <string name="mem_hint">这些内容每轮都会随系统提示发给 AI；删掉就不再发送。</string>
+    <string name="mem_empty">还没有记忆。在对话里让 AI「记住…」，它就会自己存进来。</string>
+    <string name="mem_del">删除</string>
+    <string name="mem_clear">清空全部</string>
+    <string name="mem_clear_ok">确认清空</string>
+    <string name="bg_img_t">背景图片</string>
+    <string name="bg_img_d">从相册选一张图铺满页面，配合下面的模糊调到文字清楚</string>
+    <string name="bg_blur">模糊 %1$d</string>
+    <string name="bg_clear">清除</string>
+    <string name="mig_ms_t">发现您出现了版本变更</string>
+    <string name="mig_ms_d">是否迁移新版本工作区及数据库？迁移后才能继续使用。</string>
+    <string name="mig_ms_ok">立即迁移</string>
+    <string name="mig_ms_quit">暂不迁移（退出）</string>
+    <string name="mig_ms_bak">数据库已备份：%1$s</string>
+    <string name="mig_mg_t">正在迁移</string>
+    <string name="mig_mg_d">请保持应用在前台，退出会中断迁移。</string>
+    <string name="mig_mg_total">待迁移 %1$d 个工作区</string>
+    <string name="mig_mg_step">正在迁移 %1$d/%2$d：%3$s（%4$d 个文件，%5$s）</string>
+    <string name="mig_mg_done">迁移完成，共 %1$d 个工作区</string>
+    <string name="mig_mg_fail">迁移失败：%1$s</string>
+    <string name="mig_mg_retry">重试</string>
+    <string name="mig_mg_quit">退出应用</string>
+    <string name="pk_readme">说明（README）</string>
+    <string name="pk_json">skill.json</string>
+    <string name="pk_save">保存</string>
+    <string name="pk_saved">已保存</string>
+    <string name="pk_bad">保存失败：%1$s</string>
+    <string name="pk_fns">函数（%1$d）</string>
+    <string name="pk_params">参数：%1$s</string>
+    <string name="pk_no_param">无参数</string>
+    <string name="pk_secret_need">需要的密钥</string>
+    <string name="pk_secret_miss">%1$s 未配置，调用会失败</string>
+    <string name="pk_tpl">模板 %1$s</string>
+    <string name="pk_edit">编辑</string>
+    <string name="pk_close">关闭</string>
+    <string name="pk_ok">校验通过</string>
+    <string name="pk_dir">目录：%1$s</string>
+    <string name="pk_secret_save">保存密钥</string>
+    <!-- 无障碍：屏幕操作 -->
+    <string name="a11y_label">Baicodex 屏幕操作</string>
+    <string name="a11y_desc">让 AI 读取当前屏幕的控件与截图，并代你点击、滑动、长按、输入文字。仅在你发起任务时使用。</string>
+    <string name="ag_capsule_fmt">正在进行%1$s</string>
+    <string name="shiz_manual">Shizuku 里已经选过「拒绝且不再询问」，这里不会再弹窗：打开 Shizuku → 授权应用 → 找到 BaiAgent 打开开关</string>
+    <string name="shiz_open_app">打开应用</string>
+    <string name="shiz_no_service">Shizuku 服务没在运行：先打开 Shizuku 把服务启动，再回来申请</string>
+    <string name="shiz_timeout">等不到授权回应：确认 Shizuku 弹窗没被挡住，或去 Shizuku 里手动授权</string>
+    <string name="shiz_denied">授权被拒绝：再点一次「申请授权」，或去 Shizuku 里手动打开开关</string>
+    <string name="se_320">今日通知</string>
+    <string name="se_321">关闭：不读通知</string>
+    <string name="se_322">已开启，但缺通知使用权</string>
+    <string name="se_323">已开启：今天 %1$d 条</string>
+    <string name="se_324">注入条数</string>
+    <string name="se_325">无限</string>
+    <string name="se_326">不限条数：今日全部给，超 8000 字自动截断</string>
+    <string name="se_327">最近 %1$d 条</string>
+    <string name="se_328">设备使用时长</string>
+    <string name="se_329">关闭：不读使用时长</string>
+    <string name="se_330">已开启，但缺使用情况访问权</string>
+    <string name="se_331">已开启：今天 %1$s</string>
+    <string name="se_332">还需要通知使用权</string>
+    <string name="se_333">开关已经打开，但系统还没给权限：AI 现在读不到通知。给权限后只会记下应用名和标题（正文不存，最多留 3 天），用来在收尾时顺带一句关心。</string>
+    <string name="se_334">还需要使用情况访问权</string>
+    <string name="se_335">开关已经打开，但系统还没给权限：AI 现在读不到使用时长。给权限后只会读今天各应用的前台时长，用来判断你是不是用太久了。</string>
+    <string name="se_336">去开启</string>
+    <string name="se_337">Shizuku 自动补无障碍</string>
+    <string name="se_338">关闭：无障碍丢了要手动点</string>
+    <string name="se_339">已开启，但 Shizuku 没就绪，补不了</string>
+    <string name="se_340">已开启：每次回到前台自动写回无障碍</string>
+    <string name="se_346">检测到你有更高权限</string>
+    <string name="se_347">可以用 Shizuku / Root 直接写入系统设置，一键开启无障碍，不用再进系统设置手点。</string>
+    <string name="se_348">一键激活无障碍</string>
+    <string name="se_349">高权限</string>
+    <string name="se_350">确认激活无障碍权限？</string>
+    <string name="se_351">将用 %1$s 身份把 BaiAgent 的屏幕操作服务写进系统无障碍设置，这一步不需要你手动点任何开关。</string>
+    <string name="se_352">以后每次进入应用时自动激活无障碍权限</string>
+    <string name="se_353">开始激活</string>
+    <string name="se_354">正在激活无障碍</string>
+    <string name="se_355">正在尝试激活无障碍权限…</string>
+    <string name="se_356">正在激活无障碍权限…</string>
+    <string name="se_357">激活无障碍权限成功</string>
+    <string name="se_358">后续将每次为您在进入 APP 的时候自动激活。</string>
+    <string name="se_359">如果你希望不开启此功能，请前往设置里关闭。</string>
+    <string name="se_360">这次只生效一次：想改成每次自动激活，请到设置里打开「Shizuku 自动补无障碍」。</string>
+    <string name="se_361">完成</string>
+    <string name="se_362">激活没成功</string>
+    <string name="se_363">没有拿到具体原因，可以改用手动方式开启。</string>
+    <string name="se_364">关闭</string>
+    <string name="se_365">去系统设置手动开</string>
+    <string name="se_366">精确位置注入</string>
+    <string name="se_367">现取一次当前定位，比上次记录更准</string>
+    <string name="se_368">关着：只用上次定位，不主动定位</string>
+    <string name="se_369">自动转地名</string>
+    <string name="se_370">把坐标转成城市与街区，结果加密后缓存在本机</string>
+    <string name="se_371">关着：只给经纬度，不联网查地名</string>
+    <string name="qq_title">加入我们</string>
+    <string name="qq_sub">加入我们的 QQ 群组，获取更多更新信息，提出建议、反馈 bug</string>
+    <string name="qq_label">QQ 群</string>
+    <string name="qq_hint">如果无法跳转请点击复制</string>
+    <string name="qq_join">立即加入</string>
+    <string name="qq_later">下次再说</string>
+    <string name="qq_never">永不提醒</string>
+    <string name="qq_noremind">以后永不提醒</string>
+    <string name="qq_copied">群号已复制</string>
+    <string name="qq_fail">没找到可用的 QQ，群号已复制</string>
+    <string name="halt_title">开发者已停止运营该项目</string>
+    <string name="halt_body">该项目已停止运营，即将退出。感谢一路以来的支持。</string>
+    <string name="halt_left">%1$d 秒后自动退出</string>
+    <string name="halt_exit">立即退出</string>
+    <string name="ob_step_lang">第一步：选择界面语言。默认跟随系统，选好再点下一步。</string>
+    <string name="ob_lang_follow">跟随系统语言</string>
+    <string name="ob_step_tos">最后一步：请阅读并同意用户协议。</string>
+    <string name="tos_title">用户协议</string>
+    <string name="tos_ver">版本 %1$d.0</string>
+    <string name="tos_read">我已阅读并了解使用协议</string>
+    <string name="tos_agree">同意并进入</string>
+    <string name="tos_loading">正在读取协议…</string>
+    <string name="rate_title">评价与调研</string>
+    <string name="rate_title_d">应用里唯一的推广弹窗，可以彻底关掉</string>
+    <string name="rate_off">不显示评价调研弹窗</string>
+    <string name="rate_off_d">开启后不会再用满 2 小时邀请你去点 Star</string>
+    <string name="star_body">你已经用了 %1$d 小时。BaiAgent 全部开源、免费、无广告，如果它帮你省过时间，去 GitHub 点个 Star 就是最好的支持。</string>
+    <string name="star_off">不再显示评价调研弹窗</string>
+    <string name="star_later">以后再说</string>
+    <string name="star_go">去点 Star</string>
+    <string name="qq_joined">我已加入，下次不再提示</string>
+    <string name="fb_back">返回</string>
+    <string name="fb_title">意见反馈</string>
+    <string name="fb_title_d">问题、想法、想骂人都可以，我们会逐条看</string>
+    <string name="fb_cat">反馈类型</string>
+    <string name="fb_cat_bug">Bug 反馈</string>
+    <string name="fb_cat_idea">功能建议</string>
+    <string name="fb_cat_other">其他</string>
+    <string name="fb_content">反馈内容</string>
+    <string name="fb_content_ph">说说你遇到的情况：哪个版本、点了哪里、期望是什么</string>
+    <string name="fb_contact">邮箱（必填）</string>
+    <string name="fb_contact_ph">留下邮箱，我们通过它回复你</string>
+    <string name="fb_note">提交时会带上应用版本、Android 版本与机型，方便定位问题；不会上传任何聊天记录或文件</string>
+    <string name="fb_submit">提交反馈</string>
+    <string name="fb_sending">提交中…</string>
+    <string name="fb_ok">已收到，谢谢你的反馈</string>
+    <string name="fb_fail">提交失败：%1$s</string>
+    <string name="fb_entry">意见反馈</string>
+    <string name="fb_entry_d">提 Bug、功能建议，或者直接说说你的想法</string>
+    <string name="rate_sw">接受评价与调研邀请</string>
+    <string name="rate_sw_d">开启后，用满 2 小时会邀请你去 GitHub 点 Star；关掉就不再打扰</string>
+    <string name="rate_star_row">去 GitHub 点个 Star</string>
+    <string name="rate_star_row_d">觉得好用就点一个，这是对我们最大的支持</string>
+    <string name="rate_star_title">您对我们的应用满意吗？</string>
+    <string name="rate_star_body">如果满意的话，请前往我们的 GitHub 点一个宝贵的 star ❤️</string>
+    <string name="rate_star_auto">评价与调研</string>
+    <string name="fb_email_bad">邮箱格式不对</string>
+    <string name="fb_mine">我的反馈</string>
+    <string name="fb_mine_hint">处理进度和我的回复都在这里，点开可以继续补充</string>
+    <string name="fb_mine_empty">还没有提交过反馈</string>
+    <string name="fb_from_admin">开发者</string>
+    <string name="fb_from_me">我</string>
+    <string name="fb_st_pending">待处理</string>
+    <string name="fb_st_processing">处理中</string>
+    <string name="fb_st_done">处理完成</string>
+    <string name="fb_st_closed">评价完成</string>
+    <string name="fb_detail_title">反馈详情</string>
+    <string name="fb_thread">对话记录</string>
+    <string name="fb_reply_title">继续补充</string>
+    <string name="fb_reply_ph">补充说明，会直接发给开发者</string>
+    <string name="fb_reply_send">发送留言</string>
+    <string name="fb_reply_ok">已发送</string>
+    <string name="fb_closed_tip">这条反馈已经评价完成，不能再留言</string>
+    <string name="fb_rate_q">这次处理满意吗？</string>
+    <string name="fb_rate_ph">想说点什么（可选）</string>
+    <string name="fb_rate_send">提交评价</string>
+    <string name="fb_rate_ok">谢谢你的评价</string>
+    <string name="fb_rated">你的评价</string>
+    <string name="fb_loading">正在加载…</string>
+    <string name="ntg_title">通知触发</string>
+    <string name="ntg_sub">某个应用来了带关键词的通知，就自动让我跑一轮</string>
+    <string name="ntg_none">还没有规则</string>
+    <string name="ntg_hint">例：微信来了「老板」，就把消息整理成待办</string>
+    <string name="ntg_manage">管理</string>
+    <string name="ntg_count">%1$d 条规则 · %2$d 条已开</string>
+    <string name="ntg_offall">规则都关着</string>
+    <string name="ntg_any">任意应用</string>
+    <string name="ntg_allkw">任何通知</string>
+    <string name="ntg_perm">通知使用权</string>
+    <string name="ntg_open">去开启</string>
+    <string name="ntg_app">应用（包名或名字）</string>
+    <string name="ntg_app_hint">微信 / com.tencent.mm，留空=任意应用</string>
+    <string name="ntg_kw">关键词</string>
+    <string name="ntg_kw_hint">老板 / 转账 / 验证码，留空=该应用任何通知</string>
+    <string name="ntg_prompt">命中了要让我做什么</string>
+    <string name="ntg_prompt_hint">把这条通知整理成待办，并提醒我 30 分钟内回复</string>
+    <string name="ntg_save">保存规则</string>
+    <string name="ntg_err_prompt">先写清要让我做什么</string>
+    <string name="ntg_list">已有规则</string>
+    <string name="ntg_empty">空着。上面填完点保存就多一条</string>
+    <string name="ntg_never">还没触发过</string>
+    <string name="ntg_last">上次触发 %1$s</string>
+    <string name="ntg_note">同一条规则 60 秒内只触发一次；我正忙时来的通知直接丢掉，不排队。</string>
+    <string name="ntg_del">删除</string>
+    <string name="wsq_btn">一键清理未使用（%1$d）</string>
+    <string name="wsq_t">清理未使用的工作区</string>
+    <string name="wsq_d">%1$d 个目录没被任何会话绑定，共 %2$s。</string>
+    <string name="wsq_note">只清这些没人用的。当前正在用的、被会话绑定的、数据根目录都会跳过。删掉就找不回来。</string>
+    <string name="wsq_keep">当前使用中的、被会话绑定的不会动</string>
+    <string name="wsq_go">开始清理</string>
+    <string name="wsq_cancel">取消</string>
+    <string name="wsq_running">正在清理…</string>
+    <string name="wsq_step">第 %1$d/%2$d：%3$s</string>
+    <string name="wsq_done">清理完成 %1$d 个，释放 %2$s</string>
+    <string name="wsq_fail">%1$d 个没删掉（可能正被占用）</string>
+    <string name="wsq_ok">好的</string>
+    <string name="wsq_more">…还有 %1$d 个</string>
+    <string name="cs_sum_menu_desc">早期对话压出来的摘要，可以重做一次</string>
+    <string name="cs_sum_regen">重新总结</string>
+    <string name="cs_sum_regen_desc">按原来覆盖的范围再压一遍，用当前提示词</string>
+    <string name="cs_sum_note">加指令重总结</string>
+    <string name="cs_sum_note_desc">补一句要求（更短 / 保留路径 / 只留结论）再压</string>
+    <string name="cs_sum_note_hint">例如：保留所有文件路径和命令，其余压到 150 字内</string>
+    <string name="cs_sum_note_confirm">重做</string>
+    <string name="se_sum_prompt">总结补充要求</string>
+    <string name="se_sum_prompt_hint">留空就不追加。内置的四段（最重要 / 当前任务 / 用户状态 / 用量）始终生效，这里填的内容只往后追加当补充要求；字数仍由上面「摘要档位」决定</string>
+    <string name="se_sum_prompt_note">自动总结、立即总结、长按重总结都会带上这段，是加在内置提示词后面的补充，不会替换它。可用变量：{level} 档位名、{words} 目标字数、{limit} 字数短语（如 2000字以内）、{keep} 保留条数、{budget} 字符预算。</string>
+    <string name="ag_br_fail">这条没有可切换的分支</string>
+    <string name="pet_t">桌宠</string>
+    <string name="pet_in_app">只在应用内</string>
+    <string name="pet_global">所有状态下都展示</string>
+    <string name="pet_route_a11y">无障碍层：不需要额外权限</string>
+    <string name="pet_route_manual">已授予悬浮窗权限</string>
+    <string name="pet_route_none">还没有悬浮窗权限</string>
+    <string name="pet_auto">自动授权（root / Shizuku）</string>
+    <string name="pet_open_setting">去系统里开</string>
+    <string name="pet_grant_ok">已通过 %1$s 授权</string>
+    <string name="pet_grant_fail">root 与 Shizuku 都不可用，得手动授权</string>
+    <string name="pet_need_perm">还没有悬浮窗权限，先授权再开全局展示</string>
+    <string name="pet_size">尺寸 %1$d dp</string>
+    <string name="pet_peak">当前时段：高峰（标准价）</string>
+    <string name="pet_offpeak">当前时段：错峰（北京时间 00:30–08:30 打折）</string>
+    <string name="pet_bal">查余额</string>
+    <string name="pet_no_key">先在「模型」里填 API Key</string>
+    <string name="pet_lines">台词 %1$d 条</string>
+    <string name="pet_line_del">删</string>
+    <string name="pet_line_new">新台词</string>
+    <string name="pet_line_add">加一条</string>
+    <string name="pet_import">从 Download/台词.txt 导入</string>
+    <string name="pet_import_ok">已导入 %1$d 条</string>
+    <string name="pet_import_fail">没读到文件，或里面没有台词</string>
+    <string name="pet_lines_path">台词文件：%1$s</string>
+    <string name="pet_close">关闭</string>
+    <string name="pet_done">好了</string>
+    <string name="pet_keep_ch">桌宠</string>
+    <string name="pet_keep_title">桌宠运行中</string>
+    <string name="pet_keep_text">鲸鱼娘浮在屏幕上，点这里回到应用</string>
+    <string name="pet_sec">桌宠</string>
+    <string name="pet_sec_sub">一只跟着你的鲸鱼娘，点一下会说话</string>
+    <string name="pet_enter">打开桌宠面板</string>
+    <string name="pet_intro_t">新版本加了桌宠</string>
+    <string name="pet_intro_body">一只鲸鱼娘已经跟着你了。点一下弹一下并说话，双击报 DeepSeek 余额；大小、动效、台词、音效都在桌宠设置里改。</string>
+    <string name="pet_intro_later">以后再说</string>
+    <string name="pet_intro_on">去设置里看看</string>
+    <string name="pet_say_peak">高峰时段，Token 贵，省着点用</string>
+    <string name="pet_say_offpeak">错峰了，00:30–08:30 打折，使劲用</string>
+    <string name="pet_bal_wait">等等，我看看钱包…</string>
+    <string name="pet_bal_fail">查不到余额，Key 或网络有问题</string>
+    <string name="pet_bal_say">余额 %1$s</string>
+    <string name="pet_pg_t">桌宠设置</string>
+    <string name="pet_pg_search">搜索桌宠设置</string>
+    <string name="pet_pg_search_sub">试试「缓动」「字号」「游泳」</string>
+    <string name="pet_pg_none">没有匹配的桌宠设置项</string>
+    <string name="pet_tab_look">外观</string>
+    <string name="pet_tab_fx">动效</string>
+    <string name="pet_tab_line">台词</string>
+    <string name="pet_tab_act">行为</string>
+    <string name="pet_tab_perm">权限</string>
+    <string name="pet_look_sub">大小、透明度、镜像与气泡排版</string>
+    <string name="pet_fx_sub">缓动、游泳与点击手感</string>
+    <string name="pet_line_sub">说什么、说多久、多久说一次时段提示</string>
+    <string name="pet_act_sub">展示方式、双击查余额与音效</string>
+    <string name="pet_perm_sub">悬浮窗权限走哪条路，这里能一键给</string>
+    <string name="pet_alpha">不透明度 %1$d%%</string>
+    <string name="pet_flip">水平翻转</string>
+    <string name="pet_shadow">投影</string>
+    <string name="pet_card">白底卡片</string>
+    <string name="pet_font">字号 %1$d sp</string>
+    <string name="pet_font_bold">文字加粗</string>
+    <string name="pet_bubble_w">气泡最大宽 %1$d dp</string>
+    <string name="pet_bubble_r">气泡圆角 %1$d dp</string>
+    <string name="pet_bubble_dark">气泡深色底</string>
+    <string name="pet_float">上下缓动</string>
+    <string name="pet_float_amp">缓动幅度 %1$d dp</string>
+    <string name="pet_float_ms">缓动周期 %1$d ms</string>
+    <string name="pet_swim">游泳状态</string>
+    <string name="pet_swim_speed">游动速度 %1$d px/s</string>
+    <string name="pet_swim_bounce">撞边反弹</string>
+    <string name="pet_bounce">点击弹跳</string>
+    <string name="pet_bounce_pct">弹跳幅度 %1$d%%</string>
+    <string name="pet_talk">单击说话</string>
+    <string name="pet_bubble_ms">气泡停留 %1$d ms</string>
+    <string name="pet_timed">时段提示概率 %1$d%%</string>
+    <string name="pet_dbl_bal">双击查余额</string>
+    <string name="pet_dbl_bal_sub">连点两下播报 DeepSeek 余额</string>
+    <string name="pet_sound">Q 弹音效</string>
+    <string name="pet_sound_vol">音效音量 %1$d%%</string>
+    <string name="pet_perm_state">当前权限</string>
+    <string name="pet_perm_auto">一键授权</string>
+    <string name="pet_perm_go">去系统里开</string>
+    <string name="pet_perm_fgs">前台服务常驻</string>
+    <string name="pet_perm_fgs_sub">全局展示靠前台服务保活，通知栏会有常驻提示</string>
+    <string name="pet_pos_reset">位置复位</string>
+    <string name="pet_test">试一下</string>
+    <string name="ctx_tip_title">上下文占用</string>
+    <string name="ctx_tip_used">已用 %1$s，预算 %2$s token</string>
+    <string name="ctx_tip_total">本对话累计 %1$s token</string>
+    <string name="ctx_tip_fresh">未压缩部分 %1$s token（%2$d 条）</string>
+    <string name="http_warn_title">HTTP 明文连接</string>
+    <string name="http_warn_body">%1$s 不走加密传输，同一网络下的 API Key 和对话内容都可能被截获。</string>
+    <string name="http_warn_risk">中转站必须填 HTTP 时才选「仍然使用」；能走 HTTPS 就直接点左边。</string>
+    <string name="http_warn_https">改成 HTTPS</string>
+    <string name="http_warn_use">仍然使用 HTTP</string>
+    <string name="http_warn_wait">%1$d 秒后可确认</string>
+    <string name="model_intro_t">全新模型配置</string>
+    <string name="model_intro_body">这一版把一条配置拆成「供应商 + BASEURL + Key」：设置里拉一次模型列表，勾上要用的几条存下来；聊天页点左下角，只在这批里挑。</string>
+    <string name="model_intro_ok">知道了</string>
+    <string name="ms_search">搜索模型</string>
+    <string name="se_tab_voice">语音</string>
+    <string name="se_v_in_t">语音识别</string>
+    <string name="se_v_in_d">说话转文字，输入框的麦克风走这里</string>
+    <string name="se_v_out_t">语音合成</string>
+    <string name="se_v_out_d">把回复念出来；自动朗读开关也在这里</string>
+    <string name="se_v_mode">方式</string>
+    <string name="se_v_mode_sys">系统</string>
+    <string name="se_v_mode_api">模型接口</string>
+    <string name="se_v_base">接口地址</string>
+    <string name="se_v_key">接口 Key</string>
+    <string name="se_v_key_ph">留空就用当前模型的</string>
+    <string name="se_v_model">模型</string>
+    <string name="se_v_lang">语种</string>
+    <string name="se_v_voice">音色</string>
+    <string name="se_v_tip">接口按 OpenAI 兼容协议：识别 POST /audio/transcriptions，合成 POST /audio/speech</string>
+    <string name="se_v_play">试听</string>
+    <string name="fb_att">附件</string>
+    <string name="fb_att_img">加图片</string>
+    <string name="fb_att_log">加日志</string>
+    <string name="fb_att_tip">图片单张 5MB 内、最多 3 张；日志 1 份、1MB 内，支持 txt / log / json / md</string>
+    <string name="fb_att_img_big">这张图片超过 5MB，换一张小点的</string>
+    <string name="fb_att_log_big">日志超过 1MB，先裁剪再传</string>
+    <string name="fb_att_log_bad">日志只支持 txt / log / json / md</string>
+    <string name="fb_att_img_max">图片最多 3 张</string>
+    <string name="fb_att_read_fail">读取文件失败，换一个试试</string>
+    <string name="fb_att_open">打开</string>
+    <string name="fb_att_open_fail">没有能打开这个文件的应用</string>
+    <string name="tos_changed">服务协议有变更，需要先重新阅读并同意</string>
+    <string name="dw_plugins">插件</string>
+    <string name="plg_title">插件广场</string>
+    <string name="plg_off_title">插件广场维护升级中…</string>
+    <string name="plg_off_body">服务器已停止注册、登录与上传，广场暂时不可用。已安装的插件照常运行，不受影响。</string>
+    <string name="plg_off_back">返回</string>
+    <string name="plg_tab_market">广场</string>
+    <string name="plg_tab_upload">上传</string>
+    <string name="plg_tab_mine">我的</string>
+    <string name="plg_search">搜插件名称、说明、作者</string>
+    <string name="plg_sort_new">最新</string>
+    <string name="plg_sort_hot">最热</string>
+    <string name="plg_count">已显示 %1$d / 共 %2$d</string>
+    <string name="plg_empty">还没有插件，你可以传第一个</string>
+    <string name="plg_no_match">没有匹配的插件，换个词试试</string>
+    <string name="plg_loading">加载中…</string>
+    <string name="plg_load_more">加载更多</string>
+    <string name="plg_download">下载</string>
+    <string name="plg_downloading">下载 %1$d%%</string>
+    <string name="plg_downloads">下载 %1$d</string>
+    <string name="plg_installed">已装到 baicode/skill/%1$s，新开对话就能用</string>
+    <string name="plg_fail">失败了：%1$s</string>
+    <string name="plg_upload_tip">选技能包目录就行，我们帮你压包；目录里要有 skill.json 或 SKILL.md，压完不超过 8MB</string>
+    <string name="plg_email">邮箱</string>
+    <string name="plg_email_ph">用来收验证码和审核结果</string>
+    <string name="plg_email_bad">邮箱格式不正确</string>
+    <string name="plg_code_ph">6 位验证码</string>
+    <string name="plg_send_code">发验证码</string>
+    <string name="plg_sending">发送中…</string>
+    <string name="plg_resend">%1$d 秒后重发</string>
+    <string name="plg_code_sent">验证码已发出，10 分钟内有效</string>
+    <string name="plg_pick_zip">选目录</string>
+    <string name="plg_no_zip">还没选目录</string>
+    <string name="plg_name">插件名称</string>
+    <string name="plg_descr">插件说明</string>
+    <string name="plg_ver">版本</string>
+    <string name="plg_author">作者</string>
+    <string name="plg_tags">标签（逗号分隔）</string>
+    <string name="plg_note">上传后我们会抽查，违规会被下架；只放行纯技能目录结构，别塞可执行文件</string>
+    <string name="plg_submit">提交</string>
+    <string name="plg_submitting">上传中 %1$d%%</string>
+    <string name="plg_submit_ok">已提交（编号 #%1$d），审核结果会发到你的邮箱</string>
+    <string name="plg_mine_hint">这里能看到每个作品的状态，被拒绝的原因也会显示</string>
+    <string name="plg_mine_empty">这个邮箱还没提交过插件</string>
+    <string name="plg_refresh">刷新</string>
+    <string name="plg_state0">待审核</string>
+    <string name="plg_state1">已上架</string>
+    <string name="plg_state2">已拒绝</string>
+    <string name="plg_note_reason">原因：%1$s</string>
+    <string name="plg_mine_stat">下载 %1$d · 浏览 %2$d · 赞 %3$d · 收 %4$d</string>
+    <string name="plg_mine_edit">编辑</string>
+    <string name="plg_mine_del">删除</string>
+    <string name="plg_mine_del_c">确认删除</string>
+    <string name="plg_upd_cancel">取消</string>
+    <string name="plg_upd_title">已装插件</string>
+    <string name="plg_upd_sub">装过的插件有新版本，这里会提示</string>
+    <string name="plg_upd_check">检测更新</string>
+    <string name="plg_upd_none">都是最新版</string>
+    <string name="plg_upd_found">有 %1$d 个可以更新</string>
+    <string name="plg_upd_apply">更新</string>
+    <string name="plg_upd_doing">更新中 %1$d%%</string>
+    <string name="plg_upd_ok">已更新到 %1$s</string>
+    <string name="plg_edit_title">正在编辑：%1$s</string>
+    <string name="plg_edit_hint">改完资料直接保存；选了新目录就是换包，会重新过一次审核</string>
+    <string name="plg_edit_ok">已保存</string>
+    <string name="plg_save">保存</string>
+    <string name="plg_edit_hint2">只改资料，不换包；要发新版本请用「更新」</string>
+    <string name="plg_mine_newver">更新</string>
+    <string name="plg_edited_at">已编辑于 %1$s</string>
+    <string name="plg_ver_hist">版本历史</string>
+    <string name="plg_ver_empty">还没有版本记录</string>
+    <string name="plg_newver_title">发布新版本</string>
+    <string name="plg_newver_hint">当前是 %1$s；换包会替换旧包，版本历史保留</string>
+    <string name="plg_newver_ok">新版本已提交，审核通过后上线</string>
+    <string name="plg_newver_live">新版本已上架</string>
+    <string name="plg_submit_live">已上架（编号 #%1$d），之后会抽查，违规会被下架</string>
+    <string name="plg_newver_submit">提交新版本</string>
+    <string name="plg_changes">更新说明</string>
+    <string name="plg_changes_ph">这一版改了什么，选填</string>
+    <string name="plg_inst_local">本地 %1$s</string>
+    <string name="plg_inst_ver">本地 %1$s · 最新 %2$s</string>
+    <string name="plg_inst_off">卸载</string>
+    <string name="plg_inst_off_c">确认卸载</string>
+    <string name="plg_inst_off_ok">已卸载，技能包已移除</string>
+    <string name="plg_inst_empty">还没有装过插件</string>
+    <string name="plg_edit_wait">已换包，审核通过后生效</string>
+    <string name="plg_del_ok">已删除</string>
+    <string name="acc_login">登录</string>
+    <string name="acc_reg">注册</string>
+    <string name="acc_account">账号</string>
+    <string name="acc_account_ph">用户名或邮箱</string>
+    <string name="acc_pass">密码</string>
+    <string name="acc_pass_ph">至少 6 位</string>
+    <string name="acc_logging">登录中…</string>
+    <string name="acc_later">稍后</string>
+    <string name="acc_login_tip">登录后可上传、点赞、收藏与评论</string>
+    <string name="acc_reg_tip">三步完成，之后可随时修改</string>
+    <string name="acc_pick_face">选择头像</string>
+    <string name="acc_face_tip">挑个头像</string>
+    <string name="acc_face_sub">暂时不选也行，之后在资料里换</string>
+    <string name="acc_face_bad">头像读取失败，换一张试试</string>
+    <string name="acc_nick">昵称</string>
+    <string name="acc_nick_ph">显示给别人看的名字</string>
+    <string name="acc_uname">用户名</string>
+    <string name="acc_uname_ph">字母开头，3-24 位</string>
+    <string name="acc_uname_bad">需字母开头，3-24 位字母/数字/下划线</string>
+    <string name="acc_email">邮箱</string>
+    <string name="acc_email_ph">用于收验证码与找回</string>
+    <string name="acc_email_bad">邮箱格式不对</string>
+    <string name="acc_code">验证码</string>
+    <string name="acc_code_ph">6 位数字</string>
+    <string name="acc_sending">发送中…</string>
+    <string name="acc_send">发送验证码</string>
+    <string name="acc_wait">%1$d 秒后重发</string>
+    <string name="acc_mail_tip">验证码 10 分钟内有效，注册只需验证一次</string>
+    <string name="acc_bio">简介</string>
+    <string name="acc_bio_ph">一句话介绍自己（可留空）</string>
+    <string name="acc_site">官网 / 主页</string>
+    <string name="acc_site_ph">https:// 开头（可留空）</string>
+    <string name="acc_site_tip">只填域名会自动补 https://</string>
+    <string name="acc_back">上一步</string>
+    <string name="acc_next">下一步</string>
+    <string name="acc_finish">完成注册</string>
+    <string name="acc_save">保存</string>
+    <string name="acc_saving">保存中…</string>
+    <string name="acc_saved">已保存</string>
+    <string name="acc_close">关闭</string>
+    <string name="acc_logout">退出登录</string>
+    <string name="acc_edit">编辑资料</string>
+    <string name="acc_guest">未登录</string>
+    <string name="acc_home">作者主页</string>
+    <string name="acc_joined">加入于 %1$s</string>
+    <string name="acc_stat_plugins">插件</string>
+    <string name="acc_stat_dl">下载</string>
+    <string name="acc_stat_like">获赞</string>
+    <string name="acc_stat_fav">收藏</string>
+    <string name="acc_follow">关注</string>
+    <string name="acc_followed">已关注</string>
+    <string name="acc_stat_views">浏览</string>
+    <string name="acc_stat_fans">粉丝</string>
+    <string name="acc_stat_following">关注的人</string>
+    <string name="acc_follow_empty">这里还没有人</string>
+    <string name="acc_up_list">TA 上架的插件</string>
+    <string name="acc_up_hint">点右侧去广场找同款</string>
+    <string name="acc_no_plugin">还没有上架插件</string>
+    <string name="acc_find_in_market">去广场找</string>
+    <string name="acc_cmt">评论</string>
+    <string name="acc_cmt_ph">说点什么…</string>
+    <string name="acc_cmt_send">发表评论</string>
+    <string name="acc_cmt_empty">还没有评论，来说第一句</string>
+    <string name="acc_login_first">登录后才能继续</string>
+    <string name="acc_need_upload">上传插件需要先登录，作者会自动记在你账号下</string>
+    <string name="acc_need_mine">登录后查看自己上传与收藏的插件</string>
+    <string name="acc_mine_up">我上传的</string>
+    <string name="acc_mine_fav">我收藏的</string>
+    <string name="acc_up_empty">还没上传过插件</string>
+    <string name="acc_fav_empty">还没收藏过插件</string>
+    <string name="se_gd_title">数据超强加密</string>
+    <string name="se_gd_state_off">未开启</string>
+    <string name="se_gd_state_bad">开关开着，但本机解不开密钥材料</string>
+    <string name="se_gd_state_on">已开启 · 三层加密生效</string>
+    <string name="se_gd_note">开启后凭据类数据（API Key / 账号 token / SSH 密码 / 技能密钥 / 地名缓存）改为三层密钥加密落盘，与设备深度绑定，不随备份迁移。</string>
+    <string name="se_gd_tip_on">已开启：新写入的凭据都走三层密钥</string>
+    <string name="se_gd_fail">开启失败：本机安全芯片不可用</string>
+    <string name="se_gd_busy_title">正在加固</string>
+    <string name="se_gd_busy">正在派生密钥并重写全部密文，请勿退出</string>
+    <string name="se_gd_cleared_title">已清空</string>
+    <string name="se_gd_cleared_body">凭据类数据已全部删除。应用需要重启才能回到干净状态。</string>
+    <string name="se_gd_warn_title">开启时 App 要初始化盐、做多密钥组合运算，会短暂占用 CPU。按本机（%1$s）推算约 %2$s，期间界面可能卡一下。</string>
+    <string name="se_gd_w1_t">开启后无法关闭</string>
+    <string name="se_gd_w1_b">想关只能强制清空：已加密的 API Key、账号 token、Cookie、GitHub token 等会当场删除，找不回来。</string>
+    <string name="se_gd_w2_t">数据跟着设备走</string>
+    <string name="se_gd_w2_b">与设备底层标识深度绑定。换机、刷机、恢复出厂都会解不开，虽然技术上能做出迁移，但为安全风险考虑不提供。</string>
+    <string name="se_gd_w3_t">后果自负</string>
+    <string name="se_gd_w3_b">以上后果由使用者自行承担，请确认你确实需要这一层保护再开启。</string>
+    <string name="se_gd_layers">作为交换，落盘的数据会经过三层加密：</string>
+    <string name="se_gd_l1_t">设备密钥</string>
+    <string name="se_gd_l1_b">随机半密钥锁进本机安全芯片，不可导出</string>
+    <string name="se_gd_l2_t">组合密钥</string>
+    <string name="se_gd_l2_b">种子与设备因子派生另一半，异或成数据密钥</string>
+    <string name="se_gd_l3_t">内容加密</string>
+    <string name="se_gd_l3_b">AES-256-GCM 整份文件加密，头换新版本</string>
+    <string name="se_gd_off_title">强制关闭并清空</string>
+    <string name="se_gd_off_body">关闭数据保障会立刻删除全部已加密数据，无法撤销，也没有回收站。</string>
+    <string name="se_gd_off_i1">API Key（模型 / 语音 / 搜索）</string>
+    <string name="se_gd_off_i2">账号登录态、反馈 token、GitHub token、Cookie</string>
+    <string name="se_gd_off_i3">SSH 密码与技能包密钥</string>
+    <string name="se_gd_off_i4">位置地名缓存</string>
+    <string name="se_gd_off_note">清理后本机回到未加密状态，之前导出的旧备份同样解不开。</string>
+    <string name="se_gd_cancel">取消</string>
+    <string name="se_gd_keep">保留</string>
+    <string name="se_gd_go">我已了解，开启</string>
+    <string name="se_gd_go_wait">读完再开（%1$ds）</string>
+    <string name="se_gd_wipe">我确认清空</string>
+    <string name="se_gd_wipe_wait">确认清空（%1$ds）</string>
+    <string name="se_sec_tab">隐私与安全</string>
+    <string name="se_sec_sub">凭据与私密数据的保护开关，改动前请读完整段警告</string>
+    <!-- 新增保护：数据输出脱敏 + 禁止截图录屏 -->
+    <string name="se_pt_tab">新增保护</string>
+    <string name="se_pt_sub">防注入与防泄漏的两层防线，默认全关，随时可关</string>
+    <string name="se_pt_mask_t">数据输出脱敏</string>
+    <string name="se_pt_mask_on">已开启 · 口令 / token 打成掩码</string>
+    <string name="se_pt_mask_off">未开启 · 回复原样显示</string>
+    <string name="se_pt_mask_note">回复正文、推理与工具输出里出现 password / token 这类字段时，把值打成掩码。规则从服务端拉取，本地只做匹配，尽力而为，不是绝对防护。</string>
+    <string name="se_pt_mask_stream">开启时会自动关掉流式输出：逐字显示没法事后过滤。</string>
+    <string name="se_pt_mask_rules">当前规则：%1$d 个键名、%2$d 个前缀</string>
+    <string name="se_pt_mask_ok">规则已更新：从服务端取到最新一份</string>
+    <string name="se_pt_mask_fail">规则更新失败：继续用本地兜底那一套</string>
+    <string name="se_pt_shot_t">禁止截图与录屏</string>
+    <string name="se_pt_shot_on">已开启 · 系统截不到聊天页画面</string>
+    <string name="se_pt_shot_off">未开启 · 截屏与录屏正常</string>
+    <string name="se_pt_shot_note">开启后聊天页加系统级防截取标记，截屏与录屏拿到的是黑屏，要截图得先把这个开关关掉。</string>
+    <string name="se_pt_warn_title">开启数据输出脱敏</string>
+    <string name="se_pt_warn_head">这是一层本地过滤，先把能做到与做不到的说清再开。</string>
+    <string name="se_pt_w1_t">会做什么</string>
+    <string name="se_pt_w1_b">正文、推理与工具输出在显示和落库前统一过一遍，键名与结构保留，值换成掩码。</string>
+    <string name="se_pt_w2_t">防不住什么</string>
+    <string name="se_pt_w2_b">被拆开、编码、换行拼出来的凭据仍可能漏出去；模型也可以选择不写凭据。它挡的是「被注入话术诱导后整段 dump」这种最常见的失手。</string>
+    <string name="se_pt_w3_t">会一起改什么</string>
+    <string name="se_pt_w3_b">流式输出自动关闭，回复改成整段一次性显示；要恢复逐字输出得自己把流式开关重新打开。</string>
+    <string name="se_pt_warn_back">再说一遍：并不完全安全</string>
+    <string name="se_pt_go">我已了解，开启</string>
+    <string name="se_pt_go_wait">读完再开（%1$ds）</string>
+    <string name="se_ns_t">关闭流式输出</string>
+    <string name="se_ns_on">已关闭：等模型整段写完一次性显示，看不到逐字输出</string>
+    <string name="se_ns_off">正常流式：边生成边逐字显示</string>
+    <string name="ag_stream_off">等待完整回复</string>
+    <string name="se_gd_pg_title">正在开启数据超强加密</string>
+    <string name="se_gd_pg_keep">处理期间关不掉这个窗口；这时强杀应用会留下半加密的数据</string>
+    <string name="se_gd_pg1_t">生成密钥</string>
+    <string name="se_gd_pg1_b">设备半密钥 R 交给 Keystore 包裹，组合密钥 K2 在原生层派生</string>
+    <string name="se_gd_pg2_t">迁移旧数据</string>
+    <string name="se_gd_pg2_b">历史明文键表与旧版密文先解进内存，统一到同一套密钥</string>
+    <string name="se_gd_pg3_t">加密落盘</string>
+    <string name="se_gd_pg3_b">每个凭据文件按三层密钥重新加密写回</string>
+    <string name="se_gd_pg4_t">完成</string>
+    <string name="se_gd_pg4_b">密钥与本机硬件绑定，换机与刷机都解不开</string>
+    <string name="se_gd_covers">纳入加密：模型 / 语音 / 搜索 / MCP / A2A 密钥、账号与反馈 token、SSH 密码、技能包密钥、位置地名缓存</string>
+    <string name="cs_max_on">最大 ·开</string>
+    <string name="cs_queue_title">待发送队列</string>
+    <string name="cs_more_rounds">展开更早的 %1$d 轮对话</string>
+    <string name="cs_queue_tip">发送中又敲的内容排在这里，本轮收工按序自动发</string>
+    <string name="ag_queue_next">已提到队首：本轮收工后立刻发送</string>
+    <string name="ag_queue_other">这条属于别的会话，切回去才能发</string>
+    <string name="ag_par_fmt">并行执行 %1$d 个工具</string>
+    <string name="se_pg_voice">语音</string>
+    <string name="se_pg_voice_sub">语音识别、语音合成与朗读回复</string>
+    <string name="se_pg_mem">记忆</string>
+    <string name="se_pg_mem_sub">跨会话长期记忆，模型自己读写</string>
+    <string name="se_pg_local">本地模型</string>
+    <string name="se_pg_local_sub">GGUF 离线推理，导入即用，不联网也能跑</string>
+    <string name="se_pg_perm">权限</string>
+    <string name="se_pg_perm_sub">工作方式、系统权限、Shizuku、实验性功能</string>
+    <string name="se_pg_avatar">头像</string>
+    <string name="se_pg_avatar_sub">自己与助手的头像</string>
+    <string name="se_pg_float">悬浮聊天窗</string>
+    <string name="se_pg_float_sub">在别的应用上面直接聊</string>
+    <string name="se_pg_auto">自动化</string>
+    <string name="se_pg_auto_sub">定时任务、工作流、通知触发</string>
+    <string name="se_pg_agent">技能与角色</string>
+    <string name="se_pg_agent_sub">角色、系统提示、技能专区与技能包</string>
+    <string name="se_pg_link">接入</string>
+    <string name="se_pg_link_sub">MCP、A2A、搜索平台</string>
+    <string name="se_pg_data">数据与安全</string>
+    <string name="se_pg_data_sub">备份、加密、安全设置</string>
+    <string name="se_pg_model_cfg">模型配置</string>
+    <string name="se_pg_model_cfg_sub">模型、当前配置、能力、深度思考</string>
+    <string name="se_pg_chat_ctx">上下文与压缩</string>
+    <string name="se_pg_chat_ctx_sub">窗口、压缩阈值与用量</string>
+    <string name="se_pg_chat_inject">注入</string>
+    <string name="se_pg_chat_inject_sub">上下文注入与回复信息</string>
+    <string name="se_pg_chat_session">会话与导出</string>
+    <string name="se_pg_chat_session_sub">会话管理、收藏夹、导出 Markdown</string>
+    <string name="se_pg_chat_tags">提示词标签</string>
+    <string name="se_pg_chat_tags_sub">可复用片段，插入输入框或全局启用</string>
+    <string name="se_pg_emoji">自定义表情</string>
+    <string name="se_pg_emoji_sub">表情分类、换图、重置，回复里按标记渲染</string>
+    <string name="se_pg_ui_theme">外观</string>
+    <string name="se_pg_ui_theme_sub">语言、主题色、字号、背景、玻璃质感、卡片外观与输入框</string>
+    <string name="se_pg_md">Markdown 排版</string>
+    <string name="se_pg_md_sub">正文字号、行距、段间距、列表缩进、左右留白、代码字号，带实时预览</string>
+    <string name="se_pg_ui_nav">悬浮与手势</string>
+    <string name="se_pg_ui_nav_sub">悬浮聊天窗的权限、尺寸与位置，返回手势</string>
+    <string name="se_pg_ui_input">输入</string>
+    <string name="se_pg_ui_input_sub">输入框、提示词与头像</string>
+    <string name="se_pg_ext_auto">自动化</string>
+    <string name="se_pg_ext_auto_sub">定时任务、工作流、通知触发</string>
+    <string name="se_pg_ext_link">接入</string>
+    <string name="se_pg_ext_link_sub">A2A 节点、搜索平台、MCP 服务</string>
+    <string name="se_pg_ext_ws">工作区</string>
+    <string name="se_pg_ext_ws_sub">数据根目录、会话工作区绑定与目录树</string>
+    <string name="se_pg_linux">Linux 沙箱</string>
+    <string name="se_pg_linux_sub">Ubuntu 环境解包、依赖安装与自检</string>
+    <string name="se_pg_mi_sub">扫码 / 手机号登录、设备台账与属性面板</string>
+    <string name="se_pg_mi_login">登录与账号</string>
+    <string name="se_pg_mi_login_sub">授权页取 code 换 token、登录态与退出</string>
+    <string name="se_pg_mi_dev">设备</string>
+    <string name="se_pg_mi_dev_sub">台账清单、局域网扫描、属性读写</string>
+    <string name="se_pg_mi_ch">通道</string>
+    <string name="se_pg_mi_ch_sub">区域、局域网优先与诊断</string>
+    <string name="se_pg_music_sub">网易云 / QQ / 酷我登录与音质档位</string>
+    <string name="se_pg_lan_sub">设备发现、配对码与传输端口</string>
+    <string name="se_pg_box_sub">目录白名单、读写分级与越界拦截</string>
+    <string name="se_pg_model_param">模型参数</string>
+    <string name="se_pg_model_param_sub">深度思考、温度与额外请求参数</string>
+    <string name="se_pg_ui_person">个性化</string>
+    <string name="se_pg_ui_person_sub">头像、气泡胶囊与桌宠</string>
+    <string name="island_ch_name">任务进度</string>
+    <string name="island_no_perm">通知权限未开启：系统会直接丢掉任务通知，点这里去开</string>
+    <string name="island_ch_off">「任务进度」通知分类被关闭了：通知不会出现，点这里去开</string>
+    <string name="island_stop">停止任务</string>
+    <string name="island_task_title">Baicodex 任务</string>
+    <string name="island_running">正在执行任务…</string>
+    <string name="island_bg_keep">任务在后台继续运行</string>
+    <string name="island_done">任务已完成</string>
+    <string name="ag_err_unknown">发送失败，原因未知</string>
+    <string name="cs_fail_title">发送失败</string>
+    <string name="cs_fail_more">仍然发送</string>
+    <string name="cs_fail_retry">重发</string>
+    <string name="cs_fail_keep">这条消息已经留在会话里，可以直接在下方重发</string>
+    <string name="cs_fail_again">仍然重发</string>
+    <string name="cs_err_go_cfg">去配置</string>
+    <string name="ag_err_kw_perm">权限</string>
+    <string name="ag_err_kw_env">未安装</string>
+    <string name="se_kernel_t">Rust 内核</string>
+    <string name="se_kernel_d">存储与加密走 Rust（原子写 + AES-256-GCM 信封），自检会在内核自己的临时桶里跑一遍写读删</string>
+    <string name="se_kernel_run">跑一次自检</string>
+    <string name="se_kernel_busy">自检中…</string>
+    <string name="se_kernel_ok">自检通过</string>
+    <string name="se_kernel_fail">自检未通过</string>
+    <string name="se_kernel_na">这个 ABI 没带 Rust 内核（只编 arm64-v8a）</string>
+    <string name="se_pg_prompt">提示词优化</string>
+    <string name="se_pg_prompt_sub">优化用模型、保留原语言、自定义优化方向</string>
+    <string name="se_pg_inout">输入与输出</string>
+    <string name="se_pg_inout_sub">回复信息展示、流式输出、草稿保留与输出偏好文案</string>
+    <string name="se_pg_think">思考配置</string>
+    <string name="se_pg_think_sub">按模型名匹配，决定思考字段怎么写进请求；可增删改、可恢复内置</string>
+    <string name="pm_top_p">核采样</string>
+    <string name="pm_top_k">候选数</string>
+    <string name="pm_presence">出现惩罚</string>
+    <string name="pm_frequency">频率惩罚</string>
+    <string name="pm_repeat">重复惩罚</string>
+    <string name="pm_top_p_key">top_p</string>
+    <string name="pm_top_k_key">top_k</string>
+    <string name="pm_presence_key">presence_penalty</string>
+    <string name="pm_frequency_key">frequency_penalty</string>
+    <string name="pm_repeat_key">repeat_penalty</string>
+    <string name="tx_011d09ad" formatted="false">多档滑块</string>
+    <string name="tx_02895542" formatted="false">定时任务与已排期的工作流按时间排的前三条</string>
+    <string name="tx_03dc6b51" formatted="false">＋ 新增配置</string>
+    <string name="tx_041b5d0d" formatted="false">收藏夹、以及把当前会话导成 Markdown</string>
+    <string name="tx_0450050c" formatted="false">工作区就是 AI 读写文件的地方；这一项没过，绑目录时会一直失败</string>
+    <string name="tx_0556c32b" formatted="false">激活段与滑块描边跟主题色</string>
+    <string name="tx_06972491" formatted="false">未授权，系统会把触发时间往后挪几分钟到几十分钟</string>
+    <string name="tx_06d23d3f" formatted="false">角色在前（默认）</string>
+    <string name="tx_078ab933" formatted="false">匹配方式</string>
+    <string name="tx_08b3859a" formatted="false">跨会话长期记忆：模型会自己读写，也可以在这里直接增删、合并整理</string>
+    <string name="tx_090286ed" formatted="false">草稿有效期</string>
+    <string name="tx_09e4e337" formatted="false">2–4秒</string>
+    <string name="tx_0a60a66c" formatted="false">确认清除</string>
+    <string name="tx_0b5342ec" formatted="false">全局字体 / 我方气泡 / AI 回复各设一份，导入后立刻生效</string>
+    <string name="tx_0c1e4c99" formatted="false">去系统「手势导航」设置</string>
+    <string name="tx_0c4316d9" formatted="false">单次最长录音</string>
+    <string name="tx_0c47bf01" formatted="false">已授权，可以浮在别的应用上层</string>
+    <string name="tx_0dd7ef22" formatted="false">超过有效期的草稿在下次切会话时自动删除；发送成功后草稿立刻清空。</string>
+    <string name="tx_0e2af5f5" formatted="false">到点能不能跑起来</string>
+    <string name="tx_0e48617f" formatted="false">输入框右侧四芒星按钮用的连接与写法；优化后可一键回滚原文</string>
+    <string name="tx_110dd655" formatted="false">驻留时长</string>
+    <string name="tx_112be922" formatted="false">跟随全局</string>
+    <string name="tx_119c6296" formatted="false">未开启，工作区只能落在应用自己的私有目录里</string>
+    <string name="tx_12c3b1d7" formatted="false">每轮任务开始发一条常驻通知；小米 / 华为主机会自动挂到岛上</string>
+    <string name="tx_15ec4b98" formatted="false">精确闹钟</string>
+    <string name="tx_16a79761" formatted="false">默认请求路径</string>
+    <string name="tx_18c63459" formatted="false">默认</string>
+    <string name="tx_19497c0b" formatted="false">Deepgram 模型</string>
+    <string name="tx_1a212ec6" formatted="false">档位顺序就是滑块从低到高；最多 5 档。写入值按 JSON 写：字符串带引号，数字与布尔直写。</string>
+    <string name="tx_1b605a1e" formatted="false">0 = 边缘不做透镜变形；越大边缘弯曲越明显</string>
+    <string name="tx_1bf1dcd4" formatted="false">开启 / 关闭时写入</string>
+    <string name="tx_1bfaf093" formatted="false">匹配模型（完整型号，多个逗号分隔）</string>
+    <string name="tx_1cf2d4cf" formatted="false">自定义在前（预设优先）</string>
+    <string name="tx_1da7adbb" formatted="false">%.1f秒</string>
+    <string name="tx_1e4ab751" formatted="false">常驻拼在系统提示里，决定回复怎么写；与角色卡设定叠加，不覆盖</string>
+    <string name="tx_214a7d7d" formatted="false">例如：先给结论再给依据；表格只用两列；代码块标注语言</string>
+    <string name="tx_2280a03a" formatted="false">不看聊天里的思考开关，一律按开启值下发</string>
+    <string name="tx_228526dc" formatted="false">工作流</string>
+    <string name="tx_22b4334f" formatted="false">草稿</string>
+    <string name="tx_231fdea9" formatted="false">打开 A2A</string>
+    <string name="tx_2474be5f" formatted="false">不在白名单，锁屏久了通知可能被系统清掉</string>
+    <string name="tx_25b7fe70" formatted="false">含 encoder/decoder/joiner 与 tokens 的目录</string>
+    <string name="tx_2604bcce" formatted="false">STT 引擎</string>
+    <string name="tx_2627160e" formatted="false">已授权，按设定的时刻触发</string>
+    <string name="tx_2898cdb7" formatted="false">清除 Cookie 与网页缓存</string>
+    <string name="tx_28d68b24" formatted="false">与角色提示的拼接顺序</string>
+    <string name="tx_2911c1e5" formatted="false">后台保活</string>
+    <string name="tx_2ac5cf31" formatted="false">跳过这条</string>
+    <string name="tx_2ae34d78" formatted="false">占位符在拼系统提示时替换成真实值（时间 / 电量 / 当前模型等）；聊天输入框里的花括号保持原样。</string>
+    <string name="tx_2ecb1bb9" formatted="false">悬浮聊天窗</string>
+    <string name="tx_2f4aaddd" formatted="false">删除</string>
+    <string name="tx_366d6528" formatted="false">弹窗与滑块</string>
+    <string name="tx_3a605fa6" formatted="false">已在电池优化白名单，锁屏后通知不会被收走</string>
+    <string name="tx_3ab3186c" formatted="false">三类自动化各自的启用情况；不想被打扰时可以一键全停，之后一键恢复</string>
+    <string name="tx_3b4c7ed4" formatted="false">显示悬浮聊天窗</string>
+    <string name="tx_3c70a377" formatted="false">标题生成用模型</string>
+    <string name="tx_3ceeb66d" formatted="false">全部文件访问</string>
+    <string name="tx_3df99821" formatted="false">本地两项 + 远程两项</string>
+    <string name="tx_3fe3558b" formatted="false">按规则顺序匹配思考参数，首条命中生效</string>
+    <string name="tx_4210b61b" formatted="false">弹窗圆角</string>
+    <string name="tx_423b0645" formatted="false">操作审计日志</string>
+    <string name="tx_42c4c7c5" formatted="false">top_p 越低越保守，1.0 等于不裁剪；top_k 只在国内几家与本地推理生效，0 表示不发这个字段。</string>
+    <string name="tx_44e4d7a3" formatted="false">记忆</string>
+    <string name="tx_47aeba9f" formatted="false">100% 是原来的观感；调低会露出背景，文本可读性也随之下降</string>
+    <string name="tx_4a61c29a" formatted="false">离线模式</string>
+    <string name="tx_4d6e461d" formatted="false">还没有自定义字体：点左边导入 ttf / otf</string>
+    <string name="tx_4dc6270e" formatted="false">每条都随系统提示下发，删掉即失效</string>
+    <string name="tx_4f3d139b" formatted="false">草稿保留图片</string>
+    <string name="tx_4fa79f06" formatted="false">滑块档位</string>
+    <string name="tx_4fcdbfe5" formatted="false">未通过</string>
+    <string name="tx_520a162c" formatted="false">新建思考配置</string>
+    <string name="tx_520e366b" formatted="false">始终开启思考</string>
+    <string name="tx_52273aab" formatted="false">%1$s 天</string>
+    <string name="tx_529f8817" formatted="false">100% 完全不透明；调低能透出后面的内容，但字会更难认</string>
+    <string name="tx_5489c494" formatted="false">这一段每轮都拼在角色人设与自定义提示后面，不覆盖角色卡里的设定。</string>
+    <string name="tx_5660bcd2" formatted="false">通知</string>
+    <string name="tx_5756d0e9" formatted="false">不过期</string>
+    <string name="tx_582085bb" formatted="false">整理用模型</string>
+    <string name="tx_59fee9a5" formatted="false">工作区前置检查</string>
+    <string name="tx_5ac2011a" formatted="false">放弃</string>
+    <string name="tx_5b921cf1" formatted="false">定时任务靠系统闹钟、通知、后台保活三件套，缺一样就会出现「设了没反应」</string>
+    <string name="tx_5d94fa40" formatted="false">轨道加高时内部圆点跟着一起变大，比例保持不变</string>
+    <string name="tx_5dc7fa2b" formatted="false">思考配置</string>
+    <string name="tx_5e213ddb" formatted="false">去开启</string>
+    <string name="tx_5e34a485" formatted="false">申请授权</string>
+    <string name="tx_5e408cf7" formatted="false">只允许本地引擎：系统识别 / Sherpa NCNN</string>
+    <string name="tx_5f4766cc" formatted="false">立刻收起</string>
+    <string name="tx_607c0a3b" formatted="false">整理记忆</string>
+    <string name="tx_625fb26b" formatted="false">取消</string>
+    <string name="tx_629de16a" formatted="false">拉取中…</string>
+    <string name="tx_637321f6" formatted="false">总结用模型</string>
+    <string name="tx_645dbc55" formatted="false">预览</string>
+    <string name="tx_653d2130" formatted="false">整理中…</string>
+    <string name="tx_65557288" formatted="false">例如：面向 Android + Kotlin，句子短、句子间用列表</string>
+    <string name="tx_694297ce" formatted="false">写入路径（留空沿用默认路径）</string>
+    <string name="tx_69c6c8f3" formatted="false">重复控制参数</string>
+    <string name="tx_6b8361f5" formatted="false">按请求路径写入固定值</string>
+    <string name="tx_6e63dd3c" formatted="false">A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务</string>
+    <string name="tx_70607644" formatted="false">还没有排好的计划。上面点「管理」新建一条，或给工作流设个时间。</string>
+    <string name="tx_707c976d" formatted="false">未配置，按厂商/型号自动推断</string>
+    <string name="tx_709d84ce" formatted="false">任务通知与灵动岛</string>
+    <string name="tx_70b562da" formatted="false">会话与导出</string>
+    <string name="tx_70d093e2" formatted="false">留空则只用内置模板：代码模式围绕代码需求补全，其它模式围绕日常任务补全。</string>
+    <string name="tx_720ab972" formatted="false">悬浮窗权限</string>
+    <string name="tx_73d7e891" formatted="false">弹窗圆角、滑块配色</string>
+    <string name="tx_74f960c9" formatted="false">还没有记忆</string>
+    <string name="tx_75af6edf" formatted="false">正文离气泡边缘的距离；长文想留白就加，想贴边就归零</string>
+    <string name="tx_7725233f" formatted="false">没有匹配的设置项：%1$s</string>
+    <string name="tx_79a86fd2" formatted="false">默认关闭：只保留文字与文件，图片不落盘</string>
+    <string name="tx_79f09f89" formatted="false">服务商</string>
+    <string name="tx_7b5ff17c" formatted="false">全局缩进</string>
+    <string name="tx_7bb29de8" formatted="false">多步按顺序跑，每步一个分智能体；可定时、失败可重试或跳过</string>
+    <string name="tx_7c138c54" formatted="false">＋ 添加档位</string>
+    <string name="tx_7e382efd" formatted="false">开发者模式已解锁：看本页最下方</string>
+    <string name="tx_7ec62ce2" formatted="false">允许模型按场景改写语言</string>
+    <string name="tx_7fc624f8" formatted="false">特殊权限</string>
+    <string name="tx_8000f187" formatted="false">模型</string>
+    <string name="tx_81ef7ad6" formatted="false">按规则顺序匹配思考参数，首条命中生效；都没命中就走内置默认</string>
+    <string name="tx_8280b5ae" formatted="false">任务通知</string>
+    <string name="tx_8456bc40" formatted="false">字体</string>
+    <string name="tx_846cdaf0" formatted="false">通知权限</string>
+    <string name="tx_84defbe5" formatted="false">导入失败：只支持 ttf / otf / ttc</string>
+    <string name="tx_84e40c91" formatted="false">优化方向自定义</string>
+    <string name="tx_85067db3" formatted="false">运行总览</string>
+    <string name="tx_8508566e" formatted="false">已关闭，到点不会提醒你（自动执行仍然会跑）</string>
+    <string name="tx_8539beb4" formatted="false">AI 回复的排版：字号、行距、段间距、列表缩进、左右留白与代码块字号；下面预览用的是聊天同一套渲染</string>
+    <string name="tx_85624c8e" formatted="false">接口地址</string>
+    <string name="tx_86454fc7" formatted="false">管理工作流</string>
+    <string name="tx_865347b7" formatted="false">整理后（尚未应用）</string>
+    <string name="tx_8851751d" formatted="false">每深一层缩进多少；0 = 不缩进，只靠符号区分层级</string>
+    <string name="tx_8c7432b9" formatted="false">0 秒 = 任务完成后立刻撤掉</string>
+    <string name="tx_8d2bc55b" formatted="false">启用此配置</string>
+    <string name="tx_8e1b47f0" formatted="false">已同时开启思考：DeepSeek 的联网搜索必须在思考模式下运行</string>
+    <string name="tx_8e6ab923" formatted="false">显示名</string>
+    <string name="tx_90d5ce80" formatted="false">不同机型入口名字不一样：可能是「所有文件的管理权限」「文件和媒体」或「存储权限」；跑 Root / Shizuku 模式时不依赖它。</string>
+    <string name="tx_929ea71b" formatted="false">跟随当前聊天</string>
+    <string name="tx_946262ed" formatted="false">已导入 </string>
+    <string name="tx_950a94dd" formatted="false">全部恢复只把已有的条目重新打开，不会新建或改时间</string>
+    <string name="tx_9559ce64" formatted="false">默认（不发）</string>
+    <string name="tx_95e4a689" formatted="false">录音采样率</string>
+    <string name="tx_96a5feb3" formatted="false">聊天页右下角那颗圆钮的底与图标配色</string>
+    <string name="tx_99557469" formatted="false">全局字体</string>
+    <string name="tx_9be9c76a" formatted="false">接口没返回模型，下面手填</string>
+    <string name="tx_9bfd20b1" formatted="false">滑块继承主题色</string>
+    <string name="tx_9c61a929" formatted="false">档位 </string>
+    <string name="tx_9ca1cb1f" formatted="false">确认清除网页登录态？</string>
+    <string name="tx_9ec0f5da" formatted="false">关着：打开后在别的应用上层也能直接聊</string>
+    <string name="tx_9f2e930a" formatted="false">接下来要跑</string>
+    <string name="tx_9fcf1606" formatted="false">段落、标题、列表、代码块之间空多少</string>
+    <string name="tx_a114c7a8" formatted="false">切走再回来，图片也挂在输入区</string>
+    <string name="tx_a2d86e87" formatted="false">提示词优化</string>
+    <string name="tx_a39e54aa" formatted="false">允许目录白名单，读写权限分级</string>
+    <string name="tx_a3af3303" formatted="false"> 个：</string>
+    <string name="tx_a441b416" formatted="false">编辑思考配置</string>
+    <string name="tx_a52f5c20" formatted="false">系统默认</string>
+    <string name="tx_a5bccdfb" formatted="false">所有没单独指定字体的文字都跟它走</string>
+    <string name="tx_a6a648c1" formatted="false">已开启，到点会弹通知</string>
+    <string name="tx_a71af5ad" formatted="false">每轮任务挂一条常驻通知，小米 / 华为等机型自动上岛；缺权限就只剩「跑了但没动静」</string>
+    <string name="tx_a75eff1a" formatted="false">恢复内置规则</string>
+    <string name="tx_a83942eb" formatted="false">滑杆轨道高度</string>
+    <string name="tx_abbb0ab4" formatted="false">开启时写入的值</string>
+    <string name="tx_ac0cdee7" formatted="false">按当前模式分档：普通用户要无障碍 + 保活 + 悬浮窗，Root 只要悬浮窗</string>
+    <string name="tx_adc2cb46" formatted="false">不在白名单，锁屏久了悬浮窗可能被系统收走</string>
+    <string name="tx_ae27e4da" formatted="false">输出偏好</string>
+    <string name="tx_ae6b6416" formatted="false">Markdown 显示</string>
+    <string name="tx_af29b0db" formatted="false">点上面这行直达系统通知设置；OPPO / 一加还要在「电池」里允许后台运行，否则锁屏后通知会被系统收走</string>
+    <string name="tx_b0c9ab6f" formatted="false">%1$s 秒</string>
+    <string name="tx_b15d9127" formatted="false">关闭</string>
+    <string name="tx_b324c1b6" formatted="false">已关闭，任务照常跑但看不到任何提示</string>
+    <string name="tx_b472edb3" formatted="false">切会话不丢输入；每个会话一份 drafts/&lt;会话&gt;.prkcovs</string>
+    <string name="tx_b6f6ccf7" formatted="false">未授权，开关打开也不会显示</string>
+    <string name="tx_b7a7dafe" formatted="false">完成后继续驻留</string>
+    <string name="tx_b886dc73" formatted="false">优化时保留原语言</string>
+    <string name="tx_b90dde67" formatted="false">不在白名单，锁屏 / 后台一段时间后可能被系统杀掉</string>
+    <string name="tx_b972541e" formatted="false">滑块轨道浓度</string>
+    <string name="tx_ba3f1876" formatted="false">压住背景保住文字可读，0% 完全透明</string>
+    <string name="tx_bb007351" formatted="false">在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调</string>
+    <string name="tx_bb3f978b" formatted="false">清掉内置浏览器、搜索工具与 WebView 里的登录态和缓存</string>
+    <string name="tx_bd7451f2" formatted="false">用 shell / root 身份跑命令时走它；授权前要先在 Shizuku 里启动服务</string>
+    <string name="tx_be5fbbe3" formatted="false">保存</string>
+    <string name="tx_c0410c62" formatted="false">当前安装包未内置 sherpa-ncnn 运行时：选它会自动改用系统识别，并在输入框上方提示原因。</string>
+    <string name="tx_c083b46f" formatted="false">输出偏好（常驻）</string>
+    <string name="tx_c0a99954" formatted="false">隐私与网页登录</string>
+    <string name="tx_c2e48855" formatted="false">开发者</string>
+    <string name="tx_c4da04aa" formatted="false">已开启，任务状态会实时出现在通知栏 / 岛上</string>
+    <string name="tx_c4e93556" formatted="false">我方气泡字体</string>
+    <string name="tx_c51ed4da" formatted="false">还没加对端</string>
+    <string name="tx_c56fbda3" formatted="false">思考档位</string>
+    <string name="tx_c7049188" formatted="false">提示词优化用模型</string>
+    <string name="tx_c71ac55d" formatted="false">创造性参数</string>
+    <string name="tx_c8b75cb0" formatted="false">档位</string>
+    <string name="tx_c93d4306" formatted="false">前三档为负数时表示不写进请求，交给服务端默认；repeat_penalty 主要是本地推理与部分中转站在用，0 = 不发。</string>
+    <string name="tx_cc49b1fd" formatted="false">已在电池优化白名单，锁屏后任务不会被掐掉</string>
+    <string name="tx_ccd94af0" formatted="false">符号链接与越界读写拦截开关</string>
+    <string name="tx_cd36e684" formatted="false">已在电池优化白名单，切到后台不会被掐掉</string>
+    <string name="tx_cedb8821" formatted="false">对话里让模型「记住这件事」就会写进来</string>
+    <string name="tx_cf2b2abc" formatted="false">参与匹配</string>
+    <string name="tx_d28ecec9" formatted="false">保持用户原文语言，不翻译</string>
+    <string name="tx_d3e52c96" formatted="false">写入值</string>
+    <string name="tx_d742e670" formatted="false">已显示：拖标题栏换位置，点右上角 × 收起</string>
+    <string name="tx_d822e614" formatted="false">控制台里创建，Token 鉴权</string>
+    <string name="tx_d94fd817" formatted="false">导入字体文件</string>
+    <string name="tx_d9524747" formatted="false">已开启 </string>
+    <string name="tx_daf51302" formatted="false">淡灰轨道 + 白色滑块</string>
+    <string name="tx_df74b581" formatted="false">写好几步存下来，就能一键跑或按点跑</string>
+    <string name="tx_e1b2f870" formatted="false">控件</string>
+    <string name="tx_e2956683" formatted="false">关闭时写入的值（留空 = 不下发）</string>
+    <string name="tx_e5c4f1fc" formatted="false">全部暂停</string>
+    <string name="tx_e70a40b7" formatted="false">从接口获取模型</string>
+    <string name="tx_e796d32d" formatted="false">Sherpa 模型目录</string>
+    <string name="tx_e82c50b0" formatted="false">卡片上沿那道亮边的浓度，50% 是默认</string>
+    <string name="tx_e90e4777" formatted="false">位置复位到右上角</string>
+    <string name="tx_ea02bb1f" formatted="false">立刻显示</string>
+    <string name="tx_ea9bc057" formatted="false">对端 </string>
+    <string name="tx_eb67ae08" formatted="false">留空表示「所有模型」，建议放在列表最后当兜底。</string>
+    <string name="tx_ec691c16" formatted="false">思考与原生联网搜索互斥，请先关闭思考</string>
+    <string name="tx_ec83af0d" formatted="false">0 = 直角，16dp 是默认，32dp 接近胶囊；白卡与玻璃卡一起变</string>
+    <string name="tx_ecc33185" formatted="false">摘要档位</string>
+    <string name="tx_ecfa64c1" formatted="false">已通过</string>
+    <string name="tx_ed972708" formatted="false">所有模型</string>
+    <string name="tx_edd7189b" formatted="false">任务跑完不立刻撤通知，先切成完成态在岛 / 通知栏留一会儿</string>
+    <string name="tx_f0365c26" formatted="false">每档可单独写路径与值（例如 Claude 的 budget_tokens）；留空则沿用规则里的默认路径。</string>
+    <string name="tx_f05a0996" formatted="false">插入参数</string>
+    <string name="tx_f1153d97" formatted="false">模型（也能手填）</string>
+    <string name="tx_f2af02ae" formatted="false">AI 回复字体</string>
+    <string name="tx_f3b58907" formatted="false">已开启，可以读写共享存储里的任意目录</string>
+    <string name="tx_f4590f7d" formatted="false">全部恢复</string>
+    <string name="tx_f490eaaa" formatted="false">走 /v1/listen，裸音频 body + Token 头；语种取上面的「识别语种」。</string>
+    <string name="tx_f515f8fb" formatted="false">重新检测</string>
+    <string name="tx_f643dfa4" formatted="false">允许识别服务联网（本机模型不全时更准）</string>
+    <string name="tx_f778da7e" formatted="false">回到底部按钮</string>
+    <string name="tx_fa9bac8d" formatted="false">100% = 贴着字高，密一点能多看几行；160% 上下读起来最松</string>
+    <string name="tx_fdbc9a5f" formatted="false">离线模式：只允许本地引擎</string>
+    <string name="tx_fe8fe0cc" formatted="false">代码块与行内代码的字号，等宽字体单独一档</string>
+    <string name="tx_009fd879" formatted="false">刷新索引</string>
+    <string name="tx_02c2d3ce" formatted="false">名称（可空）</string>
+    <string name="tx_02cd23ff" formatted="false">仅 arm64 生效，走 OpenCL（Adreno 750 / 8 系已验证）；驱动不支持时自动回退纯 CPU。改完要重新加载模型</string>
+    <string name="tx_032fe963" formatted="false">已添加，点上面扫局域网可以确认在线</string>
+    <string name="tx_03d448d3" formatted="false">配对码 </string>
+    <string name="tx_040a63aa" formatted="false">云端 API</string>
+    <string name="tx_04470007" formatted="false">当前用的是自定义图片</string>
+    <string name="tx_047dd4ac" formatted="false">还没有导入任何 GGUF，先去「本地模型」里导入或下载一个</string>
+    <string name="tx_04af1007" formatted="false">把上面这个地址填进别人的 A2A 客户端就能找到本机。</string>
+    <string name="tx_051c3313" formatted="false">音质已切到 %1$s</string>
+    <string name="tx_07fa5f00" formatted="false">未注入：local.properties 里填 miot.client.id 后重新安装</string>
+    <string name="tx_08b55fea" formatted="false">管理</string>
+    <string name="tx_08df313c" formatted="false">当前值：%1$s</string>
+    <string name="tx_08e0d546" formatted="false">在「模型配置」里选「本地模型」就是本地推理，选别的厂商就是云端；这里不重复设开关</string>
+    <string name="tx_095e938e" formatted="false">停止</string>
+    <string name="tx_0976ccb2" formatted="false">单轮最多生成</string>
+    <string name="tx_09a56bd3" formatted="false">已填</string>
+    <string name="tx_0ac3aa0a" formatted="false">关掉后这张卡与入口一起收起，开关状态保留</string>
+    <string name="tx_0b55c2a3" formatted="false">（每轮多带这些字，别放太长的）</string>
+    <string name="tx_0b5961c7" formatted="false">已登录</string>
+    <string name="tx_0d22d46a" formatted="false">本地模型</string>
+    <string name="tx_0e3297f4" formatted="false">屏幕操作需要无障碍权限</string>
+    <string name="tx_0eafe8f0" formatted="false">已打开系统热点设置</string>
+    <string name="tx_0edf7a8b" formatted="false">探活</string>
+    <string name="tx_0f7d8564" formatted="false">换取中…</string>
+    <string name="tx_0fa57e4a" formatted="false">当前状态：未开启</string>
+    <string name="tx_10cee180" formatted="false">」全部通过</string>
+    <string name="tx_12d11a6b" formatted="false">同步云端</string>
+    <string name="tx_12eb255e" formatted="false">登录态</string>
+    <string name="tx_13968e19" formatted="false">（公共目录，可用文件管理器直接换模型）</string>
+    <string name="tx_1535fcfa" formatted="false">发送</string>
+    <string name="tx_160f1630" formatted="false">保存名称</string>
+    <string name="tx_1aed6ccf" formatted="false">设备 </string>
+    <string name="tx_1b6949f5" formatted="false">开发者选项</string>
+    <string name="tx_1cdd6eaf" formatted="false">只走局域网：did + IP + 32 位十六进制 token</string>
+    <string name="tx_1ed34876" formatted="false">确认一下</string>
+    <string name="tx_1f8dd094" formatted="false">镜像源</string>
+    <string name="tx_20b2103b" formatted="false">所选模型</string>
+    <string name="tx_20c5f916" formatted="false">打不开浏览器</string>
+    <string name="tx_20d3e7ce" formatted="false">还没有导入 GGUF。先去「本地模型」分区导入或下载一个。</string>
+    <string name="tx_2165b30a" formatted="false"> · 当前选中</string>
+    <string name="tx_227355b0" formatted="false">给当前命令输入内容，回车发送</string>
+    <string name="tx_230e1087" formatted="false">终端字体</string>
+    <string name="tx_24c9853a" formatted="false">未备</string>
+    <string name="tx_25b347e9" formatted="false">当前是内置字符 </string>
+    <string name="tx_25f61a7d" formatted="false">到点自动跑</string>
+    <string name="tx_2603ac37" formatted="false">未配置 API Key</string>
+    <string name="tx_2733a243" formatted="false">复制全部</string>
+    <string name="tx_27c2101a" formatted="false">导入…</string>
+    <string name="tx_288f0c40" formatted="false">清空</string>
+    <string name="tx_293460b2" formatted="false">问点什么…</string>
+    <string name="tx_2a2bf781" formatted="false">无 token</string>
+    <string name="tx_2ab5016f" formatted="false">例如：每日巡检</string>
+    <string name="tx_2b4607eb" formatted="false">调节</string>
+    <string name="tx_2b822c64" formatted="false">自检失败：算法结果与标准向量不符</string>
+    <string name="tx_2bd34d47" formatted="false">0 = 每次都给同一个答案；越高越发散</string>
+    <string name="tx_2bf9e6b5" formatted="false">名称已保存</string>
+    <string name="tx_2d5c2af2" formatted="false">已保存：</string>
+    <string name="tx_2e3dda27" formatted="false">登录完成后地址形如 …?code=xxxx</string>
+    <string name="tx_2ff33d1a" formatted="false">测试中…</string>
+    <string name="tx_3066b700" formatted="false">模型没有返回任何内容</string>
+    <string name="tx_30f520b7" formatted="false">说点什么，回复按 Markdown 渲染</string>
+    <string name="tx_315eacd1" formatted="false">上移</string>
+    <string name="tx_31bf58fa" formatted="false">常用开发环境</string>
+    <string name="tx_31ce34b3" formatted="false">多步按顺序跑，每步交给一个分智能体做完再进下一步。每步独立，拿不到上一步的结论，所以指令要写全。</string>
+    <string name="tx_31ddf4f1" formatted="false">登录米家账号</string>
+    <string name="tx_3244f52a" formatted="false">关闭（只当客户端）</string>
+    <string name="tx_330363df" formatted="false">成功</string>
+    <string name="tx_333db261" formatted="false">这个目录是空的</string>
+    <string name="tx_34a1a141" formatted="false">两个设备都不在同一个 Wi-Fi 时，用手机热点当传输通道：一台开热点，另一台连上再扫描</string>
+    <string name="tx_34d391e0" formatted="false">这个模式下只差悬浮窗：开了才能在别的应用上看到「正在进行 xx」的胶囊。</string>
+    <string name="tx_370ec32f" formatted="false">● 还没装 Ubuntu</string>
+    <string name="tx_3776a3b6" formatted="false">保存对端</string>
+    <string name="tx_37cd8040" formatted="false">失败重试</string>
+    <string name="tx_37e72ddf" formatted="false">允许被发现</string>
+    <string name="tx_37f45cdf" formatted="false">自定义表情</string>
+    <string name="tx_3a7b8b88" formatted="false">已开启，AI 现在可以读屏和代你操作。</string>
+    <string name="tx_3a81b1ed" formatted="false">编辑片段</string>
+    <string name="tx_3a8e52ef" formatted="false">扫描局域网</string>
+    <string name="tx_3aed2c11" formatted="false">自动</string>
+    <string name="tx_3b566354" formatted="false">上下文长度</string>
+    <string name="tx_3bfac37e" formatted="false">安装环境</string>
+    <string name="tx_3c10b78c" formatted="false">有 token</string>
+    <string name="tx_3cd4be58" formatted="false"> · 峰值 %.0f%%</string>
+    <string name="tx_3e424c4a" formatted="false">（已全局启用）</string>
+    <string name="tx_3fea387c" formatted="false">」有步骤失败，详情见对话</string>
+    <string name="tx_402d19e5" formatted="false">登录</string>
+    <string name="tx_40f0918b" formatted="false">推荐模型</string>
+    <string name="tx_41873cd0" formatted="false">测连通性</string>
+    <string name="tx_41b17b34" formatted="false">重试后仍失败</string>
+    <string name="tx_41b91d77" formatted="false">传输端口与并发</string>
+    <string name="tx_42824410" formatted="false">试跑</string>
+    <string name="tx_42ac4191" formatted="false">对面要在它那台也打开这个开关，再跟你配对一次——配对时两边会交换接活端口与凭据，之后模型就能互相派活。</string>
+    <string name="tx_433fd817" formatted="false">当前没有加载模型</string>
+    <string name="tx_43a45e02" formatted="false">重复惩罚</string>
+    <string name="tx_4403fca0" formatted="false">清除</string>
+    <string name="tx_44544558" formatted="false"> · 只提醒</string>
+    <string name="tx_448f42da" formatted="false">客厅灯</string>
+    <string name="tx_44eac452" formatted="false">对端名字</string>
+    <string name="tx_44efd179" formatted="false">退出登录</string>
+    <string name="tx_462400c7" formatted="false">导出选中</string>
+    <string name="tx_473954cb" formatted="false">接入身份</string>
+    <string name="tx_4793ea43" formatted="false">加载</string>
+    <string name="tx_479c40df" formatted="false">回调地址里的 code</string>
+    <string name="tx_48c0b024" formatted="false">+ 再加一步</string>
+    <string name="tx_4911d772" formatted="false">%1$s 已上移</string>
+    <string name="tx_49d52c8d" formatted="false">名字和配对码是给对方看的；配对码换了以后旧码立刻失效</string>
+    <string name="tx_4a067930" formatted="false">新建片段</string>
+    <string name="tx_4a8edc80" formatted="false">对方的配对码</string>
+    <string name="tx_4bece587" formatted="false">保存端口</string>
+    <string name="tx_4c9562fe" formatted="false">本机名称</string>
+    <string name="tx_4d4c3fd6" formatted="false">卸载模型（释放内存）</string>
+    <string name="tx_4dfe7036" formatted="false">生成</string>
+    <string name="tx_4e40d39b" formatted="false">对端地址</string>
+    <string name="tx_4f487d11" formatted="false">一台派活、一台接活：两边的大模型都能调工具，配对后就能把任务交给对方跑</string>
+    <string name="tx_4f8d48ef" formatted="false">刷新状态</string>
+    <string name="tx_4ff1e74e" formatted="false">日期</string>
+    <string name="tx_50d4a850" formatted="false">离线</string>
+    <string name="tx_50e84fc2" formatted="false">属性读写</string>
+    <string name="tx_5144e2e5" formatted="false">有工具等你确认：点这里回 App 处理</string>
+    <string name="tx_5349b266" formatted="false">跑着…</string>
+    <string name="tx_53528c9d" formatted="false">本机身份</string>
+    <string name="tx_53ace430" formatted="false">已启用</string>
+    <string name="tx_53d28c51" formatted="false">对外提供 A2A 接口</string>
+    <string name="tx_54763353" formatted="false">顺便把这两样也开了，不然锁屏后任务会被系统掐掉、胶囊也浮不出来。</string>
+    <string name="tx_552daf03" formatted="false">每天 </string>
+    <string name="tx_55dc6ec0" formatted="false">未选</string>
+    <string name="tx_56417f31" formatted="false">下载的音频与封面都落这个目录，换机器记得先清</string>
+    <string name="tx_56ce38d7" formatted="false">点这里打开「所有文件访问」权限；开着「数据超强加密」时换成正确的备份密钥后重启即可恢复</string>
+    <string name="tx_5765a580" formatted="false">重装环境</string>
+    <string name="tx_57a3a77c" formatted="false">越长越吃内存，超过模型训练上下文会自动压回</string>
+    <string name="tx_57d21753" formatted="false">允许对面派活进来</string>
+    <string name="tx_58378f0d" formatted="false">正文</string>
+    <string name="tx_58823c0a" formatted="false">比如：只回代码</string>
+    <string name="tx_58a3ff82" formatted="false">终端字号</string>
+    <string name="tx_597f1e0f" formatted="false">重置成内置表情？</string>
+    <string name="tx_59e9353c" formatted="false">已注入（</string>
+    <string name="tx_5ab380bd" formatted="false">^C 打断</string>
+    <string name="tx_5b58f2bd" formatted="false">从相册换图</string>
+    <string name="tx_5d029e5a" formatted="false">同一 Wi-Fi 下点扫描；对方也要把「允许被发现」打开</string>
+    <string name="tx_5d81c648" formatted="false">还没加节点。下面填一条地址就能调用其他 A2A 节点。</string>
+    <string name="tx_5d92b9b7" formatted="false">音质档位</string>
+    <string name="tx_5dda83bb" formatted="false">到点能不能准时，取决于「设置 → 扩展 → 定时任务」里的精确闹钟 / 电池白名单 / 通知三项权限，状态在那边看。</string>
+    <string name="tx_5e8eb212" formatted="false">连接中…</string>
+    <string name="tx_5ec38d72" formatted="false">请稍候…</string>
+    <string name="tx_5ee6e604" formatted="false">接入身份没注入：local.properties 填 miot.client.id 重装</string>
+    <string name="tx_60dbc35c" formatted="false">要贴给模型的原文，比如：不要解释思路，只给最终代码</string>
+    <string name="tx_6261755b" formatted="false">还没有配对过的设备</string>
+    <string name="tx_631cd220" formatted="false">确认删除</string>
+    <string name="tx_639b6f4b" formatted="false">下载这个链接</string>
+    <string name="tx_63e85df1" formatted="false">未登录</string>
+    <string name="tx_63edd678" formatted="false">手动添加</string>
+    <string name="tx_64a0f3cc" formatted="false">重走激活流程</string>
+    <string name="tx_64e125eb" formatted="false">区域已切到 %1$s，重新登录一次才会用新区域的接口</string>
+    <string name="tx_65524e55" formatted="false">AI 回复里写 [e:名字] 就渲染成表情；内置的也能换成自己的图</string>
+    <string name="tx_65bfc2f8" formatted="false">输入命令，回车执行</string>
+    <string name="tx_68905cf3" formatted="false">在线</string>
+    <string name="tx_689fad20" formatted="false">名字</string>
+    <string name="tx_68c15533" formatted="false">扫描中…</string>
+    <string name="tx_695609ba" formatted="false">未配置 base_url</string>
+    <string name="tx_69b0f684" formatted="false">已停用</string>
+    <string name="tx_69dcc11d" formatted="false">回调地址：</string>
+    <string name="tx_6c38353d" formatted="false">终端配色</string>
+    <string name="tx_6c90deb5" formatted="false">已监听 </string>
+    <string name="tx_6d489c3b" formatted="false">定时（留空就不定时）</string>
+    <string name="tx_6d83b132" formatted="false">执行中：%1$s</string>
+    <string name="tx_6d83b7fe" formatted="false">没开协作</string>
+    <string name="tx_6d8aba37" formatted="false">自动（测速择优）</string>
+    <string name="tx_6f1c8d30" formatted="false">能力自检</string>
+    <string name="tx_7190c3e1" formatted="false">名字（标记里用这个）</string>
+    <string name="tx_728c67c3" formatted="false">写入成功</string>
+    <string name="tx_73a8747c" formatted="false">（大小未知）</string>
+    <string name="tx_75b4235d" formatted="false">单次 </string>
+    <string name="tx_75cbe201" formatted="false">测卡</string>
+    <string name="tx_769d88e4" formatted="false">完成</string>
+    <string name="tx_76a9ffa3" formatted="false">还没有片段。新建一条后可以在聊天输入框的附件面板里点它插入。</string>
+    <string name="tx_7765b216" formatted="false">测速中…</string>
+    <string name="tx_78623eae" formatted="false">每天</string>
+    <string name="tx_792b0724" formatted="false">登录成功，token 已落加密库</string>
+    <string name="tx_7970c992" formatted="false">对方配对时要输这一串</string>
+    <string name="tx_79e1bb3f" formatted="false">清空缓存</string>
+    <string name="tx_7b9962d9" formatted="false">输入包名，如 python3 / vim</string>
+    <string name="tx_7bf54e28" formatted="false">已选</string>
+    <string name="tx_7e33ff66" formatted="false">编辑工作流</string>
+    <string name="tx_7eb883d0" formatted="false">已保存对端</string>
+    <string name="tx_7fae055f" formatted="false">仍然加载</string>
+    <string name="tx_8098e2b4" formatted="false">手机号</string>
+    <string name="tx_80cfc33c" formatted="false">确认重置</string>
+    <string name="tx_8174c488" formatted="false">导入 GGUF 文件</string>
+    <string name="tx_81824cff" formatted="false">卸载</string>
+    <string name="tx_8190cc38" formatted="false">局域网优先</string>
+    <string name="tx_8194ea1b" formatted="false">主源 ModelScope，失败自动换 hf-mirror；断点续传，中断后点下载会接着下</string>
+    <string name="tx_825ff4d7" formatted="false">比如：自定义 /情绪</string>
+    <string name="tx_841c2e0d" formatted="false">复制部分内容</string>
+    <string name="tx_84d198e1" formatted="false">直接走云端</string>
+    <string name="tx_84fac467" formatted="false">取消下载</string>
+    <string name="tx_857abb80" formatted="false">客厅平板</string>
+    <string name="tx_86048b4f" formatted="false">移除</string>
+    <string name="tx_8624e553" formatted="false">打开后本机才应答别人的扫描；关掉只影响「被发现」，自己扫别人仍然可以</string>
+    <string name="tx_86cd35c6" formatted="false">设备数字 id</string>
+    <string name="tx_86d74002" formatted="false">保存超时</string>
+    <string name="tx_87d6084a" formatted="false">打开热点设置</string>
+    <string name="tx_87e4d9ef" formatted="false">稍后再说</string>
+    <string name="tx_8982c592" formatted="false">还没有片段。到 设置 → 对话 → 提示词标签 里先建一条。</string>
+    <string name="tx_8a67e9a7" formatted="false">这台机器没有热点设置页，去系统设置里找「个人热点」</string>
+    <string name="tx_8b920852" formatted="false">以后想重开或重走这个流程：设置 → 权限 → 特殊权限。</string>
+    <string name="tx_8c8c9140" formatted="false">已在浏览器打开；登录后把地址栏里的 code 复制回来</string>
+    <string name="tx_8d4d4b42" formatted="false">发现设备</string>
+    <string name="tx_8d92c895" formatted="false">例如：家里电脑</string>
+    <string name="tx_8eafe666" formatted="false">探活成功才算在线；点「协作」看对面能不能接活，能接活就能把任务派过去</string>
+    <string name="tx_8fedcfe7" formatted="false">保存工作流</string>
+    <string name="tx_904e740d" formatted="false">协作</string>
+    <string name="tx_91382d9c" formatted="false">清屏</string>
+    <string name="tx_92636e8c" formatted="false">跳过</string>
+    <string name="tx_957dc19a" formatted="false">哪一步断了在这里看结果，不用翻日志</string>
+    <string name="tx_95b351c8" formatted="false">编辑</string>
+    <string name="tx_96bfbadc" formatted="false">已配对设备</string>
+    <string name="tx_96ed536e" formatted="false">起服务时 token 为空会自动生成并填上去；改端口或 token 后服务开着就直接换新的。</string>
+    <string name="tx_96f68a9d" formatted="false">写一次</string>
+    <string name="tx_97ab69b3" formatted="false">设备号 </string>
+    <string name="tx_98260c63" formatted="false">打开开发者工具</string>
+    <string name="tx_9873c205" formatted="false">跑一次</string>
+    <string name="tx_99bdc9ec" formatted="false">授权码模式：浏览器里登录，把回调地址上的 code 粘回来</string>
+    <string name="tx_9aaf0ba9" formatted="false">换取失败：看日志 bai.mi.auth（区域 / 回调地址要和平台登记一致）</string>
+    <string name="tx_9bc4c05a" formatted="false">搜索中</string>
+    <string name="tx_9c4020f2" formatted="false">重置 token（已配对的设备要重新配对）</string>
+    <string name="tx_9c505d1e" formatted="false">%1$s cookie 已存进加密库</string>
+    <string name="tx_9d5bf2a1" formatted="false">已安装</string>
+    <string name="tx_9db7a84f" formatted="false">已开启</string>
+    <string name="tx_9e1fd27b" formatted="false">热点自建</string>
+    <string name="tx_9ed74fb4" formatted="false">访问 token（自动生成，可改）</string>
+    <string name="tx_a06cda21" formatted="false">缺 token</string>
+    <string name="tx_a0b7f94f" formatted="false">停住</string>
+    <string name="tx_a1122f98" formatted="false">验证码已发出，等短信</string>
+    <string name="tx_a1451e0f" formatted="false">…，共 </string>
+    <string name="tx_a1faddfd" formatted="false">随便问一句</string>
+    <string name="tx_a20ab061" formatted="false">跑一次云端清单</string>
+    <string name="tx_a25be09d" formatted="false">保存端口并重开</string>
+    <string name="tx_a26d1460" formatted="false">先选一个已导入的 GGUF 模型</string>
+    <string name="tx_a2830a88" formatted="false">重装失败：看上面日志，确认网络与镜像源后重试</string>
+    <string name="tx_a6821857" formatted="false">未监听</string>
+    <string name="tx_a72a9ed7" formatted="false">读一次</string>
+    <string name="tx_a75f7665" formatted="false">Linux 沙箱</string>
+    <string name="tx_a83a428f" formatted="false">● 空闲</string>
+    <string name="tx_a87595f9" formatted="false">6 位数字</string>
+    <string name="tx_a8f37df4" formatted="false">自定义下载链接</string>
+    <string name="tx_a9997318" formatted="false">GGUF 放在公共目录 </string>
+    <string name="tx_a9fc6f2f" formatted="false">正在 </string>
+    <string name="tx_aa76a23a" formatted="false">模型偏大，加载后可能卡顿</string>
+    <string name="tx_aadb83b2" formatted="false">线程数</string>
+    <string name="tx_acb7ed5c" formatted="false">还没有。上面写几步保存下来，就能一键跑或定时跑。</string>
+    <string name="tx_ae577ece" formatted="false">（已停用）</string>
+    <string name="tx_aeadd7b2" formatted="false">字符（可不填，之后换成图片）</string>
+    <string name="tx_af1f045b" formatted="false"> · 没开协作</string>
+    <string name="tx_b0bf14a8" formatted="false">已有工作流</string>
+    <string name="tx_b152d341" formatted="false">换一个</string>
+    <string name="tx_b26eb8c0" formatted="false">已存 cookie（</string>
+    <string name="tx_b2b2c8e5" formatted="false"> · 达标</string>
+    <string name="tx_b2f2364e" formatted="false">等宽默认</string>
+    <string name="tx_b2f28a22" formatted="false">● 运行中</string>
+    <string name="tx_b63585d6" formatted="false">重置为内置</string>
+    <string name="tx_b736eacc" formatted="false">两项都绿才谈得上连设备</string>
+    <string name="tx_b768f17f" formatted="false">长按正文选择片段，松手后可复制；整条复制点右上角。</string>
+    <string name="tx_b7f18f1e" formatted="false">模型过大，加载后手机可能卡到没法用</string>
+    <string name="tx_b9fbdeb2" formatted="false">要写入的值</string>
+    <string name="tx_ba2a95b6" formatted="false">先加载模型</string>
+    <string name="tx_ba769ad1" formatted="false">← 返回</string>
+    <string name="tx_bad2f54e" formatted="false">开启步骤</string>
+    <string name="tx_bc083719" formatted="false">纯 CPU</string>
+    <string name="tx_bc64a057" formatted="false">当前占用 </string>
+    <string name="tx_be58e065" formatted="false">还没开：开关没打开之前，屏幕类工具会跑不通。</string>
+    <string name="tx_bebd3740" formatted="false">量化建议 Q4_K_M：7B 约 4.4GB 内存，3B 约 2GB，1.5B 约 1.2GB。手机建议 1.5B～3B。</string>
+    <string name="tx_bec4568c" formatted="false">GPU 层数</string>
+    <string name="tx_bef6b130" formatted="false">执行中…</string>
+    <string name="tx_bf4a564e" formatted="false">把屏幕操作开起来</string>
+    <string name="tx_bf6a1ea5" formatted="false">文件太多了，一个包最多 %1$s 个</string>
+    <string name="tx_bf77571e" formatted="false">设备发现</string>
+    <string name="tx_bf8b66f3" formatted="false">接活端口</string>
+    <string name="tx_bfe68d58" formatted="false">链接</string>
+    <string name="tx_c054d288" formatted="false">开热点那台记得把这里也设成同一个端口；连上以后扫描不到就先看是不是被系统挡了局域网访问权限。</string>
+    <string name="tx_c15c91c7" formatted="false">AES-128-CBC / MD5 / SHA-1 自检通过</string>
+    <string name="tx_c1d8772d" formatted="false">采样中…</string>
+    <string name="tx_c2da1104" formatted="false">凭据库解不开（旧版本的密钥对不上）：重新填一次 API Key 并保存，会自动归档旧库并重建</string>
+    <string name="tx_c46cea79" formatted="false">查账号</string>
+    <string name="tx_c46e3a43" formatted="false">还没有 cookie</string>
+    <string name="tx_c4a9649c" formatted="false">已装</string>
+    <string name="tx_c5575b3f" formatted="false">保存修改</string>
+    <string name="tx_c6a97bb0" formatted="false">同步中…</string>
+    <string name="tx_c6c9da2b" formatted="false">测试结果</string>
+    <string name="tx_c76cfefe" formatted="false">端口</string>
+    <string name="tx_c8c4c57f" formatted="false">[不支持]当前设备是 32 位（armeabi-v7a），内置 Ubuntu 沙箱只支持 arm64 设备</string>
+    <string name="tx_c9bf0b88" formatted="false">温度</string>
+    <string name="tx_ca160a43" formatted="false">通道设置</string>
+    <string name="tx_ca4ec8a5" formatted="false">没收到应答</string>
+    <string name="tx_cadff0ad" formatted="false">打开全文，长按选择要复制的片段</string>
+    <string name="tx_cbb46593" formatted="false">取消编辑</string>
+    <string name="tx_cca228c7" formatted="false">未接活</string>
+    <string name="tx_cd08d0ab" formatted="false">自动 = 核心数减 2，最多 6；核越多数值越高越费电</string>
+    <string name="tx_cd0b9aca" formatted="false">删除选中</string>
+    <string name="tx_cdd9c35a" formatted="false">协作不通：</string>
+    <string name="tx_cde0ad30" formatted="false">复制结果</string>
+    <string name="tx_cded648b" formatted="false">未注入</string>
+    <string name="tx_ce26955a" formatted="false">知道了</string>
+    <string name="tx_ce813e67" formatted="false">提示词标签</string>
+    <string name="tx_cefac3f1" formatted="false">本体、终端会话、执行进程分开算，1.5 秒刷新一次</string>
+    <string name="tx_cf7ceff5" formatted="false">普通用户模式下，AI 靠无障碍服务读屏、点屏：能看清当前页的控件和坐标，也能代你点、滑、长按、输入。</string>
+    <string name="tx_d0771a42" formatted="false">分类</string>
+    <string name="tx_d0ee51ab" formatted="false">包管理</string>
+    <string name="tx_d11f8934" formatted="false">这一步要做什么、在哪做、要什么格式的结果</string>
+    <string name="tx_d1849aef" formatted="false">当前状态：已开启</string>
+    <string name="tx_d1e4a7e9" formatted="false">不可用</string>
+    <string name="tx_d2406fdf" formatted="false">用手机上的 GGUF，不用填 base_url 与 Key</string>
+    <string name="tx_d37a76e7" formatted="false">没扫到设备（不同网段，或对面没开发现）</string>
+    <string name="tx_d3ce40d8" formatted="false">区域</string>
+    <string name="tx_d424955f" formatted="false"> · 可接活</string>
+    <string name="tx_d5bd674d" formatted="false">发验证码</string>
+    <string name="tx_d70c841a" formatted="false">（已关）</string>
+    <string name="tx_d741c7ad" formatted="false">本地模型不用填 base_url 与 API key：聊天时直接在手机上跑选的 GGUF</string>
+    <string name="tx_d765fbf8" formatted="false">端口要两台设备一致才能互相发现；并发是同时传输的任务数上限</string>
+    <string name="tx_d7ec2d3f" formatted="false">名称</string>
+    <string name="tx_d82daace" formatted="false">存进台账</string>
+    <string name="tx_d8c3355e" formatted="false">设备清单</string>
+    <string name="tx_d8f4952f" formatted="false">云端拉一次，再扫局域网把 IP 补上；离线也能用 IP + token 直连</string>
+    <string name="tx_da59f6c4" formatted="false">按分类自检，每加一个功能就多一条测试</string>
+    <string name="tx_da9de6ce" formatted="false">1.0 = 关闭；复读机现象明显时调到 1.1～1.2</string>
+    <string name="tx_dae9a428" formatted="false">启用的片段每轮都拼进系统提示；插入只影响这一次发言</string>
+    <string name="tx_db28b874" formatted="false">各家内部 code 不一样，这里只存统一档位，调用时由平台自己映射</string>
+    <string name="tx_db75b769" formatted="false">仅一次</string>
+    <string name="tx_dc7f3530" formatted="false">已开始监听</string>
+    <string name="tx_dcc25a21" formatted="false">手机本地 GGUF，不用 base_url 与 Key</string>
+    <string name="tx_de027789" formatted="false">快捷命令</string>
+    <string name="tx_dec42aa1" formatted="false">本机服务端</string>
+    <string name="tx_def9e98b" formatted="false">收起</string>
+    <string name="tx_e0423a8e" formatted="false">新建表情</string>
+    <string name="tx_e2c0dc29" formatted="false">（无）</string>
+    <string name="tx_e2df88e7" formatted="false">用 code 换 token</string>
+    <string name="tx_e33ff6aa" formatted="false">配对</string>
+    <string name="tx_e4554821" formatted="false">刚才那一步没跑通，是因为无障碍服务没开：AI 拿不到控件坐标，也点不了屏幕。</string>
+    <string name="tx_e4b51d5c" formatted="false">运行状态</string>
+    <string name="tx_e5210db4" formatted="false">并发改成 %1$s 路</string>
+    <string name="tx_e5f71fc3" formatted="false">搜索</string>
+    <string name="tx_e655a410" formatted="false">安装</string>
+    <string name="tx_e80c310e" formatted="false">缓存</string>
+    <string name="tx_ea0844f0" formatted="false">端口改成 %1$s，重开开关后生效</string>
+    <string name="tx_ea4a363d" formatted="false">未开启</string>
+    <string name="tx_eb76c062" formatted="false">短信验证码</string>
+    <string name="tx_ebfb5648" formatted="false">目录太大，处理上限 64MB</string>
+    <string name="tx_ec361222" formatted="false">跑着呢…</string>
+    <string name="tx_ecb7e8a2" formatted="false">改了立刻生效，不用重启</string>
+    <string name="tx_ed22b17a" formatted="false">一键拓展环境</string>
+    <string name="tx_ed275d6f" formatted="false">开发者工具</string>
+    <string name="tx_eea76d6e" formatted="false">面对面团队协作</string>
+    <string name="tx_eeb83a34" formatted="false">32 位十六进制</string>
+    <string name="tx_eedbfbcf" formatted="false">非 PTY 会话：命令输出、打断、stdin 输入都可靠；Tab 补全与方向键在需要行编辑的程序里可能只作普通字符。</string>
+    <string name="tx_eeeb0354" formatted="false">去开启无障碍</string>
+    <string name="tx_ef121b59" formatted="false">重新测速</string>
+    <string name="tx_ef29d483" formatted="false">重开终端</string>
+    <string name="tx_f02de109" formatted="false">屏幕操作</string>
+    <string name="tx_f0bd413c" formatted="false">内置 Ubuntu（proot）· 终端直连 · 一键装开发环境</string>
+    <string name="tx_f147798d" formatted="false">A2A 1.0 接口。两个方向：本机当客户端调用其他节点，本机当服务端接收任务。</string>
+    <string name="tx_f182d08f" formatted="false">报文加解密</string>
+    <string name="tx_f18fd725" formatted="false">没读到（设备离线 / token 不对 / 属性号错）</string>
+    <string name="tx_f26ef914" formatted="false">下载</string>
+    <string name="tx_f28e75cf" formatted="false"> 成功</string>
+    <string name="tx_f32ae05c" formatted="false">扫局域网</string>
+    <string name="tx_f45c4e65" formatted="false">未安装</string>
+    <string name="tx_f4c9c9c5" formatted="false">网易云支持手机验证码登录；其它平台把浏览器里登录后的 cookie 整行粘进来，都存加密库，不落明文</string>
+    <string name="tx_f4eec2ab" formatted="false">正在查询 apt 索引…</string>
+    <string name="tx_f6135cae" formatted="false">自己加的条目和换过的图片都会删掉，内置那套恢复原样。</string>
+    <string name="tx_f6c58938" formatted="false">只从累计概率前 p 的词里挑，越小越稳</string>
+    <string name="tx_f729e121" formatted="false">对端 token（没有就留空）</string>
+    <string name="tx_f73d0c19" formatted="false"> 失败</string>
+    <string name="tx_f745e83a" formatted="false">先走局域网（500ms 级），不通再回落云</string>
+    <string name="tx_f7552158" formatted="false">打开授权页</string>
+    <string name="tx_f79de08c" formatted="false">比如：摸鱼</string>
+    <string name="tx_f7ba9c52" formatted="false">同时只让一个平台说话：开着且排在最前的那个才接活，上移就是换主平台</string>
+    <string name="tx_f8f0ec92" formatted="false">台账还是空的：先登录同步，或手动加一台</string>
+    <string name="tx_f91d273b" formatted="false">未知原因</string>
+    <string name="tx_f98a8254" formatted="false">平台优先级</string>
+    <string name="tx_fb085f04" formatted="false">填 GGUF 直链即可（ModelScope / hf-mirror / 自己的服务器都行），文件名取链接最后一段</string>
+    <string name="tx_fb34db95" formatted="false">对端（本机当客户端）</string>
+    <string name="tx_fbb1d2ab" formatted="false">超时（毫秒）</string>
+    <string name="tx_fc36d633" formatted="false">已备</string>
+    <string name="tx_fc8f9040" formatted="false">（外部存储不可用，已退回私有目录）</string>
+    <string name="tx_fc960862" formatted="false">连通性测试（发「测试测试」）</string>
+    <string name="tx_fd4bef54" formatted="false">诊断</string>
+    <string name="tx_fda7a982" formatted="false">复制部分消息</string>
+    <string name="tx_fed34fcc" formatted="false">对话里每轮允许生成的上限；纯 CPU 时 1024 以上会明显慢，长文写作再调大</string>
+    <string name="tx_3aaccc6e" formatted="false">当前机型识别：%1$s</string>
+    <string name="tx_5cd47992" formatted="false">%1$s 天</string>
+    <string name="tx_6adeb861" formatted="false">长期记忆 · %1$s 条</string>
+    <string name="tx_8bdbcde3" formatted="false">%1$s 个档位，决定滑块长度</string>
+    <string name="tx_8cae3683" formatted="false">档位 %1$s</string>
+    <string name="tx_935695b1" formatted="false">已识别 %1$s 个字体文件</string>
+    <string name="tx_9f8beb63" formatted="false">应用 %1$s 条</string>
+    <string name="tx_a6f0b1dc" formatted="false">%1$s 秒</string>
+    <string name="tx_b4d10c2d" formatted="false">%1$s dp/级</string>
+    <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
+    <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
+    <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
+    <string name="tx_0d011d38" formatted="false">已加载：%1$s（$desc · 训练上下文 $nctx）</string>
+    <string name="tx_12a1e1ea" formatted="false">保留原语言：%1$s\n</string>
+    <string name="tx_136b30f6" formatted="false">应用内命令 code=%1$s：</string>
+    <string name="tx_1488e82c" formatted="false">扫到 %1$s 台</string>
+    <string name="tx_19dd9c89" formatted="false">正在监听端口 %1$s</string>
+    <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
+    <string name="tx_1f6f6b55" formatted="false">已把旧目录里的 %1$s 个模型迁到 ${ModelHu%2$s</string>
+    <string name="tx_215a9629" formatted="false">文件数：%1$s\n</string>
+    <string name="tx_238b0ba6" formatted="false">输出偏好长度：%1$s 字</string>
+    <string name="tx_2408091c" formatted="false">当前厂商是否支持 = %1$s</string>
+    <string name="tx_2a8058ac" formatted="false">可用空间：%1$s MB\n</string>
+    <string name="tx_2b10449e" formatted="false">占位符：%2$s\n渲染结果：%1$s\n</string>
+    <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
+    <string name="tx_2cf379fe" formatted="false">已删除 %1$s 个会话</string>
+    <string name="tx_3108ce07" formatted="false"> · 内存 %1$s（可用 ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" formatted="false">保留图片：%1$s / 有效期：${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" formatted="false">应用目录：%1$s\n</string>
+    <string name="tx_3c1c4b90" formatted="false">GPU 层数已设为 %1$s，重新加载模型后生效</string>
+    <string name="tx_3ee9b024" formatted="false">节点 %1$s 个，开始测速…</string>
+    <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
+    <string name="tx_430495aa" formatted="false">可用参数 %1$s 个：</string>
+    <string name="tx_45b8d0ba" formatted="false">请先看完说明（%1$s）</string>
+    <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
+    <string name="tx_52280f7d" formatted="false">优化失败：%1$s</string>
+    <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
+    <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
+    <string name="tx_642e64e8" formatted="false">已删除：%1$s</string>
+    <string name="tx_651eb991" formatted="false">完成：%2$s token / %1$sms（约 $tps tok/s）</string>
+    <string name="tx_66a69bbf" formatted="false">正在下载 %1$s：</string>
+    <string name="tx_67957ccd" formatted="false">确认删除 %1$s？（${hum%2$s</string>
+    <string name="tx_68e55fc5" formatted="false">可接活 %1$s</string>
+    <string name="tx_697e775f" formatted="false">将保存为：%1$s</string>
+    <string name="tx_69d06c37" formatted="false">第 %1$s 步</string>
+    <string name="tx_70bc66d5" formatted="false">启用 %2$s 条 · 共 %1$s 条</string>
+    <string name="tx_70e28d57" formatted="false">系统：Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
+    <string name="tx_7a43344e" formatted="false">%2$s → 不可用（%1$s）</string>
+    <string name="tx_7a776792" formatted="false">合计 %1$s · ${s.procs} %2$s进程，进程级分不出插件单项</string>
+    <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
+    <string name="tx_803ae150" formatted="false">当前开关：think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" formatted="false">连通性测试通过：%1$s 收到 $%2$s字（$rc token，约 $tps tok/s）\n回复摘要：${txt.take%3$s</string>
+    <string name="tx_829cb2a2" formatted="false">%1$s 已选</string>
+    <string name="tx_82a30a52" formatted="false">达标阈值：TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" formatted="false">API Key 没存进加密库：%1$s</string>
+    <string name="tx_86c68249" formatted="false">当前会话 %5$s：空=%1$s 文字=${cur.text%2$sr.images.size} 附件=${%3$s%4$s</string>
+    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s 视为达标，达标者取最快</string>
+    <string name="tx_89e93f24" formatted="false">并行测速中（%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" formatted="false">✓ %1$s · 模型认出纯黑 · ${v%2$s</string>
+    <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
+    <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
+    <string name="tx_957699dd" formatted="false">，占本机总内存 %1$s 的 ${(ratio * 100)%2$s</string>
+    <string name="tx_960ae310" formatted="false">还没有模型文件。点上面导入，或用文件管理器把 .gguf 放进 %1$s/。</string>
+    <string name="tx_983d58f9" formatted="false">掉帧 %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" formatted="false">接口：%1$s</string>
+    <string name="tx_9fc79d7a" formatted="false">存储空间不足：可用 %1$s，至少要留 300MB</string>
+    <string name="tx_a33a9bb0" formatted="false">设备：%1$s</string>
+    <string name="tx_aab79711" formatted="false">当前是否用户自选 = %1$s</string>
+    <string name="tx_ac635e14" formatted="false">步骤（最多 %1$s 步）</string>
+    <string name="tx_b6e53767" formatted="false">存放位置：%1$s</string>
+    <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
+    <string name="tx_b82d7fd4" formatted="false">文件：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" formatted="false">确认删除 %1$s 个</string>
+    <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
+    <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
+    <string name="tx_c3af4af2" formatted="false">模型 %1$s 通 / 耗时 ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" formatted="false">不可用（%1$s）</string>
+    <string name="tx_c83a29fe" formatted="false">设备：%1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" formatted="false">草稿目录：%1$s\n</string>
+    <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
+    <string name="tx_cb625f26" formatted="false">当前 providerId = %1$s</string>
+    <string name="tx_cbb1ac45" formatted="false">厂商：%1$s / 模型：$model\n</string>
+    <string name="tx_cbdacbb2" formatted="false">已导入：%1$s（${hum%2$s</string>
+    <string name="tx_cf954d3a" formatted="false">自定义方向长度：%1$s 字\n</string>
+    <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
+    <string name="tx_d1977545" formatted="false">包：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" formatted="false">失败：%1$s</string>
+    <string name="tx_d9366fc9" formatted="false">内置兜底节点 %1$s 个仍可用</string>
+    <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
+    <string name="tx_e03b4047" formatted="false">default 目录存在 = %1$s</string>
+    <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
+    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" formatted="false">删除失败：%1$s</string>
+    <string name="tx_f8e3d0b7" formatted="false">内容太长（上限 %1$s 字），先精简再优化</string>
+    <string name="tx_f934698e" formatted="false">所选模型 %1$s</string>
+    <string name="tx_fe42d9b6" formatted="false">GPU 层 %1$s，驱动不支持时回退 CPU</string>
+    <string name="tx_fee8e550" formatted="false">空间不足：需要 %1$s，可用 ${human(fr%2$s</string>
+    <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
+    <string name="tx_13853b5a" formatted="false">段间距</string>
+    <string name="tx_279a3789" formatted="false">代码字号</string>
+    <string name="tx_3d86509a" formatted="false">卡片圆角</string>
+    <string name="tx_48f369a7" formatted="false">回复字号</string>
+    <string name="tx_5a3701e9" formatted="false">正文字号</string>
+    <string name="tx_6ca4489d" formatted="false">行距</string>
+    <string name="tx_713fd45a" formatted="false">折射强度</string>
+    <string name="tx_b76fe1f2" formatted="false">左右内边距</string>
+    <string name="tx_c73258a2" formatted="false">悬浮窗高度</string>
+    <string name="tx_cae01fea" formatted="false">悬浮窗宽度</string>
+    <string name="tx_cd758e7e" formatted="false">列表缩进</string>
+    <string name="tx_d73f1ed6" formatted="false">高光强度</string>
+    <string name="tx_e013ea26" formatted="false">整窗透明度</string>
+    <string name="tx_fa5d97dd" formatted="false">卡片不透明度</string>
+    <string name="tx_fd5f796f" formatted="false">乳白遮罩</string>
+    <string name="tx_06e12adc" formatted="false">输出回调不可用（release 混淆），请升级 APK</string>
+    <string name="tx_0cac8c4c" formatted="false">链接要以 http:// 或 https:// 开头</string>
+    <string name="tx_159a3a80" formatted="false">更新镜像</string>
+    <string name="tx_2111ccbb" formatted="false">已取消</string>
+    <string name="tx_2acb7b31" formatted="false">工作区模式</string>
+    <string name="tx_2d455ce5" formatted="false">下载中</string>
+    <string name="tx_2dc1a7bf" formatted="false">● 环境已就绪</string>
+    <string name="tx_34b2bda9" formatted="false">● 32 位设备不支持内置 Ubuntu（仅 arm64）</string>
+    <string name="tx_38ce27d8" formatted="false">下一步</string>
+    <string name="tx_4649c53d" formatted="false">有高权限，可一键激活</string>
+    <string name="tx_4885f20e" formatted="false">[包名不合法]只允许字母、数字与 . - + _</string>
+    <string name="tx_4b72c2b7" formatted="false">0（纯 CPU）</string>
+    <string name="tx_5614002d" formatted="false">草稿存储</string>
+    <string name="tx_5c362d71" formatted="false">原生搜索注入</string>
+    <string name="tx_6e081357" formatted="false">思考规则</string>
+    <string name="tx_73500eb7" formatted="false">跳过 · </string>
+    <string name="tx_76d88dfc" formatted="false">提示超出上下文</string>
+    <string name="tx_7e50d092" formatted="false">工具权限</string>
+    <string name="tx_9719fec8" formatted="false">已下载</string>
+    <string name="tx_a46ee2bc" formatted="false">[先装 Ubuntu 环境]点上面「安装环境」</string>
+    <string name="tx_ac6913a4" formatted="false">无应答</string>
+    <string name="tx_af0a9b8b" formatted="false">● 环境已装，终端待连接</string>
+    <string name="tx_b52f2284" formatted="false">测试对话</string>
+    <string name="tx_b967fdef" formatted="false">设备信息</string>
+    <string name="tx_bd5451bc" formatted="false">镜像清单</string>
+    <string name="tx_c4952839" formatted="false">花括号参数</string>
+    <string name="tx_c5d9c84c" formatted="false">环境自检</string>
+    <string name="tx_cb201444" formatted="false">一键卸载重装</string>
+    <string name="tx_e22c257e" formatted="false">镜像测速</string>
+    <string name="tx_ecfc4318" formatted="false">命令挂载</string>
+    <string name="tx_efcc3f48" formatted="false">技能 @ 解析</string>
+    <string name="tx_f348d6c3" formatted="false">聊天记录检索</string>
+    <string name="tx_f47f7cb9" formatted="false">99（全部层）</string>
+    <string name="tx_f65125e4" formatted="false">记忆整理</string>
+    <string name="tx_fc7d3267" formatted="false">未探活</string>
+</resources>

@@ -1,0 +1,807 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:26
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+package b.ai.ui.widget
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import b.ai.agent.tool.Tools
+
+/** 自绘加号，不引图标库 */
+@Composable
+fun IcPlus(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx - r, cy), Offset(cx + r, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r), w, StrokeCap.Round)
+    }
+} //矢量加号
+
+/** 自绘汉堡按钮 */
+@Composable
+fun IcMenu(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        listOf(-r * 0.72f, 0f, r * 0.72f).forEach { dy ->
+            drawLine(color, Offset(cx - r, cy + dy), Offset(cx + r, cy + dy), w, StrokeCap.Round)
+        }
+    }
+} //矢量汉堡
+
+/** 自绘关闭叉号 */
+@Composable
+fun IcClose(color: Color, side: Dp = 16.dp, stroke: Dp = 1.8.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx - r, cy - r), Offset(cx + r, cy + r), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + r, cy - r), Offset(cx - r, cy + r), w, StrokeCap.Round)
+    }
+} //矢量叉号
+
+/** 自绘返回箭头 */
+@Composable
+fun IcBack(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx - r * 0.6f, cy), Offset(cx + r, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx - r * 0.6f, cy), Offset(cx + r * 0.3f, cy - r * 0.62f), w, StrokeCap.Round)
+        drawLine(color, Offset(cx - r * 0.6f, cy), Offset(cx + r * 0.3f, cy + r * 0.62f), w, StrokeCap.Round)
+    }
+} //矢量返回箭头
+
+/** 自绘右箭头（前进），引导页的圆形下一步按钮用它 */
+@Composable
+fun IcArrowRight(color: Color, side: Dp = 20.dp, stroke: Dp = 2.1.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx - r, cy), Offset(cx + r * 0.72f, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + r * 0.72f, cy), Offset(cx + r * 0.1f, cy - r * 0.62f), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + r * 0.72f, cy), Offset(cx + r * 0.1f, cy + r * 0.62f), w, StrokeCap.Round)
+    }
+} //矢量右箭头
+
+/** 自绘全屏展开：四角折线，用在输入区右下角开全屏编辑 */
+@Composable
+fun IcExpand(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val s = size.minDimension
+        val p = w / 2
+        val l = s * 0.34f
+        //四角各画一条折线，转角朝外
+        drawLine(color, Offset(p, p + l), Offset(p, p), w, StrokeCap.Round)
+        drawLine(color, Offset(p, p), Offset(p + l, p), w, StrokeCap.Round)
+        drawLine(color, Offset(s - p - l, p), Offset(s - p, p), w, StrokeCap.Round)
+        drawLine(color, Offset(s - p, p), Offset(s - p, p + l), w, StrokeCap.Round)
+        drawLine(color, Offset(p, s - p - l), Offset(p, s - p), w, StrokeCap.Round)
+        drawLine(color, Offset(p, s - p), Offset(p + l, s - p), w, StrokeCap.Round)
+        drawLine(color, Offset(s - p - l, s - p), Offset(s - p, s - p), w, StrokeCap.Round)
+        drawLine(color, Offset(s - p, s - p), Offset(s - p, s - p - l), w, StrokeCap.Round)
+    }
+} //矢量全屏展开
+
+/** 自绘纸飞机（实心），发送键用 */
+@Composable
+fun IcSend(color: Color, side: Dp = 17.dp) {
+    Canvas(Modifier.size(side)) {
+        val s = size.minDimension
+        //按 Material send 图标 24×24 的轮廓缩放，机头朝右
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(s * 0.084f, s * 0.875f)
+            lineTo(s * 0.958f, s * 0.5f)
+            lineTo(s * 0.084f, s * 0.125f)
+            lineTo(s * 0.083f, s * 0.417f)
+            lineTo(s * 0.708f, s * 0.5f)
+            lineTo(s * 0.083f, s * 0.583f)
+            close()
+        }
+        drawPath(p, color)
+    }
+} //矢量纸飞机
+/** 终止图标：2×2 四个圆角小方块拼成一个方块，忙的时候替换发送键 */
+@Composable
+fun IcStop4(color: Color, side: Dp = 13.dp) {
+    Canvas(Modifier.size(side)) {
+        val s = size.minDimension
+        val gap = s * 0.14f
+        val cell = (s - gap) / 2f
+        val r = androidx.compose.ui.geometry.CornerRadius(cell * 0.22f)
+        for (row in 0..1) {
+            for (col in 0..1) {
+                val x = col * (cell + gap)
+                val y = row * (cell + gap)
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(x, y),
+                    size = androidx.compose.ui.geometry.Size(cell, cell),
+                    cornerRadius = r
+                )
+            }
+        }
+    }
+} //四方块终止图标
+/** 终止图标：单个实心圆角方块，比 2×2 拼块更像标准停止键 */
+@Composable
+fun IcStopSquare(color: Color, side: Dp = 13.dp) {
+    Canvas(Modifier.size(side)) {
+        val s = size.minDimension
+        drawRoundRect(
+            color = color,
+            size = androidx.compose.ui.geometry.Size(s, s),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(s * 0.16f)
+        )
+    }
+} //方块终止图标
+/** 自绘铅笔：斜笔杆 + 底端笔尖，队列条上「取回编辑」用 */
+@Composable
+fun IcPencil(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val s = size.minDimension
+        //笔杆两条平行斜线，笔尖在左下角收成一个点，笔尾在右上角留一道平口
+        drawLine(color, Offset(s * 0.24f, s * 0.90f), Offset(s * 0.90f, s * 0.24f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.10f, s * 0.76f), Offset(s * 0.76f, s * 0.10f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.10f, s * 0.76f), Offset(s * 0.09f, s * 0.91f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.24f, s * 0.90f), Offset(s * 0.09f, s * 0.91f), w, StrokeCap.Round)
+        drawLine(color, Offset(s * 0.76f, s * 0.10f), Offset(s * 0.90f, s * 0.24f), w, StrokeCap.Round)
+    }
+} //矢量铅笔
+
+/** 自绘思考灯泡（实心圆 + 底座），用于思考过程标记 */
+@Composable
+fun IcSpark(color: Color, side: Dp = 14.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = size.minDimension
+        drawCircle(color, radius = w * 0.26f, center = Offset(w / 2, w * 0.36f))
+        drawLine(
+            color,
+            Offset(w * 0.36f, w * 0.72f),
+            Offset(w * 0.64f, w * 0.72f),
+            w * 0.12f,
+            StrokeCap.Round
+        )
+        drawLine(
+            color,
+            Offset(w * 0.42f, w * 0.86f),
+            Offset(w * 0.58f, w * 0.86f),
+            w * 0.1f,
+            StrokeCap.Round
+        )
+    }
+} //矢量思考标记
+
+/** 自绘齿轮（设置） */
+@Composable
+fun IcGear(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val c = Offset(size.width / 2, size.height / 2)
+        val r = size.minDimension / 2 - w
+        drawCircle(color, radius = r * 0.5f, center = c, style = Stroke(w))
+        for (i in 0 until 8) {
+            val a = Math.toRadians(i * 45.0)
+            val cs = kotlin.math.cos(a).toFloat()
+            val sn = kotlin.math.sin(a).toFloat()
+            drawLine(
+                color,
+                Offset(c.x + cs * r * 0.7f, c.y + sn * r * 0.7f),
+                Offset(c.x + cs * r, c.y + sn * r),
+                w,
+                StrokeCap.Round
+            )
+        }
+    }
+} //矢量齿轮
+
+/** 自绘放大镜（搜索） */
+@Composable
+fun IcSearch(color: Color, side: Dp = 15.dp, stroke: Dp = 1.8.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val c = Offset(size.width / 2 - r * 0.12f, size.height / 2 - r * 0.12f)
+        drawCircle(color, radius = r * 0.62f, center = c, style = Stroke(w))
+        drawLine(
+            color,
+            Offset(c.x + r * 0.45f, c.y + r * 0.45f),
+            Offset(c.x + r * 0.95f, c.y + r * 0.95f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量放大镜
+
+/** 自绘导出（下箭头 + 底座） */
+@Composable
+fun IcExport(color: Color, side: Dp = 18.dp, stroke: Dp = 1.9.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val cx = size.width / 2
+        val cy = size.height / 2
+        drawLine(color, Offset(cx, cy - r), Offset(cx, cy + r * 0.45f), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, cy + r * 0.45f), Offset(cx - r * 0.42f, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, cy + r * 0.45f), Offset(cx + r * 0.42f, cy), w, StrokeCap.Round)
+        drawLine(color, Offset(cx - r, cy + r), Offset(cx + r, cy + r), w, StrokeCap.Round)
+    }
+} //矢量导出
+
+/** 自绘相册/图片（山 + 太阳） */
+@Composable
+fun IcImage(color: Color, side: Dp = 15.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val pad = w
+        drawRoundRect(
+            color,
+            topLeft = Offset(pad, pad),
+            size = androidx.compose.ui.geometry.Size(size.width - pad * 2, size.height - pad * 2),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.18f),
+            style = Stroke(w)
+        )
+        drawCircle(
+            color,
+            radius = size.width * 0.09f,
+            center = Offset(size.width * 0.66f, size.height * 0.34f)
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.18f, size.height * 0.74f),
+            Offset(size.width * 0.44f, size.height * 0.48f),
+            w,
+            StrokeCap.Round
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.44f, size.height * 0.48f),
+            Offset(size.width * 0.78f, size.height * 0.74f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量图片
+
+/** 自绘话筒 */
+@Composable
+fun IcMic(color: Color, side: Dp = 15.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        drawRoundRect(
+            color,
+            topLeft = Offset(cx - size.width * 0.16f, size.height * 0.12f),
+            size = androidx.compose.ui.geometry.Size(size.width * 0.32f, size.height * 0.44f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.16f),
+            style = Stroke(w)
+        )
+        drawLine(
+            color,
+            Offset(cx, size.height * 0.56f),
+            Offset(cx, size.height * 0.84f),
+            w,
+            StrokeCap.Round
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.32f, size.height * 0.86f),
+            Offset(size.width * 0.68f, size.height * 0.86f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量话筒
+
+/** 自绘键盘（语音模式里切回文字的入口） */
+@Composable
+fun IcKeyboard(color: Color, side: Dp = 15.dp, stroke: Dp = 1.4.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = androidx.compose.ui.geometry.CornerRadius(size.width * 0.14f)
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.06f, size.height * 0.26f),
+            size = androidx.compose.ui.geometry.Size(size.width * 0.88f, size.height * 0.48f),
+            cornerRadius = r,
+            style = Stroke(w)
+        )
+        //三颗按键点 + 底部空格条，小尺寸下也能认出是键盘
+        val dot = size.width * 0.07f
+        listOf(0.24f, 0.5f, 0.76f).forEach { fx ->
+            drawCircle(color, dot, Offset(size.width * fx, size.height * 0.42f), style = Stroke(w * 0.9f))
+        }
+        drawLine(
+            color,
+            Offset(size.width * 0.32f, size.height * 0.6f),
+            Offset(size.width * 0.68f, size.height * 0.6f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量键盘
+
+/** 自绘文件（折角纸） */
+@Composable
+fun IcFile(color: Color, side: Dp = 15.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val p = w
+        val r = size.width * 0.22f
+        drawLine(color, Offset(size.width * 0.28f, size.height * 0.14f), Offset(size.width * 0.62f, size.height * 0.14f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.62f, size.height * 0.14f), Offset(size.width * 0.62f + r, size.height * 0.14f + r), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.62f + r, size.height * 0.14f + r), Offset(size.width * 0.62f + r, size.height * 0.86f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.62f + r, size.height * 0.86f), Offset(size.width * 0.28f, size.height * 0.86f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.28f, size.height * 0.86f), Offset(size.width * 0.28f, size.height * 0.14f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.36f, size.height * 0.52f), Offset(size.width * 0.62f, size.height * 0.52f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.36f, size.height * 0.66f), Offset(size.width * 0.62f, size.height * 0.66f), w, StrokeCap.Round)
+        if (p > 0) Unit
+    }
+} //矢量文件
+
+/** 自绘滑块组（模型参数 tab） */
+@Composable
+fun IcSliders(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val x0 = size.width * 0.14f
+        val x1 = size.width * 0.86f
+        listOf(0.26f to 0.62f, 0.5f to 0.36f, 0.74f to 0.56f).forEach { (y, kx) ->
+            drawLine(color, Offset(x0, size.height * y), Offset(x1, size.height * y), w, StrokeCap.Round)
+            drawCircle(color, radius = size.width * 0.11f, center = Offset(size.width * kx, size.height * y))
+        }
+    }
+} //矢量滑块
+
+/** 自绘对话气泡（对话 tab） */
+@Composable
+fun IcBubble(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        drawRoundRect(
+            color,
+            topLeft = Offset(w, size.height * 0.14f),
+            size = androidx.compose.ui.geometry.Size(size.width - w * 2, size.height * 0.56f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.24f),
+            style = Stroke(w)
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.34f, size.height * 0.7f),
+            Offset(size.width * 0.28f, size.height * 0.88f),
+            w,
+            StrokeCap.Round
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.28f, size.height * 0.88f),
+            Offset(size.width * 0.52f, size.height * 0.7f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量气泡
+
+/** 自绘盾牌（权限 tab） */
+@Composable
+fun IcShield(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.5f, size.height * 0.1f)
+            lineTo(size.width * 0.86f, size.height * 0.26f)
+            lineTo(size.width * 0.86f, size.height * 0.52f)
+            quadraticTo(size.width * 0.86f, size.height * 0.82f, size.width * 0.5f, size.height * 0.92f)
+            quadraticTo(size.width * 0.14f, size.height * 0.82f, size.width * 0.14f, size.height * 0.52f)
+            lineTo(size.width * 0.14f, size.height * 0.26f)
+            close()
+        }
+        drawPath(p, color, style = Stroke(w))
+    }
+} //矢量盾牌
+
+/** 自绘模块栅格（扩展 tab） */
+@Composable
+fun IcGrid(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val gap = size.width * 0.1f
+        val cell = (size.width - w * 2 - gap) / 2
+        listOf(0f to 0f, 1f to 0f, 0f to 1f, 1f to 1f).forEach { (ix, iy) ->
+            drawRoundRect(
+                color,
+                topLeft = Offset(w + ix * (cell + gap), w + iy * (cell + gap)),
+                size = androidx.compose.ui.geometry.Size(cell, cell),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cell * 0.3f),
+                style = Stroke(w)
+            )
+        }
+    }
+} //矢量栅格
+
+/** 自绘代码尖括号（工作区绑定入口） */
+@Composable
+fun IcCode(color: Color, side: Dp = 18.dp, stroke: Dp = 1.8.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val h = size.height
+        val left = size.width * 0.18f
+        val right = size.width * 0.82f
+        val midY = h / 2
+        drawLine(color, Offset(left + size.width * 0.18f, h * 0.22f), Offset(left, midY), w, StrokeCap.Round)
+        drawLine(color, Offset(left, midY), Offset(left + size.width * 0.18f, h * 0.78f), w, StrokeCap.Round)
+        drawLine(color, Offset(right - size.width * 0.18f, h * 0.22f), Offset(right, midY), w, StrokeCap.Round)
+        drawLine(color, Offset(right, midY), Offset(right - size.width * 0.18f, h * 0.78f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.58f, h * 0.18f), Offset(size.width * 0.42f, h * 0.82f), w, StrokeCap.Round)
+    }
+} //矢量尖括号
+
+/** 自绘立方体（构建卡） */
+@Composable
+fun IcCube(color: Color, side: Dp = 20.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        val top = size.height * 0.12f
+        val bottom = size.height * 0.86f
+        val leftX = size.width * 0.12f
+        val rightX = size.width * 0.88f
+        val upY = size.height * 0.36f
+        val lowY = size.height * 0.62f
+        drawLine(color, Offset(cx, top), Offset(rightX, upY), w, StrokeCap.Round)
+        drawLine(color, Offset(rightX, upY), Offset(rightX, lowY), w, StrokeCap.Round)
+        drawLine(color, Offset(rightX, lowY), Offset(cx, bottom), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, bottom), Offset(leftX, lowY), w, StrokeCap.Round)
+        drawLine(color, Offset(leftX, lowY), Offset(leftX, upY), w, StrokeCap.Round)
+        drawLine(color, Offset(leftX, upY), Offset(cx, top), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, top), Offset(cx, size.height * 0.46f), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, size.height * 0.46f), Offset(rightX, lowY), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, size.height * 0.46f), Offset(leftX, lowY), w, StrokeCap.Round)
+    }
+} //矢量立方体
+
+/** 自绘分层（计划卡） */
+@Composable
+fun IcLayers(color: Color, side: Dp = 20.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        listOf(0.24f, 0.48f, 0.72f).forEach { fy ->
+            val y = size.height * fy
+            drawLine(color, Offset(size.width * 0.1f, y), Offset(cx, y - size.height * 0.12f), w, StrokeCap.Round)
+            drawLine(color, Offset(cx, y - size.height * 0.12f), Offset(size.width * 0.9f, y), w, StrokeCap.Round)
+            drawLine(color, Offset(size.width * 0.9f, y), Offset(cx, y + size.height * 0.12f), w, StrokeCap.Round)
+            drawLine(color, Offset(cx, y + size.height * 0.12f), Offset(size.width * 0.1f, y), w, StrokeCap.Round)
+        }
+    }
+} //矢量分层
+
+/** 自绘列车（行程卡） */
+@Composable
+fun IcTrain(color: Color, side: Dp = 20.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val l = size.width * 0.22f
+        val r = size.width * 0.78f
+        val t = size.height * 0.12f
+        val b = size.height * 0.68f
+        drawRoundRect(
+            color,
+            topLeft = Offset(l, t),
+            size = androidx.compose.ui.geometry.Size(r - l, b - t),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.14f),
+            style = Stroke(w)
+        )
+        drawLine(color, Offset(l + (r - l) * 0.3f, size.height * 0.42f), Offset(r - (r - l) * 0.3f, size.height * 0.42f), w, StrokeCap.Round)
+        drawLine(color, Offset(l + (r - l) * 0.2f, b), Offset(l, size.height * 0.9f), w, StrokeCap.Round)
+        drawLine(color, Offset(r - (r - l) * 0.2f, b), Offset(r, size.height * 0.9f), w, StrokeCap.Round)
+    }
+} //矢量列车
+
+/** 自绘手指点击（操作助手卡） */
+@Composable
+fun IcTap(color: Color, side: Dp = 20.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width * 0.44f
+        val cy = size.height * 0.34f
+        val r = size.width * 0.16f
+        drawCircle(color, r, Offset(cx, cy), style = Stroke(w))
+        listOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f).forEach { (dx, dy) ->
+            drawLine(
+                color,
+                Offset(cx + dx * r * 1.6f, cy + dy * r * 1.6f),
+                Offset(cx + dx * r * 2.3f, cy + dy * r * 2.3f),
+                w,
+                StrokeCap.Round
+            )
+        }
+        drawLine(color, Offset(cx, cy + r * 1.8f), Offset(cx, size.height * 0.9f), w, StrokeCap.Round)
+    }
+} //矢量点击
+
+/** 自绘时钟（定时任务） */
+@Composable
+fun IcClock(color: Color, side: Dp = 20.dp, stroke: Dp = 1.7.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val r = size.minDimension / 2 - w
+        val c = Offset(size.width / 2, size.height / 2)
+        drawCircle(color, r, c, style = Stroke(w))
+        drawLine(color, c, Offset(c.x, c.y - r * 0.55f), w, StrokeCap.Round)
+        drawLine(color, c, Offset(c.x + r * 0.45f, c.y), w, StrokeCap.Round)
+    }
+} //矢量时钟
+
+/** 自绘人形（角色卡图标，替代 emoji） */
+@Composable
+fun IcPersona(color: Color, side: Dp = 18.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        val hr = size.width * 0.2f
+        drawCircle(color, hr, Offset(cx, size.height * 0.34f), style = Stroke(w))
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * 0.16f, size.height * 0.9f)
+            cubicTo(
+                size.width * 0.2f, size.height * 0.62f,
+                size.width * 0.8f, size.height * 0.62f,
+                size.width * 0.84f, size.height * 0.9f
+            )
+        }
+        drawPath(path, color, style = Stroke(w, cap = StrokeCap.Round))
+    }
+} //矢量人形
+
+/** 自绘字号图标：一个大 A 加一条底线，用作「外观」分类 */
+@Composable
+fun IcFont(color: Color, side: Dp = 17.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val top = size.height * 0.12f
+        val bottom = size.height * 0.78f
+        val half = size.width * 0.3f
+        val cx = size.width / 2
+        drawLine(color, Offset(cx - half, bottom), Offset(cx, top), w, StrokeCap.Round)
+        drawLine(color, Offset(cx + half, bottom), Offset(cx, top), w, StrokeCap.Round)
+        drawLine(
+            color,
+            Offset(cx - half * 0.55f, bottom - (bottom - top) * 0.34f),
+            Offset(cx + half * 0.55f, bottom - (bottom - top) * 0.34f),
+            w,
+            StrokeCap.Round
+        )
+        drawLine(
+            color,
+            Offset(size.width * 0.14f, size.height * 0.9f),
+            Offset(size.width * 0.86f, size.height * 0.9f),
+            w,
+            StrokeCap.Round
+        )
+    }
+} //矢量字号
+
+/** 自绘复制（两张叠起来的纸），用在群号右侧 */
+@Composable
+fun IcCopy(color: Color, side: Dp = 13.dp, stroke: Dp = 1.5.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val back = androidx.compose.ui.geometry.Size(size.width * 0.56f, size.height * 0.56f)
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.1f, size.height * 0.1f),
+            size = back,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.16f),
+            style = Stroke(w)
+        )
+        drawRoundRect(
+            color,
+            topLeft = Offset(size.width * 0.34f, size.height * 0.34f),
+            size = back,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.16f),
+            style = Stroke(w)
+        )
+    }
+} //矢量复制
+/** 自绘对勾，用在自绘复选框里 */
+@Composable
+fun IcTick(color: Color, side: Dp = 10.dp, stroke: Dp = 1.7.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        drawLine(color, Offset(size.width * 0.16f, size.height * 0.54f), Offset(size.width * 0.42f, size.height * 0.8f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.42f, size.height * 0.8f), Offset(size.width * 0.86f, size.height * 0.22f), w, StrokeCap.Round)
+    }
+} //自绘对勾
+
+/** 工具调用图标：读 / 写 / 建目录 / 删 / 搜索 / 执行都取图标库里现成的，不再画单字标 */
+@Composable
+fun ToolIcon(name: String?, color: Color, side: Dp = 13.dp) {
+    when (name) {
+        Tools.READ -> IcFile(color, side = side)
+        Tools.WRITE -> Icon(Icons.Filled.Create, null, tint = color, modifier = Modifier.size(side))
+        Tools.EDIT -> Icon(Icons.Filled.Edit, null, tint = color, modifier = Modifier.size(side))
+        Tools.MAKE_DIR -> Icon(Icons.Filled.Add, null, tint = color, modifier = Modifier.size(side))
+        Tools.DELETE -> Icon(Icons.Filled.Delete, null, tint = color, modifier = Modifier.size(side))
+        Tools.WEB_SEARCH -> IcSearch(color, side = side)
+        Tools.SSH_LS -> IcFile(color, side = side)
+        Tools.SSH_READ -> IcFile(color, side = side)
+        Tools.SSH_GET -> IcFile(color, side = side)
+        else -> IcCode(color, side = side)
+    }
+} //工具调用图标
+
+/** 自绘垃圾桶：删除按钮统一用它，不再用 emoji（字形随系统中文字体变，粗细与旁边文字对不齐） */
+@Composable
+fun IcTrash(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val l = size.width * 0.26f
+        val r = size.width * 0.74f
+        val top = size.height * 0.28f
+        val bot = size.height * 0.86f
+        //桶盖横线 + 提手
+        drawLine(color, Offset(size.width * 0.16f, top), Offset(size.width * 0.84f, top), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.38f, top), Offset(size.width * 0.38f, size.height * 0.17f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.62f, top), Offset(size.width * 0.62f, size.height * 0.17f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.38f, size.height * 0.17f), Offset(size.width * 0.62f, size.height * 0.17f), w, StrokeCap.Round)
+        //桶身：上宽下窄的梯形
+        drawLine(color, Offset(l, top), Offset(l + size.width * 0.05f, bot), w, StrokeCap.Round)
+        drawLine(color, Offset(r, top), Offset(r - size.width * 0.05f, bot), w, StrokeCap.Round)
+        drawLine(color, Offset(l + size.width * 0.05f, bot), Offset(r - size.width * 0.05f, bot), w, StrokeCap.Round)
+    }
+} //矢量垃圾桶
+
+/**
+ * 自绘折叠箭头：down=true 指向下、false 指向上。
+ * 夹角收窄到约 70°（跨度 0.56、高 0.2），之前的 ︿ ﹀ 字符是高瘦三角形，张得太开、跟文字不在一条视觉线上。
+ */
+@Composable
+fun IcChevron(color: Color, down: Boolean, side: Dp = 12.dp, stroke: Dp = 1.7.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        //张角约 80°：之前 0.28/0.18 算出来 114°，是个很钝的钝角，跟旁边的字对不上（用户反馈「角太大」）
+        val half = size.width * 0.20f
+        val h = size.height * 0.24f
+        val cy = size.height * 0.5f
+        val (ya, yb) = if (down) (cy - h) to (cy + h) else (cy + h) to (cy - h)
+        drawLine(color, Offset(cx - half, ya), Offset(cx, yb), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, yb), Offset(cx + half, ya), w, StrokeCap.Round)
+    }
+} //矢量折叠箭头
+
+
+@Composable
+fun IcFourStar(color: Color, side: Dp = 19.dp, stroke: Dp = 2.2.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val rad = size.minDimension * 0.44f
+        //长芒上下、短芒左右：四个方向等长会像加号，这样更像星光
+        val tips = listOf(
+            Offset(cx, cy - rad),
+            Offset(cx + rad * 0.86f, cy),
+            Offset(cx, cy + rad),
+            Offset(cx - rad * 0.86f, cy)
+        )
+        tips.forEach { drawLine(color, Offset(cx, cy), it, w, StrokeCap.Round) }
+    }
+} //四芒星
+
+/**
+ * 可优化态图标：四芒星 + 右上角小加号。
+ * 星体是描边轮廓（不填充）：四个尖之间的边用二次贝塞尔向内收，不填充才看得出「线画出来的星」；
+ * 尺寸比三条杠那档小 1dp，视觉上跟文字按钮一伙。
+ */
+@Composable
+fun IcSparklePlus(color: Color, side: Dp = 14.dp, stroke: Dp = 1.5.dp) {
+    Canvas(Modifier.size(side)) {
+        val u = size.minDimension
+        val w = stroke.toPx()
+        //星体中心略偏左下：右上角要给加号腾位；
+        //但 cy+r 不能超过 u（原来 0.58+0.44=1.02 下尖被裁掉，看起来整颗星偏下）
+        val cx = u * 0.42f
+        val cy = u * 0.55f
+        val r = u * 0.37f
+        //凹度：控制点离中心越近四边收得越狠；0.30 看得到弧度又不至于瘦成十字
+        val inn = r * 0.30f
+        val star = Path().apply {
+            moveTo(cx, cy - r)                                              //上尖
+            quadraticBezierTo(cx + inn, cy - inn, cx + r, cy)               //右上边内凹到右尖
+            quadraticBezierTo(cx + inn, cy + inn, cx, cy + r)               //右下边内凹到下尖
+            quadraticBezierTo(cx - inn, cy + inn, cx - r, cy)               //左下边内凹到左尖
+            quadraticBezierTo(cx - inn, cy - inn, cx, cy - r)               //左上边内凹回上尖
+            close()
+        }
+        //只描边不填充：圆角连接，尖角处不会糊出一个个小三角
+        drawPath(star, color, style = Stroke(width = w, join = StrokeJoin.Round))
+        //右上角加号：笔画与星体同宽，臂长压短，避免跟星尖粘在一起
+        val px = u * 0.82f
+        val py = u * 0.20f
+        val arm = u * 0.11f
+        drawLine(color, Offset(px - arm, py), Offset(px + arm, py), w, StrokeCap.Round)
+        drawLine(color, Offset(px, py - arm), Offset(px, py + arm), w, StrokeCap.Round)
+    }
+} //四芒星加号
+
+/**
+ * 提示词优化完成态：四芒星收拢成对号。
+ * 四条线各自插值到对号的两段（后两条长度归零，自然收没），看上去就是「星形变成勾」；
+ * 纯 Canvas 实现，不需要额外 vector 资源，单色、无底、2.6dp 描边，比字体里的 ✓ 粗且干净。
+ */
+@Composable
+fun IcStarToCheck(color: Color, side: Dp = 20.dp, stroke: Dp = 2.6.dp) {
+    val p = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        p.animateTo(
+            1f,
+            androidx.compose.animation.core.tween(460, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+    }
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val k = p.value
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val rad = size.minDimension * 0.44f
+        //星形四芒的尖端：上 / 右 / 下 / 左
+        val tip = listOf(Offset(cx, cy - rad), Offset(cx + rad, cy), Offset(cx, cy + rad), Offset(cx - rad, cy))
+        //对号的三个折点
+        val a = Offset(size.width * 0.16f, size.height * 0.52f)
+        val b = Offset(size.width * 0.40f, size.height * 0.76f)
+        val c = Offset(size.width * 0.86f, size.height * 0.24f)
+        //每条线的终点最终落点：1->b 2->c 3->b 4->c（后两条长度归零）
+        val ends = listOf(b, c, b, c)
+        val starts = listOf(a, b, b, c)
+        for (i in 0 until 4) {
+            val sx = cx + (starts[i].x - cx) * k
+            val sy = cy + (starts[i].y - cy) * k
+            val ex = tip[i].x + (ends[i].x - tip[i].x) * k
+            val ey = tip[i].y + (ends[i].y - tip[i].y) * k
+            val dx = ex - sx
+            val dy = ey - sy
+            if (dx * dx + dy * dy > 1f) drawLine(color, Offset(sx, sy), Offset(ex, ey), w, StrokeCap.Round)
+        }
+    }
+} //星形变对号

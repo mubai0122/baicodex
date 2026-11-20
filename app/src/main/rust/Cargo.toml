@@ -1,0 +1,47 @@
+# Project:    Baicodex
+# Author:     by 沐白/Baix
+# License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+# Date:       2026-11-20 21:47:26
+# Repository: https://github.com/mubai0122/Baicodex
+# Website:    https://agent.ai.baiccb.cn/
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+[package]
+name = "baicodex"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "baicodex"
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+#内核存储层依赖：信封加密（AES-256-GCM + HKDF）、摘要、CSPRNG、JSON；
+#只选纯 Rust 实现、不引 OpenSSL，保证三端算出来的是同一份字节。
+aes-gcm = "0.10"
+sha2 = "0.10"
+hkdf = "0.12"
+zeroize = { version = "1", features = ["derive"] }
+getrandom = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+#测试用临时目录：只在 cargo test 时编译，不进 APK
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+#本文件就是 crate 根，也是独立的 workspace 根（app/src/main/rust/ 下不再套子目录）。
+#显式声明 [workspace] 是为了防止将来上级目录出现 Cargo.toml 时 cargo 顺藤摸瓜把它并进去。
+[workspace]

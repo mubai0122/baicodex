@@ -1,0 +1,84 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:06
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
+package b.ai.core.data.profile
+import b.ai.core.data.usage.Price
+
+import android.content.Context
+import b.ai.core.cfg.io.Prefs
+import androidx.compose.runtime.mutableStateOf
+import org.json.JSONObject
+
+/** 按模型定价库：key = usage 表里的 model 名，整表 JSON 存在 bai_cfg 的 prices 键 */
+object Prices {
+    private val cache = mutableStateOf<Map<String, Price>>(emptyMap())
+    private var sp: Prefs? = null
+
+    val all: Map<String, Price> get() = cache.value
+
+    fun init(c: Context) {
+        if (sp != null) return
+        val p = Prefs.get(c)
+        sp = p
+        cache.value = runCatching { parse(p.getString("prices", "")) }.getOrDefault(emptyMap())
+    } //读盘
+
+    private fun parse(raw: String?): Map<String, Price> {
+        if (raw.isNullOrBlank()) return emptyMap()
+        val o = JSONObject(raw)
+        val out = LinkedHashMap<String, Price>()
+        o.keys().forEach { k ->
+            val v = o.optJSONObject(k) ?: return@forEach
+            out[k] = Price(
+                v.optDouble("in", 0.0).toFloat(),
+                v.optDouble("out", 0.0).toFloat(),
+                v.optDouble("cache", 0.0).toFloat()
+            )
+        }
+        return out
+    } //从 JSON 还原
+
+    private fun dump(m: Map<String, Price>): String {
+        val o = JSONObject()
+        m.forEach { (k, v) ->
+            o.put(
+                k,
+                JSONObject()
+                    .put("in", v.inP.toDouble())
+                    .put("out", v.outP.toDouble())
+                    .put("cache", v.cacheP.toDouble())
+            )
+        }
+        return o.toString()
+    } //写成 JSON
+
+    /** 某模型的专属价；没配过返回 null */
+    fun get(model: String): Price? = cache.value[model]
+
+    /** 生效价：只认这个模型自己配的价，没配过就是全 0（不计价），不再有全局默认价 */
+    fun of(model: String): Price = get(model) ?: Price()
+
+    /** 有任意模型配过专属价 */
+    val anyCustom: Boolean get() = cache.value.values.any { it.on }
+
+    /** 保存某模型价格：三项全 0 等于取消专属价，直接删掉这条 */
+    fun put(model: String, p: Price) {
+        val m = LinkedHashMap(cache.value)
+        if (p.on) m[model] = p else m.remove(model)
+        cache.value = m
+        sp?.edit()?.putString("prices", dump(m))?.apply()
+    } //写一个模型
+
+    fun remove(model: String) = put(model, Price())
+} //按模型定价
