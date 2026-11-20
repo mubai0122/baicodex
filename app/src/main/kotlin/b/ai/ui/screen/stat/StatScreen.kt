@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:24
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.stat
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.PolicyChip
@@ -430,7 +444,7 @@ fun LazyListScope.statTab(ui: StatUi) {
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("运行状态", "本体、终端会话、执行进程分开算，1.5 秒刷新一次")
+        SectionTitle(stringResource(R.string.tx_e4b51d5c), stringResource(R.string.tx_cefac3f1))
         PerfCard()
     }
 } //统计分类
@@ -468,7 +482,7 @@ private fun PerfCard() {
     val s = snap
     CardBox {
         if (s == null) {
-            Text("采样中…", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_c1d8772d), fontSize = 11.sp, color = TextSecondary)
             return@CardBox
         }
         s.rows.forEachIndexed { i, r ->
@@ -490,14 +504,14 @@ private fun PerfCard() {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            "合计 ${mem(s.pssKb)} · ${s.procs} 个进程；插件与界面同进程，进程级分不出插件单项",
+            stringResource(R.string.tx_7a776792, mem(s.pssKb), s.procs),
             fontSize = 9.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(8.dp))
         val peak = hist.maxOfOrNull { it.cpu }
         Text(
-            "近 60 秒合计 CPU" + (if (peak == null) "" else " · 峰值 %.0f%%".format(peak)),
+            "近 60 秒合计 CPU" + (if (peak == null) "" else stringResource(R.string.tx_3cd4be58).format(peak)),
             fontSize = 9.sp,
             color = TextSecondary
         )

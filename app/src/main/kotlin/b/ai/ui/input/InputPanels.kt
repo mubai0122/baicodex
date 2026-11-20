@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:20
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.input
 import b.ai.ui.dialog.BottomSheetCard
 import b.ai.ui.widget.BrandIcon
@@ -78,8 +92,10 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.PromptTags
 import b.ai.net.api.llm.LlmClient
 import b.ai.core.model.chat.Effort
+import b.ai.core.model.chat.Thinking
 import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers
+import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.Skills
 import b.ai.net.mcp.Mcp
 import b.ai.ui.theme.AccentBlue
@@ -197,32 +213,32 @@ internal fun SkillPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
     SheetShell {
         SheetHead(stringResource(R.string.ip_skill), onClose)
         val ctx = LocalContext.current
-        val pfx = ctx.getString(R.string.ip_skill_pre)
-        Skills.list.forEach { s ->
+        //技能包不再把正文灌进输入框：只插一个 @名称，正文由 skill_read 现场取，输入框保持干净
+        SkillPacks.packs.forEach { s ->
             Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(bottom = 4.dp)
                     .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
-                    .tap { onInsert(pfx + s.name + "\n" + s.body.take(1200) + "\n\n任务：") }
+                    .tap { onInsert("@" + s.name.ifBlank { s.id } + " ") }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        Skills.displayName(ctx, s) + if (s.on) "" else stringResource(R.string.ip_off),
+                        s.name.ifBlank { s.id } + if (s.on) "" else stringResource(R.string.ip_off),
                         fontSize = 12.sp,
                         color = TextPrimary,
                         maxLines = 1
                     )
                     Text(
-                        Skills.displayDesc(ctx, s).ifBlank { s.body.take(40) },
+                        s.desc.ifBlank { s.readme.take(40) },
                         fontSize = 10.sp,
                         color = TextSecondary,
                         maxLines = 1
                     )
                 }
-                Text("＋", fontSize = 13.sp, color = AccentBlue)
+                Text("＠", fontSize = 13.sp, color = AccentBlue)
             }
         }
         //MCP 能力当技能列：点了插「用某能力做某事」，具体参数由模型自己拼
@@ -264,7 +280,7 @@ internal fun TagPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
         SheetHead("提示词标签", onClose)
         val list = PromptTags.list()
         if (list.isEmpty()) {
-            Text("还没有片段。到 设置 → 对话 → 提示词标签 里先建一条。", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_8982c592), fontSize = 11.sp, color = TextSecondary)
             return@SheetShell
         }
         list.forEach { t ->
@@ -279,7 +295,7 @@ internal fun TagPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        t.name + if (t.on) "（已全局启用）" else "",
+                        t.name + if (t.on) stringResource(R.string.tx_3e424c4a) else "",
                         fontSize = 12.sp,
                         color = TextPrimary,
                         maxLines = 1
@@ -301,20 +317,39 @@ internal fun TagPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
 @Composable
 internal fun CfgPanel(onClose: () -> Unit) {
     val ctx = LocalContext.current
-    //互斥拦截文案：只提示，不替用户改另一个开关
+    //约束按厂商分两种：
+    //① DeepSeek：搜索必须在思考模式下 → 开搜索自动开思考、关思考时连搜索一起关；
+    //② 其它厂商：思考与原生搜索互斥 → 谁被点谁生效，另一个静默关掉，不弹 Toast。
+    val needsThink = Profiles.searchNeedsThink(Cfg.providerId)
+    //互斥不再弹 Toast：谁被点谁说了算，另一个自动让位（静默联动），用户少一次打扰
+    fun denyThinkOff(): Boolean = false //思考可以随时关，DeepSeek 的搜索会在下面被一起关掉
     fun denyIfSearchOn(): Boolean {
         if (!Cfg.modelNativeSearch) return false
-        android.widget.Toast.makeText(ctx, "思考与原生联网搜索互斥，请先关闭原生联网搜索", android.widget.Toast.LENGTH_SHORT).show()
-        return true
-    } //思考被拦
+        //DeepSeek 的搜索必须带思考，这里不动思考；其它厂商关掉搜索，把位置让给思考
+        if (!needsThink) {
+            Cfg.modelNativeSearch = false
+            Profiles.capture()
+        }
+        return false
+    } //思考被打开时：搜索自动让位
     fun denyIfThinkOn(): Boolean {
-        if (!Cfg.think) return false
-        android.widget.Toast.makeText(ctx, "思考与原生联网搜索互斥，请先关闭思考", android.widget.Toast.LENGTH_SHORT).show()
-        return true
-    } //搜索被拦
+        if (!Cfg.think && !needsThink) return false
+        //开搜索时把思考收起来（DeepSeek 相反：搜索依赖思考，保持开启）
+        if (needsThink) {
+            Cfg.think = true
+            Profiles.capture()
+        } else if (Cfg.think) {
+            Cfg.think = false
+            Profiles.capture()
+        }
+        return false
+    } //搜索被打开时：思考自动让位
     SheetShell {
         SheetHead(stringResource(R.string.ip_cfg), onClose)
         //思考开关：放最上面，紧跟着强度滑块
+        //只有「规则命中」或「内置白名单命中」的模型才显示这一组，非思考模型不再凭空多出思考开关与档位
+        val canThink = Thinking.supported(Cfg.providerId, Cfg.model)
+        if (canThink) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.ip_think), fontSize = 12.sp, color = TextPrimary)
@@ -328,9 +363,13 @@ internal fun CfgPanel(onClose: () -> Unit) {
                 checked = Cfg.think,
                 onCheckedChange = { on ->
                     when {
+                        //关思考时：DeepSeek 正在搜索，必须先关搜索（官方要求搜索必须在思考模式）
+                        !on && denyThinkOff() -> Unit
                         //搜索开着时不允许打开思考，只弹提示
                         on && denyIfSearchOn() -> Unit
                         else -> {
+                            //关思考时如果搜索还开着，一起收掉（DeepSeek 的搜索不能脱离思考）
+                            if (!on && Cfg.modelNativeSearch) Cfg.modelNativeSearch = false
                             Cfg.think = on
                             Profiles.capture()
                         }
@@ -340,7 +379,7 @@ internal fun CfgPanel(onClose: () -> Unit) {
             )
         }
         //思考强度：档位随模型走（DeepSeek 3 档、OpenAI 4~5 档），松手才落库
-        val effortLevels = Effort.levels(Cfg.providerId, Cfg.model)
+        val effortLevels = Effort.levels(Cfg.providerId, Cfg.model, Cfg.profThinkLevels)
         val li = Effort.indexOf(effortLevels, Cfg.thinkEffort)
         //换模型后旧档位可能不合法：直接落库成映射后的值，免得显示的和实际下发的不一致
         LaunchedEffect(Cfg.providerId, Cfg.model) {
@@ -349,33 +388,41 @@ internal fun CfgPanel(onClose: () -> Unit) {
         ChargeSlider(levels = effortLevels, index = li, enabled = Cfg.think) { v ->
             Cfg.thinkEffort = effortLevels[v.coerceIn(0, effortLevels.lastIndex)]
         }
-        //原生联网搜索：只有保存模型时勾了「支持原生联网搜索」的配置才显示这一项，没勾就等于没有这个配置
+        } //仅支持思考的模型才渲染思考开关与档位
+        //原生联网搜索：这一项只管「本轮要不要注入搜索」，与设置里那份「模型是否支持搜索」互不影响
+        //（支持与否决定字段能不能安全下发，注入与否是这次用不用；所以这里常显，不再因为没勾支持就整项消失）
         val curProfile = Profiles.list.firstOrNull { it.id == Cfg.profileId }
-        if (curProfile?.nativeSearch == true) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.se_386), fontSize = 12.sp, color = TextPrimary)
-                    Text(
-                        if (Cfg.modelNativeSearch) stringResource(R.string.se_387) else stringResource(R.string.se_388),
-                        fontSize = 10.sp,
-                        color = TextSecondary
-                    )
-                }
-                Switch(
-                    checked = Cfg.modelNativeSearch,
-                    onCheckedChange = { on ->
-                        when {
-                            //思考开着时不允许打开搜索，只弹提示
-                            on && denyIfThinkOn() -> Unit
-                            else -> {
-                                Cfg.modelNativeSearch = on
-                                Profiles.capture()
-                            }
-                        }
+        val nsSupported = curProfile?.nativeSearch == true
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.se_386), fontSize = 12.sp, color = TextPrimary)
+                Text(
+                    when {
+                        //配置里没声明支持：仍可开关，但提示去哪开，避免下发不认识的字段被 400
+                        !nsSupported && Cfg.modelNativeSearch ->
+                            "本次已开注入；该配置未在模型能力里声明支持原生搜索，可能被服务端拒绝"
+                        !nsSupported -> "本次不注入；该配置未在模型能力里声明支持原生搜索"
+                        Cfg.modelNativeSearch -> stringResource(R.string.se_387)
+                        else -> stringResource(R.string.se_388)
                     },
-                    colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+                    fontSize = 10.sp,
+                    color = TextSecondary
                 )
             }
+            Switch(
+                checked = Cfg.modelNativeSearch,
+                onCheckedChange = { on ->
+                    when {
+                        //DeepSeek：开搜索自动开思考，其它厂商：思考开着时不允许打开搜索
+                        on && denyIfThinkOn() -> Unit
+                        else -> {
+                            Cfg.modelNativeSearch = on
+                            Profiles.capture()
+                        }
+                    }
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
         }
         Spacer(Modifier.height(6.dp))
         //工具调用开关：与设置页「模型能力」里的同一项，改完立刻写回当前配置

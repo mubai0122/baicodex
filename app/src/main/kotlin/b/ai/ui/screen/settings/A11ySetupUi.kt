@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.widget.GhostButton
@@ -61,10 +75,10 @@ fun A11ySetupDialog(onDone: () -> Unit) {
     }
     ScrimCard(onDismiss = onDone) {
         if (step == 0) {
-            Text("把屏幕操作开起来", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tx_bf4a564e), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.height(6.dp))
             Text(
-                "普通用户模式下，AI 靠无障碍服务读屏、点屏：能看清当前页的控件和坐标，也能代你点、滑、长按、输入。",
+                stringResource(R.string.tx_cf7ceff5),
                 fontSize = 12.sp,
                 color = TextSecondary
             )
@@ -74,7 +88,7 @@ fun A11ySetupDialog(onDone: () -> Unit) {
             if (canAuto && !on) {
                 A11yAutoHint()
             } else {
-                Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(stringResource(R.string.tx_bad2f54e), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
                 StepLine(2, "点「已下载的服务」→「Baicodex 屏幕操作」")
                 StepLine(3, "打开开关，弹窗里选「允许」")
@@ -82,25 +96,25 @@ fun A11ySetupDialog(onDone: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                if (on) "当前状态：已开启" else "当前状态：未开启",
+                if (on) stringResource(R.string.tx_d1849aef) else stringResource(R.string.tx_0fa57e4a),
                 fontSize = 12.sp,
                 color = if (on) OkGreen else TextSecondary
             )
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GhostButton("稍后再说") { onDone() }
+                GhostButton(stringResource(R.string.tx_87e4d9ef)) { onDone() }
                 Spacer(Modifier.width(10.dp))
                 when {
-                    on -> PrimaryButton("下一步", enabled = true) { step = 1 }
+                    on -> PrimaryButton(stringResource(R.string.tx_38ce27d8), enabled = true) { step = 1 }
                     canAuto -> PrimaryButton(stringResource(R.string.se_348), enabled = true) { A11yAuto.open.value = true }
-                    else -> PrimaryButton("去开启", enabled = true) { Perms.openA11y(ctx) }
+                    else -> PrimaryButton(stringResource(R.string.tx_5e213ddb), enabled = true) { Perms.openA11y(ctx) }
                 }
             }
         } else {
-            Text("确认一下", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tx_1ed34876), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.height(6.dp))
             Text(
-                if (on) "已开启，AI 现在可以读屏和代你操作。" else "还没开：开关没打开之前，屏幕类工具会跑不通。",
+                if (on) stringResource(R.string.tx_3a7b8b88) else stringResource(R.string.tx_be58e065),
                 fontSize = 12.sp,
                 color = if (on) OkGreen else DangerRed
             )
@@ -112,11 +126,11 @@ fun A11ySetupDialog(onDone: () -> Unit) {
                 StepLine(4, "开关是灰的：设置 → 应用 → Baicodex → 右上角 ⋮ → 允许受限设置，再回来开")
                 Spacer(Modifier.height(10.dp))
             }
-            Text("以后想重开或重走这个流程：设置 → 权限 → 特殊权限。", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_8b920852), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (!on) {
-                    GhostButton("去开启") { Perms.openA11y(ctx) }
+                    GhostButton(stringResource(R.string.tx_5e213ddb)) { Perms.openA11y(ctx) }
                     Spacer(Modifier.width(10.dp))
                 }
                 PrimaryButton("完成", enabled = true) { onDone() }

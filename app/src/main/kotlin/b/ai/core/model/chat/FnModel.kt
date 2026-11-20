@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:08
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.model.chat
 
 import b.ai.core.cfg.app.Cfg
@@ -12,9 +26,17 @@ import b.ai.core.model.chat.AuthStyle
 object FnModel {
     const val TITLE = "title"
     const val SUMMARY = "summary"
+    /** 提示词优化：用一条独立配置，跟聊天主模型分开，省 token 也能换小模型 */
+    const val PROMPT_OPT = "prompt_opt"
+    /** 记忆整理：把零散记忆合并、去重、改写成更省 token 的条目 */
+    const val MEM = "mem"
 
-    fun profileId(kind: String): String =
-        if (kind == TITLE) Cfg.titleProfileId else Cfg.summaryProfileId
+    fun profileId(kind: String): String = when (kind) {
+        TITLE -> Cfg.titleProfileId
+        PROMPT_OPT -> Cfg.promptOptProfileId
+        MEM -> Cfg.memProfileId
+        else -> Cfg.summaryProfileId
+    }
 
     /** 返回 baseUrl / apiKey / providerId / model 四元组 */
     fun conn(kind: String): Array<String> {

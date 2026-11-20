@@ -1,17 +1,17 @@
+# Project:    Baicodex
+# Author:     by 沐白/Baix
+# License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+# Date:       2026-11-20 21:46:58
+# Repository: https://github.com/mubai0122/Baicodex
+# Website:    https://agent.ai.baiccb.cn/
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
 cmake_minimum_required(VERSION 3.22.1)
 project(baicodex C CXX)
-
-#cpp/ 目录职责，新增文件按此归位：
-#  core/base/      与业务无关的基础工具：字节、KV 文本、掩码写入、扫描游走
-#  core/security/  安全相关：数据输出脱敏、加解密、常量时间比较
-#  core/feature/   功能相关：与安全无关的业务能力
-#  ffi/            纯 C ABI 薄壳：Java_* 入口 + 导出给 Rust/C++ 双实现的同名符号
-#  _third_party/   第三方源码：quickjs、android_openssl。只读不改
-#
-# 迁移中：以下旧目录按上面的分类逐步搬走，搬完即删，不再往里加新文件
-#  tools/ -> core/feature/  image/ -> core/feature/  js/ -> core/feature/
-#  net/   -> core/feature/  runtime/ -> core/security/  jni/ -> ffi/
-
 add_library(quickjs STATIC
         _third_party/quickjs/quickjs.c
         _third_party/quickjs/dtoa.c
@@ -23,6 +23,17 @@ target_compile_definitions(quickjs PRIVATE _GNU_SOURCE CONFIG_VERSION=\"2026-06-
 target_compile_options(quickjs PRIVATE -O2 -fwrapv -Wno-unused -Wno-sign-compare
         -Wno-missing-braces -Wno-format-truncation -Wno-unused-but-set-variable)
 set_target_properties(quickjs PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
+add_library(bzip2 STATIC
+        _third_party/bzip2/blocksort.c
+        _third_party/bzip2/bzlib.c
+        _third_party/bzip2/compress.c
+        _third_party/bzip2/decompress.c
+        _third_party/bzip2/crctable.c
+        _third_party/bzip2/huffman.c
+        _third_party/bzip2/randtable.c)
+target_include_directories(bzip2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/bzip2)
+target_compile_options(bzip2 PRIVATE -w)
+set_target_properties(bzip2 PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON POSITION_INDEPENDENT_CODE ON)
 
 add_library(baicodex SHARED
         core/base/bytes.cpp
@@ -36,6 +47,7 @@ add_library(baicodex SHARED
         core/security/crypto/crypto.cpp
         core/feature/miot/packet.cpp
         core/feature/miot/udp.cpp
+        ffi/archive_jni.cpp
         ffi/crypto_ffi.cpp
         ffi/miot_ffi.cpp
         ffi/mask_ffi.cpp
@@ -51,6 +63,7 @@ add_library(baicodex SHARED
         runtime/secret.cpp
         jni/blur_jni.cpp
         jni/calc_jni.cpp
+        core/feature/archive/tarbz2.cpp
         core/feature/llm/llm.cpp
         jni/llm_jni.cpp
         jni/crypto_jni.cpp
@@ -77,20 +90,13 @@ target_compile_features(baicodex PRIVATE cxx_std_17)
 if(ANDROID_ABI STREQUAL "arm64-v8a")
     find_program(CARGO_BIN cargo)
     if(CARGO_BIN)
-        #Rust 内核在 app/src/main/rust/（原地摊平，无嵌套子层）：cpp/ → main/rust
         set(RUST_MANIFEST ${CMAKE_CURRENT_SOURCE_DIR}/../rust/Cargo.toml)
-        #cargo 的 target 目录必须放在可执行的卷上：工程在 /storage（FUSE，noexec），
-        #依赖里的 build-script / proc-macro 产物在那上面会「Permission denied (os error 13)」。
-        #优先用宿主 HOME（Termux 里是可执行的），没有就退回构建目录（桌面 CI 上没问题）。
         if(DEFINED ENV{HOME} AND NOT "$ENV{HOME}" STREQUAL "")
             set(RUST_TARGET_DIR "$ENV{HOME}/.bcx-rust-target/baicodex")
         else()
             set(RUST_TARGET_DIR ${CMAKE_BINARY_DIR}/rust)
         endif()
         set(RUST_LIB ${RUST_TARGET_DIR}/aarch64-linux-android/release/libbaicodex.a)
-        #不在 CMake 侧做依赖时间戳：工程在 /storage（FUSE），mtime 精度会让 ninja 认为
-        #build.ninja 永远「脏」（still dirty after 100 tries）；改成每次构建都调一次 cargo，
-        #增量由 cargo 自己判断（没变的 crate 不重编），比 GLOB_RECURSE CONFIGURE_DEPENDS 更稳。
         add_custom_target(baicodex_rust ALL
                 COMMAND ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${RUST_TARGET_DIR}
                         ${CARGO_BIN} build --release --target aarch64-linux-android
@@ -107,24 +113,17 @@ if(ANDROID_ABI STREQUAL "arm64-v8a")
     endif()
 endif()
 if(DEFINED BAI_KEY_HEX AND NOT BAI_KEY_HEX STREQUAL "")
-    #拆成字节数组再下发：整串十六进制留在 .so 里会被 strings 一眼看到
     string(REGEX REPLACE "(..)" "0x\\1," BAI_KEY_BYTES "${BAI_KEY_HEX}")
     target_compile_definitions(baicodex PRIVATE "BAI_KEY_BYTES=${BAI_KEY_BYTES}")
 endif()
-#模糊是纯计算，debug 默认 -O0 会比 Kotlin 还慢，单独拉到 -O3
 set_source_files_properties(image/blur.cpp PROPERTIES COMPILE_OPTIONS "-O3")
 target_compile_options(baicodex PRIVATE -Wall -Wextra -fvisibility=hidden)
 set_target_properties(baicodex PROPERTIES
         ANDROID_STL c++_static
         CXX_STANDARD 17)
 target_link_options(baicodex PRIVATE -Wl,--strip-all -Wl,--gc-sections -s)
-#GPU offload：只用 OpenCL 后端（Adreno 750/810/830 是官方验证过的路线，Vulkan 在 Android 上基本不可用）
-#头文件用 Khronos OpenCL-Headers；库用从设备 /vendor 拉出来的 libOpenCL.so 当链接期桩，
-#运行期由系统 linker 去 /vendor/lib(64) 解析真实实现，这个桩不会被打进 APK
 set(BAI_OCL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl)
 set(BAI_OCL_LIB ${BAI_OCL_DIR}/${ANDROID_ABI}/libOpenCL.so)
-#注意 v7a 编不过 ggml-opencl（32 位 size_t 从 int64_t 窄化报错，属上游源码问题），只在 arm64 开
-#头文件和 stub 缺任一都退回 CPU：CI 上没有设备 vendor 库，不能因此编不过
 if(ANDROID_ABI STREQUAL "arm64-v8a"
    AND EXISTS ${BAI_OCL_LIB}
    AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl-headers/CL/cl.h)
@@ -134,8 +133,6 @@ if(ANDROID_ABI STREQUAL "arm64-v8a"
     set(GGML_OPENCL_TARGET_VERSION 300 CACHE STRING "" FORCE)
     set(OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/_third_party/opencl-headers CACHE PATH "" FORCE)
     set(OpenCL_LIBRARY ${BAI_OCL_LIB} CACHE FILEPATH "" FORCE)
-    #ggml 是 INTERFACE target，它身上的 GGML_USE_OPENCL 传不到编译 ggml-backend-reg.cpp 的 ggml-base，
-    #结果 register_backend(ggml_backend_opencl_reg()) 被 #ifdef 剔掉、整个后端不参与链接。必须在 add_subdirectory 前全局定义
     add_compile_definitions(GGML_USE_OPENCL)
     message(STATUS "bai: OpenCL 后端开启（${ANDROID_ABI}）")
 else()
@@ -143,7 +140,6 @@ else()
     message(STATUS "bai: 缺 ${BAI_OCL_LIB}，GPU offload 关闭，只编 CPU")
 endif()
 
-#本地模型：llama.cpp 静态链进来，只留 llama + ggml CPU 后端，其余组件全关
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(GGML_STATIC ON CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
@@ -169,4 +165,4 @@ target_link_libraries(baicodex PRIVATE
         ${OSSL}/${CMAKE_ANDROID_ARCH_ABI}/libssl.a
         ${OSSL}/${CMAKE_ANDROID_ARCH_ABI}/libcrypto.a
         llama ggml
-        quickjs m log z)
+        quickjs bzip2 m log z)

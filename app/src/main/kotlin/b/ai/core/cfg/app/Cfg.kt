@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:04
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.cfg.app
 import b.ai.core.cfg.io.Store
 import b.ai.core.model.chat.WorkMode
@@ -10,11 +24,8 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import java.io.File
 
-/** 全局配置：data/prefs/bai_cfg/ 下 8 个加密分片落盘 + Compose 状态镜像 */
 object Cfg {
-    /** 自定义系统提示在数据根里的文件名 */
     const val SYSTEM_PROMPT_FILE = "system_prompt.md"
-
     private var sp: Prefs? = null
     private val cache = HashMap<String, MutableState<Any?>>()
 
@@ -26,7 +37,6 @@ object Cfg {
         if (sp != null) return
         val p = Prefs.get(c)
         sp = p
-        //凭据一律搬进加密库，搬完把 SP 里的明文删掉：SP 是明文 XML，root 和备份都拿得到
         val legacy = LinkedHashMap<String, String>()
         listOf("api_key", "asr_key", "tts_key", "a2a_token", "tavily_key").forEach { k ->
             p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacy[k] = v }
@@ -36,7 +46,6 @@ object Cfg {
                 legacy[k] = v
             }
         }
-        //账号 token 另开一个文件：API Key 与会话 token 生命周期不同，混在一起容易一锅端
         val legacyUser = LinkedHashMap<String, String>()
         listOf("acc_token", "fb_token", "ssh_pass").forEach { k ->
             p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacyUser[k] = v }
@@ -49,7 +58,6 @@ object Cfg {
             legacyUser.keys.forEach { e.remove(it) }
             e.apply()
         }
-        //SSH 与 GitHub 凭据独立一个加密文件：老版本散在 SP / 账号桶里，这里搬一次再洗掉
         runCatching {
             fun move(k: String, v: String) {
                 if (v.isNotBlank() && Vault.get(k, Vault.SSH).isBlank()) Vault.put(k, v, Vault.SSH)
@@ -63,32 +71,26 @@ object Cfg {
             p.edit().remove("ssh_host").remove("ssh_port").remove("ssh_user").apply()
         }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
-        //账号登录态：token 有值就算登录过，uid / 昵称 / 头像跟着一起恢复
         mem("acc_token", "").value = Vault.get("acc_token", Vault.USER)
         mem("acc_uid", 0).value = p.getInt("acc_uid", 0)
         mem("acc_uname", "").value = p.getString("acc_uname", "") ?: ""
         mem("acc_nick", "").value = p.getString("acc_nick", "") ?: ""
         mem("acc_avatar", "").value = p.getString("acc_avatar", "") ?: ""
         mem("acc_onboarded", false).value = p.getBoolean("acc_onboarded", false)
-        //独立无障碍激活流程：走过一次就不再自动弹，设置里仍可手动重跑
         mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
-        //「加入我们」卡片：join_dismissed = 勾了永不提醒；join_seen = 已提示过的 versionCode；join_joined = 跳转过 QQ 群
         mem("join_dismissed", false).value = p.getBoolean("join_dismissed", false)
         mem("join_seen", 0).value = p.getInt("join_seen", 0)
         mem("join_joined", false).value = p.getBoolean("join_joined", false)
-        //累计前台使用秒数 + 评价弹窗只弹一次 + 用户关掉了评价弹窗
         mem("used_sec", 0).value = p.getInt("used_sec", 0)
         mem("star_shown", false).value = p.getBoolean("star_shown", false)
         mem("no_rate", false).value = p.getBoolean("no_rate", false)
-        //反馈凭据：提交反馈时服务端下发，凭它只能看本机提交过的反馈
         mem("fb_token", "").value = Vault.get("fb_token", Vault.USER)
-        //用户协议同意过的版本号（0 = 没同意过）；tos_sent = 已上报过的版本号
+        mem("fb_email", "").value = p.getString("fb_email", "") ?: ""
         mem("tos_agreed", 0).value = p.getInt("tos_agreed", 0)
         mem("tos_sent", 0).value = p.getInt("tos_sent", 0)
         mem("work_mode", WorkMode.NORMAL.id).value = p.getString("work_mode", WorkMode.NORMAL.id)!!
         mem("agent_mode", AgentMode.STANDARD.id).value = p.getString("agent_mode", AgentMode.STANDARD.id)!!
         mem("zero_width", false).value = p.getBoolean("zero_width", false)
-        //本地模型：线程 / 上下文 / GPU 层 / 采样参数 /上次选中的 GGUF
         mem("llm_threads", 0).value = p.getInt("llm_threads", 0)
         mem("llm_ctx", 4096).value = p.getInt("llm_ctx", 4096)
         mem("llm_gpu", 0).value = p.getInt("llm_gpu", 0)
@@ -98,11 +100,8 @@ object Cfg {
         mem("llm_model", "").value = p.getString("llm_model", "")!!
         mem("provider_id", "deepseek").value = p.getString("provider_id", "deepseek")!!
         mem("base_url", "").value = p.getString("base_url", "")!!
-        //明文 HTTP 已确认过风险，不再弹 5 秒倒计时
         mem("http_confirmed", false).value = p.getBoolean("http_confirmed", false)
-        //当前配置勾选过的模型集合：只跟着 models.json 走，这里给个空默认
         mem("profile_models", emptyList<String>())
-        //1.7.0 的「全新模型配置」只提示一次，跟旧的桌宠引导解耦
         mem("pet_model_tip", false).value = p.getBoolean("pet_model_tip", false)
         mem("api_key", "").value = Vault.get("api_key")
         mem("model", "").value = p.getString("model", "")!!
@@ -112,7 +111,6 @@ object Cfg {
         mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
         mem("summary_prompt", "").value = p.getString("summary_prompt", "")!!
-        //摘要档位：老版本存的是具体字数，按 ≤150→简洁 / ≤800→详细 / 其余→全面 折算一次
         if (p.contains("summary_level")) {
             mem("summary_level", 1).value = p.getInt("summary_level", 1).coerceIn(0, 2)
         } else {
@@ -129,7 +127,6 @@ object Cfg {
         mem("think", false).value = p.getBoolean("think", false)
         mem("think_effort", "medium").value = p.getString("think_effort", "medium")!!
         mem("temperature", -1f).value = p.getFloat("temperature", -1f)
-        //模型能力勾选：默认按「都支持」走，勾掉后请求体自动降级而不是报错
         mem("model_vision", true).value = p.getBoolean("model_vision", true)
         mem("model_tool_call", true).value = p.getBoolean("model_tool_call", true)
         mem("model_reasoning", true).value = p.getBoolean("model_reasoning", true)
@@ -142,23 +139,17 @@ object Cfg {
         mem("default_workspace", "").value = p.getString("default_workspace", "")!!
         mem("font_scale", 1f).value = p.getFloat("font_scale", 1f)
         mem("float_input", false).value = p.getBoolean("float_input", false)
-        //语音输入模式记下来：上次点的是语音，下次进来默认还是语音
         mem("voice_input", false).value = p.getBoolean("voice_input", false)
         mem("predictive_back", true).value = p.getBoolean("predictive_back", true)
         mem("auto_bind_workspace", true).value = p.getBoolean("auto_bind_workspace", true)
         mem("session_workspace", "").value = p.getString("session_workspace", "")!!
-        //会话级工作区的两个标记：人工挑选 / 老全局绑定已认领过
         mem("session_ws_manual", false).value = p.getBoolean("session_ws_manual", false)
         mem("ws_migrated", false).value = p.getBoolean("ws_migrated", false)
-        //输入框占位提示：老配置没有这个键就留空，用默认的「请输入问题」
         mem("hint_text", "").value = p.getString("hint_text", "")!!
         mem("profile_id", "default").value = p.getString("profile_id", "default")!!
         mem("max_tokens", 0).value = p.getInt("max_tokens", 0)
-        //界面语言：空串 = 跟随系统
         mem("lang", "").value = p.getString("lang", "")!!
-        //公告已读 id 与 SSH 连接信息：以前只写不读，重启就回到默认值
         mem("ann_seen", "").value = p.getString("ann_seen", "")!!
-        //SSH 与 GitHub 凭据统一放加密文件 ssh.baicodex，SP 里一个字段都不留
         mem("ssh_host", "").value = Vault.get("host", Vault.SSH)
         mem("ssh_port", 22).value = Vault.get("port", Vault.SSH).toIntOrNull()?.takeIf { it in 1..65535 } ?: 22
         mem("ssh_user", "").value = Vault.get("user", Vault.SSH)
@@ -170,7 +161,6 @@ object Cfg {
         mem("ctx_pct", 70).value = p.getInt("ctx_pct", 70)
         mem("preset_seed", 0).value = p.getInt("preset_seed", 0)
         mem("persona_seed", 0).value = p.getInt("persona_seed", 0)
-        //这几个键以前只写不读：改完当场生效，进程一重启就回到默认值，看着像没存盘
         mem("dark_theme", 0).value = p.getInt("dark_theme", 0)
         mem("inject_time", true).value = p.getBoolean("inject_time", true)
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
@@ -182,25 +172,21 @@ object Cfg {
         mem("inject_usage", false).value = p.getBoolean("inject_usage", false)
         mem("auto_a11y", false).value = p.getBoolean("auto_a11y", false)
         mem("show_usage", true).value = p.getBoolean("show_usage", true)
-        //模型价格：元 / 百万 token，0 = 不计价（统计页只数 token 不算钱）
         mem("price_in", 0f).value = p.getFloat("price_in", 0f)
         mem("price_out", 0f).value = p.getFloat("price_out", 0f)
         mem("price_cache", 0f).value = p.getFloat("price_cache", 0f)
         mem("show_meta", true).value = p.getBoolean("show_meta", true)
-        //这几个以前只 put 不读回：改完当场生效，重启就回默认值
         mem("no_stream", false).value = p.getBoolean("no_stream", false)
         mem("mask_out", false).value = p.getBoolean("mask_out", false)
         mem("no_shot", false).value = p.getBoolean("no_shot", false)
         mem("speak_replies", false).value = p.getBoolean("speak_replies", false)
         mem("profile_name", "").value = p.getString("profile_name", "")!!
         mem("profile_custom", false).value = p.getBoolean("profile_custom", false)
-        //这几个键上一版只写不读：选完头像进程一重启就回默认，看着像没存过盘
         mem("avatar_on", true).value = p.getBoolean("avatar_on", true)
         mem("avatar_user", "").value = p.getString("avatar_user", "")!!
         mem("avatar_ai_mode", "persona").value = p.getString("avatar_ai_mode", "persona")!!
         mem("avatar_ai", "").value = p.getString("avatar_ai", "")!!
         mem("bubble_capsule", false).value = p.getBoolean("bubble_capsule", false)
-        //1.2.0 外观四项：玻璃卡片 / 质感按钮 / 玻璃底栏 / 页面背景（0 纯色 1 渐变 2 点阵）
         mem("glass_card", false).value = p.getBoolean("glass_card", false)
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
@@ -210,7 +196,6 @@ object Cfg {
         mem("glass_veil", 12).value = p.getInt("glass_veil", 12)
         mem("theme_tint", 0).value = p.getInt("theme_tint", 0)
         mem("bg_style", 0).value = p.getInt("bg_style", 0)
-        //背景图路径可能因清数据/换机失效，失效就清掉，免得设置页对着一条死路径
         val bg = p.getString("bg_img", "")!!
         val bgAlive = bg.isNotBlank() && java.io.File(bg).exists()
         if (bg.isNotBlank() && !bgAlive) put("bg_img", "")
@@ -222,10 +207,14 @@ object Cfg {
         mem("waifu_real", false).value = p.getBoolean("waifu_real", false)
         mem("waifu_type_ms", 45).value = p.getInt("waifu_type_ms", 45)
         mem("waifu_typing", true).value = p.getBoolean("waifu_typing", true)
-        //旧版本把自定义提示只存在 SP 里，这里补写到数据根，之后改文件就生效
         if (!Store.exists(SYSTEM_PROMPT_FILE)) {
             val v = p.getString("system_prompt", "")!!
-            if (v.isNotBlank()) Store.write(SYSTEM_PROMPT_FILE, v)
+            if (v.isNotBlank()) {
+                Store.write(SYSTEM_PROMPT_FILE, v)
+                mem("system_prompt", "").value = v
+            }
+        } else {
+            mem("system_prompt", "").value = Store.read(SYSTEM_PROMPT_FILE) ?: p.getString("system_prompt", "")!!
         }
         mem("pet_on", false).value = p.getBoolean("pet_on", false)
         mem("pet_global", false).value = p.getBoolean("pet_global", false)
@@ -256,7 +245,6 @@ object Cfg {
         mem("pet_dbl_bal", true).value = p.getBoolean("pet_dbl_bal", true)
         mem("pet_sound", true).value = p.getBoolean("pet_sound", true)
         mem("pet_sound_vol", 70).value = p.getInt("pet_sound_vol", 70)
-        //悬浮聊天窗：开关 / 宽高 / 字号 / 整窗透明度 / 位置（-1 = 还没摆过）
         mem("fc_on", false).value = p.getBoolean("fc_on", false)
         mem("fc_w", 300).value = p.getInt("fc_w", 300)
         mem("fc_h", 430).value = p.getInt("fc_h", 430)
@@ -268,7 +256,6 @@ object Cfg {
         mem("dev_on", false).value = p.getBoolean("dev_on", false)
         mem("mig_clean", false).value = p.getBoolean("mig_clean", false)
         mem("linux_mirror_node", "").value = p.getString("linux_mirror_node", "")!!
-        //备份密钥更换提醒是否已处理（1.17.2）：不读回来的话每次启动都会再拦一次
         mem("a2a_on", false).value = p.getBoolean("a2a_on", false)
         mem("a2a_port", 8720).value = p.getInt("a2a_port", 8720)
         mem("a2a_token", "").value = Vault.get("a2a_token")
@@ -286,31 +273,37 @@ object Cfg {
         mem("asr_rate", 16000).value = p.getInt("asr_rate", 16000)
         mem("asr_max_sec", 60).value = p.getInt("asr_max_sec", 60)
         mem("asr_offline", false).value = p.getBoolean("asr_offline", false)
+        //语音整组都要回读：之前只读了 asr_offline，引擎/目录/自定义下载地址改完重启全回默认
+        mem("asr_engine", "").value = p.getString("asr_engine", "")!!
+        mem("asr_mode", "sys").value = p.getString("asr_mode", "sys")!!
+        mem("asr_vendor", "openai").value = p.getString("asr_vendor", "openai")!!
+        mem("asr_model", "whisper-1").value = p.getString("asr_model", "whisper-1")!!
+        mem("asr_base", "").value = p.getString("asr_base", "")!!
+        mem("asr_lang", "zh-CN").value = p.getString("asr_lang", "zh-CN")!!
+        mem("asr_dg_model", "nova-3").value = p.getString("asr_dg_model", "nova-3")!!
+        mem("asr_dg_url", "https://api.deepgram.com").value = p.getString("asr_dg_url", "https://api.deepgram.com")!!
+        mem("asr_sherpa_dir", "").value = p.getString("asr_sherpa_dir", "")!!
+        mem("asr_sherpa_src", "").value = p.getString("asr_sherpa_src", "")!!
+        mem("asr_key", "").value = Vault.get("asr_key")
+        mem("asr_dg_key", "").value = Vault.get("asr_dg_key")
         mem("plg_installed", "").value = p.getString("plg_installed", "")!!
         mem("pl_email", "").value = p.getString("pl_email", "")!!
         mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
         mem("paste_limit", 3000).value = p.getInt("paste_limit", 3000)
         mem("full_input_new", true).value = p.getBoolean("full_input_new", true)
-        //1.18.0：任务岛与备份加密配置。上面这些键都是「只 put 不读回就回默认」，新增键必须补在这里
         mem("island_on", true).value = p.getBoolean("island_on", true)
         mem("island_done", true).value = p.getBoolean("island_done", true)
         mem("island_done_sec", 20).value = p.getInt("island_done_sec", 20)
         mem("card_alpha", 100).value = p.getInt("card_alpha", 100)
         mem("bk_secrets", true).value = p.getBoolean("bk_secrets", true)
-        //模型表 / 技能表的版本戳与快照：这三个键漏读回就会出事——数据根 models.json
-        //写不动时（属主被系统改成 media_rw）内存里 fileAt=0、rev=0 恒等，冷启动一律信旧文件，
-        //用户刚配的模型配置看起来就「存了但读不到」
         mem("models_rev", 0L).value = p.getLong("models_rev", 0L)
         mem("models_file_at", 0L).value = p.getLong("models_file_at", 0L)
         mem("models_snap", "").value = p.getString("models_snap", "")!!
         mem("skills_rev", 0L).value = p.getLong("skills_rev", 0L)
         mem("skills_file_at", 0L).value = p.getLong("skills_file_at", 0L)
-        //同批漏读回的三个：老版本只写不读，冷启动全回默认
         mem("title_profile", "").value = p.getString("title_profile", "")!!
         mem("llm_local", false).value = p.getBoolean("llm_local", false)
         mem("llm_max_tok", 512).value = p.getInt("llm_max_tok", 512)
-        //外观可配项（Markdown 排版 / 卡片圆角 / 终端字体颜色 / 各气泡字体 / 弹窗圆角 / 滑块外观）：
-        //这一整批都是「只 put 不读回就冷启动回默认」，新增键一律补在这里
         mem("card_corner", 16).value = p.getInt("card_corner", 16)
         mem("term_font", 10).value = p.getInt("term_font", 10)
         mem("term_font_file", "").value = p.getString("term_font_file", "")!!
@@ -323,13 +316,14 @@ object Cfg {
         mem("dialog_corner", 20).value = p.getInt("dialog_corner", 20)
         mem("slider_accent", false).value = p.getBoolean("slider_accent", false)
         mem("slider_track", 18).value = p.getInt("slider_track", 18)
+        mem("slider_track_h", 26).value = p.getInt("slider_track_h", 26)
         mem("md_font", 13).value = p.getInt("md_font", 13)
         mem("md_line", 155).value = p.getInt("md_line", 155)
         mem("md_gap", 6).value = p.getInt("md_gap", 6)
         mem("md_indent", 12).value = p.getInt("md_indent", 12)
         mem("md_pad", 0).value = p.getInt("md_pad", 0)
         mem("md_code", 12).value = p.getInt("md_code", 12)
-    } //读盘并预热状态；mig_clean 等 19 个键以前只 put 不读回，冷启动一律回默认
+    }
 
     private fun put(k: String, v: Any?) {
         val e = sp?.edit() ?: return
@@ -340,9 +334,8 @@ object Cfg {
             else -> e.putString(k, v as? String ?: "")
         }
         e.apply()
-    } //异步落盘，250ms 内合并
+    }
 
-    /** 立刻落盘：数据根文件写不动时要靠分片兜底，慢一步就可能被进程被杀吞掉 */
     private fun putNow(k: String, v: Any?) {
         val e = sp?.edit() ?: return
         when (v) {
@@ -353,9 +346,8 @@ object Cfg {
             else -> e.putString(k, v as? String ?: "")
         }
         e.commit()
-    } //同步落盘
+    }
 
-    /** 模型表的版本戳：rev 每次保存 +1，fileAt 记「数据根文件里那份」对应哪个 rev */
     var modelsRev: Long
         get() = mem("models_rev", 0L).value
         set(v) { mem("models_rev", 0L).value = v; putNow("models_rev", v) }
@@ -363,12 +355,10 @@ object Cfg {
         get() = mem("models_file_at", 0L).value
         set(v) { mem("models_file_at", 0L).value = v; putNow("models_file_at", v) }
 
-    /** 模型表的整表快照：数据根写不动时它就是真源，冷启动靠它把配置捞回来 */
     var modelsSnap: String
         get() = mem("models_snap", "").value
         set(v) { mem("models_snap", "").value = v; putNow("models_snap", v) }
 
-    /** 技能表同上：rev / fileAt / 快照（快照沿用老的 skills 键） */
     var skillsRev: Long
         get() = mem("skills_rev", 0L).value
         set(v) { mem("skills_rev", 0L).value = v; putNow("skills_rev", v) }
@@ -383,21 +373,18 @@ object Cfg {
         get() = mem("a11y_done", false).value
         set(v) { mem("a11y_done", false).value = v; put("a11y_done", v) }
 
-    /** 「加入我们」卡片：勾了以后永不提醒就不再弹，设置里也没入口，属于一次性推广 */
     var joinDismissed: Boolean
         get() = mem("join_dismissed", false).value
         set(v) { mem("join_dismissed", false).value = v; put("join_dismissed", v) }
 
-    /** 「加入我们」卡片已提示过的 versionCode：同版本只弹一次，升级后再弹一次 */
     var joinSeen: Int
         get() = mem("join_seen", 0).value
         set(v) { mem("join_seen", 0).value = v; put("join_seen", v) }
-    /** 公告已读过的 id：always=false 的公告同一 id 只弹一次 */
+
     var annSeen: String
         get() = mem("ann_seen", "").value
         set(v) { mem("ann_seen", "").value = v; put("ann_seen", v) }
 
-    /** SSH 服务器：主机 / 端口 / 用户名 / 密码全部只存加密文件 ssh.baicodex，SP 里不落明文 */
     var sshHost: String
         get() = mem("ssh_host", "").value
         set(v) { mem("ssh_host", "").value = v; Vault.put("host", v.trim(), Vault.SSH) }
@@ -415,7 +402,6 @@ object Cfg {
         get() = mem("ssh_pass", "").value
         set(v) { mem("ssh_pass", "").value = v; Vault.put("pass", v, Vault.SSH) }
 
-    /** GitHub：调用 GitHub 时首次要的用户名与 token（老式密码也填这一栏），同样只进 ssh.baicodex */
     var ghUser: String
         get() = mem("gh_user", "").value
         set(v) { mem("gh_user", "").value = v; Vault.put("gh_user", v.trim(), Vault.SSH) }
@@ -423,22 +409,18 @@ object Cfg {
         get() = mem("gh_token", "").value
         set(v) { mem("gh_token", "").value = v; Vault.put("gh_token", v.trim(), Vault.SSH) }
 
-    /** 点过「立即加入」并成功跳出 QQ：下次卡片把「以后永不提醒」换成「我已加入，下次不再提示」 */
     var joinJoined: Boolean
         get() = mem("join_joined", false).value
         set(v) { mem("join_joined", false).value = v; put("join_joined", v) }
 
-    /** 累计前台使用秒数：只用来判定「用了 2 小时要不要邀请评价」 */
     var usedSec: Int
         get() = mem("used_sec", 0).value
         set(v) { mem("used_sec", 0).value = v; put("used_sec", v) }
 
-    /** 评价调研弹窗已经弹过一次，之后不再弹 */
     var starShown: Boolean
         get() = mem("star_shown", false).value
         set(v) { mem("star_shown", false).value = v; put("star_shown", v) }
 
-    /** 用户关掉了评价调研弹窗：开关在设置「关于」与引导最后一步都能改 */
     var noRate: Boolean
         get() = mem("no_rate", false).value
         set(v) { mem("no_rate", false).value = v; put("no_rate", v) }
@@ -447,83 +429,70 @@ object Cfg {
         get() = mem("fb_token", "").value
         set(v) { mem("fb_token", "").value = v; Vault.put("fb_token", v, Vault.USER) }
 
-    /**
-     * 备份密钥更换提醒是否已处理（1.17.2）：启动时扫到本机有 .baicodex 备份就拦一次，
-     * 用户导入完或明确放弃后置真，本机不再重复提示。
-     */
+    var fbEmail: String
+        get() = mem("fb_email", "").value
+        set(v) { mem("fb_email", "").value = v; put("fb_email", v) }
 
-    /** 插件广场里用的邮箱：上传要收验证码与审核结果，记下来省得每次重填 */
     var plEmail: String
         get() = mem("pl_email", "").value
         set(v) { mem("pl_email", "").value = v; put("pl_email", v) }
 
-    /** 从广场装过的插件：JSON 存 id→(目录名, 版本)，给「检测更新」认本地哪一份对应哪个插件 */
     var plgInstalled: String
         get() = mem("plg_installed", "").value
         set(v) { mem("plg_installed", "").value = v; put("plg_installed", v) }
 
-    /** 账号：登录后服务器发的会话 token，空串 = 没登录 */
     var accToken: String
         get() = mem("acc_token", "").value
         set(v) { mem("acc_token", "").value = v; Vault.put("acc_token", v, Vault.USER) }
 
-    /** 账号：自己的 uid，0 = 没登录 */
     var accUid: Int
         get() = mem("acc_uid", 0).value
         set(v) { mem("acc_uid", 0).value = v; put("acc_uid", v) }
 
-    /** 账号：用户名（全站唯一，主页地址用） */
     var accUname: String
         get() = mem("acc_uname", "").value
         set(v) { mem("acc_uname", "").value = v; put("acc_uname", v) }
 
-    /** 账号：昵称 */
     var accNick: String
         get() = mem("acc_nick", "").value
         set(v) { mem("acc_nick", "").value = v; put("acc_nick", v) }
 
-    /** 账号：头像地址（服务器上的绝对地址，空串 = 用昵称首字兜底） */
     var accAvatar: String
         get() = mem("acc_avatar", "").value
         set(v) { mem("acc_avatar", "").value = v; put("acc_avatar", v) }
 
-    /** 账号：走过一次注册/登录引导就不再自动弹 */
     var accOnboarded: Boolean
         get() = mem("acc_onboarded", false).value
         set(v) { mem("acc_onboarded", false).value = v; put("acc_onboarded", v) }
 
-    /** 已同意的用户协议版本号，0 = 没同意过；进主界面前必须 >= Tos.VERSION */
     var tosAgreed: Int
         get() = mem("tos_agreed", 0).value
         set(v) { mem("tos_agreed", 0).value = v; put("tos_agreed", v) }
-    /** 旧版工作区已确认不存在：启动的迁移门直接放行，不再扫盘 */
+
     var migClean: Boolean
         get() = mem("mig_clean", false).value
         set(v) { mem("mig_clean", false).value = v; put("mig_clean", v) }
 
-    /** 已上报给服务端的协议版本号，避免每次启动重复上报 */
     var tosSent: Int
         get() = mem("tos_sent", 0).value
         set(v) { mem("tos_sent", 0).value = v; put("tos_sent", v) }
 
-    /** 界面语言：空串 = 跟随系统，其它是 BCP-47（zh-CN / zh-TW / en / ja / fr） */
     var lang: String
         get() = mem("lang", "").value
         set(v) { mem("lang", "").value = v; put("lang", v) }
 
-    /** 本地模型线程数：0 = 按核心数自动 */
     var llmThreads: Int
         get() = mem("llm_threads", 0).value
         set(v) { mem("llm_threads", 0).value = v; put("llm_threads", v) }
-    /** 本地模型上下文长度，超过模型训练上下文会被 native 侧压回去 */
+
     var llmCtx: Int
         get() = mem("llm_ctx", 4096).value
         set(v) { mem("llm_ctx", 4096).value = v; put("llm_ctx", v) }
-    /** offload 到 GPU 的层数：0 = 纯 CPU；非 0 需要构建里带了 OpenCL 后端 */
+
     var llmGpu: Int
         get() = mem("llm_gpu", 0).value
         set(v) { mem("llm_gpu", 0).value = v; put("llm_gpu", v) }
-    /** 单轮最多生成多少 token：手机上纯 CPU 越大越慢，默认 512 */
+
     var llmMaxTok: Int
         get() = mem("llm_max_tok", 512).value
         set(v) { mem("llm_max_tok", 512).value = v; put("llm_max_tok", v) }
@@ -536,11 +505,11 @@ object Cfg {
     var llmRep: Float
         get() = mem("llm_rep", 1.1f).value
         set(v) { mem("llm_rep", 1.1f).value = v; put("llm_rep", v) }
-    /** 上次选中的本地模型绝对路径，空 = 没选 */
+
     var llmModel: String
         get() = mem("llm_model", "").value
         set(v) { mem("llm_model", "").value = v; put("llm_model", v) }
-    /** 聊天是否走本地模型：开着且模型可用时 LlmClient 整体切到 llama.cpp，云端配置保留不删 */
+
     var llmLocal: Boolean
         get() = mem("llm_local", false).value
         set(v) { mem("llm_local", false).value = v; put("llm_local", v) }
@@ -548,7 +517,6 @@ object Cfg {
         get() = WorkMode.of(mem("work_mode", WorkMode.NORMAL.id).value)
         set(v) { mem("work_mode", WorkMode.NORMAL.id).value = v.id; put("work_mode", v.id) }
 
-    /** 运行模式：计划 / 标准 / 代码 / 极简 / 创造，改的是提示 + 工具面 */
     var agentMode: AgentMode
         get() = AgentMode.of(mem("agent_mode", AgentMode.STANDARD.id).value)
         set(v) { mem("agent_mode", AgentMode.STANDARD.id).value = v.id; put("agent_mode", v.id) }
@@ -567,7 +535,7 @@ object Cfg {
     var httpConfirmed: Boolean
         get() = mem("http_confirmed", false).value
         set(v) { mem("http_confirmed", false).value = v; put("http_confirmed", v) }
-    /** 当前配置在设置里勾选过的模型：聊天页的模型卡片只在这几个里挑，不落 SP */
+
     var profileModels: List<String>
         get() = mem("profile_models", emptyList<String>()).value
         set(v) { mem("profile_models", emptyList<String>()).value = v }
@@ -587,30 +555,26 @@ object Cfg {
         get() = mem("workflow", "general").value
         set(v) { mem("workflow", "general").value = v; put("workflow", v) }
 
-    /** 上下文超预算时自动把早期消息压成摘要 */
     var ctxAuto: Boolean
         get() = mem("ctx_auto", true).value
         set(v) { mem("ctx_auto", true).value = v; put("ctx_auto", v) }
 
-    /** 未压缩部分的字符预算 */
     var ctxBudget: Int
         get() = mem("ctx_budget", 12000).value
         set(v) { mem("ctx_budget", 12000).value = v; put("ctx_budget", v) }
 
-    /** 压缩时保留的最近消息条数 */
     var ctxKeep: Int
         get() = mem("ctx_keep", 8).value
         set(v) { mem("ctx_keep", 8).value = v; put("ctx_keep", v) }
 
-    /** 未压缩消息条数超过它、且占用已过预算四分之一才触发压缩（防止占用很低就先按条数压） */
     var ctxMsgCount: Int
         get() = mem("ctx_msg_count", 16).value
         set(v) { mem("ctx_msg_count", 16).value = v; put("ctx_msg_count", v) }
-    /**总结补充要求：留空不追加；填了拼在内置提示词后面，内置的四段结构永远保留 */
+
     var summaryPrompt: String
         get() = mem("summary_prompt", "").value
         set(v) { mem("summary_prompt", "").value = v; put("summary_prompt", v) }
-    /** 摘要档位：0 = 简洁 / 1 = 详细 / 2 = 全面；具体写多少字由总结模型按内容自己控，这里只给上限 */
+
     var summaryLevel: Int
         get() = mem("summary_level", 1).value
         set(v) {
@@ -618,415 +582,399 @@ object Cfg {
             mem("summary_level", 1).value = n
             put("summary_level", n)
         }
-    /** 档位对应的字数上限：0 = 不限（与档位一一对应，别在别处另写一份） */
+
     val summaryWords: Int
         get() = when (summaryLevel.coerceIn(0, 2)) {
             0 -> 1000
             1 -> 2000
             else -> 0
         }
-    /** 总结用的模型配置 id：空 = 跟随当前聊天选中的那条 */
+
     var summaryProfileId: String
         get() = mem("summary_profile", "").value
         set(v) { mem("summary_profile", "").value = v; put("summary_profile", v) }
-    /** 标题生成用的模型配置 id：空 = 跟随当前聊天选中的那条 */
+
     var titleProfileId: String
         get() = mem("title_profile", "").value
         set(v) { mem("title_profile", "").value = v; put("title_profile", v) }
 
-    /** 是否让模型先思考再回答（下发 reasoning_effort） */
+    var memProfileId: String
+        get() = mem("mem_profile_id", "").value
+        set(v) { mem("mem_profile_id", "").value = v; put("mem_profile_id", v) }
+
     var think: Boolean
         get() = mem("think", false).value
         set(v) { mem("think", false).value = v; put("think", v) }
 
-    /** 思考强度：low / medium / high */
     var thinkEffort: String
         get() = mem("think_effort", "medium").value
         set(v) { mem("think_effort", "medium").value = v; put("think_effort", v) }
 
-    /** 工具结果预算：单条工具结果最多留给模型多少 token，0 = max（不限） */
+    var thinkLevel: Int
+        get() = mem("think_level", 0).value
+        set(v) {
+            val n = v.coerceIn(0, 5)
+            mem("think_level", 0).value = n
+            put("think_level", n)
+        }
+
+    var thinkRules: String
+        get() = mem("think_rules", "").value
+        set(v) { mem("think_rules", "").value = v; put("think_rules", v) }
+
+    var promptOptProfileId: String
+        get() = mem("prompt_opt_profile", "").value
+        set(v) { mem("prompt_opt_profile", "").value = v; put("prompt_opt_profile", v) }
+
+    var promptOptKeep: Boolean
+        get() = mem("prompt_opt_keep", true).value
+        set(v) { mem("prompt_opt_keep", true).value = v; put("prompt_opt_keep", v) }
+
+    var promptOrder: Int
+        get() = mem("prompt_order", 0).value
+        set(v) {
+            val n = v.coerceIn(0, 1)
+            mem("prompt_order", 0).value = n
+            put("prompt_order", n)
+        }
+
+    var replyStyle: String
+        get() = mem("reply_style", "").value
+        set(v) { mem("reply_style", "").value = v; put("reply_style", v) }
+
+    var promptOptStyle: String
+        get() = mem("prompt_opt_style", "").value
+        set(v) { mem("prompt_opt_style", "").value = v; put("prompt_opt_style", v) }
+
+    var topP: Float
+        get() = mem("top_p", -1f).value
+        set(v) { mem("top_p", -1f).value = v; put("top_p", v) }
+
+    var topK: Int
+        get() = mem("top_k", 0).value
+        set(v) { mem("top_k", 0).value = v; put("top_k", v) }
+
+    var presencePenalty: Float
+        get() = mem("presence_penalty", -9f).value
+        set(v) { mem("presence_penalty", -9f).value = v; put("presence_penalty", v) }
+
+    var frequencyPenalty: Float
+        get() = mem("frequency_penalty", -9f).value
+        set(v) { mem("frequency_penalty", -9f).value = v; put("frequency_penalty", v) }
+
+    var repeatPenalty: Float
+        get() = mem("repeat_penalty", 0f).value
+        set(v) { mem("repeat_penalty", 0f).value = v; put("repeat_penalty", v) }
+
     var toolBudgetTokens: Int
         get() = mem("tool_budget_tokens", 0).value
         set(v) { mem("tool_budget_tokens", 0).value = v; put("tool_budget_tokens", v) }
 
-    /** 采样温度，负数表示不下发（跟随服务端默认） */
     var temperature: Float
         get() = mem("temperature", -1f).value
         set(v) { mem("temperature", -1f).value = v; put("temperature", v) }
 
-    /** 模型能力：是否支持图片输入。关掉后图片附件降级成一行文字说明，不会把请求打成 400 */
     var modelVision: Boolean
         get() = mem("model_vision", true).value
         set(v) { mem("model_vision", true).value = v; put("model_vision", v) }
 
-    /** 模型能力：是否支持工具调用。关掉后请求体不下发 tools，模型只能纯文本回答 */
     var modelToolCall: Boolean
         get() = mem("model_tool_call", true).value
         set(v) { mem("model_tool_call", true).value = v; put("model_tool_call", v) }
 
-    /** 模型能力：是否支持推理参数。关掉后即使开了思考也不下发 reasoning_effort */
     var modelReasoning: Boolean
         get() = mem("model_reasoning", true).value
         set(v) { mem("model_reasoning", true).value = v; put("model_reasoning", v) }
 
-    /**
-     * 模型能力：是否支持「原生 search」——由服务端自己联网检索并把结果注入上下文，客户端不执行工具。
-     * 关掉后请求里完全不声明各家搜索工具 / 参数，免得中转站直接 400。
-     */
     var modelNativeSearch: Boolean
         get() = mem("model_native_search", false).value
         set(v) { mem("model_native_search", false).value = v; put("model_native_search", v) }
 
-    /** Tavily API Key：联网搜索工具用，和模型 Key 一样只进加密库 */
     var tavilyKey: String
         get() = mem("tavily_key", "").value
         set(v) { mem("tavily_key", "").value = v; Vault.put("tavily_key", v.trim()) }
 
-    /** 选中的搜索平台 id（对应 Search.providers），空 = 没启用搜索技能 */
     var searchProvider: String
         get() = mem("search_provider", "").value
         set(v) { mem("search_provider", "").value = v; put("search_provider", v) }
 
-    /** 当前选中的智能体角色 id，空 = 默认助手 */
     var personaId: String
         get() = mem("persona_id", "").value
         set(v) { mem("persona_id", "").value = v; put("persona_id", v) }
-    /** 已注入的内置角色版本：小于 Personas.PRESET_SEED 时补一次，用户删掉的不复活 */
+
     var personaSeed: Int
         get() = mem("persona_seed", 0).value
         set(v) { mem("persona_seed", 0).value = v; put("persona_seed", v) }
 
-    /** 聊天里是否显示头像 */
     var avatarOn: Boolean
         get() = mem("avatar_on", true).value
         set(v) { mem("avatar_on", true).value = v; put("avatar_on", v) }
 
-    /** 用户头像的本地图片路径，空 = 用默认头像 */
     var avatarUser: String
         get() = mem("avatar_user", "").value
         set(v) { mem("avatar_user", "").value = v; put("avatar_user", v) }
 
-    /** AI 头像来源：persona = 跟当前智能体角色的头像，custom = 用下面这张自定义图 */
     var avatarAiMode: String
         get() = mem("avatar_ai_mode", "persona").value
         set(v) { mem("avatar_ai_mode", "persona").value = v; put("avatar_ai_mode", v) }
 
-    /** 消息强制高圆角：开了之后所有消息气泡取高度一半的胶囊形圆角 */
     var bubbleCapsule: Boolean
         get() = mem("bubble_capsule", false).value
         set(v) { mem("bubble_capsule", false).value = v; put("bubble_capsule", v) }
 
-    /** 自定义 AI 头像的本地图片路径，仅 avatarAiMode=custom 时用 */
     var avatarAi: String
         get() = mem("avatar_ai", "").value
         set(v) { mem("avatar_ai", "").value = v; put("avatar_ai", v) }
 
-    /** Waifu 模式：回复按标点切成小句逐条发送，营造更自然的对话节奏 */
     var waifuMode: Boolean
         get() = mem("waifu_mode", false).value
         set(v) { mem("waifu_mode", false).value = v; put("waifu_mode", v) }
-    /** 分句气泡动画：Waifu 切出来的每条小句弹出时带回弹，像苹果 Messages；默认开，只在 Waifu 下生效 */
+
     var waifuBounce: Boolean
         get() = mem("waifu_bounce", true).value
         set(v) { mem("waifu_bounce", true).value = v; put("waifu_bounce", v) }
 
-    /**
-     * 更真实的分句引擎：默认关。
-     * 打开后分句切得更碎（逗号也断）、气泡宽度收到屏幕的 3/7、弹出动画换成淡入 + 上浮的缓动，
-     * 观感更接近真人一条条发短消息，而不是同一段文字分几块。
-     */
     var waifuReal: Boolean
         get() = mem("waifu_real", false).value
         set(v) { mem("waifu_real", false).value = v; put("waifu_real", v) }
 
-    /**
-     * 分句打字速度：每个字占用多少毫秒。
-     * 既决定两条气泡之间的节奏，也决定「对方正在输入」挂多久（时长 = 字数 × 该值）。
-     * 20 = 飞快，150 = 明显慢；默认 45 与旧版 gapMs 的 45ms/字 一致。
-     */
     var waifuTypeMs: Int
         get() = mem("waifu_type_ms", 45).value
         set(v) {
             val n = v.coerceIn(20, 150)
             mem("waifu_type_ms", 45).value = n
             put("waifu_type_ms", n)
-        } //打字速度
+        }
 
-    /** 模拟「对方正在输入…」：分句模式下这一条已发完、下一条还没到时挂个输入中提示 */
     var waifuTyping: Boolean
         get() = mem("waifu_typing", true).value
         set(v) { mem("waifu_typing", true).value = v; put("waifu_typing", v) }
 
-    /** 自定义系统提示，拼在角色之后；落盘在数据根 system_prompt.md，直接改文件也生效 */
     var systemPrompt: String
-        get() = Store.read(SYSTEM_PROMPT_FILE) ?: mem("system_prompt", "").value
+        get() = mem("system_prompt", "").value
         set(v) {
             mem("system_prompt", "").value = v
             put("system_prompt", v)
+
             Store.write(SYSTEM_PROMPT_FILE, v)
         }
 
-    /** 搜索平台配置项的存储键：tavily 的 key 沿用旧键，升级后已填的 Key 不丢 */
     private fun searchCfgKey(provider: String, field: String): String =
         if (provider == "tavily" && field == "key") "tavily_key" else "search_cfg_${provider}_$field"
 
-    /** 带 key 字样的配置项算凭据，只进加密库 */
     private fun searchCfgSecret(field: String): Boolean = field == "key" || field.endsWith("_key")
 
-    /** 读某个平台某个配置项（如 tavily 的 key、google 的 cx） */
     fun searchCfg(provider: String, field: String): String {
         if (provider.isBlank() || field.isBlank()) return ""
         val k = searchCfgKey(provider, field)
         val st = mem(k, "")
         if (st.value == "") st.value = if (searchCfgSecret(field)) Vault.get(k) else sp?.getString(k, "") ?: ""
         return st.value
-    } //读平台配置
+    }
 
     fun setSearchCfg(provider: String, field: String, v: String) {
         if (provider.isBlank() || field.isBlank()) return
         val k = searchCfgKey(provider, field)
         mem(k, "").value = v
         if (searchCfgSecret(field)) Vault.put(k, v.trim()) else put(k, v)
-    } //写平台配置
+    }
 
-    /** 附加请求参数（JSON），覆盖/补齐默认字段，留空则不加 */
     var extraParams: String
         get() = mem("extra_params", "").value
         set(v) { mem("extra_params", "").value = v; put("extra_params", v) }
 
-    /** 用户显式绑定的工作区路径；空 = 用数据根下的自动工作区 */
     var workspace: String
         get() = mem("workspace", "").value
         set(v) { mem("workspace", "").value = v; put("workspace", v) }
 
-    /** 全局默认工作区绝对路径：关掉自动绑定后所有会话共用这一个目录，首次由 Workspace.defaultWs() 建好并写入 */
     var defaultWorkspace: String
         get() = mem("default_workspace", "").value
         set(v) { mem("default_workspace", "").value = v; put("default_workspace", v) }
 
-    /** 深浅主题：0 = 跟随系统，1 = 浅色，2 = 深色 */
     var darkTheme: Int
         get() = mem("dark_theme", 0).value
         set(v) { mem("dark_theme", 0).value = v; put("dark_theme", v) }
 
-    /** 全局字号缩放：乘在系统 fontScale 上，1f = 跟随系统 */
     var fontScale: Float
         get() = mem("font_scale", 1f).value
         set(v) { mem("font_scale", 1f).value = v; put("font_scale", v) }
 
-    /** 输入区是否做成悬浮卡片（不贴屏幕底边） */
     var floatInput: Boolean
         get() = mem("float_input", false).value
         set(v) { mem("float_input", false).value = v; put("float_input", v) }
 
-    /** 输入区是语音模式还是文字模式：点一次语音就记下来，下次进对话页照旧 */
     var voiceInput: Boolean
         get() = mem("voice_input", false).value
         set(v) { mem("voice_input", false).value = v; put("voice_input", v) }
 
-    /** 全新的全屏输入逻辑：输入超 700 字才在语音右侧出现全屏入口，关掉则入口常驻 */
     var fullInputNew: Boolean
         get() = mem("full_input_new", true).value
         set(v) { mem("full_input_new", true).value = v; put("full_input_new", v) }
 
-    /** 粘贴超长文本自动转成工作区文件 */
     var pasteToFile: Boolean
         get() = mem("paste_to_file", true).value
         set(v) { mem("paste_to_file", true).value = v; put("paste_to_file", v) }
 
-    /** 转文件的字数阈值 */
     var pasteLimit: Int
         get() = mem("paste_limit", 3000).value
         set(v) { mem("paste_limit", 3000).value = v; put("paste_limit", v) }
 
-    /** 液态玻璃卡片：所有卡片换成半透玻璃 + 手指位置柔光 */
     var glassCard: Boolean
         get() = mem("glass_card", false).value
         set(v) { mem("glass_card", false).value = v; put("glass_card", v) }
-    /** 卡片不透明度（%）：只在非玻璃模式下生效，100 = 原来的实底白卡，0 = 全透只剩描边 */
+
     var cardAlpha: Int
         get() = mem("card_alpha", 100).value
         set(v) { mem("card_alpha", 100).value = v; put("card_alpha", v) }
 
-    /** 卡片圆角（dp）：设置页/弹窗里的卡片统一取这个值，白卡与玻璃卡共用 */
     var cardCorner: Int
         get() = mem("card_corner", 16).value
         set(v) { mem("card_corner", 16).value = v.coerceIn(0, 32); put("card_corner", v.coerceIn(0, 32)) }
-    /**
-     * 回到底部圆钮的配色档：
-     * 0 = 默认白（白底 + 深色图标，不跟玻璃也不跟主题）
-     * 1 = 继承液态玻璃（开玻璃就是玻璃，关玻璃退回白底）
-     * 2 = 继承主题色（主题色淡底 + 主题色图标）
-     */
+
     var scrollBtnStyle: Int
         get() = mem("scroll_btn_style", 0).value
         set(v) { mem("scroll_btn_style", 0).value = v.coerceIn(0, 2); put("scroll_btn_style", v.coerceIn(0, 2)) }
 
-    /** Linux 终端字号（sp）：9-14 之间，屏幕小 / 想一屏多看几行时调小 */
     var termFont: Int
         get() = mem("term_font", 10).value
         set(v) { mem("term_font", 10).value = v.coerceIn(9, 14); put("term_font", v.coerceIn(9, 14)) }
 
-    /** 终端字体文件路径：空 = 内置等宽字体；非空要走 FontStore 解析 */
     var termFontFile: String
         get() = mem("term_font_file", "").value
         set(v) { mem("term_font_file", "").value = v; put("term_font_file", v) }
 
-    /** 终端正文色（ARGB Int），默认 0xFFD5DBE5 */
     var termFg: Int
         get() = mem("term_fg", 0xFFD5DBE5.toInt()).value
         set(v) { mem("term_fg", 0xFFD5DBE5.toInt()).value = v; put("term_fg", v) }
 
-    /** 终端底色（ARGB Int），默认 0xFF0E1116 */
     var termBg: Int
         get() = mem("term_bg", 0xFF0E1116.toInt()).value
         set(v) { mem("term_bg", 0xFF0E1116.toInt()).value = v; put("term_bg", v) }
 
-    /** 全局字体文件路径：所有没显式指定字体的文字都跟它走；空 = 系统默认 */
     var uiFontFile: String
         get() = mem("ui_font_file", "").value
         set(v) { mem("ui_font_file", "").value = v; put("ui_font_file", v) }
 
-    /** 我方（用户）气泡字体文件路径；空 = 跟全局字体 */
     var userFontFile: String
         get() = mem("user_font_file", "").value
         set(v) { mem("user_font_file", "").value = v; put("user_font_file", v) }
 
-    /** AI 回复气泡字体文件路径；空 = 跟全局字体 */
     var aiFontFile: String
         get() = mem("ai_font_file", "").value
         set(v) { mem("ai_font_file", "").value = v; put("ai_font_file", v) }
 
-    /** 全局缩进（dp）：正文 / 气泡左右各让出的距离，0 = 原样 */
     var globalIndent: Int
         get() = mem("global_indent", 0).value
         set(v) { mem("global_indent", 0).value = v.coerceIn(0, 32); put("global_indent", v.coerceIn(0, 32)) }
 
-    /** 弹窗圆角（dp）：ScrimCard 与底部吸附卡片共用 */
     var dialogCorner: Int
         get() = mem("dialog_corner", 20).value
         set(v) { mem("dialog_corner", 20).value = v.coerceIn(0, 32); put("dialog_corner", v.coerceIn(0, 32)) }
 
-    /** 滑块是否继承主题色：true = 激活段与滑块块用主题色，false = 淡灰轨道 + 白块 */
     var sliderAccent: Boolean
         get() = mem("slider_accent", false).value
         set(v) { mem("slider_accent", false).value = v; put("slider_accent", v) }
 
-    /** 滑块轨道的不透明度（%）：5-60，越大轨道越明显 */
     var sliderTrack: Int
         get() = mem("slider_track", 18).value
         set(v) { mem("slider_track", 18).value = v.coerceIn(5, 60); put("slider_track", v.coerceIn(5, 60)) }
 
+    var sliderTrackH: Int
+        get() = mem("slider_track_h", 26).value
+        set(v) {
+            val n = v.coerceIn(12, 48)
+            mem("slider_track_h", 26).value = n
+            put("slider_track_h", n)
+        }
 
-    /** Markdown 正文字号（sp）：11-18，聊天里 AI 回复的正文大小 */
     var mdFont: Int
         get() = mem("md_font", 13).value
         set(v) { mem("md_font", 13).value = v.coerceIn(11, 18); put("md_font", v.coerceIn(11, 18)) }
 
-    /** Markdown 行距（%）：100 = 1.0 倍字高，越大行越疏 */
     var mdLine: Int
         get() = mem("md_line", 155).value
         set(v) { mem("md_line", 155).value = v.coerceIn(100, 220); put("md_line", v.coerceIn(100, 220)) }
 
-    /** Markdown 块间距（dp）：段落 / 标题 / 列表之间留多少 */
     var mdGap: Int
         get() = mem("md_gap", 6).value
         set(v) { mem("md_gap", 6).value = v.coerceIn(0, 20); put("md_gap", v.coerceIn(0, 20)) }
 
-    /** Markdown 列表缩进（dp / 级）：无序、有序列表每深一层的缩进量 */
     var mdIndent: Int
         get() = mem("md_indent", 12).value
         set(v) { mem("md_indent", 12).value = v.coerceIn(0, 32); put("md_indent", v.coerceIn(0, 32)) }
 
-    /** Markdown 左右内边距（dp）：正文离气泡 / 卡片左右边缘的距离 */
     var mdPad: Int
         get() = mem("md_pad", 0).value
         set(v) { mem("md_pad", 0).value = v.coerceIn(0, 24); put("md_pad", v.coerceIn(0, 24)) }
 
-    /** Markdown 代码块字号（sp）：9-16 */
     var mdCode: Int
         get() = mem("md_code", 12).value
         set(v) { mem("md_code", 12).value = v.coerceIn(9, 16); put("md_code", v.coerceIn(9, 16)) }
 
-    /** 任务通知 / 灵动岛：每轮任务挂一条常驻通知，支持的机型自动上岛 */
     var islandOn: Boolean
         get() = mem("island_on", true).value
         set(v) { mem("island_on", true).value = v; put("island_on", v) }
 
-    /** 任务完成后是否在岛 / 通知栏继续驻留一会儿 */
     var islandDone: Boolean
         get() = mem("island_done", true).value
         set(v) { mem("island_done", true).value = v; put("island_done", v) }
 
-    /** 任务完成后驻留的秒数，0 = 当场撤掉 */
     var islandDoneSec: Int
         get() = mem("island_done_sec", 20).value
         set(v) { mem("island_done_sec", 20).value = v; put("island_done_sec", v) }
 
-    /** 导出备份时是否带上 Vault 的加密配置桶（API Key / SSH / GitHub / 技能密钥等密文） */
     var bkSecrets: Boolean
         get() = mem("bk_secrets", true).value
         set(v) { mem("bk_secrets", true).value = v; put("bk_secrets", v) }
 
-    /** 质感按钮：深度思考 / 最大 / 语音 / 发送换成带厚度的 3D 按钮 */
     var tactileBtn: Boolean
         get() = mem("tactile_btn", false).value
         set(v) { mem("tactile_btn", false).value = v; put("tactile_btn", v) }
 
-    /** 液态玻璃底栏：设置页底部那条悬浮胶囊换成玻璃 */
     var glassBar: Boolean
         get() = mem("glass_bar", false).value
         set(v) { mem("glass_bar", false).value = v; put("glass_bar", v) }
 
-    /** 玻璃模糊强度（dp）：底栏与面板共用，0 = 只折射不模糊 */
     var glassBlur: Int
         get() = mem("glass_blur", 4).value
         set(v) { mem("glass_blur", 4).value = v; put("glass_blur", v) }
 
-    /** 玻璃折射强度（dp）：边缘透镜变形量，0 = 关掉折射 */
     var glassLens: Int
         get() = mem("glass_lens", 8).value
         set(v) { mem("glass_lens", 8).value = v; put("glass_lens", v) }
 
-    /** 玻璃高光强度（%）：卡片上沿那道亮边的浓度，50 = 默认 */
     var glassHi: Int
         get() = mem("glass_hi", 50).value
         set(v) { mem("glass_hi", 50).value = v; put("glass_hi", v) }
 
-    /** 玻璃乳白遮罩（%）：压住底图保住文字可读，0 = 纯透 */
     var glassVeil: Int
         get() = mem("glass_veil", 12).value
         set(v) { mem("glass_veil", 12).value = v; put("glass_veil", v) }
 
-    /** 色系主题：0 默认蓝 / 1 冰川 / 2 春野 / 3 紫罗兰 / 4 珊瑚 / 5 石墨 / 6 玫红 / 7 青柠 */
     var themeTint: Int
         get() = mem("theme_tint", 0).value
         set(v) { mem("theme_tint", 0).value = v; put("theme_tint", v) }
 
-    /** 页面背景：0 纯色 / 1 柔光渐变 / 2 点阵 */
     var bgStyle: Int
         get() = mem("bg_style", 0).value
         set(v) { mem("bg_style", 0).value = v; put("bg_style", v) }
-    /** 自定义背景图：私有目录里的绝对路径，空 = 不铺图 */
+
     var bgImg: String
         get() = mem("bg_img", "").value
         set(v) { mem("bg_img", "").value = v; put("bg_img", v) }
-    /** 背景图模糊度 0-100：0 原图，100 最糊 */
+
     var bgBlur: Int
         get() = mem("bg_blur", 0).value
         set(v) { mem("bg_blur", 0).value = v.coerceIn(0, 100); put("bg_blur", v.coerceIn(0, 100)) }
 
-    /** 输入框占位提示：空则显示「请输入问题」；填多行则每行一条随机轮换 */
     var hintText: String
         get() = mem("hint_text", "").value
         set(v) { mem("hint_text", "").value = v; put("hint_text", v) }
 
-    /** 返回键是否由 App 接管（关抽屉、退设置）；关掉就直接交给系统退出 */
     var predictiveBack: Boolean
         get() = mem("predictive_back", true).value
         set(v) { mem("predictive_back", true).value = v; put("predictive_back", v) }
 
-    /** 模型价格：输入 / 输出 / 缓存命中，单位元每百万 token；0 = 不计价 */
     var priceIn: Float
         get() = mem("price_in", 0f).value
         set(v) { mem("price_in", 0f).value = v; put("price_in", v) }
@@ -1039,105 +987,86 @@ object Cfg {
         get() = mem("price_cache", 0f).value
         set(v) { mem("price_cache", 0f).value = v; put("price_cache", v) }
 
-    /** 新会话自动绑新工作区：开 = 每建一个会话配一个新哈希目录；关 = 所有会话共用一个内置默认工作区 */
     var autoBindWorkspace: Boolean
         get() = mem("auto_bind_workspace", true).value
         set(v) { mem("auto_bind_workspace", true).value = v; put("auto_bind_workspace", v) }
 
-    /** 本会话的工作区路径缓存，跟着会话行 workspace 字段走；老全局 Cfg.workspace 已废弃 */
     var sessionWorkspace: String
         get() = mem("session_workspace", "").value
         set(v) { mem("session_workspace", "").value = v; put("session_workspace", v) }
-    /** 本会话的工作区是用户自己挑的（true）还是自动分配的哈希目录（false） */
+
     var sessionWsManual: Boolean
         get() = mem("session_ws_manual", false).value
         set(v) { mem("session_ws_manual", false).value = v; put("session_ws_manual", v) }
-    /** 老版本的全局绑定已经认领过一次，不再参与工作区判定 */
+
     var wsMigrated: Boolean
         get() = mem("ws_migrated", false).value
         set(v) { mem("ws_migrated", false).value = v; put("ws_migrated", v) }
 
-    /** 当前选中的模型配置 id（Profiles 里的条目），切换它会把提供商 / Key / 模型整套换上 */
     var profileId: String
         get() = mem("profile_id", "default").value
         set(v) { mem("profile_id", "default").value = v; put("profile_id", v) }
 
-    /** 单轮回复最大 token；0 = 不下发，跟随服务端默认 */
     var maxTokens: Int
         get() = mem("max_tokens", 0).value
         set(v) { mem("max_tokens", 0).value = v; put("max_tokens", v) }
 
-    /** 最大模式：不下发 max_tokens 并把思考强度顶到 high，让模型把话尽量说完 */
     var maxMode: Boolean
         get() = mem("max_mode", false).value
         set(v) { mem("max_mode", false).value = v; put("max_mode", v) }
 
-    /** 开发者模式：关于页连点版本号 5 次解锁，解锁后关于页最下方才显示开关与工具入口 */
     var devShow: Boolean
         get() = mem("dev_show", false).value
         set(v) { mem("dev_show", false).value = v; put("dev_show", v) }
 
-    /** 开发者工具总开关：只有 devShow 为真时才看得到，关掉后工具卡片一起收起 */
     var devOn: Boolean
         get() = mem("dev_on", false).value
         set(v) { mem("dev_on", false).value = v; put("dev_on", v) }
 
-    /** 手动指定的 Ubuntu 镜像节点 id（对应服务端清单里的 id）；空串表示自动测速择优 */
     var linuxMirrorNode: String
         get() = mem("linux_mirror_node", "").value
         set(v) { mem("linux_mirror_node", "").value = v; put("linux_mirror_node", v) }
 
-    /** 当前选中配置的显示名；只在 profileCustom=true 时生效 */
     var profileName: String
         get() = mem("profile_name", "").value
         set(v) { mem("profile_name", "").value = v; put("profile_name", v) }
 
-    /** 配置名是否用户自定义：false 时跟随「厂商 · 模型」自动变化 */
     var profileCustom: Boolean
         get() = mem("profile_custom", false).value
         set(v) { mem("profile_custom", false).value = v; put("profile_custom", v) }
 
-    /** 配置名迁移版本：老版本把自动名也标成了自定义，升级后降一次级 */
     var profileSeed: Int
         get() = mem("profile_seed", 0).value
         set(v) { mem("profile_seed", 0).value = v; put("profile_seed", v) }
 
-    /** 注入当前时间到系统提示 */
     var injectTime: Boolean
         get() = mem("inject_time", true).value
         set(v) { mem("inject_time", true).value = v; put("inject_time", v) }
 
-    /** 注入电量与充电状态到系统提示 */
     var injectBattery: Boolean
         get() = mem("inject_battery", false).value
         set(v) { mem("inject_battery", false).value = v; put("inject_battery", v) }
 
-    /** 注入位置到系统提示（需定位权限，没授权就跳过） */
     var injectPlace: Boolean
         get() = mem("inject_place", false).value
         set(v) { mem("inject_place", false).value = v; put("inject_place", v) }
 
-    /** 精确位置注入：开着就现取一次当前定位（要精确权限），关着只读最后已知位置 */
     var injectPrecise: Boolean
         get() = mem("inject_precise", false).value
         set(v) { mem("inject_precise", false).value = v; put("inject_precise", v) }
 
-    /** 坐标自动转地名：开着注入的是「北京市东城区 xx」这种能读的位置，关掉只给经纬度 */
     var placeGeo: Boolean
         get() = mem("place_geo", true).value
         set(v) { mem("place_geo", true).value = v; put("place_geo", v) }
 
-    /** 注入今日通知（需通知使用权，没授权就跳过） */
     var injectNoti: Boolean
         get() = mem("inject_noti", false).value
         set(v) { mem("inject_noti", false).value = v; put("inject_noti", v) }
 
-    /** 注入通知条数上限：0 = 不限，只受注入字符上限约束 */
     var notiLimit: Int
         get() = mem("noti_limit", 0).value
         set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
 
-    /**悬浮聊天窗：显示开关 /宽 /高 /字号 /整窗透明度 /位置 */
     var fcOn: Boolean
         get() = mem("fc_on", false).value
         set(v) { mem("fc_on", false).value = v; put("fc_on", v) }
@@ -1165,7 +1094,7 @@ object Cfg {
     var fcY: Int
         get() = mem("fc_y", -1).value
         set(v) { mem("fc_y", -1).value = v; put("fc_y", v) }
-    /** A2A 服务端：开关 / 监听端口 / 访问 token（留空 = 不校验，只建议在可信局域网开） */
+
     var a2aOn: Boolean
         get() = mem("a2a_on", false).value
         set(v) { mem("a2a_on", false).value = v; put("a2a_on", v) }
@@ -1176,17 +1105,14 @@ object Cfg {
         get() = mem("a2a_token", "").value
         set(v) { mem("a2a_token", "").value = v; Vault.put("a2a_token", v) }
 
-    /** 桌宠总开关：默认关（装完不自动起，由用户自己打开） */
     var petOn: Boolean
         get() = mem("pet_on", false).value
         set(v) { mem("pet_on", false).value = v; put("pet_on", v) }
 
-    /** true = 所有状态下都浮在屏幕上；false = 只在应用内展示（默认关） */
     var petGlobal: Boolean
         get() = mem("pet_global", false).value
         set(v) { mem("pet_global", false).value = v; put("pet_global", v) }
 
-    /** 悬浮窗位置（px，-1 表示还没摆过）与边长（dp） */
     var petX: Int
         get() = mem("pet_x", -1).value
         set(v) { mem("pet_x", -1).value = v; put("pet_x", v) }
@@ -1199,32 +1125,26 @@ object Cfg {
         get() = mem("pet_size", 120).value
         set(v) { val n = v.coerceIn(60, 260); mem("pet_size", 120).value = n; put("pet_size", n) }
 
-    /** 看过桌宠引导的版本号：比当前 versionCode 低就弹一次 */
     var petSeen: Int
         get() = mem("pet_seen", 0).value
         set(v) { mem("pet_seen", 0).value = v; put("pet_seen", v) }
 
-    /** 立绘不透明度（%）：越低越透 */
     var petAlpha: Int
         get() = mem("pet_alpha", 100).value
         set(v) { val n = v.coerceIn(30, 100); mem("pet_alpha", 100).value = n; put("pet_alpha", n) }
 
-    /** 左右镜像 */
     var petFlip: Boolean
         get() = mem("pet_flip", false).value
         set(v) { mem("pet_flip", false).value = v; put("pet_flip", v) }
 
-    /** 脚下垫一层淡阴影，深色背景里立绘不至于糊住 */
     var petShadow: Boolean
         get() = mem("pet_shadow", true).value
         set(v) { mem("pet_shadow", true).value = v; put("pet_shadow", v) }
 
-    /** 立绘垫白色圆角卡片 */
     var petCard: Boolean
         get() = mem("pet_card", false).value
         set(v) { mem("pet_card", false).value = v; put("pet_card", v) }
 
-    /** 气泡字号（sp）、是否加粗、最大宽（dp）、圆角（dp）、深色底 */
     var petFont: Int
         get() = mem("pet_font", 14).value
         set(v) { val n = v.coerceIn(9, 20); mem("pet_font", 14).value = n; put("pet_font", n) }
@@ -1245,7 +1165,6 @@ object Cfg {
         get() = mem("pet_bubble_dark", false).value
         set(v) { mem("pet_bubble_dark", false).value = v; put("pet_bubble_dark", v) }
 
-    /** 原地上下缓动：窗口不动，只动图片自己 */
     var petFloat: Boolean
         get() = mem("pet_float", true).value
         set(v) { mem("pet_float", true).value = v; put("pet_float", v) }
@@ -1258,7 +1177,6 @@ object Cfg {
         get() = mem("pet_float_ms", 1600).value
         set(v) { val n = v.coerceIn(400, 4000); mem("pet_float_ms", 1600).value = n; put("pet_float_ms", n) }
 
-    /** 游泳状态：窗口自己在屏幕上跑，比原地浮动费电 */
     var petSwim: Boolean
         get() = mem("pet_swim", false).value
         set(v) { mem("pet_swim", false).value = v; put("pet_swim", v) }
@@ -1267,12 +1185,10 @@ object Cfg {
         get() = mem("pet_swim_speed", 60).value
         set(v) { val n = v.coerceIn(10, 200); mem("pet_swim_speed", 60).value = n; put("pet_swim_speed", n) }
 
-    /** true = 撞到屏幕边反弹；false = 从对面绕回来 */
     var petSwimBounce: Boolean
         get() = mem("pet_swim_bounce", true).value
         set(v) { mem("pet_swim_bounce", true).value = v; put("pet_swim_bounce", v) }
 
-    /** 点击弹跳与幅度（%） */
     var petBounce: Boolean
         get() = mem("pet_bounce", true).value
         set(v) { mem("pet_bounce", true).value = v; put("pet_bounce", v) }
@@ -1281,7 +1197,6 @@ object Cfg {
         get() = mem("pet_bounce_pct", 14).value
         set(v) { val n = v.coerceIn(0, 30); mem("pet_bounce_pct", 14).value = n; put("pet_bounce_pct", n) }
 
-    /** 单击是否说话；气泡停留时长（ms） */
     var petTalk: Boolean
         get() = mem("pet_talk", true).value
         set(v) { mem("pet_talk", true).value = v; put("pet_talk", v) }
@@ -1290,17 +1205,14 @@ object Cfg {
         get() = mem("pet_bubble_ms", 2600).value
         set(v) { val n = v.coerceIn(800, 8000); mem("pet_bubble_ms", 2600).value = n; put("pet_bubble_ms", n) }
 
-    /** 说「高峰 / 错峰」这类时段提示的概率（%），0 = 不说 */
     var petTimedPct: Int
         get() = mem("pet_timed_pct", 35).value
         set(v) { val n = v.coerceIn(0, 100); mem("pet_timed_pct", 35).value = n; put("pet_timed_pct", n) }
 
-    /** 双击查余额 */
     var petDblBal: Boolean
         get() = mem("pet_dbl_bal", true).value
         set(v) { mem("pet_dbl_bal", true).value = v; put("pet_dbl_bal", v) }
 
-    /** Q 弹音效与音量（%） */
     var petSound: Boolean
         get() = mem("pet_sound", true).value
         set(v) { mem("pet_sound", true).value = v; put("pet_sound", v) }
@@ -1309,31 +1221,26 @@ object Cfg {
         get() = mem("pet_sound_vol", 70).value
         set(v) { val n = v.coerceIn(20, 100); mem("pet_sound_vol", 70).value = n; put("pet_sound_vol", n) }
 
-    /** 注入设备使用时长（需使用情况访问权，没授权就跳过） */
     var injectUsage: Boolean
         get() = mem("inject_usage", false).value
         set(v) { mem("inject_usage", false).value = v; put("inject_usage", v) }
 
-    /** 回到前台时用 Shizuku 把无障碍写回系统设置：掉了自动补，不用每次手动点 */
     var autoA11y: Boolean
         get() = mem("auto_a11y", false).value
         set(v) { mem("auto_a11y", false).value = v; put("auto_a11y", v) }
 
-    /** 回复底部显示用量：总 token 与 tok/s */
     var showUsage: Boolean
         get() = mem("show_usage", true).value
         set(v) { mem("show_usage", true).value = v; put("show_usage", v) }
 
-    /** 回复底部显示请求信息：时间 / 供应商 / 模型 / 首响 / 总耗时 */
     var showMeta: Boolean
         get() = mem("show_meta", true).value
         set(v) { mem("show_meta", true).value = v; put("show_meta", v) }
 
-    /** 关闭流式输出：不请求 SSE，等模型整段写完再一次性显示 */
     var noStream: Boolean
         get() = mem("no_stream", false).value
         set(v) { mem("no_stream", false).value = v; put("no_stream", v) }
-    /** 数据输出脱敏：回复里出现口令 / token 一类字段时把值打成掩码；逐字流式没法事后过滤，开了它必须关流式 */
+
     var maskOut: Boolean
         get() = mem("mask_out", false).value
         set(v) {
@@ -1341,17 +1248,39 @@ object Cfg {
             put("mask_out", v)
             if (v && !noStream) noStream = true
         }
-    /** 禁止截图与录屏：主界面加 FLAG_SECURE，系统层直接取不到画面 */
+
     var noShot: Boolean
         get() = mem("no_shot", false).value
         set(v) { mem("no_shot", false).value = v; put("no_shot", v) }
 
-    /** 回复念出来：走系统 TTS，默认关 */
     var speakReplies: Boolean
         get() = mem("speak_replies", false).value
         set(v) { mem("speak_replies", false).value = v; put("speak_replies", v) }
 
-    //语音识别/合成：sys = 系统自带的识别器与 TTS，api = 自己填的 OpenAI 兼容接口
+    var asrEngine: String
+        get() = mem("asr_engine", "").value
+        set(v) { mem("asr_engine", "").value = v; put("asr_engine", v) }
+
+    var asrDgKey: String
+        get() = mem("asr_dg_key", "").value
+        set(v) { mem("asr_dg_key", "").value = v; Vault.put("asr_dg_key", v.trim()) }
+
+    var asrDgModel: String
+        get() = mem("asr_dg_model", "nova-3").value
+        set(v) { mem("asr_dg_model", "nova-3").value = v; put("asr_dg_model", v.trim()) }
+
+    var asrDgUrl: String
+        get() = mem("asr_dg_url", "https://api.deepgram.com").value
+        set(v) { mem("asr_dg_url", "https://api.deepgram.com").value = v.trim().trimEnd('/'); put("asr_dg_url", v.trim().trimEnd('/')) }
+
+    var asrSherpaDir: String
+        get() = mem("asr_sherpa_dir", "").value
+        set(v) { mem("asr_sherpa_dir", "").value = v.trim(); put("asr_sherpa_dir", v.trim()) }
+
+    var asrSherpaSrc: String
+        get() = mem("asr_sherpa_src", "").value
+        set(v) { mem("asr_sherpa_src", "").value = v.trim(); put("asr_sherpa_src", v.trim()) }
+
     var asrMode: String
         get() = mem("asr_mode", "sys").value
         set(v) { mem("asr_mode", "sys").value = v; put("asr_mode", v) }
@@ -1368,27 +1297,22 @@ object Cfg {
         get() = mem("asr_model", "whisper-1").value
         set(v) { mem("asr_model", "whisper-1").value = v; put("asr_model", v.trim()) }
 
-    /** 识别语种：系统识别器与接口都吃这个值，留空 = 自动 */
     var asrLang: String
         get() = mem("asr_lang", "zh-CN").value
         set(v) { mem("asr_lang", "zh-CN").value = v; put("asr_lang", v.trim()) }
 
-    /** 服务商预设：选中后 baseUrl 自动带上，用户只填 key 就能用 */
     var asrVendor: String
         get() = mem("asr_vendor", "openai").value
         set(v) { mem("asr_vendor", "openai").value = v; put("asr_vendor", v) }
 
-    /** 录音采样率（Hz）：低了省流量、高了更准，各家普遍吃 16000 */
     var asrRate: Int
         get() = mem("asr_rate", 16000).value
         set(v) { mem("asr_rate", 16000).value = v; put("asr_rate", v) }
 
-    /** 单次最长录音秒数：到点自动停并转写 */
     var asrMaxSec: Int
         get() = mem("asr_max_sec", 60).value
         set(v) { mem("asr_max_sec", 60).value = v; put("asr_max_sec", v) }
 
-    /** 本机识别离线优先：只让识别服务在设备上跑，不去联网 */
     var asrOffline: Boolean
         get() = mem("asr_offline", false).value
         set(v) { mem("asr_offline", false).value = v; put("asr_offline", v) }
@@ -1409,24 +1333,23 @@ object Cfg {
         get() = mem("tts_model", "tts-1").value
         set(v) { mem("tts_model", "tts-1").value = v; put("tts_model", v.trim()) }
 
-    /** 音色名，接口模式才用得上（alloy / nova …） */
     var ttsVoice: String
         get() = mem("tts_voice", "alloy").value
         set(v) { mem("tts_voice", "alloy").value = v; put("tts_voice", v.trim()) }
 
-    /** 模型总上下文窗口（token），压缩阈值按它的百分比折算 */
     var ctxTotal: Int
         get() = mem("ctx_total", 128000).value
         set(v) { mem("ctx_total", 128000).value = v; put("ctx_total", v) }
 
-    /** 当前配置自带的窗口，0 = 跟随全局；由 Profiles.apply 灌入，不落盘 */
     var profCtxTotal: Int = 0
 
-    /** 实际生效的窗口：配置带了窗口就用它，否则用全局设置 */
+    var profThinkLevels: String = ""
+
+    var profThinkLevelsJson: String = ""
+
     val ctxWin: Int
         get() = if (profCtxTotal > 0) profCtxTotal else ctxTotal
 
-    /** 压缩触发阈值：占总上下文窗口的百分比，10-99 */
     var ctxPct: Int
         get() = mem("ctx_pct", 70).value
         set(v) {
@@ -1434,12 +1357,10 @@ object Cfg {
             mem("ctx_pct", 70).value = n
             put("ctx_pct", n)
         }
-    /** 上下文预算（token）：总窗口 × 压缩阈值百分比，界面直接显示这个 */
+
     val ctxTokenBudget: Int
         get() = (ctxWin.toLong() * ctxPct / 100L).toInt()
 
-
-    /** 按字符构成估 token：中日韩字符 1 字≈1 token，其余按 3.5 字符≈1 token；比统一除 1.8 更贴近真实分词，代码/英文会话不会被判成「快到窗口」 */
     fun estTokens(s: String): Int {
         if (s.isEmpty()) return 0
         var cjk = 0
@@ -1452,37 +1373,33 @@ object Cfg {
             ) cjk++ else other++
         }
         return cjk + (other * 2 + 6) / 7
-    } //按字符类型估 token
+    }
 
-    /** 已注入的预置技能版本：小于 Skills.PRESET_SEED 时补一次新版预置 */
     var presetSeed: Int
         get() = mem("preset_seed", 0).value
         set(v) { mem("preset_seed", 0).value = v; put("preset_seed", v) }
 
-    /** 读某个模型配置的 Key：单独存私有 SP，数据根文件里不放明文 */
     fun profileKey(id: String): String {
         if (id.isBlank()) return ""
         val k = "profkey_$id"
         val st = mem(k, "")
         if (st.value == "") st.value = Vault.get(k)
         return st.value
-    } //读配置 Key
+    }
 
     fun setProfileKey(id: String, v: String): Boolean {
         if (id.isBlank()) return false
         val k = "profkey_$id"
         mem(k, "").value = v
         return Vault.put(k, v)
-    } //写配置 Key，返回是否真的落进加密库
+    }
 
-    /** 一个配置可以填多个 Key：换行 / 逗号 / 分号分隔，请求失败时轮换 */
     fun keyList(id: String): List<String> =
         profileKey(id).split('\n', ',', ';', '\t')
             .map { it.trim() }
             .filter { it.isNotEmpty() }
-            .distinct() //Key列表
+            .distinct()
 
-    /** 工具策略：ask / allow / deny */
     fun policy(tool: String): String = mem("policy_$tool", "ask").also {
         if (it.value == "ask") it.value = sp?.getString("policy_$tool", "ask") ?: "ask"
     }.value
@@ -1492,22 +1409,30 @@ object Cfg {
         put("policy_$tool", policy)
     }
 
-    /**本地后端是否可用：跟 LocalEngine.route() 同一套条件（这里不引用它：cfg 是底层，避免反向依赖） */
     val localReady: Boolean
         get() = llmLocal && llmModel.isNotBlank() && File(llmModel).isFile
 
-    /**能不能直接发消息：走本地只看模型文件在不在，走云端才要 base_url + Key + 模型名 */
     val ready: Boolean
         get() = localReady || (baseUrl.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank())
 
-    /** 每个会话各自一份输入框草稿：切走再回来、杀进程重进都不丢 */
+    var draftKeepImg: Boolean
+        get() = mem("draft_keep_img", false).value
+        set(v) { mem("draft_keep_img", false).value = v; put("draft_keep_img", v) }
+
+    var draftDays: Int
+        get() = mem("draft_days", 7).value
+        set(v) {
+            val n = v.coerceIn(0, 365)
+            mem("draft_days", 7).value = n
+            put("draft_days", n)
+        }
+
     fun draft(sid: String): String =
         if (sid.isBlank()) "" else sp?.getString("draft_$sid", "") ?: ""
 
-    /** 写草稿：写空就当删除，省得 SP 里攒一堆空串 */
     fun setDraft(sid: String, text: String) {
         if (sid.isBlank()) return
         if (text.isBlank()) sp?.edit()?.remove("draft_$sid")?.apply()
         else sp?.edit()?.putString("draft_$sid", text)?.apply()
-    } //写草稿
-} //配置读写
+    }
+}

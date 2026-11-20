@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:20
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.chat
 import b.ai.ui.widget.longPress
 import b.ai.ui.widget.tapLong
@@ -24,8 +38,10 @@ import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.IcBack
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.IcCode
+import b.ai.ui.widget.IcCopy
 import b.ai.ui.widget.IcCube
 import b.ai.ui.widget.IcExpand
+import b.ai.ui.widget.IcSparklePlus
 import b.ai.ui.widget.IcGrid
 import b.ai.ui.widget.IcLayers
 import b.ai.ui.widget.IcMenu
@@ -37,6 +53,7 @@ import b.ai.ui.widget.IcPlus
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.IcSend
 import b.ai.ui.widget.IcSpark
+import b.ai.ui.widget.IcStarToCheck
 import b.ai.ui.widget.IcStopSquare
 import b.ai.ui.widget.IcTap
 import b.ai.ui.widget.IcTrain
@@ -48,6 +65,7 @@ import b.ai.ui.widget.MdText
 import b.ai.ui.widget.ScrollDownButton
 import b.ai.ui.widget.Tag
 import b.ai.ui.widget.ToolIcon
+import b.ai.ui.dialog.BottomSheetCard
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.LocalPageBackdrop
 import b.ai.ui.glass.ProvideCardBackdrop
@@ -60,9 +78,12 @@ import b.ai.ui.glass.liquidBg
 import b.ai.ui.glass.pageBg
 import b.ai.ui.input.AttachPanel
 import b.ai.ui.overlay.Ime
+import b.ai.core.cfg.io.Drafts
 import b.ai.ui.screen.settings.IntentInbox
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text
+import b.ai.net.api.llm.OptResult
+import b.ai.net.api.llm.PromptOptimizer
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -116,10 +137,19 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -239,16 +269,8 @@ fun ChatScreen(
 ) {
     val ctx = LocalContext.current
     var input by remember { mutableStateOf("") }
-    //会话切换：把输入框换成这个会话自己的草稿，切走再回来不丢
-    LaunchedEffect(Agent.sessionId) {
-        input = Cfg.draft(Agent.sessionId.orEmpty())
-    }
-    //停手 0.8 秒才落盘，避免每敲一个字都写一次配置库
-    LaunchedEffect(input, Agent.sessionId) {
-        val sid = Agent.sessionId ?: return@LaunchedEffect
-        delay(800)
-        Cfg.setDraft(sid, input)
-    }
+    //待发送附件在下面声明，这里先留一个「草稿载入完成」的标记，避免载入前就被写回覆盖
+    var draftReady by remember { mutableStateOf(false) }
     //随机 placeholder：候选来自设置（默认「请输入问题」），发送后重抽一次
     val hintWords = hintPool(LocalContext.current)
     var hint by remember(hintWords) { mutableStateOf(hintWords.random()) }
@@ -265,6 +287,8 @@ fun ChatScreen(
     var fullInput by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<ChatMsg?>(null) }
     var menuFor by remember { mutableStateOf<ChatMsg?>(null) }
+    //「复制部分内容」的全文面板：跟操作菜单分开，菜单关掉它才出现
+    var copyPartFor by remember { mutableStateOf<ChatMsg?>(null) }
     //摘要卡片的菜单：重新总结 / 加指令重总结；sumNote 为真时弹指令输入框
     var sumMenu by remember { mutableStateOf<ChatMsg?>(null) }
     var sumNote by remember { mutableStateOf(false) }
@@ -290,6 +314,24 @@ fun ChatScreen(
     var pendingImgs by remember { mutableStateOf<List<String>>(emptyList()) }
     //待发送文件：选文件 / 超长粘贴进来的，发送前就挂在输入区，跟选完文件是一个形态
     var pendingFiles by remember { mutableStateOf<List<String>>(emptyList()) }
+    //会话切换：把输入框换成这个会话自己的草稿（drafts/<sid>.prkcovs），切走再回来不丢
+    LaunchedEffect(Agent.sessionId) {
+        val sid = Agent.sessionId.orEmpty()
+        draftReady = false
+        Drafts.sweep()
+        val d = withContext(Dispatchers.IO) { Drafts.load(sid) }
+        input = d.text
+        pendingImgs = d.images
+        pendingFiles = d.files
+        draftReady = true
+    }
+    //停手 0.8 秒才落盘，避免每敲一个字都写一次文件
+    LaunchedEffect(input, pendingImgs, pendingFiles, Agent.sessionId) {
+        val sid = Agent.sessionId ?: return@LaunchedEffect
+        if (!draftReady) return@LaunchedEffect
+        delay(800)
+        Drafts.save(sid, input, pendingImgs, pendingFiles)
+    }
     //滑动联动：滑动期间全站玻璃降成平涂，停手 180ms 再升回来（气泡一屏五条，每条一次离屏必掉帧）
     val listState = glassLazyListState()
     val scope = rememberCoroutineScope()
@@ -368,6 +410,8 @@ fun ChatScreen(
         else ctx.getString(R.string.cs_see_files)
         //发出去就把「跟随贴底」拉回来：紧接着的消息增长会自己把列表滚到最新一条
         follow = true
+        //发出去就把这轮的草稿清掉，切回来不该再看见已经发过的内容
+        Agent.sessionId?.let { Drafts.clear(it) }
         Agent.send(if (t.isEmpty()) fallback else t, imgs, fs)
     } //发送当前输入
 
@@ -800,7 +844,7 @@ fun ChatScreen(
     HostInOverlay(
         detail != null || menuFor != null || promptReq != null || fullInput ||
             sumMenu != null || sumNote || b.ai.device.sys.a11y.A11y.needPerm.value || ImgView.path.value != null ||
-            petIntro
+            petIntro || copyPartFor != null
     ) {
         val d = detail
         val mn = menuFor
@@ -897,6 +941,10 @@ fun ChatScreen(
                     copyText(ctx, mn.content)
                     menuFor = null
                 },
+                onCopyPart = {
+                    copyPartFor = mn
+                    menuFor = null
+                },
                 onStar = {
                     Agent.toggleStar(mn, !mn.starred)
                     menuFor = null
@@ -910,6 +958,14 @@ fun ChatScreen(
                     menuFor = null
                 },
                 onClose = { menuFor = null }
+            )
+            copyPartFor != null -> MessageTextSheet(
+                m = copyPartFor!!,
+                onCopyAll = {
+                    copyText(ctx, copyPartFor!!.content)
+                    copyPartFor = null
+                },
+                onClose = { copyPartFor = null }
             )
             pr != null -> PromptDialog(
                 title = if (pr.edit) stringResource(R.string.cs_edit_resend) else stringResource(R.string.cs_regen_hint),
@@ -1569,6 +1625,61 @@ private fun InputBar(
         }
     }
     //悬浮模式：只把输入框本体拎出来浮着，外层不铺任何背景，留着 BgGray 底
+    //实体键盘：用 TextFieldValue 自己持光标，回车发送、Shift+回车换行，左右键自己挪（部分外接键盘/输入法不转给文本框）
+    var field by remember { mutableStateOf(TextFieldValue(input)) }
+    LaunchedEffect(input) {
+        if (field.text != input) field = TextFieldValue(input, TextRange(input.length))
+    }
+    fun caretTo(i: Int) {
+        val at = i.coerceIn(0, field.text.length)
+        field = field.copy(selection = TextRange(at))
+    }
+    //排版结果：上下键要按「同一列、上一行/下一行」落位，只靠字符偏移会在换行处乱跳
+    var layoutRes by remember { mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
+    fun caretLine(dy: Int) {
+        val lr = layoutRes ?: return
+        val at = field.selection.start.coerceIn(0, field.text.length)
+        val line = lr.getLineForOffset(at)
+        val target = line + dy
+        if (target < 0 || target > lr.lineCount - 1) return
+        //沿用当前列的水平位置，找不到就取该行末尾
+        val x = lr.getHorizontalPosition(at, usePrimaryDirection = true)
+        val y = (lr.getLineTop(target) + lr.getLineBottom(target)) / 2f
+        caretTo(lr.getOffsetForPosition(androidx.compose.ui.geometry.Offset(x, y)))
+    }
+    val keyHandling = Modifier.onPreviewKeyEvent { e ->
+        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val t = field.text
+        when {
+            e.key == Key.Enter -> {
+                if (e.isShiftPressed) {
+                    val sel = field.selection
+                    val nt = t.substring(0, sel.start) + "\n" + t.substring(sel.end)
+                    field = TextFieldValue(nt, TextRange(sel.start + 1))
+                    onChange(nt)
+                } else {
+                    onSend()
+                }
+                true
+            }
+            e.key == Key.DirectionLeft && !e.isShiftPressed -> {
+                caretTo(field.selection.start - 1); true
+            }
+            e.key == Key.DirectionRight && !e.isShiftPressed -> {
+                caretTo(field.selection.end + 1); true
+            }
+            e.key == Key.DirectionUp && !e.isShiftPressed -> {
+                //多行时按行移动；单行没有上一行就交给默认（回到开头由系统处理）
+                if (layoutRes != null) { caretLine(-1); true } else false
+            }
+            e.key == Key.DirectionDown && !e.isShiftPressed -> {
+                if (layoutRes != null) { caretLine(1); true } else false
+            }
+            //小键盘回车也算发送：物理键盘上这两个是不同的键码
+            e.key == Key.NumPadEnter -> { onSend(); true }
+            else -> false
+        }
+    }
     val floating = Cfg.floatInput
     val outer = Modifier
         .fillMaxWidth()
@@ -1590,7 +1701,7 @@ private fun InputBar(
                 Text(
                     modeLabel,
                     fontSize = 10.sp,
-                    fontWeight = if (Cfg.agentMode != AgentMode.STANDARD) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (Cfg.agentMode != AgentMode.STANDARD) FontWeight.Bold else FontWeight.Medium,
                     color = if (Cfg.agentMode != AgentMode.STANDARD) AccentBlue else TextSecondary,
                     maxLines = 1
                 )
@@ -1614,7 +1725,7 @@ private fun InputBar(
                 Text(
                     if (Cfg.think) stringResource(R.string.cs_think_effort, Cfg.thinkEffort) else stringResource(R.string.cs_think),
                     fontSize = 10.sp,
-                    fontWeight = if (Cfg.think) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (Cfg.think) FontWeight.Bold else FontWeight.Medium,
                     color = if (Cfg.think) AccentBlue else TextSecondary
                 )
             }
@@ -1628,7 +1739,7 @@ private fun InputBar(
                 Text(
                     if (Cfg.maxMode) stringResource(R.string.cs_max_on) else stringResource(R.string.cs_max),
                     fontSize = 10.sp,
-                    fontWeight = if (Cfg.maxMode) FontWeight.SemiBold else FontWeight.Normal,
+                    fontWeight = if (Cfg.maxMode) FontWeight.Bold else FontWeight.Medium,
                     color = if (Cfg.maxMode) AccentBlue else TextSecondary
                 )
             }
@@ -1655,6 +1766,7 @@ private fun InputBar(
                         else -> stringResource(R.string.cs_voice)
                     },
                     fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
                     color = if (Voice.listening) DangerRed else TextSecondary
                 )
             }
@@ -1667,6 +1779,7 @@ private fun InputBar(
                     Text(
                         stringResource(R.string.cs_fullscreen_entry),
                         fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
                         color = TextSecondary
                     )
                 }
@@ -1685,6 +1798,12 @@ private fun InputBar(
             Spacer(Modifier.height(6.dp))
             //文件同样挂着一条，× 摘掉
             FileChips(files = files, onRemove = onRemoveFile)
+        }
+        //错误只在输入区停 3 秒：语音不可用这类提示常驻会把输入框顶高，切键盘也不会自己消（用户反馈）
+        LaunchedEffect(Voice.error) {
+            if (Voice.error.isBlank()) return@LaunchedEffect
+            kotlinx.coroutines.delay(3000)
+            Voice.clearError()
         }
         if (Voice.error.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
@@ -1728,12 +1847,31 @@ private fun InputBar(
                             )
                         }
                         BasicTextField(
-                            value = input,
-                            onValueChange = onChange,
+                            value = field,
+                            onValueChange = { v ->
+                                //@技能整段删除：退格落在 token 里就整块抹掉，不留半截
+                                val t = if (v.text.length < field.text.length) {
+                                    atomicMentionDelete(field.text, v.text)
+                                } else v.text
+                                field = if (t == v.text) v
+                                else v.copy(text = t, selection = TextRange(t.length))
+                                if (t != input) onChange(t)
+                            },
                             textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = TextPrimary),
                             maxLines = 5,
+                            //软键盘右下角给「发送」：手机上回车键是 IME action，不走 KeyEvent，
+                            //只接管 onPreviewKeyEvent 的话，外接键盘能用、软键盘还是换行
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Send
+                            ),
+                            keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                                onSend = { onSend() }
+                            ),
+                            onTextLayout = { layoutRes = it },
+                            //@名称 渲染成蓝色标签（只染色不改字，光标位置不变）
+                            visualTransformation = mentionVisual(),
                             cursorBrush = SolidColor(AccentBlue),
-                            modifier = Modifier.fillMaxWidth().then(longPressVoice)
+                            modifier = Modifier.fillMaxWidth().then(longPressVoice).then(keyHandling)
                         )
                     }
                     Spacer(Modifier.height(2.dp))
@@ -1741,50 +1879,114 @@ private fun InputBar(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Row(
                             Modifier
-                                //fill=false：按内容宽取，内容过长时被压到剩余空间内并省略，右侧按钮固定尺寸不受影响
-                                .weight(1f, fill = false)
-                                .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
+                                //只包住「模型名 + 折叠箭头」，不再占满整行（用户要求缩到内容宽度、只留一点点白）
+                                .widthIn(max = 200.dp)
+                                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                                 .onGloballyPositioned { rModel = it.boundsInRoot() }
                                 .tap { onAnchor(rModel); onOpenModel() }
-                                .padding(start = 7.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+                                //用户要求：模型框比原来长 1.7 倍，模型名加粗
+                                //高度压 2dp：上下内边距各减 1dp，胶囊整体矮 2dp（用户反馈「太高」）
+                                .padding(start = 14.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 modelLabel,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                                 color = TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f, fill = false)
                             )
-                            Spacer(Modifier.width(4.dp))
-                            Box(Modifier.size(9.dp).graphicsLayer { rotationZ = -90f }) {
-                                IcBack(TextSecondary, side = 9.dp, stroke = 1.5.dp)
+                            Spacer(Modifier.width(5.dp))
+                            Box(Modifier.size(11.dp).graphicsLayer { rotationZ = -90f }) {
+                                IcBack(TextSecondary, side = 11.dp, stroke = 1.6.dp)
                             }
                         }
+                        //胶囊缩到内容宽度后，靠这个弹性空隙把右侧图标组顶到行尾
                         Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.width(6.dp))
                         //配置 / 附件两个图标：触点 32dp 等距，图标统一 18dp（全屏入口挪到上面语音右侧）
                         Box(
-                            Modifier.size(32.dp).onGloballyPositioned { rCfg = it.boundsInRoot() }.tap { onAnchor(rCfg); onOpenConfig() },
+                            Modifier.size(38.dp).onGloballyPositioned { rCfg = it.boundsInRoot() }.tap { onAnchor(rCfg); onOpenConfig() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Filled.Menu,
                                 contentDescription = stringResource(R.string.cs_config),
                                 tint = if (Cfg.maxMode || Cfg.think) AccentBlue else TextSecondary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         Box(
-                            Modifier.size(32.dp).onGloballyPositioned { rAttach = it.boundsInRoot() }.tap { onAnchor(rAttach); onOpenAttach() },
+                            Modifier.size(38.dp).onGloballyPositioned { rAttach = it.boundsInRoot() }.tap { onAnchor(rAttach); onOpenAttach() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Filled.Add,
                                 contentDescription = stringResource(R.string.cs_attach),
                                 tint = TextSecondary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(22.dp)
                             )
+                        }
+                        //提示词优化
+                        //原文单独存一份，回滚时原样写回，不做二次加工
+                        var optBack by remember { mutableStateOf<String?>(null) }
+                        var optBusy by remember { mutableStateOf(false) }
+                        val optScope = rememberCoroutineScope()
+                        Box(
+                            Modifier
+                                .size(38.dp)
+                                .tap(enabled = input.isNotBlank() && !optBusy) {
+                                    val back = optBack
+                                    if (back != null) {
+                                        //已经优化过：点一下还原原文
+                                        onChange(back)
+                                        optBack = null
+                                    } else {
+                                        //第一次：先留原文，再跑优化，结果回填输入框
+                                        val origin = input
+                                        optScope.launch {
+                                            optBusy = true
+                                            val out = PromptOptimizer.run(origin, Cfg.agentMode, images + files, modeLabel)
+                                            optBusy = false
+                                            //按失败原因给准话：别再把「没配模型」「内容超长」「接口报错」混成一句
+                                            val why = when (out) {
+                                                is OptResult.Ok -> {
+                                                    optBack = origin
+                                                    onChange(out.text)
+                                                    ""
+                                                }
+                                                OptResult.EmptyInput -> "先写点内容再优化"
+                                                OptResult.TooLong -> b.ai.App.self.getString(R.string.tx_f8e3d0b7, PromptOptimizer.MAX_IN)
+                                                OptResult.NoModel -> "还没配优化模型：设置 → 模型 → 提示词优化"
+                                                OptResult.EmptyOut -> "模型没返回内容，换个优化模型或稍后再试"
+                                                is OptResult.Failed -> b.ai.App.self.getString(R.string.tx_52280f7d, out.reason)
+                                            }
+                                            if (why.isNotEmpty()) {
+                                                android.widget.Toast.makeText(
+                                                    ctx,
+                                                    why,
+                                                    android.widget.Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (optBack != null) {
+                                //已优化：四芒星收拢成对号（自绘、单色、无底），点一下回滚
+                                IcStarToCheck(AccentBlue, side = 21.dp, stroke = 2.6.dp)
+                            } else {
+                                Box(Modifier.size(23.dp), contentAlignment = Alignment.Center) {
+                                    //可优化态：四芒星 + 右上角小加号（用户要求），点下去它自己收成对号
+                                    IcSparklePlus(
+                                        if (optBusy) TextSecondary.copy(alpha = 0.45f) else TextSecondary,
+                                        side = 14.dp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -2159,6 +2361,7 @@ private fun MessageItem(
     /** 错误回复的「去配置」：传 errKind，由调用方决定跳哪一页设置 */
     onFix: (String) -> Unit = {}
 ) {
+    val ctx = LocalContext.current
     when (m.role) {
         "user" -> Row(
             Modifier.fillMaxWidth(),
@@ -2169,7 +2372,8 @@ private fun MessageItem(
                 Modifier
                     .weight(1f, fill = false)
                     .liquidBg(bubbleShape(14.dp), tint = AccentBlueSoft)
-                    .longPress { onLongPress(m) }
+                    //长按即复制：先进剪贴板，再弹操作菜单
+                    .longPress { if (m.content.isNotBlank()) copyText(ctx, m.content); onLongPress(m) }
                     //左右内边距额外加上「全局缩进」
                     .padding(
                         horizontal = bubblePadH(12.dp) + Cfg.globalIndent.dp,
@@ -2223,7 +2427,8 @@ private fun MessageItem(
             Column(
                 Modifier
                     .liquidBg(bubbleShape(14.dp))
-                    .longPress { onLongPress(m) }
+                    //长按即复制：先进剪贴板，再弹操作菜单
+                    .longPress { if (m.content.isNotBlank()) copyText(ctx, m.content); onLongPress(m) }
                     .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(12.dp))
                     ) {
                 if (m.reasoning.isNotBlank()) ThinkBlock(m)
@@ -2731,6 +2936,7 @@ private fun MsgMenuDialog(
     onRegen: () -> Unit,
     onRegenWith: () -> Unit,
     onCopy: () -> Unit,
+    onCopyPart: () -> Unit,
     onStar: () -> Unit,
     onSpeak: () -> Unit,
     onDelete: () -> Unit,
@@ -2738,51 +2944,62 @@ private fun MsgMenuDialog(
 ) {
     //删除不可恢复：第一下只是把按钮变成「确认删除」，第二下才真删
     var del by remember(m.id) { mutableStateOf(false) }
-    ScrimCard(onDismiss = onClose) {
+    //改成从底部升起的操作卡：去掉消息原文预览，先给一块显眼的复制区
+    BottomSheetCard(onDismiss = onClose, maxFrac = 0.82f) {
         Text(
-            if (m.role == "user") stringResource(R.string.cs_this_msg) else stringResource(R.string.cs_this_reply),
+            stringResource(R.string.cs_msg_ops),
             fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-        Spacer(Modifier.height(6.dp))
-        Box(
+        Spacer(Modifier.height(10.dp))
+        //顶部仍是「复制全部」：整条复制是最常用的动作，保持原来的一眼可见
+        Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(max = 96.dp)
-                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
-                .padding(9.dp)
-                .verticalScroll(glassScrollState())
+                .liquidBg(RoundedCornerShape(12.dp), tint = AccentBlueSoft)
+                .tap { onCopy() }
+                .padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                if (m.content.isBlank()) stringResource(R.string.cs_no_content) else m.content,
-                fontSize = 11.sp,
-                color = TextSecondary
+            IcCopy(AccentBlue, side = 17.dp, stroke = 1.6.dp)
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.cs_copy_all),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = AccentBlue
+                )
+                Text(stringResource(R.string.cs_copy_content_desc), fontSize = 10.sp, color = TextSecondary)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Column(Modifier.heightIn(max = 340.dp).verticalScroll(glassScrollState())) {
+            if (m.role == "user") {
+                MenuRow(stringResource(R.string.cs_edit_resend), stringResource(R.string.cs_edit_resend_desc), onEdit)
+            } else {
+                MenuRow(stringResource(R.string.cs_regen), stringResource(R.string.cs_regen_desc), onRegen)
+                MenuRow(stringResource(R.string.cs_regen_hint2), stringResource(R.string.cs_regen_hint_desc2), onRegenWith)
+            }
+            //复制部分消息：打开全文面板，在里面长按选任意片段
+            MenuRow(stringResource(R.string.tx_fda7a982), stringResource(R.string.tx_cadff0ad)) { onCopyPart() }
+            MenuRow(
+                if (m.starred) stringResource(R.string.cs_star_off) else stringResource(R.string.cs_star),
+                if (m.starred) stringResource(R.string.cs_star_off_desc) else stringResource(R.string.cs_star_desc),
+                onStar
             )
+            if (m.content.isNotBlank()) {
+                MenuRow(stringResource(R.string.cs_speak), stringResource(R.string.cs_speak_desc)) { onSpeak() }
+            }
+            MenuRow(
+                if (del) stringResource(R.string.cs_del_msg_confirm) else stringResource(R.string.cs_del_msg),
+                stringResource(R.string.cs_del_msg_desc)
+            ) {
+                if (del) onDelete() else del = true
+            }
         }
-        Spacer(Modifier.height(12.dp))
-        if (m.role == "user") {
-            MenuRow(stringResource(R.string.cs_edit_resend), stringResource(R.string.cs_edit_resend_desc), onEdit)
-        } else {
-            MenuRow(stringResource(R.string.cs_regen), stringResource(R.string.cs_regen_desc), onRegen)
-            MenuRow(stringResource(R.string.cs_regen_hint2), stringResource(R.string.cs_regen_hint_desc2), onRegenWith)
-        }
-        MenuRow(stringResource(R.string.cs_copy_content), stringResource(R.string.cs_copy_content_desc), onCopy)
-        MenuRow(
-            if (m.starred) stringResource(R.string.cs_star_off) else stringResource(R.string.cs_star),
-            if (m.starred) stringResource(R.string.cs_star_off_desc) else stringResource(R.string.cs_star_desc),
-            onStar
-        )
-        if (m.content.isNotBlank()) {
-            MenuRow(stringResource(R.string.cs_speak), stringResource(R.string.cs_speak_desc)) { onSpeak() }
-        }
-        MenuRow(
-            if (del) stringResource(R.string.cs_del_msg_confirm) else stringResource(R.string.cs_del_msg),
-            stringResource(R.string.cs_del_msg_desc)
-        ) {
-            if (del) onDelete() else del = true
-        }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             stringResource(R.string.cs_cancel),
             fontSize = 12.sp,
@@ -2796,6 +3013,48 @@ private fun MsgMenuDialog(
         )
     }
 } //长按消息的操作菜单
+
+/**
+ * 复制部分内容：把整条消息原样摊开，交给 SelectionContainer，
+ * 用户长按就能选任意片段复制；顶部另有「复制全部」兜底。
+ */
+@Composable
+private fun MessageTextSheet(m: ChatMsg, onCopyAll: () -> Unit, onClose: () -> Unit) {
+    BottomSheetCard(onDismiss = onClose, maxFrac = 0.86f) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.tx_841c2e0d),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                stringResource(R.string.tx_2733a243),
+                fontSize = 12.sp,
+                color = AccentBlue,
+                modifier = Modifier
+                    .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
+                    .tap { onCopyAll() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.tx_b768f17f), fontSize = 10.sp, color = TextSecondary)
+        Spacer(Modifier.height(8.dp))
+        Column(Modifier.heightIn(max = 420.dp).verticalScroll(glassScrollState())) {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    m.content.replace(Regex("""\[\[upto:\d+]]"""), "").trim(),
+                    fontSize = 14.sp,
+                    lineHeight = 23.sp,
+                    color = TextPrimary
+                )
+            }
+        }
+    }
+} //消息全文面板
+
 
 @Composable
 private fun MenuRow(title: String, sub: String, onClick: () -> Unit) {

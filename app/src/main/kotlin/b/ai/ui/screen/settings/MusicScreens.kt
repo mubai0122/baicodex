@@ -1,5 +1,21 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:23
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -52,7 +68,7 @@ private fun MusicBody() {
     val c = remember(tick) { MusicCfg.load() }
     val size = remember(tick) { MusicCfg.cacheSize() }
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle("平台优先级", "同时只让一个平台说话：开着且排在最前的那个才接活，上移就是换主平台")
+        SectionTitle(stringResource(R.string.tx_f98a8254), stringResource(R.string.tx_f7ba9c52))
         CardBox {
             c.order.forEachIndexed { i, id ->
                 if (i > 0) Spacer(Modifier.height(2.dp))
@@ -62,13 +78,13 @@ private fun MusicBody() {
                     Column(Modifier.weight(1f)) {
                         Text("$i. $name", fontSize = 14.sp, color = TextPrimary)
                         Text(
-                            (if (c.on[id] == true) "已启用" else "已停用") + " · " + if (hasCookie) "已登录" else "未登录",
+                            (if (c.on[id] == true) stringResource(R.string.tx_53ace430) else stringResource(R.string.tx_69b0f684)) + " · " + if (hasCookie) stringResource(R.string.tx_0b5961c7) else stringResource(R.string.tx_63e85df1),
                             fontSize = 10.sp,
                             color = if (hasCookie) OkGreen else TextSecondary
                         )
                     }
                     if (i > 0) {
-                        GhostButton("上移", modifier = Modifier.height(32.dp).width(64.dp)) {
+                        GhostButton(stringResource(R.string.tx_315eacd1), modifier = Modifier.height(32.dp).width(64.dp)) {
                             val err = MusicCfg.moveUp(id)
                             msg = if (err.isEmpty()) "$name 已上移" else err
                             tick++
@@ -90,11 +106,11 @@ private fun MusicBody() {
             }
             if (msg.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                Text(msg, fontSize = 11.sp, color = if (msg.contains("已") || msg.contains("成功")) OkGreen else DangerRed)
+                Text(msg, fontSize = 11.sp, color = if (msg.contains("已") || msg.contains(stringResource(R.string.tx_330363df))) OkGreen else DangerRed)
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("音质档位", "各家内部 code 不一样，这里只存统一档位，调用时由平台自己映射")
+        SectionTitle(stringResource(R.string.tx_5d92b9b7), stringResource(R.string.tx_db28b874))
         CardBox {
             MusicCfg.QUALITIES.forEachIndexed { i, q ->
                 if (i > 0) Spacer(Modifier.height(4.dp))
@@ -106,20 +122,20 @@ private fun MusicBody() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("缓存", "下载的音频与封面都落这个目录，换机器记得先清")
+        SectionTitle(stringResource(R.string.tx_e80c310e), stringResource(R.string.tx_56417f31))
         CardBox {
             Text(MusicCfg.cacheDir().absolutePath, fontSize = 11.sp, color = TextPrimary)
             Spacer(Modifier.height(4.dp))
-            Text("当前占用 " + MusicCfg.sizeText(size), fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_bc64a057) + MusicCfg.sizeText(size), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GhostButton("清空缓存", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_79e1bb3f), modifier = Modifier.height(38.dp)) {
                 val freed = MusicCfg.clearCache()
                 msg = "已清掉 " + MusicCfg.sizeText(freed)
                 tick++
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("登录态", "网易云支持手机验证码登录；其它平台把浏览器里登录后的 cookie 整行粘进来，都存加密库，不落明文")
+        SectionTitle(stringResource(R.string.tx_12eb255e), stringResource(R.string.tx_f4c9c9c5))
         MusicCfg.PLATS.forEach { (id, name) ->
             //每个平台一块卡：cookie 只在保存时进加密库，草稿只活在当前页面
             run {
@@ -128,36 +144,36 @@ private fun MusicBody() {
                     Text(name, fontSize = 14.sp, color = TextPrimary)
                     val has = MusicCfg.cookie(id).isNotEmpty()
                     Text(
-                        if (has) "已存 cookie（" + MusicCfg.cookie(id).length + " 字符）" else "还没有 cookie",
+                        if (has) stringResource(R.string.tx_b26eb8c0) + MusicCfg.cookie(id).length + " 字符）" else stringResource(R.string.tx_c46e3a43),
                         fontSize = 10.sp,
                         color = if (has) OkGreen else TextSecondary
                     )
                     if (id == "netease") {
                         //网易云走真登录：验证码换 cookie，cookie 由 NeteaseLogin 直接写进加密库
                         Field(
-                            label = "手机号",
+                            label = stringResource(R.string.tx_8098e2b4),
                             value = drafts["${id}_phone"].orEmpty(),
                             onValueChange = { drafts = drafts + ("${id}_phone" to it) },
                             placeholder = "13xxxxxxxxx"
                         )
                         Field(
-                            label = "短信验证码",
+                            label = stringResource(R.string.tx_eb76c062),
                             value = drafts["${id}_code"].orEmpty(),
                             onValueChange = { drafts = drafts + ("${id}_code" to it) },
-                            placeholder = "6 位数字"
+                            placeholder = stringResource(R.string.tx_a87595f9)
                         )
                         Spacer(Modifier.height(8.dp))
                         Row {
-                            GhostButton("发验证码", modifier = Modifier.height(38.dp)) {
+                            GhostButton(stringResource(R.string.tx_d5bd674d), modifier = Modifier.height(38.dp)) {
                                 val ph = drafts["${id}_phone"].orEmpty()
                                 msg = "正在发验证码…"
                                 scope.launch {
                                     val r = withContext(Dispatchers.IO) { NeteaseLogin.sendCaptcha(ph) }
-                                    msg = if (r.isEmpty()) "验证码已发出，等短信" else r
+                                    msg = if (r.isEmpty()) b.ai.App.self.getString(R.string.tx_a1122f98) else r
                                 }
                             }
                             Spacer(Modifier.width(10.dp))
-                            GhostButton("登录", modifier = Modifier.height(38.dp)) {
+                            GhostButton(stringResource(R.string.tx_402d19e5), modifier = Modifier.height(38.dp)) {
                                 val ph = drafts["${id}_phone"].orEmpty()
                                 val cd = drafts["${id}_code"].orEmpty()
                                 msg = "正在登录…"
@@ -169,7 +185,7 @@ private fun MusicBody() {
                                 }
                             }
                             Spacer(Modifier.width(10.dp))
-                            GhostButton("查账号", modifier = Modifier.height(38.dp)) {
+                            GhostButton(stringResource(R.string.tx_c46cea79), modifier = Modifier.height(38.dp)) {
                                 msg = "正在查账号…"
                                 scope.launch {
                                     msg = withContext(Dispatchers.IO) { NeteaseLogin.me() }
@@ -188,14 +204,14 @@ private fun MusicBody() {
                     )
                     Spacer(Modifier.height(8.dp))
                     Row {
-                        GhostButton("保存", modifier = Modifier.height(38.dp)) {
+                        GhostButton(stringResource(R.string.tx_be5fbbe3), modifier = Modifier.height(38.dp)) {
                             val err = MusicCfg.setCookie(id, drafts[id].orEmpty())
                             msg = if (err.isEmpty()) "$name cookie 已存进加密库" else err
                             if (err.isEmpty()) drafts = drafts + (id to "")
                             tick++
                         }
                         Spacer(Modifier.width(10.dp))
-                        GhostButton("清除", modifier = Modifier.height(38.dp)) {
+                        GhostButton(stringResource(R.string.tx_4403fca0), modifier = Modifier.height(38.dp)) {
                             MusicCfg.clearCookie(id)
                             msg = "$name cookie 已清除"
                             tick++

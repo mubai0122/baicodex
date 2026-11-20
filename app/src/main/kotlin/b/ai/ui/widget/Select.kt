@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:26
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.widget
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
@@ -5,6 +19,7 @@ import b.ai.ui.glass.liquidBg
 import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -49,8 +64,12 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import b.ai.R
+import b.ai.ui.theme.BgGray
+import b.ai.ui.theme.BorderGray
+import b.ai.ui.theme.DarkColors
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
+import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 
@@ -137,9 +156,14 @@ internal fun <T> SelectField(
                     Modifier
                         .width(menuW)
                         .heightIn(max = 320.dp)
-                        //设置页属于「开玻璃就继承玻璃」的那一半：gate 必须显式清零，
-                        //否则只有 3 项的下拉最短边过不了 156dp，会掉回平涂，跟 10 项的下拉材质对不上
-                        .liquidBg(RoundedCornerShape(12.dp), veil = 0.42f, always = true, gate = 0.dp)
+                        //Popup 是独立窗口，拿不到宿主页面的 backdrop：liquidBg 在这里采样不到背景，
+                        //模糊出来是一层灰（用户看到的「灰色阴影」）。下拉改用不透明表面色 + 细边框，
+                        //既没有灰影，也不会在半透明下透出下层文字。
+                        .background(
+                            if (DarkColors) BgGray else SurfaceWhite,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .border(0.8.dp, BorderGray, RoundedCornerShape(12.dp))
                         .verticalScroll(glassScrollState())
                         .padding(vertical = 4.dp)
                 ) {

@@ -1,5 +1,21 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:24
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -104,7 +120,7 @@ fun LinuxTermPage() {
         scope.launch { withContext(Dispatchers.IO) { block() } }
     } //切 IO
 
-    SectionTitle("Linux 沙箱", "内置 Ubuntu（proot）· 终端直连 · 一键装开发环境")
+    SectionTitle(stringResource(R.string.tx_a75f7665), stringResource(R.string.tx_f0bd413c))
 
     CardBox {
         //第一行：环境状态 + 重开终端
@@ -112,16 +128,16 @@ fun LinuxTermPage() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when {
-                    !abiOk -> "● 32 位设备不支持内置 Ubuntu（仅 arm64）"
-                    envOk && ready -> "● 环境已就绪"
-                    envOk -> "● 环境已装，终端待连接"
-                    else -> "● 还没装 Ubuntu"
+                    !abiOk -> stringResource(R.string.tx_34b2bda9)
+                    envOk && ready -> stringResource(R.string.tx_2dc1a7bf)
+                    envOk -> stringResource(R.string.tx_af0a9b8b)
+                    else -> stringResource(R.string.tx_370ec32f)
                 },
                 fontSize = 12.sp,
                 color = if (abiOk && envOk) OkGreen else if (abiOk) TextSecondary else DangerRed,
                 modifier = Modifier.weight(1f)
             )
-            Text("重开终端", fontSize = 11.sp, color = AccentBlue, modifier = Modifier.tap {
+            Text(stringResource(R.string.tx_ef29d483), fontSize = 11.sp, color = AccentBlue, modifier = Modifier.tap {
                 io {
                     LinuxTerm.stop()
                     LinuxTerm.start()
@@ -131,17 +147,17 @@ fun LinuxTermPage() {
         Spacer(Modifier.height(10.dp))
         //第二行：环境级操作
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton(if (envOk) "重装环境" else "安装环境", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (envOk) stringResource(R.string.tx_5765a580) else stringResource(R.string.tx_3bfac37e), modifier = Modifier.height(38.dp)) {
                 //32 位设备装了也跑不起来，点一下直接在终端里说明原因
-                if (!abiOk) LinuxTerm.append("[不支持]当前设备是 32 位（armeabi-v7a），内置 Ubuntu 沙箱只支持 arm64 设备")
+                if (!abiOk) LinuxTerm.append(b.ai.App.self.getString(R.string.tx_c8c4c57f))
                 else LinuxTerm.installEnv(force = envOk)
             }
-            GhostButton("一键拓展环境", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_ed22b17a), modifier = Modifier.height(38.dp)) {
                 if (!envOk) {
                     LinuxTerm.append("[先装 Ubuntu 环境]点左边「安装环境」")
                 } else io { LinuxTerm.submit(LinuxTerm.BASE_ENV) }
             }
-            GhostButton("刷新索引", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_009fd879), modifier = Modifier.height(38.dp)) {
                 if (!envOk) {
                     LinuxTerm.append("[先装 Ubuntu 环境]点左边「安装环境」")
                 } else io { LinuxTerm.submit(LinuxTerm.APT_UPDATE) }
@@ -151,12 +167,12 @@ fun LinuxTermPage() {
         Spacer(Modifier.height(8.dp))
         val mirrorLabel = run {
             val mid = Cfg.linuxMirrorNode
-            if (mid.isBlank()) "自动（测速择优）"
+            if (mid.isBlank()) stringResource(R.string.tx_6d8aba37)
             else LinuxMirror.FALLBACK_NODES.firstOrNull { it.id == mid }?.name ?: mid
         }
         //镜像源：装环境时按这里的选择决定下载节点；「自动」= 客户端测速择优（TTFB ≤ 200ms 优先）
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("镜像源", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_1f8dd094), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.width(8.dp))
             Text(
                 "$mirrorLabel ▸",
@@ -167,7 +183,7 @@ fun LinuxTermPage() {
         }
         if (showMirror) MirrorPickerDialog { showMirror = false }
         Spacer(Modifier.height(12.dp))
-        Text("常用开发环境", fontSize = 12.sp, color = TextSecondary)
+        Text(stringResource(R.string.tx_31bf58fa), fontSize = 12.sp, color = TextSecondary)
         //两列网格：点一下就把安装命令丢进终端，输出实时刷在下面
         LinuxTerm.TOOLS.chunked(2).forEach { row ->
             Row(
@@ -204,14 +220,14 @@ fun LinuxTermPage() {
         val doneCount = present.count { it.value }
         Text(
             osName + " · " + arch +
-                " · apt 索引" + (if (idxReady) "已备" else "未备") +
+                " · apt 索引" + (if (idxReady) stringResource(R.string.tx_fc36d633) else stringResource(R.string.tx_24c9853a)) +
                 " · 已装 " + doneCount + "/" + LinuxTerm.TOOLS.size,
             fontSize = 10.sp,
             color = TextSecondary
         )
 
         Spacer(Modifier.height(10.dp))
-        Text("快捷命令", fontSize = 12.sp, color = TextSecondary)
+        Text(stringResource(R.string.tx_de027789), fontSize = 12.sp, color = TextSecondary)
         //常用诊断命令：点一下直接进终端跑，省得手打
         val quick = listOf(
             "系统信息" to "uname -a; cat /etc/os-release 2>/dev/null | head -3",
@@ -254,7 +270,7 @@ fun LinuxTermPage() {
             ) {
                 if (input.isEmpty()) {
                     Text(
-                        if (running) "给当前命令输入内容，回车发送" else "输入命令，回车执行",
+                        if (running) stringResource(R.string.tx_227355b0) else stringResource(R.string.tx_65bfc2f8),
                         fontSize = 11.sp,
                         color = Color(Cfg.termFg).copy(alpha = 0.45f)
                     )
@@ -273,7 +289,7 @@ fun LinuxTermPage() {
                 )
             }
             Spacer(Modifier.width(8.dp))
-            GhostButton("发送", modifier = Modifier.height(40.dp)) {
+            GhostButton(stringResource(R.string.tx_1535fcfa), modifier = Modifier.height(40.dp)) {
                 val line = input.trim()
                 input = ""
                 if (line.isNotEmpty()) {
@@ -289,7 +305,7 @@ fun LinuxTermPage() {
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            KeyChip("^C 打断", AccentBlue) { io { LinuxTerm.interrupt() } }
+            KeyChip(stringResource(R.string.tx_5ab380bd), AccentBlue) { io { LinuxTerm.interrupt() } }
             KeyChip("Tab") { io { LinuxTerm.key("tab") } }
             KeyChip("↑") { io { LinuxTerm.key("up") } }
             KeyChip("↓") { io { LinuxTerm.key("down") } }
@@ -302,7 +318,7 @@ fun LinuxTermPage() {
         Spacer(Modifier.height(8.dp))
         //终端字号：小屏想看一屏更多行就调小，字太小看着累就调大
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("终端字号", fontSize = 11.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_58a3ff82), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.width(8.dp))
             KeyChip("－") { Cfg.termFont = Cfg.termFont - 1 }
             Spacer(Modifier.width(6.dp))
@@ -314,16 +330,16 @@ fun LinuxTermPage() {
         //终端字体：候选来自字体库（设置 → 外观 → 字体 里导入的那些）
         val fontOpts = remember { FontStore.options() }
         SelectField(
-            "终端字体",
-            if (Cfg.termFontFile.isEmpty()) "等宽默认" else FontStore.label(Cfg.termFontFile),
+            stringResource(R.string.tx_230e1087),
+            if (Cfg.termFontFile.isEmpty()) stringResource(R.string.tx_b2f2364e) else FontStore.label(Cfg.termFontFile),
             fontOpts,
-            optionLabel = { if (it.isEmpty()) "等宽默认" else FontStore.label(it) },
+            optionLabel = { if (it.isEmpty()) stringResource(R.string.tx_b2f2364e) else FontStore.label(it) },
             isSelected = { Cfg.termFontFile == it },
             onSelect = { Cfg.termFontFile = it }
         )
         Spacer(Modifier.height(6.dp))
         //终端配色：整组换（前景 + 背景），比单独挑两个颜色省事
-        Text("终端配色", fontSize = 11.sp, color = TextSecondary)
+        Text(stringResource(R.string.tx_6c38353d), fontSize = 11.sp, color = TextSecondary)
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TERM_PRESETS.forEach { p ->
                 val on = Cfg.termBg == p.bg && Cfg.termFg == p.fg
@@ -342,7 +358,7 @@ fun LinuxTermPage() {
         }
 
         Spacer(Modifier.height(12.dp))
-        Text("包管理", fontSize = 12.sp, color = TextSecondary)
+        Text(stringResource(R.string.tx_d0ee51ab), fontSize = 12.sp, color = TextSecondary)
         //包名输入：完整包名直接装 / 卸，关键词走 apt-cache 模糊搜索
         var pkQuery by remember { mutableStateOf("") }
         var pkBusy by remember { mutableStateOf(false) }
@@ -356,7 +372,7 @@ fun LinuxTermPage() {
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (pkQuery.isEmpty()) {
-                    Text("输入包名，如 python3 / vim", fontSize = 11.sp, color = TextSecondary)
+                    Text(stringResource(R.string.tx_7b9962d9), fontSize = 11.sp, color = TextSecondary)
                 }
                 BasicTextField(
                     value = pkQuery,
@@ -368,7 +384,7 @@ fun LinuxTermPage() {
                 )
             }
             Spacer(Modifier.width(8.dp))
-            GhostButton(if (pkBusy) "搜索中" else "搜索", modifier = Modifier.height(38.dp)) {
+            GhostButton(if (pkBusy) stringResource(R.string.tx_9bc4c05a) else stringResource(R.string.tx_e5f71fc3), modifier = Modifier.height(38.dp)) {
                 if (!envOk) {
                     LinuxTerm.append("[先装 Ubuntu 环境]点上面「安装环境」")
                 } else if (pkQuery.isNotBlank()) io {
@@ -379,11 +395,11 @@ fun LinuxTermPage() {
             }
             Spacer(Modifier.width(6.dp))
             //输入项直接当完整包名装：不用先搜
-            GhostButton("安装", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_e655a410), modifier = Modifier.height(38.dp)) {
                 val n = pkQuery.trim()
                 when {
-                    !envOk -> LinuxTerm.append("[先装 Ubuntu 环境]点上面「安装环境」")
-                    !pkgSafe(n) -> LinuxTerm.append("[包名不合法]只允许字母、数字与 . - + _")
+                    !envOk -> LinuxTerm.append(b.ai.App.self.getString(R.string.tx_a46ee2bc))
+                    !pkgSafe(n) -> LinuxTerm.append(b.ai.App.self.getString(R.string.tx_4885f20e))
                     else -> io { LinuxTerm.submit("bai_apt $n") }
                 }
             }
@@ -397,13 +413,13 @@ fun LinuxTermPage() {
                 Column(Modifier.weight(1f)) {
                     Text(hit.name, fontSize = 12.sp, color = TextPrimary)
                     Text(
-                        if (hit.installed) "已安装" + (if (hit.ver.isBlank()) "" else " · ${hit.ver}") else "未安装",
+                        if (hit.installed) stringResource(R.string.tx_9d5bf2a1) + (if (hit.ver.isBlank()) "" else " · ${hit.ver}") else stringResource(R.string.tx_f45c4e65),
                         fontSize = 9.sp,
                         color = if (hit.installed) OkGreen else TextSecondary
                     )
                 }
                 GhostButton(
-                    if (hit.installed) "卸载" else "安装",
+                    if (hit.installed) stringResource(R.string.tx_81824cff) else stringResource(R.string.tx_e655a410),
                     modifier = Modifier.height(32.dp)
                 ) {
                     if (!pkgSafe(hit.name)) {
@@ -417,11 +433,11 @@ fun LinuxTermPage() {
                 }
             }
         }
-        if (pkBusy) Text("正在查询 apt 索引…", fontSize = 10.sp, color = TextSecondary)
+        if (pkBusy) Text(stringResource(R.string.tx_f4eec2ab), fontSize = 10.sp, color = TextSecondary)
 
         Spacer(Modifier.height(8.dp))
         Text(
-            "非 PTY 会话：命令输出、打断、stdin 输入都可靠；Tab 补全与方向键在需要行编辑的程序里可能只作普通字符。"
+            stringResource(R.string.tx_eedbfbcf)
                 + "首次装包会先更新 apt 索引（约 1-2 分钟，终端里有进度），之后秒开。",
             fontSize = 10.sp,
             color = TextSecondary
@@ -455,7 +471,7 @@ private fun ToolChip(
                 Text(name, fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    if (done) "已装" else "安装",
+                    if (done) stringResource(R.string.tx_c4a9649c) else stringResource(R.string.tx_e655a410),
                     fontSize = 9.sp,
                     color = if (done) OkGreen else AccentBlue
                 )
@@ -494,12 +510,12 @@ private fun TermPanel(text: String, running: Boolean, fontSp: Int, ff: FontFamil
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (running) "● 运行中" else "● 空闲",
+                if (running) stringResource(R.string.tx_b2f28a22) else stringResource(R.string.tx_a83a428f),
                 fontSize = 10.sp,
                 color = if (running) OkGreen else fg.copy(alpha = 0.45f),
                 modifier = Modifier.weight(1f)
             )
-            Text("清屏", fontSize = 10.sp, color = AccentBlue, modifier = Modifier.tap {
+            Text(stringResource(R.string.tx_91382d9c), fontSize = 10.sp, color = AccentBlue, modifier = Modifier.tap {
                 LinuxTerm.clear()
             })
         }

@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:15
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.native.security
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.cfg.io.Prefs
@@ -59,17 +73,68 @@ object Guard {
     /** 设备名，警告文案里给用户看的就是这个 */
     fun deviceName(): String = (Build.MANUFACTURER + " " + Build.MODEL).trim()
 
+    /** 最近一次解锁失败的原因：off / device / nokey / native，空串表示没失败过 */
+    @Volatile
+    var lastFault: String = ""
+        private set
+
+    private var triedAt = 0L
+
     /** 冷启动调用：开关开着就把 K2 与 K 重新拼出来，失败说明这台机器解不开自己的数据 */
     fun boot(): Boolean {
-        if (!on) return false
-        if (!sameDevice) return false
-        val raw = unwrapR() ?: return false
+        if (!on) {
+            lastFault = "off"
+            return false
+        }
+        //换了设备 / 刷了机：设备因子对不上，重试一万次也没用
+        if (!sameDevice) {
+            lastFault = "device"
+            return false
+        }
+        //Keystore 里那把密钥没了（恢复备份、清凭据、StrongBox 失效）：R 永久丢失
+        val raw = unwrapR()
+        if (raw == null) {
+            lastFault = "nokey"
+            return false
+        }
         val rHex = raw.joinToString("") { "%02x".format(it) }
         val done = nativeStart(deviceFactor()) && nativeUnlock(rHex)
         raw.fill(0.toByte())
+        lastFault = if (done) "" else "native"
         //这里只解锁，密文重写交给 boot-init 后台线程：Application.onCreate 主线程只留必要的密钥派生
         return done
     } //开机解锁
+
+    /**
+     * 运行期再试一次解锁。
+     * Keystore 偶发抽风（锁屏首次启动、StrongBox 初始化慢、系统刚升级）时第一次会失败，
+     * 过一会儿就正常——所以读凭据时发现「没解锁」别立刻当成解不开，先重试一次。
+     * @param gapMs 距上次尝试的最小间隔，防止每次读都去敲 Keystore
+     */
+    fun retry(gapMs: Long = 3000L): Boolean {
+        if (ready) return true
+        if (!on) return false
+        val now = SystemClock.elapsedRealtime()
+        if (now - triedAt < gapMs) return ready
+        triedAt = now
+        return boot()
+    } //重试解锁
+
+    /** 彻底解不开：换了设备，或者本机 Keystore 里的那把 R 已经不存在 →只能归档重建 */
+    fun unrecoverable(): Boolean = on && (!sameDevice || runCatching { unwrapR() }.getOrNull() == null)
+
+    /**
+     * 把数据保障归零（不动密文文件）：
+     * 密钥已经丢了的时候，留着开关只会让每个桶永远「解不开也写不进」，不如关掉，
+     * 旧密文交给 Vault 归档，用户重填一次凭据就能恢复可用。
+     */
+    fun reset(): Boolean = runCatching {
+        wipenative()
+        deleteKey()
+        sp.edit().clear().commit()
+        lastFault = "off"
+        true
+    }.getOrDefault(false) //归零状态
 
     /**
      * 开启：按 1 生成密钥 → 2 迁移旧数据 → 3 加密落盘 → 4 完成 上报进度，

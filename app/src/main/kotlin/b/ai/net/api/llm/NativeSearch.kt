@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:16
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 // 原生 search 注入层：勾选「模型支持原生 search」后，按厂商在请求体里声明各家自己的联网工具。
 // 这些工具都由服务端执行并把结果注入上下文，客户端不跑任何东西，只负责把返回的引用解析出来。
 package b.ai.net.api.llm

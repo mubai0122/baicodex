@@ -1,9 +1,25 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:04
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.agent.tool
+import b.ai.core.data.db.Repo
 import b.ai.core.data.io.Layout
 import b.ai.device.shell.root.Root
 import b.ai.net.api.llm.text
 import b.ai.ui.widget.tap
 
+import b.ai.net.api.llm.LlmClient
 import b.ai.net.api.a2a.A2aNode
 import b.ai.net.api.a2a.A2aNodes
 import b.ai.net.api.a2a.A2aSrv
@@ -27,10 +43,12 @@ import b.ai.core.model.chat.Route
 import b.ai.core.task.alarm.Schedules
 import b.ai.net.search.Search
 import b.ai.core.cfg.secret.Secret
+import b.ai.core.plugin.skill.Providers
 import b.ai.core.plugin.skill.SkillFn
 import b.ai.core.plugin.skill.SkillPacks
 import b.ai.App
 import b.ai.agent.flow.Flows
+import b.ai.core.model.chat.FnModel
 import b.ai.core.model.chat.WorkMode
 import b.ai.device.sys.alarm.Alarms
 import b.ai.device.fs.FileOps
@@ -128,6 +146,10 @@ object Tools {
     const val SUB = "subagent_run"
     /** 工作流：多步顺序跑（每步一个分智能体），能存盘、能定时、失败可重试或跳过 */
     const val FLOW_RUN = "flow_run"
+    /** 自动建流：给个目标就让模型拆步骤，并补一条自测步骤，存成可跑的工作流 */
+    const val FLOW_AUTO = "flow_auto"
+    /** 查聊天记录：按关键词翻历史消息（会话内或全库），避免「上次说过什么」只能靠猜 */
+    const val CHAT_SEARCH = "chat_search"
     const val FLOW_SAVE = "flow_save"
     const val FLOW_LIST = "flow_list"
     /** A2A：和别的 A2A 智能体对话（A2A 1.0），本机也能当服务端 */
@@ -156,7 +178,7 @@ object Tools {
                 listOf(
                     LIST, INFO, MOVE, ZIP, GREP, CLIP, OPEN, NOTI, HTTP, PING, CURL, PAGE, APKTOOL,
                     BROWSE, SUB, JS,
-                    FLOW_RUN, FLOW_SAVE, FLOW_LIST, A2A, LAN,
+                    FLOW_RUN, FLOW_SAVE, FLOW_LIST, FLOW_AUTO, CHAT_SEARCH, A2A, LAN,
                     MI_DEVICES, MI_SCAN, MI_READ, MI_WRITE, MI_ACTION,
                     MUSIC_PLATS, MUSIC_LOGIN, MUSIC_CACHE
                 )
@@ -177,7 +199,7 @@ object Tools {
     private val PLAN_OFF = setOf(
         WRITE, EDIT, MAKE_DIR, DELETE, MEMORY, MEMORY_DEL, LINUX, SCREEN, MOVE, ZIP, CLIP, OPEN, NOTI, JS,
         TERM_SEND,
-        FLOW_RUN, FLOW_SAVE, A2A, LAN,
+        FLOW_RUN, FLOW_SAVE, FLOW_AUTO, A2A, LAN,
         SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT,
         MI_WRITE, MI_ACTION, MUSIC_LOGIN, MUSIC_CACHE
     )
@@ -236,6 +258,8 @@ object Tools {
         SUB -> "分智能体"
         FLOW_RUN -> "跑工作流"
         FLOW_SAVE -> "保存工作流"
+        FLOW_AUTO -> "自动建工作流"
+        CHAT_SEARCH -> "查聊天记录"
         FLOW_LIST -> "列工作流"
         A2A -> "A2A 对话"
         SSH_CONNECT -> "SSH 连服务器"
@@ -982,6 +1006,49 @@ object Tools {
                 JSONObject().put("type", "object").put("properties", JSONObject())
             )
         )
+        arr.put(
+            fn(
+                CHAT_SEARCH,
+                "在本地聊天记录里按关键词搜历史消息，返回命中的会话标题、说话人、时间与片段，" +
+                    "并按「用户 / 助手 / 压缩摘要」给出条数统计。" +
+                    "用户问「上次那个报错怎么解决的」「我之前说过什么」「你当时怎么答的」时先用它，别凭空回忆；" +
+                    "role 可只查一方说的话，include_compressed 决定是否把上下文压缩摘要也算进来。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("query", str("关键词，尽量取原话里的名词或报错片段"))
+                        .put("session_id", str("只搜某个会话时填，留空搜全部会话"))
+                        .put(
+                            "role",
+                            JSONObject().put("type", "string")
+                                .put("enum", JSONArray().put("all").put("user").put("assistant"))
+                                .put("description", "只查某一方：user=我说的话，assistant=AI 说的话，all=都查（默认）")
+                        )
+                        .put(
+                            "include_compressed",
+                            JSONObject().put("type", "boolean")
+                                .put("description", "是否把上下文压缩摘要（role=summary）也算进结果，默认 false")
+                        )
+                        .put("limit", JSONObject().put("type", "integer").put("description", "最多返回多少条，默认 20，上限 50"))
+                ).put("required", JSONArray().put("query"))
+            )
+        )
+        arr.put(
+            fn(
+                FLOW_AUTO,
+                "按目标自动创建一条工作流：模型先把目标拆成可执行步骤，再自动补一条「自测与验收」步骤，" +
+                    "保存后返回测试清单。只想存现成步骤就直接带 steps（会跳过自动拆解）。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("name", str("工作流名字，2-12 字，留空取目标前 12 字"))
+                        .put("goal", str("要达成的目标，写清产出与验收标准"))
+                        .put("steps", stepsProp)
+                        .put("at", str("可选：定时时间，格式 08:30 或 2026-01-01 08:30"))
+                        .put("daily", JSONObject().put("type", "boolean").put("description", "true 表示每天同一时间"))
+                ).put("required", JSONArray().put("name").put("goal"))
+            )
+        )
         //A2A：把一部分活派给外部智能体；本机也能当服务端被别的 agent 调用
         arr.put(
             fn(
@@ -1252,6 +1319,8 @@ object Tools {
         //flow_run 同理：要报进度、要能被停止键打断
         FLOW_RUN -> ToolOutcome(false, "flow_run 需要主循环调度，不能在后台单独执行", Route.SANDBOX)
         FLOW_SAVE -> flowSave(args)
+        FLOW_AUTO -> flowAuto(args)
+        CHAT_SEARCH -> chatSearch(args)
         FLOW_LIST -> flowList()
         A2A -> a2a(args).governed()
         LAN -> lanTool(args).governed()
@@ -1320,6 +1389,128 @@ object Tools {
         sb.append("。要马上跑就调 flow_run 带上这个 id。")
         return ToolOutcome(true, sb.toString(), Route.SANDBOX)
     } //保存工作流
+    /** chat_search：按关键词翻历史消息，时间与会话标题都带上，模型据此引用 */
+    private fun chatSearch(args: JSONObject): ToolOutcome {
+        val q = args.optString("query").trim()
+        if (q.isBlank()) return ToolOutcome(false, "chat_search 需要一个关键词", Route.SANDBOX)
+        val sid = args.optString("session_id").trim()
+        val role = args.optString("role", "all").trim().lowercase()
+        val incSum = args.optBoolean("include_compressed", false)
+        val hits = Repo.searchMessages(q, args.optInt("limit", 20), sid, role, incSum)
+        if (hits.isEmpty()) {
+            return ToolOutcome(
+                true,
+                "没有找到包含「$q」的历史消息" + (if (sid.isBlank()) "" else "（会话 $sid）") +
+                    (if (role == "user") "，且限定为「我说的话」。" else if (role == "assistant") "，且限定为「AI 说的话」。" else "。") +
+                    (if (!incSum) "压缩摘要未计入，需要的话带 include_compressed=true。" else ""),
+                Route.SANDBOX
+            )
+        }
+        val df = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+        val uCount = hits.count { it.role == "user" }
+        val aCount = hits.count { it.role == "assistant" }
+        val sCount = hits.count { it.compressed }
+        val sb = StringBuilder("找到 ").append(hits.size).append(" 条包含「").append(q).append("」的消息")
+        sb.append("（用户 ").append(uCount).append(" / 助手 ").append(aCount)
+        if (incSum) sb.append(" / 压缩摘要 ").append(sCount)
+        sb.append("）：\n")
+        hits.forEach { h ->
+            val who = if (h.role == "user") "用户" else if (h.role == "assistant") "助手（AI）" else if (h.compressed) "压缩摘要" else h.role
+            sb.append("\n- [").append(df.format(java.util.Date(h.at))).append("] ")
+            sb.append(h.title.ifBlank { "未命名会话" }).append(" · ").append(who)
+            sb.append("（session=").append(h.sessionId).append("）\n  ")
+            //命中词前后各留一段，短消息直接给全文，避免片段看不出来龙去脉
+            val body = h.content.replace('\n', ' ')
+            val i = body.indexOf(q)
+            val from = (i - 60).coerceAtLeast(0)
+            val to = (i + q.length + 120).coerceAtMost(body.length)
+            if (from > 0) sb.append("…")
+            sb.append(body.substring(from, to))
+            if (to < body.length) sb.append("…")
+            sb.append('\n')
+        }
+        return ToolOutcome(true, sb.toString().trim(), Route.SANDBOX)
+    } //搜聊天记录
+
+    /** flow_auto：拆步骤 → 补自测 → 存盘，返回可照着验收的测试清单 */
+    private fun flowAuto(args: JSONObject): ToolOutcome {
+        val goal = args.optString("goal").trim()
+        if (goal.isBlank()) return ToolOutcome(false, "flow_auto 需要一个目标", Route.SANDBOX)
+        val name = args.optString("name").trim().ifBlank { goal.take(12) }
+        var steps = Flows.stepsFrom(args.optJSONArray("steps"))
+        val drafted = steps.isEmpty()
+        if (drafted) steps = draftSteps(goal)
+        if (steps.isEmpty()) {
+            return ToolOutcome(false, "没能拆出步骤：把目标写得更具体一点，或者直接给 steps", Route.SANDBOX)
+        }
+        //自测步骤：模型干活容易「自称完成」，最后一步必须自己验一遍
+        if (steps.none { it.title.contains("自测") || it.title.contains("验收") }) {
+            steps = steps + b.ai.agent.flow.FlowStep(
+                "自测与验收",
+                "逐项验证前面每一步的产出：能执行的命令就跑一遍并贴结果；不能执行的列出验收点与判断依据。" +
+                    "任何一项没通过，说明原因、影响范围与修复建议，不要只说「已完成」。"
+            )
+        }
+        val daily = args.optBoolean("daily", false)
+        val at = parseAt(args.optString("at"), daily)
+        val f = Flows.add(name, steps.take(Flows.MAX_STEPS), at, daily, true)
+        if (f.at > 0L) Alarms.scheduleFlow(App.self, f)
+
+        val sb = StringBuilder()
+        sb.append("已创建工作流「").append(f.name).append("」（id=").append(f.id).append("），共 ")
+        sb.append(f.steps.size).append(" 步")
+        sb.append(if (drafted) "，步骤由模型按目标拆解" else "，步骤用的是你给的清单")
+        if (f.at > 0L) sb.append("，定时 ").append(Alarms.fmt(f.at))
+        sb.append("。\n\n步骤：\n")
+        f.steps.forEachIndexed { i, st -> sb.append(i + 1).append(". ").append(st.title).append("\n") }
+        sb.append("\n测试清单（按序验，全过才算完成）：\n")
+        f.steps.forEachIndexed { i, st ->
+            sb.append("- [ ] ").append(i + 1).append(". ").append(st.title.take(20))
+            sb.append("：产出可核对、失败有明确报错\n")
+        }
+        sb.append("\n要立刻跑就调 flow_run 带上 id=").append(f.id).append("。")
+        return ToolOutcome(true, sb.toString(), Route.SANDBOX)
+    } //自动建流
+
+    /** 让模型把目标拆成步骤：返回空就由调用方退回按行切分 */
+    private fun draftSteps(goal: String): List<b.ai.agent.flow.FlowStep> {
+        val m = FnModel.conn(FnModel.SUMMARY)
+        if (m[0].isNotBlank() && m[3].isNotBlank()) {
+            val pay = JSONArray()
+                .put(JSONObject().put("role", "system").put("content",
+                    "你是任务拆解器。把用户的目标拆成 2-6 个可执行步骤，每步一句话，写清做什么与产出物。" +
+                        "只输出 JSON 数组，形如 [{\"title\":\"短标题\",\"task\":\"这一步要做什么\"}]，" +
+                        "不要解释、不要 Markdown 代码块、不要额外字段。"))
+                .put(JSONObject().put("role", "user").put("content", goal))
+            val txt = runCatching {
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth)
+                    .chat(m[3], pay, temperature = 0.3, tools = JSONArray())
+                    .optString("content")
+            }.getOrNull().orEmpty()
+            val arr = runCatching {
+                val s = txt.indexOf('[')
+                val e = txt.lastIndexOf(']')
+                if (s >= 0 && e > s) JSONArray(txt.substring(s, e + 1)) else JSONArray()
+            }.getOrNull()
+            if (arr != null && arr.length() > 0) {
+                val out = ArrayList<b.ai.agent.flow.FlowStep>()
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    val t = o.optString("task").trim().ifBlank { o.optString("title").trim() }
+                    if (t.isEmpty()) continue
+                    out.add(b.ai.agent.flow.FlowStep(o.optString("title").trim().ifBlank { "步骤" + (out.size + 1) }, t))
+                }
+                if (out.isNotEmpty()) return out.take(Flows.MAX_STEPS)
+            }
+        }
+        //没有可用模型就按行/分号切：至少能得到一条能跑的工作流
+        return goal.split('\n', '；', ';')
+            .map { it.trim().trim('-', '*', '·', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '、', ' ') }
+            .filter { it.length >= 4 }
+            .take(6)
+            .mapIndexed { i, t -> b.ai.agent.flow.FlowStep("步骤" + (i + 1), t) }
+    } //拆步骤
+
     /** flow_list：把工作流摆出来，id 和上次结果都带上 */
     private fun flowList(): ToolOutcome {
         val list = Flows.list

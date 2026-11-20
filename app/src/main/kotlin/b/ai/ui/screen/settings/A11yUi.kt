@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.widget.CircleIconBox
@@ -127,22 +141,22 @@ fun A11yPermCard(desc: String) {
     val canAuto = ch != null
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("屏幕操作", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tx_f02de109), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.width(8.dp))
             Text(
                 when {
-                    on -> "已开启"
-                    canAuto -> "有高权限，可一键激活"
-                    else -> "未开启"
+                    on -> stringResource(R.string.tx_9db7a84f)
+                    canAuto -> stringResource(R.string.tx_4649c53d)
+                    else -> stringResource(R.string.tx_ea4a363d)
                 },
                 fontSize = 11.sp,
                 color = if (on) OkGreen else WarnAmber
             )
             Spacer(Modifier.weight(1f))
             //刷新状态与重走流程都收成小圆圈图标，不占整行
-            CircleIconBox(Icons.Filled.Refresh, desc = "刷新状态") { tick++ }
+            CircleIconBox(Icons.Filled.Refresh, desc = stringResource(R.string.tx_4f8d48ef)) { tick++ }
             Spacer(Modifier.width(6.dp))
-            CircleIconBox(Icons.Filled.PlayArrow, desc = "重走激活流程") { A11ySetup.open.value = true }
+            CircleIconBox(Icons.Filled.PlayArrow, desc = stringResource(R.string.tx_64a0f3cc)) { A11ySetup.open.value = true }
         }
         Spacer(Modifier.height(6.dp))
         Text(desc, fontSize = 12.sp, color = TextSecondary)
@@ -154,7 +168,7 @@ fun A11yPermCard(desc: String) {
             if (canAuto) {
                 A11yAutoHint()
             } else {
-                Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(stringResource(R.string.tx_bad2f54e), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 StepLine(1, "点下面「去开启无障碍」，跳到系统的无障碍页面")
                 StepLine(2, "点「已下载的服务」→「Baicodex 屏幕操作」")
                 StepLine(3, "打开开关，弹窗里选「允许」")
@@ -164,9 +178,9 @@ fun A11yPermCard(desc: String) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             when {
-                on -> PrimaryButton("已开启", enabled = false) {}
+                on -> PrimaryButton(stringResource(R.string.tx_9db7a84f), enabled = false) {}
                 canAuto -> PrimaryButton(stringResource(R.string.se_348), enabled = true) { A11yAuto.open.value = true }
-                else -> PrimaryButton("去开启无障碍", enabled = true) { Perms.openA11y(ctx) }
+                else -> PrimaryButton(stringResource(R.string.tx_eeeb0354), enabled = true) { Perms.openA11y(ctx) }
             }
         }
     }
@@ -195,24 +209,24 @@ internal fun StepLine(n: Int, text: String) {
 fun A11yPermDialog(onClose: () -> Unit) {
     val ctx = LocalContext.current
     ScrimCard(onDismiss = onClose) {
-        Text("屏幕操作需要无障碍权限", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.tx_0e3297f4), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         Spacer(Modifier.height(6.dp))
         Text(
-            "刚才那一步没跑通，是因为无障碍服务没开：AI 拿不到控件坐标，也点不了屏幕。",
+            stringResource(R.string.tx_e4554821),
             fontSize = 12.sp,
             color = TextSecondary
         )
         Spacer(Modifier.height(10.dp))
         A11yDemo()
         Spacer(Modifier.height(10.dp))
-        Text("开启步骤", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+        Text(stringResource(R.string.tx_bad2f54e), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
         StepLine(1, "点下面「去开启」，跳到系统的无障碍页面")
         StepLine(2, "点「已下载的服务」→「Baicodex 屏幕操作」")
         StepLine(3, "打开开关，弹窗里选「允许」")
         StepLine(4, "开关是灰的：设置 → 应用 → Baicodex → 右上角 ⋮ → 允许受限设置，再回来开")
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            GhostButton("知道了") { onClose() }
+            GhostButton(stringResource(R.string.tx_ce26955a)) { onClose() }
             Spacer(Modifier.width(10.dp))
             PrimaryButton("去开启") {
                 Perms.openA11y(ctx)

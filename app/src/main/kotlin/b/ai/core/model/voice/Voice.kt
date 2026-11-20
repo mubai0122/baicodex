@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:09
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.model.voice
 import b.ai.core.cfg.app.Cfg
 
@@ -25,13 +39,14 @@ object Voice {
 
     /** 界面只关心「有没有在听」：接口模式跟着 Audio 的录音 / 上传走，系统模式看自己的标记 */
     val listening: Boolean
-        get() = if (Cfg.asrMode == "api") Audio.recing || Audio.busy else sysOn
+        //按引擎判断而不是旧的 asrMode：sherpa 走的是录音+本地转写，asrMode 里记的是 sys，拿它判断会一直显示「没在听」
+        get() = if (Audio.engine() != "sys") Audio.recing || Audio.busy else sysOn
     var sysError by mutableStateOf("")
         private set
 
     //界面只关心「有没有在听」和「出了什么错」，两种模式在这里统一
     val error: String
-        get() = if (Cfg.asrMode == "api") Audio.error else sysError
+        get() = if (Audio.engine() != "sys") Audio.error.ifBlank { sysError } else sysError
 
     private var sr: SpeechRecognizer? = null
 
@@ -50,6 +65,12 @@ object Voice {
         }
         startSys(ctx, onText)
     } //点按开关听写
+
+    /** 清掉错误提示：界面给 3 秒自动消失用，切回键盘时也调一次 */
+    fun clearError() {
+        sysError = ""
+        Audio.clearError()
+    } //清错误
 
     /** 长按开始：系统识别器直接开听，接口模式开始录音 */
     fun holdStart(ctx: Context, onText: (String) -> Unit) {
@@ -79,7 +100,12 @@ object Voice {
     } //上滑取消
 
     /** 走录音转写这条路：显式配了接口模式，或者系统识别器已被证实绑不上且填了接口配置 */
-    private fun apiFirst(): Boolean = Cfg.asrMode == "api" || (sysBroken && hasApi())
+    private fun apiFirst(): Boolean {
+        val e = Audio.engine()
+        //显式选了远程引擎：一律走接口，不看系统识别器状态
+        if (e == "openai" || e == "deepgram" || e == "sherpa") return true
+        return sysBroken && hasApi()
+    } //是否优先走接口
 
     private fun startSys(ctx: Context, onText: (String) -> Unit) {
         sysError = ""

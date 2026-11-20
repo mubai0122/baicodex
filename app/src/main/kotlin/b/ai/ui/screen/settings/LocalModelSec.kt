@@ -1,5 +1,21 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import android.content.Context
 import android.net.Uri
 import android.os.Handler
@@ -59,8 +75,8 @@ import java.util.Locale
 private fun llmFiles(): List<File> = ModelHub.list()
 
 private fun gpuLabel(n: Int): String = when {
-    n <= 0 -> "0（纯 CPU）"
-    n >= 99 -> "99（全部层）"
+    n <= 0 -> b.ai.App.self.getString(R.string.tx_4b72c2b7)
+    n >= 99 -> b.ai.App.self.getString(R.string.tx_f47f7cb9)
     else -> n.toString()
 } //GPU 层数的显示名
 
@@ -90,7 +106,7 @@ private fun importGguf(ctx: Context, uri: Uri): Pair<File?, String> = runCatchin
     val need = sizeOf(ctx, uri)
     val free = ModelHub.freeBytes()
     if (need > 0L && free < need + 64L * 1024 * 1024) {
-        return@runCatching Pair(null, "空间不足：需要 ${human(need)}，可用 ${human(free)}")
+        return@runCatching Pair(null, b.ai.App.self.getString(R.string.tx_fee8e550, human(need), human(free)))
     }
     val raw = displayName(ctx, uri)?.takeIf { it.isNotBlank() } ?: "model.gguf"
     val base = if (raw.endsWith(".gguf", true)) raw else "$raw.gguf"
@@ -138,7 +154,7 @@ private fun LocalModelBody() {
             if (moved.isNotEmpty()) {
                 withContext(Dispatchers.Main) {
                     files = llmFiles()
-                    note = "已把旧目录里的 ${moved.size} 个模型迁到 ${ModelHub.dir().absolutePath}"
+                    note = b.ai.App.self.getString(R.string.tx_1f6f6b55, moved.size, ModelHub.dir().absolutePath)
                 }
             }
         }
@@ -171,7 +187,7 @@ private fun LocalModelBody() {
                     val nctx = meta["n_ctx_train"] ?: "?"
                     //加载即用：顺手把聊天后端切到这条本地模型，省得用户回聊天页还要去「模型配置」里再选一遍
                     val lbl = runCatching { Profiles.useLocal(f) }.getOrDefault("")
-                    note = "已加载：${f.name}（$desc · 训练上下文 $nctx）" +
+                    note = b.ai.App.self.getString(R.string.tx_0d011d38, f.name) +
                         if (lbl.isNotEmpty()) "\n聊天后端已切到「$lbl」" else ""
                 }
             }
@@ -208,13 +224,13 @@ private fun LocalModelBody() {
             withContext(Dispatchers.Main) {
                 note = if (rc >= 0) {
                     val tps = if (ms > 0) rc * 1000L / ms else 0L
-                    "完成：$rc token / ${ms}ms（约 $tps tok/s）"
+                    b.ai.App.self.getString(R.string.tx_651eb991, ms)
                 } else {
                     "生成失败($rc)：" + when (rc) {
-                        -2 -> "提示超出上下文"
-                        -3 -> "已取消"
-                        -5 -> "输出回调不可用（release 混淆），请升级 APK"
-                        else -> err.ifBlank { "未知原因" }
+                        -2 -> b.ai.App.self.getString(R.string.tx_76d88dfc)
+                        -3 -> b.ai.App.self.getString(R.string.tx_2111ccbb)
+                        -5 -> b.ai.App.self.getString(R.string.tx_06e12adc)
+                        else -> err.ifBlank { b.ai.App.self.getString(R.string.tx_f91d273b) }
                     }
                 }
             }
@@ -242,11 +258,11 @@ private fun LocalModelBody() {
                 val txt = sb.toString().trim()
                 note = if (rc >= 0 && txt.isNotEmpty()) {
                     val tps = if (ms > 0) rc * 1000L / ms else 0L
-                    "连通性测试通过：${ms}ms 收到 ${txt.length} 字（$rc token，约 $tps tok/s）\n回复摘要：${txt.take(40)}"
+                    b.ai.App.self.getString(R.string.tx_8164359b, ms, txt.length, txt.take(40))
                 } else {
                     "连通性测试失败($rc)：" + when (rc) {
-                        -5 -> "输出回调不可用（release 混淆），请升级 APK"
-                        else -> err.ifBlank { "模型没有返回任何内容" }
+                        -5 -> b.ai.App.self.getString(R.string.tx_06e12adc)
+                        else -> err.ifBlank { b.ai.App.self.getString(R.string.tx_3066b700) }
                     }
                 }
             }
@@ -261,7 +277,7 @@ private fun LocalModelBody() {
         }
         val free = ModelHub.freeBytes()
         if (free < 300L * 1024 * 1024) {
-            note = "存储空间不足：可用 ${human(free)}，至少要留 300MB"
+            note = b.ai.App.self.getString(R.string.tx_9fc79d7a, human(free))
             return
         }
         note = ""
@@ -287,7 +303,7 @@ private fun LocalModelBody() {
             withContext(Dispatchers.Main) {
                 busy = false
                 files = llmFiles()
-                note = if (f != null) "已导入：${f.name}（${human(f.length())}）" else why
+                note = if (f != null) b.ai.App.self.getString(R.string.tx_cbdacbb2, f.name, human(f.length())) else why
             }
         }
     } //选 GGUF 并拷进模型目录
@@ -308,14 +324,14 @@ private fun LocalModelBody() {
         val ratio = if (mem.total > 0L && f != null) f.length().toDouble() / mem.total else 0.0
         ScrimCard(onDismiss = { gateLevel = 0 }) {
             Text(
-                if (gateLevel >= 2) "模型过大，加载后手机可能卡到没法用" else "模型偏大，加载后可能卡顿",
+                if (gateLevel >= 2) stringResource(R.string.tx_b7f18f1e) else stringResource(R.string.tx_aa76a23a),
                 fontSize = 16.sp,
                 color = if (gateLevel >= 2) AccentBlue else TextPrimary
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                (if (f != null) "所选模型 ${human(f.length())}" else "所选模型") +
-                    (if (mem.total > 0L) "，占本机总内存 ${human(mem.total)} 的 ${(ratio * 100).toInt()}%" else "") +
+                (if (f != null) stringResource(R.string.tx_f934698e, human(f.length())) else stringResource(R.string.tx_20b2103b)) +
+                    (if (mem.total > 0L) stringResource(R.string.tx_957699dd, human(mem.total), (ratio * 100).toInt()) else "") +
                     "。\n\n" +
                     if (gateLevel >= 2) {
                         "这个体积已经超过总内存的 90%：加载时会长时间无响应，之后后台应用会被系统杀掉、输入法与动画掉帧，最坏情况是 App 被 OOM 直接结束、手机短时间无法操作。\n\n强烈建议改用 1.5B 或 3B 的 Q4_K_M 量化。"
@@ -328,7 +344,7 @@ private fun LocalModelBody() {
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 Text(
-                    "取消",
+                    stringResource(R.string.tx_625fb26b),
                     fontSize = 13.sp,
                     color = TextSecondary,
                     modifier = Modifier
@@ -336,7 +352,7 @@ private fun LocalModelBody() {
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 )
                 Text(
-                    if (gateLeft > 0) "请先看完说明（${gateLeft}s）" else "仍然加载",
+                    if (gateLeft > 0) stringResource(R.string.tx_45b8d0ba, gateLeft) else stringResource(R.string.tx_7fae055f),
                     fontSize = 13.sp,
                     color = if (gateLeft > 0) TextSecondary else AccentBlue,
                     modifier = Modifier
@@ -355,11 +371,11 @@ private fun LocalModelBody() {
     }
 
     Column {
-        SectionTitle("本地模型", "GGUF 放在公共目录 " + ModelHub.dir().absolutePath + "，断网也能用")
+        SectionTitle(stringResource(R.string.tx_0d22d46a), stringResource(R.string.tx_a9997318) + ModelHub.dir().absolutePath + "，断网也能用")
         CardBox {
             Text(
                 if (supported) {
-                    "推理引擎：已就绪（llama.cpp · " + (if (Cfg.llmGpu > 0) "GPU 层 ${Cfg.llmGpu}，驱动不支持时回退 CPU" else "纯 CPU") + "）"
+                    "推理引擎：已就绪（llama.cpp · " + (if (Cfg.llmGpu > 0) stringResource(R.string.tx_fe42d9b6, Cfg.llmGpu) else stringResource(R.string.tx_bc083719)) + "）"
                 } else {
                     "推理引擎：不可用 · " + Llama.loadError().ifBlank { "当前 ABI 没编进来" }
                 },
@@ -368,33 +384,33 @@ private fun LocalModelBody() {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "存放位置：${ModelHub.dir().absolutePath}" + (if (ModelHub.isPublic()) "（公共目录，可用文件管理器直接换模型）" else "（外部存储不可用，已退回私有目录）"),
+                stringResource(R.string.tx_b6e53767, ModelHub.dir().absolutePath) + (if (ModelHub.isPublic()) stringResource(R.string.tx_13968e19) else stringResource(R.string.tx_fc8f9040)),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "量化建议 Q4_K_M：7B 约 4.4GB 内存，3B 约 2GB，1.5B 约 1.2GB。手机建议 1.5B～3B。",
+                stringResource(R.string.tx_bebd3740),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
             val mem = DevMem.info(ctx)
             Spacer(Modifier.height(6.dp))
             Text(
-                "设备：${DevMem.soc()}" +
-                    (if (mem.total > 0L) " · 内存 ${human(mem.total)}（可用 ${human(mem.avail)}）" else "") +
+                stringResource(R.string.tx_a33a9bb0, DevMem.soc()) +
+                    (if (mem.total > 0L) stringResource(R.string.tx_3108ce07, human(mem.total), human(mem.avail)) else "") +
                     " · 后端 ${if (Cfg.llmLocal) "本地 llama.cpp" else "云端 API"}（${LocalEngine.status()}）",
                 fontSize = 10.sp,
                 color = TextSecondary
             )
             Spacer(Modifier.height(10.dp))
-            GhostButton(if (busy) "请稍候…" else "导入 GGUF 文件") { if (!busy) pick.launch("*/*") }
+            GhostButton(if (busy) stringResource(R.string.tx_5ec38d72) else stringResource(R.string.tx_8174c488)) { if (!busy) pick.launch("*/*") }
         }
 
         Spacer(Modifier.height(8.dp))
         CardBox {
-            Text("推荐模型", fontSize = 13.sp, color = TextPrimary)
-            Text("主源 ModelScope，失败自动换 hf-mirror；断点续传，中断后点下载会接着下", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_40f0918b), fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.tx_8194ea1b), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
             ModelHub.recs.forEachIndexed { i, m ->
                 if (i > 0) Spacer(Modifier.height(2.dp))
@@ -407,10 +423,10 @@ private fun LocalModelBody() {
                     }
                     Text(
                         when {
-                            done -> "已下载"
-                            running -> "下载中"
+                            done -> stringResource(R.string.tx_9719fec8)
+                            running -> stringResource(R.string.tx_2d455ce5)
                             dl.running -> "…"
-                            else -> "下载"
+                            else -> stringResource(R.string.tx_f26ef914)
                         },
                         fontSize = 11.sp,
                         color = if (done) TextSecondary else AccentBlue,
@@ -423,40 +439,40 @@ private fun LocalModelBody() {
                 Spacer(Modifier.height(8.dp))
                 val pct = if (dl.total > 0L) (dl.have * 100 / dl.total).toInt() else -1
                 Text(
-                    "正在下载 ${dl.file}：" + human(dl.have) +
-                        (if (dl.total > 0L) " / ${human(dl.total)}（$pct%）" else "（大小未知）"),
+                    stringResource(R.string.tx_66a69bbf, dl.file) + human(dl.have) +
+                        (if (dl.total > 0L) " / ${human(dl.total)}（$pct%）" else stringResource(R.string.tx_73a8747c)),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
                 Spacer(Modifier.height(6.dp))
-                GhostButton("取消下载") { ModelHub.cancelDownload() }
+                GhostButton(stringResource(R.string.tx_84fac467)) { ModelHub.cancelDownload() }
             }
         }
 
         Spacer(Modifier.height(8.dp))
         CardBox {
-            Text("自定义下载链接", fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.tx_a8f37df4), fontSize = 13.sp, color = TextPrimary)
             Text(
-                "填 GGUF 直链即可（ModelScope / hf-mirror / 自己的服务器都行），文件名取链接最后一段",
+                stringResource(R.string.tx_fb085f04),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
             Field(
-                label = "链接",
+                label = stringResource(R.string.tx_bfe68d58),
                 value = customUrl,
                 onValueChange = { customUrl = it },
                 placeholder = "https://…/xxx.gguf"
             )
             if (customUrl.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                Text("将保存为：${ModelHub.nameOf(customUrl)}", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_697e775f, ModelHub.nameOf(customUrl)), fontSize = 10.sp, color = TextSecondary)
             }
             Spacer(Modifier.height(8.dp))
-            GhostButton(if (busy) "请稍候…" else "下载这个链接") {
+            GhostButton(if (busy) stringResource(R.string.tx_5ec38d72) else stringResource(R.string.tx_639b6f4b)) {
                 val u = customUrl.trim()
                 when {
                     busy -> Unit
-                    !u.startsWith("http://") && !u.startsWith("https://") -> note = "链接要以 http:// 或 https:// 开头"
+                    !u.startsWith("http://") && !u.startsWith("https://") -> note = b.ai.App.self.getString(R.string.tx_0cac8c4c)
                     else -> {
                         val n = ModelHub.nameOf(u)
                         downloadTo(u, null, n, n)
@@ -469,7 +485,7 @@ private fun LocalModelBody() {
             Spacer(Modifier.height(8.dp))
             CardBox {
                 Text(
-                    "还没有模型文件。点上面导入，或用文件管理器把 .gguf 放进 ${ModelHub.dir().absolutePath}/。",
+                    stringResource(R.string.tx_960ae310, ModelHub.dir().absolutePath),
                     fontSize = 11.sp,
                     color = TextSecondary
                 )
@@ -483,13 +499,13 @@ private fun LocalModelBody() {
                         Column(Modifier.weight(1f)) {
                             Text(f.name, fontSize = 13.sp, color = TextPrimary)
                             Text(
-                                human(f.length()) + if (Cfg.llmModel == f.absolutePath) " · 当前选中" else "",
+                                human(f.length()) + if (Cfg.llmModel == f.absolutePath) stringResource(R.string.tx_2165b30a) else "",
                                 fontSize = 10.sp,
                                 color = TextSecondary
                             )
                         }
                         Text(
-                            if (busy) "…" else "加载",
+                            if (busy) "…" else stringResource(R.string.tx_4793ea43),
                             fontSize = 11.sp,
                             color = AccentBlue,
                             modifier = Modifier
@@ -497,7 +513,7 @@ private fun LocalModelBody() {
                                 .padding(horizontal = 8.dp, vertical = 6.dp)
                         )
                         Text(
-                            "删除",
+                            stringResource(R.string.tx_2f4aaddd),
                             fontSize = 11.sp,
                             color = AccentBlue,
                             modifier = Modifier
@@ -513,12 +529,12 @@ private fun LocalModelBody() {
         delTarget?.let { f ->
             Spacer(Modifier.height(8.dp))
             CardBox {
-                Text("确认删除 ${f.name}？（${human(f.length())}）", fontSize = 12.sp, color = TextPrimary)
+                Text(stringResource(R.string.tx_67957ccd, f.name, human(f.length())), fontSize = 12.sp, color = TextPrimary)
                 Spacer(Modifier.height(8.dp))
                 Row {
-                    GhostButton("取消", Modifier.weight(1f)) { delTarget = null }
+                    GhostButton(stringResource(R.string.tx_625fb26b), Modifier.weight(1f)) { delTarget = null }
                     Spacer(Modifier.width(8.dp))
-                    GhostButton("删除", Modifier.weight(1f)) {
+                    GhostButton(stringResource(R.string.tx_2f4aaddd), Modifier.weight(1f)) {
                         if (Cfg.llmModel == f.absolutePath) Cfg.llmModel = ""
                         if (sess != 0L) {
                             Llama.ctxFree(sess)
@@ -531,7 +547,7 @@ private fun LocalModelBody() {
                         val ok = f.delete()
                         files = llmFiles()
                         delTarget = null
-                        note = if (ok) "已删除：${f.name}" else "删除失败：${f.name}"
+                        note = if (ok) b.ai.App.self.getString(R.string.tx_642e64e8, f.name) else b.ai.App.self.getString(R.string.tx_f0c678c7, f.name)
                     }
                 }
             }
@@ -541,41 +557,41 @@ private fun LocalModelBody() {
         CardBox {
             //后端只由「模型配置」决定（选本地模型那条就本地，选云端厂商就云端），这里只显示状态，避免两处开关打架
             Text(
-                "对话后端：" + if (Cfg.llmLocal) "本地模型" else "云端 API",
+                "对话后端：" + if (Cfg.llmLocal) stringResource(R.string.tx_0d22d46a) else stringResource(R.string.tx_040a63aa),
                 fontSize = 13.sp,
                 color = TextPrimary
             )
             Text(
-                "在「模型配置」里选「本地模型」就是本地推理，选别的厂商就是云端；这里不重复设开关",
+                stringResource(R.string.tx_08e0d546),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "线程数",
-                if (Cfg.llmThreads == 0) "自动" else Cfg.llmThreads.toString(),
+                stringResource(R.string.tx_aadb83b2),
+                if (Cfg.llmThreads == 0) stringResource(R.string.tx_3aed2c11) else Cfg.llmThreads.toString(),
                 listOf(0, 2, 4, 6, 8),
-                desc = "自动 = 核心数减 2，最多 6；核越多数值越高越费电",
-                optionLabel = { if (it == 0) "自动" else it.toString() },
+                desc = stringResource(R.string.tx_cd08d0ab),
+                optionLabel = { if (it == 0) stringResource(R.string.tx_3aed2c11) else it.toString() },
                 isSelected = { Cfg.llmThreads == it },
                 onSelect = { Cfg.llmThreads = it }
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "上下文长度",
+                stringResource(R.string.tx_3b566354),
                 Cfg.llmCtx.toString(),
                 listOf(1024, 2048, 4096, 8192, 16384),
-                desc = "越长越吃内存，超过模型训练上下文会自动压回",
+                desc = stringResource(R.string.tx_57a3a77c),
                 optionLabel = { it.toString() },
                 isSelected = { Cfg.llmCtx == it },
                 onSelect = { Cfg.llmCtx = it }
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "温度",
+                stringResource(R.string.tx_c9bf0b88),
                 Cfg.llmTemp.toString(),
                 listOf(0f, 0.3f, 0.7f, 0.8f, 1.0f, 1.3f),
-                desc = "0 = 每次都给同一个答案；越高越发散",
+                desc = stringResource(R.string.tx_2bd34d47),
                 optionLabel = { it.toString() },
                 isSelected = { kotlin.math.abs(Cfg.llmTemp - it) < 0.01f },
                 onSelect = { Cfg.llmTemp = it }
@@ -585,40 +601,40 @@ private fun LocalModelBody() {
                 "top-p",
                 Cfg.llmTopP.toString(),
                 listOf(0.7f, 0.8f, 0.9f, 0.95f, 1.0f),
-                desc = "只从累计概率前 p 的词里挑，越小越稳",
+                desc = stringResource(R.string.tx_f6c58938),
                 optionLabel = { it.toString() },
                 isSelected = { kotlin.math.abs(Cfg.llmTopP - it) < 0.01f },
                 onSelect = { Cfg.llmTopP = it }
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "重复惩罚",
+                stringResource(R.string.tx_43a45e02),
                 Cfg.llmRep.toString(),
                 listOf(1.0f, 1.05f, 1.1f, 1.2f, 1.3f),
-                desc = "1.0 = 关闭；复读机现象明显时调到 1.1～1.2",
+                desc = stringResource(R.string.tx_da9de6ce),
                 optionLabel = { it.toString() },
                 isSelected = { kotlin.math.abs(Cfg.llmRep - it) < 0.01f },
                 onSelect = { Cfg.llmRep = it }
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "GPU 层数",
+                stringResource(R.string.tx_bec4568c),
                 gpuLabel(Cfg.llmGpu),
                 listOf(0, 10, 20, 99),
-                desc = "仅 arm64 生效，走 OpenCL（Adreno 750 / 8 系已验证）；驱动不支持时自动回退纯 CPU。改完要重新加载模型",
+                desc = stringResource(R.string.tx_02cd23ff),
                 optionLabel = { gpuLabel(it) },
                 isSelected = { Cfg.llmGpu == it },
                 onSelect = {
                     Cfg.llmGpu = it
-                    note = "GPU 层数已设为 ${gpuLabel(it)}，重新加载模型后生效"
+                    note = b.ai.App.self.getString(R.string.tx_3c1c4b90, gpuLabel(it))
                 }
             )
             Spacer(Modifier.height(8.dp))
             SelectField(
-                "单轮最多生成",
+                stringResource(R.string.tx_0976ccb2),
                 Cfg.llmMaxTok.toString(),
                 listOf(256, 512, 1024, 2048),
-                desc = "对话里每轮允许生成的上限；纯 CPU 时 1024 以上会明显慢，长文写作再调大",
+                desc = stringResource(R.string.tx_fed34fcc),
                 optionLabel = { "$it token" },
                 isSelected = { Cfg.llmMaxTok == it },
                 onSelect = { Cfg.llmMaxTok = it }
@@ -628,25 +644,25 @@ private fun LocalModelBody() {
         Spacer(Modifier.height(8.dp))
         CardBox {
             Field(
-                label = "试跑",
+                label = stringResource(R.string.tx_42824410),
                 value = prompt,
                 onValueChange = { prompt = it },
-                placeholder = "随便问一句",
+                placeholder = stringResource(R.string.tx_a1faddfd),
                 singleLine = false,
                 minLines = 2
             )
             Spacer(Modifier.height(8.dp))
             Row {
-                GhostButton(if (sessionAlive(sess)) "生成" else "先加载模型", Modifier.weight(1f)) {
+                GhostButton(if (sessionAlive(sess)) stringResource(R.string.tx_4dfe7036) else stringResource(R.string.tx_ba2a95b6), Modifier.weight(1f)) {
                     if (sessionAlive(sess) && !busy) runOnce()
                 }
                 Spacer(Modifier.width(8.dp))
-                GhostButton("停止", Modifier.weight(1f)) {
+                GhostButton(stringResource(R.string.tx_095e938e), Modifier.weight(1f)) {
                     if (sess != 0L) Llama.cancel(sess)
                 }
             }
             Spacer(Modifier.height(8.dp))
-            GhostButton(if (sessionAlive(sess)) "卸载模型（释放内存）" else "当前没有加载模型", Modifier.fillMaxWidth()) {
+            GhostButton(if (sessionAlive(sess)) stringResource(R.string.tx_4d4c3fd6) else stringResource(R.string.tx_433fd817), Modifier.fillMaxWidth()) {
                 if (sessionAlive(sess) || handle != 0L) {
                     if (sess != 0L) Llama.ctxFree(sess)
                     if (handle != 0L) Llama.free(handle)
@@ -658,7 +674,7 @@ private fun LocalModelBody() {
                 }
             }
             Spacer(Modifier.height(8.dp))
-            GhostButton(if (sessionAlive(sess)) "连通性测试（发「测试测试」）" else "先加载模型", Modifier.fillMaxWidth()) {
+            GhostButton(if (sessionAlive(sess)) stringResource(R.string.tx_fc960862) else stringResource(R.string.tx_ba2a95b6), Modifier.fillMaxWidth()) {
                 if (sessionAlive(sess) && !busy) connTest()
             }
             if (out.isNotBlank()) {

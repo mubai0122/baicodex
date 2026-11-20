@@ -1,4 +1,20 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:23
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
+import b.ai.agent.memory.MemOrganizer
+import b.ai.agent.memory.Memory
 import b.ai.native.security.BxKernel
 import b.ai.ui.dialog.guardStateText
 import b.ai.ui.glass.glassScrollState
@@ -33,6 +49,8 @@ import b.ai.ui.widget.Field
 import b.ai.ui.widget.FloatTab
 import b.ai.ui.widget.FloatTabBar
 import b.ai.ui.widget.GhostButton
+import b.ai.ui.widget.IcChevron
+import b.ai.ui.widget.IcTrash
 import b.ai.ui.widget.LocalPicker
 import b.ai.ui.widget.MdText
 import b.ai.ui.widget.PickItem
@@ -48,6 +66,7 @@ import b.ai.core.task.hook.Noti
 import b.ai.device.sys.a11y.AutoA11y
 import b.ai.device.pet.PetSvc
 import b.ai.net.api.llm.text
+import b.ai.net.api.llm.ThinkRules
 import b.ai.net.mi.MiConf
 import b.ai.native.security.MiCrypto
 
@@ -64,11 +83,23 @@ import android.os.Handler
 import android.os.Build
 import android.os.Looper
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -124,14 +155,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.agent.run.Agent
 import b.ai.agent.tool.Tools
 import android.app.Activity
 import b.ai.core.media.img.Avatar
+import b.ai.core.model.chat.Thinking
 import b.ai.core.model.voice.Audio
 import b.ai.core.model.voice.AsrPresets
 import b.ai.core.data.io.Backup
@@ -144,6 +178,7 @@ import b.ai.net.mcp.Mcp
 import b.ai.native.security.Mask
 import b.ai.net.mcp.McpServer
 import b.ai.core.cfg.env.Env
+import b.ai.core.cfg.env.PromptVars
 import b.ai.core.model.voice.Speak
 import b.ai.core.perm.Perms
 import b.ai.agent.persona.Persona
@@ -200,6 +235,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
@@ -245,7 +281,9 @@ private val PageHints = mapOf(
     "model_mem" to "记忆 长期记忆 偏好 自动整理",
     "model_local" to "GGUF 本地模型 离线 量化 推理",
     "chat_ctx" to "上下文 轮数 压缩 摘要 用量",
-    "chat_inject" to "注入 时间 系统提示 回复信息",
+    "chat_inject" to "注入 时间 电池 位置 通知 用量 系统提示",
+    "chat_prompt" to "提示词优化 四芒星 模型 保留原语言 优化方向",
+    "chat_inout" to "输入与输出 回复信息 用量 元信息 waifu 流式 草稿 输出偏好 文风",
     "chat_session" to "会话 历史 导出 收藏夹 工作区",
     "chat_tags" to "提示词 标签 片段 全局启用",
     "chat_perm" to "权限 工作方式 Shizuku Root 无障碍 悬浮窗 实验性",
@@ -297,7 +335,9 @@ private val SettingIndex = pageEntries + listOf(
     SettingEntry(R.string.se_124, R.string.se_001, R.string.se_125, pageId = "model_voice"),
     SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016, pageId = "chat_ctx"),
     SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018, pageId = "chat_inject"),
-    SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020, pageId = "chat_inject"),
+    SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020, pageId = "chat_inout"),
+    SettingEntry(R.string.se_019, R.string.se_002, hintRaw = "草稿 图片 有效期 输入不丢", pageId = "chat_inout"),
+    SettingEntry(R.string.se_019, R.string.se_002, hintRaw = "输出偏好 文风 常驻提示", pageId = "chat_inout"),
     SettingEntry(R.string.se_021, R.string.se_002, R.string.se_022, pageId = "chat_session"),
     SettingEntry(R.string.se_023, R.string.se_002, R.string.se_024, pageId = "chat_session"),
     SettingEntry(R.string.se_025, R.string.se_002, R.string.se_026, pageId = "chat_perm"),
@@ -413,9 +453,13 @@ fun SettingsScreen(
                     .padding(start = 18.dp, end = 10.dp, top = 8.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.se_056), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                Spacer(Modifier.width(8.dp))
-                Text(if (find) stringResource(R.string.se_057) else (SeNav.top?.let { ctx.getString(it.titleRes) } ?: stringResource(SettingsTabs[tab].labelRes)), fontSize = 12.sp, color = TextSecondary)
+                //顶栏只留「设置」一个标题：分类名挪到各卡片上方的 SectionTitle，避免同屏两个标题打架
+                Text(
+                    stringResource(R.string.se_056),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
@@ -434,7 +478,16 @@ fun SettingsScreen(
                 Row(
                     Modifier
                         .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
-                        .tap { SeNav.clear(); onBack() }
+                        //逐级返回：栈里还有子页就先回上一层，栈空才退出设置
+                        .tap {
+                            if (SeNav.top != null) {
+                                GlassPerf.switched()
+                                SeNav.pop()
+                            } else {
+                                SeNav.clear()
+                                onBack()
+                            }
+                        }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -505,7 +558,7 @@ fun SettingsScreen(
                         if (hits.isEmpty()) {
                             item {
                                 Text(
-                                    "没有匹配的设置项：$key",
+                                    stringResource(R.string.tx_7725233f),
                                     fontSize = 12.sp,
                                     color = TextSecondary,
                                     modifier = Modifier.padding(vertical = 10.dp)
@@ -569,17 +622,21 @@ fun SettingsScreen(
                     val directId = if (pid == null && pages.size == 1 && pages[0].direct) pages[0].id else null
                     //栈空且不是直连页 = 停在分类页列子页入口；不能拿默认子页顶替，否则多页分类只剩第一页能进
                     val key = pid ?: directId
-                    if (tp != null) item { SeBackBar(ctx.getString(tp.titleRes)) { GlassPerf.switched(); SeNav.pop() } }
+                    //二级页不再画左侧返回条：标题栏右上角那一个返回键逐级后退，避免两个返回并排
+
                     //内容一律按子页 key 过滤分区，不能按底栏下标：同一批内容函数按 key 各取一段
                     when (key) {
                         null -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
                         "model_cfg" -> modelCfgSec(onOpenMemory)
                         "model_param" -> modelParamSec()
+                        "model_think" -> modelThinkSec()
                         "model_voice" -> modelVoiceSec()
                         "model_mem" -> modelMemSec(onOpenMemory)
                         "model_local" -> modelLocalSec()
                         "chat_ctx" -> chatCtxSec(stats)
                         "chat_inject" -> chatInjectSec()
+                        "chat_prompt" -> chatPromptSec()
+                        "chat_inout" -> chatInOutSec()
                         "chat_session" -> chatSessionSec(stats, onOpenStars)
                         "chat_tags" -> promptTagSec()
                         "chat_perm" -> chatPermSec()
@@ -641,7 +698,29 @@ fun SettingsScreen(
     }
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open || ThinkEdit.rule != null) {
+        //思考规则编辑：新建追加到末尾，编辑替换同 id
+        ThinkEdit.rule?.let { r ->
+            ThinkRuleDialog(
+                rule = r,
+                fresh = ThinkEdit.fresh,
+                onSave = { saved ->
+                    val list = ThinkRules.list()
+                    ThinkRules.save(
+                        if (ThinkEdit.fresh) list + saved
+                        else list.map { if (it.id == saved.id) saved else it }
+                    )
+                    ThinkEdit.rule = null
+                },
+                onDelete = if (ThinkEdit.fresh) null else {
+                    {
+                        ThinkRules.save(ThinkRules.list().filter { it.id != r.id })
+                        ThinkEdit.rule = null
+                    }
+                },
+                onClose = { ThinkEdit.rule = null }
+            )
+        }
         //注入类权限的提示：开关一开就弹，讲清要什么再送去系统页
         PermAsk.kind.value?.let { k -> PermAskDialog(k) { PermAsk.kind.value = null } }
         packDraft?.let { p -> PackDialog(p, onClose = { packDraft = null }) }
@@ -740,6 +819,7 @@ private fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
             ) { Cfg.modelReasoning = it; Profiles.capture() }
             Spacer(Modifier.height(8.dp))
             //原生联网搜索：厂商不支持时开关强制显示为关，点了也不改配置，避免下发不认识字段打 400
+            val ctxN = LocalContext.current
             val nsOk = Profiles.supportsNativeSearch(Cfg.providerId)
             CapSwitch(
                 stringResource(R.string.se_386),
@@ -749,10 +829,55 @@ private fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
                     else -> stringResource(R.string.se_388)
                 },
                 Cfg.modelNativeSearch && nsOk
-            ) {
+            ) { on ->
                 if (nsOk) {
-                    Cfg.modelNativeSearch = it
+                    //静默互斥：DeepSeek 反过来把思考打开，其它厂商把思考关掉，都不弹提示
+                    if (on) Cfg.think = Profiles.searchNeedsThink(Cfg.providerId)
+                    Cfg.modelNativeSearch = on
                     Profiles.capture()
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            //思考档位：按参考图改成可展开的档位编辑器（显示名 / 写入路径 / 写入值），
+            //不再是一个逗号串输入框——档位数量和每个档位写什么值本来就是两件事
+            var profLv by remember(Cfg.profileId) { mutableStateOf(profLevels()) }
+            var profOpen by remember { mutableStateOf(false) }
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.fillMaxWidth().tap { profOpen = !profOpen }.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.tx_c56fbda3), fontSize = 13.5.sp, color = TextPrimary)
+                        Text(
+                            if (profLv.isEmpty()) stringResource(R.string.tx_707c976d) else stringResource(R.string.tx_8bdbcde3, profLv.size),
+                            fontSize = 10.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+                    IcChevron(TextSecondary, down = !profOpen, side = 13.dp)
+                }
+                AnimatedVisibility(
+                    visible = profOpen,
+                    enter = fadeIn(tween(180)) + expandVertically(tween(220), expandFrom = Alignment.Top),
+                    exit = fadeOut(tween(80)) + shrinkVertically(tween(160), shrinkTowards = Alignment.Top)
+                ) {
+                    Column {
+                        LevelEditor(profLv, "reasoning_effort", "\"medium\"") { list ->
+                            profLv = list
+                            //两份一起写：名字串给滑块显示，明细给请求下发；配置项跟着落盘
+                            Cfg.profThinkLevels = list.joinToString(",") { it.label.trim() }.trim(',', ' ')
+                            val arr = org.json.JSONArray()
+                            list.forEach { arr.put(it.toJson()) }
+                            Cfg.profThinkLevelsJson = arr.toString()
+                            Profiles.capture()
+                        }
+                        Text(
+                            stringResource(R.string.tx_f0365c26),
+                            fontSize = 10.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
         }
@@ -762,8 +887,12 @@ private fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
 //模型参数子页：深度思考、温度与额外请求参数
 private fun LazyListScope.modelParamSec() {
     item {
+        //思考/搜索互斥提示要用到，提前取一次
+        val ctxP = LocalContext.current
         SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
         CardBox {
+            //非思考模型不给这块：否则会出现「档位调了但根本不下发」的假开关
+            if (Thinking.supported(Cfg.providerId, Cfg.model)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.se_076), fontSize = 14.sp, color = TextPrimary)
@@ -775,7 +904,12 @@ private fun LazyListScope.modelParamSec() {
                 }
                 Switch(
                     checked = Cfg.think,
-                    onCheckedChange = { Cfg.think = it },
+                    onCheckedChange = { on ->
+                        //静默互斥：关思考时把搜索一起收掉（DeepSeek 的搜索不能脱离思考），不弹提示
+                        if (!on && Cfg.modelNativeSearch) Cfg.modelNativeSearch = false
+                        Cfg.think = on
+                        Profiles.capture()
+                    },
                     colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
                 )
             }
@@ -788,6 +922,7 @@ private fun LazyListScope.modelParamSec() {
                 isSelected = { Cfg.thinkEffort == it },
                 onSelect = { Cfg.thinkEffort = it }
             )
+            } //仅支持思考的模型才显示深度思考
             Spacer(Modifier.height(10.dp))
             CapSwitch(
                 stringResource(R.string.se_080),
@@ -810,10 +945,23 @@ private fun LazyListScope.modelParamSec() {
                 when {
                     //厂商不支持：点不动
                     !nsOk -> Unit
-                    //与思考互斥：思考开着时不允许打开搜索，只提示不改另一个开关
+                    //DeepSeek：搜索必须在思考模式下 → 允许开搜索，同时自动把思考打开，不做拦截
+                    on && Profiles.searchNeedsThink(Cfg.providerId) -> {
+                        Cfg.modelNativeSearch = true
+                        if (!Cfg.think) {
+                            Cfg.think = true
+                            android.widget.Toast.makeText(
+                                ctx,
+                                ctx.getString(R.string.tx_8e1b47f0),
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        Profiles.capture()
+                    }
+                    //其它厂商：与思考互斥，思考开着时不允许打开搜索，只提示不改另一个开关
                     on && Cfg.think -> android.widget.Toast.makeText(
                         ctx,
-                        "思考与原生联网搜索互斥，请先关闭思考",
+                        ctx.getString(R.string.tx_ec691c16),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                     else -> {
@@ -834,6 +982,70 @@ private fun LazyListScope.modelParamSec() {
             Spacer(Modifier.height(4.dp))
             Text(
                 stringResource(R.string.se_085),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(10.dp))
+            //创造性参数：只影响「怎么写」不影响「写什么」，跟温度归一组
+            Text(stringResource(R.string.tx_c71ac55d), fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            //参数改成预设下拉：滑杆调 top_p 会调出 0.83 这种没意义的中间值，预设档更好选也更好复现
+            SelectField(
+                stringResource(R.string.pm_top_p),
+                value = if (Cfg.topP < 0f) stringResource(R.string.tx_18c63459) else String.format("%.2f", Cfg.topP),
+                desc = stringResource(R.string.pm_top_p_key),
+                options = listOf(-1f, 0.5f, 0.7f, 0.8f, 0.9f, 0.95f, 1f),
+                optionLabel = { if (it < 0f) stringResource(R.string.tx_9559ce64) else String.format("%.2f", it) },
+                isSelected = { kotlin.math.abs(Cfg.topP - it) < 0.001f },
+                onSelect = { Cfg.topP = it }
+            )
+            SelectField(
+                stringResource(R.string.pm_top_k),
+                value = if (Cfg.topK <= 0) stringResource(R.string.tx_18c63459) else Cfg.topK.toString(),
+                desc = stringResource(R.string.pm_top_k_key),
+                options = listOf(0, 20, 40, 60, 80, 100),
+                optionLabel = { if (it <= 0) stringResource(R.string.tx_9559ce64) else it.toString() },
+                isSelected = { Cfg.topK == it },
+                onSelect = { Cfg.topK = it }
+            )
+            Text(
+                stringResource(R.string.tx_42c4c7c5),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(10.dp))
+            //重复控制：治「车轱辘话」「复读同一个词」，跟创造性分开一组更好找
+            Text(stringResource(R.string.tx_69c6c8f3), fontSize = 12.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            SelectField(
+                stringResource(R.string.pm_presence),
+                value = if (Cfg.presencePenalty < 0f) stringResource(R.string.tx_18c63459) else String.format("%.1f", Cfg.presencePenalty),
+                desc = stringResource(R.string.pm_presence_key),
+                options = listOf(-1f, 0f, 0.3f, 0.5f, 1f, 1.5f, 2f),
+                optionLabel = { if (it < 0f) stringResource(R.string.tx_9559ce64) else String.format("%.1f", it) },
+                isSelected = { kotlin.math.abs(Cfg.presencePenalty - it) < 0.001f },
+                onSelect = { Cfg.presencePenalty = it }
+            )
+            SelectField(
+                stringResource(R.string.pm_frequency),
+                value = if (Cfg.frequencyPenalty < 0f) stringResource(R.string.tx_18c63459) else String.format("%.1f", Cfg.frequencyPenalty),
+                desc = stringResource(R.string.pm_frequency_key),
+                options = listOf(-1f, 0f, 0.3f, 0.5f, 1f, 1.5f, 2f),
+                optionLabel = { if (it < 0f) stringResource(R.string.tx_9559ce64) else String.format("%.1f", it) },
+                isSelected = { kotlin.math.abs(Cfg.frequencyPenalty - it) < 0.001f },
+                onSelect = { Cfg.frequencyPenalty = it }
+            )
+            SelectField(
+                stringResource(R.string.pm_repeat),
+                value = if (Cfg.repeatPenalty <= 0f) stringResource(R.string.tx_18c63459) else String.format("%.2f", Cfg.repeatPenalty),
+                desc = stringResource(R.string.pm_repeat_key),
+                options = listOf(0f, 1f, 1.05f, 1.1f, 1.15f, 1.2f, 1.3f),
+                optionLabel = { if (it <= 0f) stringResource(R.string.tx_9559ce64) else String.format("%.2f", it) },
+                isSelected = { kotlin.math.abs(Cfg.repeatPenalty - it) < 0.001f },
+                onSelect = { Cfg.repeatPenalty = it }
+            )
+            Text(
+                stringResource(R.string.tx_c93d4306),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -860,6 +1072,447 @@ private fun LazyListScope.modelParamSec() {
     }
 } //模型参数子页
 
+/** 思考配置：规则列表按顺序匹配，首条命中生效；编辑走弹窗（参考图那套字段） */
+private fun LazyListScope.modelThinkSec() {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(
+            stringResource(R.string.tx_5dc7fa2b),
+            stringResource(R.string.tx_81ef7ad6)
+        )
+        CardBox {
+            val rules = remember(Cfg.thinkRules) { ThinkRules.list() }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${rules.count { it.on }}/${rules.size} 条启用",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                //新增入口放右上角，跟列表页习惯一致
+                Text(
+                    stringResource(R.string.tx_03dc6b51),
+                    fontSize = 11.sp,
+                    color = AccentBlue,
+                    modifier = Modifier
+                        .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
+                        .tap { ThinkEdit.open(ThinkRules.Rule(pattern = "", path = "reasoning_effort"), true) }
+                        .padding(horizontal = 9.dp, vertical = 5.dp)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            rules.forEachIndexed { i, r ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .tap { ThinkEdit.open(r.copy(), false) }
+                            .padding(vertical = 8.dp)
+                    ) {
+                        //主标题显示匹配的完整模型名（用户要求：匹配的是模型，不是供应商）
+                        Text(
+                            if (r.pattern.isBlank()) stringResource(R.string.tx_ed972708)
+                            else r.pattern.split(',', '，').joinToString(", ") { it.trim() }.take(40),
+                            fontSize = 13.sp,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            ThinkRules.controlName(r.control) + " · " + r.levelText() + " · " +
+                                ThinkRules.MATCH_NAMES.firstOrNull { it.first == r.match }?.second.orEmpty() +
+                                " · " + r.path,
+                            fontSize = 10.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    //顺序即优先级：上移 / 下移直接改顺序，无需进弹窗
+                    Text(
+                        "↑",
+                        fontSize = 13.sp,
+                        color = if (i > 0) TextSecondary else SurfaceMuted,
+                        modifier = Modifier
+                            .tap { if (i > 0) ThinkRules.save(rules.swap(i, i - 1)) }
+                            .padding(horizontal = 5.dp, vertical = 4.dp)
+                    )
+                    Text(
+                        "↓",
+                        fontSize = 13.sp,
+                        color = if (i < rules.lastIndex) TextSecondary else SurfaceMuted,
+                        modifier = Modifier
+                            .tap { if (i < rules.lastIndex) ThinkRules.save(rules.swap(i, i + 1)) }
+                            .padding(horizontal = 5.dp, vertical = 4.dp)
+                    )
+                    Switch(
+                        checked = r.on,
+                        onCheckedChange = { on -> r.on = on; ThinkRules.save(rules) },
+                        colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue),
+                        modifier = Modifier.scale(0.75f)
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            GhostButton(stringResource(R.string.tx_a75eff1a), modifier = Modifier.height(38.dp)) { ThinkRules.reset() }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "说明：「路径」是请求体里的位置，点号分层（thinking.type 表示 {\"thinking\":{\"type\":…}}）；" +
+                    "「值」按 JSON 写，字符串带引号、布尔写 true/false、数字直写。匹配模型可写多个，逗号分隔。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+    }
+} //思考配置子页
+
+/** 列表交换两行：直接改顺序，优先级跟着走 */
+private fun List<ThinkRules.Rule>.swap(a: Int, b: Int): List<ThinkRules.Rule> {
+    val out = toMutableList()
+    val t = out[a]
+    out[a] = out[b]
+    out[b] = t
+    return out
+} //交换规则顺序
+
+/** 思考规则编辑弹窗的挂载状态：同一时刻只开一个 */
+private object ThinkEdit {
+    var rule by mutableStateOf<ThinkRules.Rule?>(null)
+    var fresh by mutableStateOf(false)
+
+    /** 打开：rule 传副本，fresh 表示新建 */
+    fun open(r: ThinkRules.Rule, isNew: Boolean) {
+        rule = r
+        fresh = isNew
+    } //打开弹窗
+} //思考规则弹窗
+
+/** 档位编辑器：可增删、每条可展开改「显示名 / 写入路径 / 写入值」（思考配置与模型配置共用） */
+@Composable
+private fun LevelEditor(
+    levels: List<ThinkRules.Level>,
+    basePath: String,
+    baseValue: String,
+    onChange: (List<ThinkRules.Level>) -> Unit
+) {
+    var openIdx by remember { mutableStateOf(0) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(R.string.tx_c8b75cb0), fontSize = 11.sp, color = TextSecondary, modifier = Modifier.weight(1f))
+        Text(
+            stringResource(R.string.tx_7c138c54),
+            fontSize = 11.sp,
+            color = AccentBlue,
+            modifier = Modifier
+                .tap {
+                    if (levels.size < 5) {
+                        onChange(
+                            levels + ThinkRules.Level(
+                                label = b.ai.App.self.getString(R.string.tx_8cae3683, levels.size + 1),
+                                path = basePath,
+                                value = baseValue
+                            )
+                        )
+                        openIdx = levels.size
+                    }
+                }
+                .padding(vertical = 4.dp, horizontal = 4.dp)
+        )
+    }
+    Spacer(Modifier.height(2.dp))
+    levels.forEachIndexed { i, lv ->
+        val unfolded = openIdx == i
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp)
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                .border(0.8.dp, BorderGray, RoundedCornerShape(10.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("≡", fontSize = 13.sp, color = TextSecondary)
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f).tap { openIdx = if (unfolded) -1 else i }) {
+                    Text(stringResource(R.string.tx_9c61a929) + (i + 1), fontSize = 12.sp, color = TextPrimary)
+                    Text(
+                        lv.label.ifBlank { "未命名" } + " · " + lv.value.ifBlank { "未填值" },
+                        fontSize = 10.sp,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Box(
+                    Modifier
+                        .tap {
+                            onChange(levels.toMutableList().also { it.removeAt(i) })
+                            openIdx = (openIdx).coerceAtMost(levels.lastIndex - 1)
+                        }
+                        .padding(horizontal = 7.dp, vertical = 5.dp)
+                ) { IcTrash(DangerRed, side = 13.dp) }
+                Box(
+                    Modifier.tap { openIdx = if (unfolded) -1 else i }.padding(4.dp)
+                ) { IcChevron(TextSecondary, down = !unfolded, side = 13.dp) }
+            }
+            if (unfolded) {
+                Spacer(Modifier.height(6.dp))
+                Field(stringResource(R.string.tx_8e6ab923), lv.label, { v ->
+                    onChange(levels.toMutableList().also { it[i] = it[i].copy(label = v) })
+                }, placeholder = "low")
+                Field(stringResource(R.string.tx_694297ce), lv.path, { v ->
+                    onChange(levels.toMutableList().also { it[i] = it[i].copy(path = v) })
+                }, placeholder = basePath)
+                Field(stringResource(R.string.tx_d3e52c96), lv.value, { v ->
+                    onChange(levels.toMutableList().also { it[i] = it[i].copy(value = v) })
+                }, placeholder = baseValue)
+            }
+        }
+    }
+} //档位编辑器
+
+/** 当前配置的档位明细：没存过明细就按名字串摊平（老配置升级上来的情况） */
+private fun profLevels(): List<ThinkRules.Level> {
+    val raw = Cfg.profThinkLevelsJson
+    if (raw.isNotBlank()) {
+        val arr = runCatching { org.json.JSONArray(raw) }.getOrNull()
+        if (arr != null) {
+            val out = ArrayList<ThinkRules.Level>()
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                out += ThinkRules.Level(
+                    label = o.optString("label", ""),
+                    path = o.optString("path", ""),
+                    value = o.optString("value", "")
+                )
+            }
+            if (out.isNotEmpty()) return out
+        }
+    }
+    return Cfg.profThinkLevels.split(',', '，').map { it.trim() }.filter { it.isNotEmpty() }
+        .map { ThinkRules.Level(label = it, path = "", value = "") }
+} //当前配置档位
+
+
+/**
+ * 思考规则编辑弹窗：按参考图排——启用 / 控件 / 匹配方式 / 匹配模型 / 默认路径 /
+ * 始终开启 / 开启关闭写入（折叠）/ 滑块档位（折叠，可增删每个档位）。
+ */
+@Composable
+private fun ThinkRuleDialog(
+    rule: ThinkRules.Rule,
+    fresh: Boolean,
+    onSave: (ThinkRules.Rule) -> Unit,
+    onDelete: (() -> Unit)?,
+    onClose: () -> Unit
+) {
+    var enabled by remember(rule) { mutableStateOf(rule.on) }
+    var control by remember(rule) { mutableStateOf(rule.control) }
+    var match by remember(rule) { mutableStateOf(rule.match) }
+    var pattern by remember(rule) { mutableStateOf(rule.pattern) }
+    var path by remember(rule) { mutableStateOf(rule.path) }
+    var alwaysOn by remember(rule) { mutableStateOf(rule.alwaysOn) }
+    var onValue by remember(rule) { mutableStateOf(rule.onValue) }
+    var offValue by remember(rule) { mutableStateOf(rule.offValue) }
+    //档位是可增删的列表：在副本上改，点保存才写回，取消不留痕
+    var levels by remember(rule) { mutableStateOf(rule.levelList().map { it.copy() }) }
+    var writeOpen by remember { mutableStateOf(false) }
+    var levelOpen by remember { mutableStateOf(true) }
+    var openIdx by remember { mutableStateOf(0) }
+
+    ScrimCard {
+        Text(
+            if (fresh) stringResource(R.string.tx_520a162c) else stringResource(R.string.tx_a441b416),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextPrimary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.tx_3fe3558b), fontSize = 10.sp, color = TextSecondary)
+        Spacer(Modifier.height(6.dp))
+        Column(
+            Modifier.weight(1f, fill = false).heightIn(max = 440.dp).verticalScroll(glassScrollState())
+        ) {
+            ThinkToggleRow(stringResource(R.string.tx_8d2bc55b), if (enabled) stringResource(R.string.tx_cf2b2abc) else stringResource(R.string.tx_2ac5cf31), enabled) { enabled = it }
+            Spacer(Modifier.height(8.dp))
+
+            Text(stringResource(R.string.tx_e1b2f870), fontSize = 11.sp, color = TextSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ThinkSeg(listOf("slider" to stringResource(R.string.tx_011d09ad), "bool" to "开关", "enum" to "枚举"), control) { control = it }
+            }
+            Spacer(Modifier.height(8.dp))
+
+            Text(stringResource(R.string.tx_078ab933), fontSize = 11.sp, color = TextSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ThinkSeg(ThinkRules.MATCH_NAMES, match) { match = it }
+            }
+            Spacer(Modifier.height(2.dp))
+            //匹配模型写完整型号，不写供应商：模型名才算「命中」，厂商前缀会把同厂所有型号都吞进来
+            Field(
+                stringResource(R.string.tx_1bfaf093),
+                pattern,
+                { pattern = it },
+                placeholder = "glm-4.6, deepseek-chat, gemini-2.5-pro"
+            )
+            Text(
+                stringResource(R.string.tx_eb67ae08),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Field(stringResource(R.string.tx_16a79761), path, { path = it }, placeholder = "reasoning_effort")
+            Spacer(Modifier.height(2.dp))
+            ThinkToggleRow(stringResource(R.string.tx_520e366b), stringResource(R.string.tx_2280a03a), alwaysOn) { alwaysOn = it }
+
+            //开启 / 关闭时写入：默认收起，需要改固定值时再展开
+            ThinkFold(
+                title = stringResource(R.string.tx_1bf1dcd4),
+                sub = stringResource(R.string.tx_6b8361f5),
+                open = writeOpen,
+                onToggle = { writeOpen = !writeOpen }
+            ) {
+                Field(stringResource(R.string.tx_abbb0ab4), onValue, { onValue = it }, placeholder = "\"enabled\"")
+                Field(stringResource(R.string.tx_e2956683), offValue, { offValue = it }, placeholder = "\"disabled\"")
+            }
+
+            //滑块档位：每个档位一条，可增删；档位可以带自己的写入路径（如 Claude 的 budget_tokens）
+            ThinkFold(
+                title = stringResource(R.string.tx_4fa79f06),
+                sub = stringResource(R.string.tx_8bdbcde3, levels.size),
+                open = levelOpen,
+                onToggle = { levelOpen = !levelOpen }
+            ) {
+                LevelEditor(levels, path, onValue) { levels = it }
+                Text(
+                    stringResource(R.string.tx_1a212ec6),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (onDelete != null) {
+                Text(
+                    stringResource(R.string.tx_2f4aaddd),
+                    fontSize = 12.sp,
+                    color = DangerRed,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(DangerRedSoft, RoundedCornerShape(10.dp))
+                        .tap { onDelete() }
+                        .padding(vertical = 11.dp)
+                )
+            }
+            Text(
+                stringResource(R.string.tx_625fb26b),
+                fontSize = 12.sp,
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
+                    .tap { onClose() }
+                    .padding(vertical = 11.dp)
+            )
+            Text(
+                stringResource(R.string.tx_be5fbbe3),
+                fontSize = 12.sp,
+                color = androidx.compose.ui.graphics.Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue, gate = 0.dp)
+                    .tap {
+                        onSave(
+                            rule.copy().apply {
+                                this.on = enabled
+                                this.control = control
+                                this.match = match
+                                this.pattern = pattern
+                                this.path = path.ifBlank { "reasoning_effort" }
+                                this.alwaysOn = alwaysOn
+                                this.onValue = onValue
+                                this.offValue = offValue
+                                this.levels = levels.map { it.copy() }
+                                this.legacyLevels = ""
+                            }
+                        )
+                    }
+                    .padding(vertical = 11.dp)
+            )
+        }
+    }
+} //思考规则弹窗
+
+/** 可折叠分组：标题 + 副标题 + 箭头，展开内容带高度动画（避免多个分组同时弹开挤在一起） */
+@Composable
+private fun ThinkFold(
+    title: String,
+    sub: String,
+    open: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth().tap { onToggle() }.padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 12.sp, color = TextPrimary)
+                Text(sub, fontSize = 10.sp, color = TextSecondary)
+            }
+            IcChevron(TextSecondary, down = !open, side = 13.dp)
+        }
+        AnimatedVisibility(
+            visible = open,
+            enter = fadeIn(tween(180)) + expandVertically(tween(220), expandFrom = Alignment.Top),
+            exit = fadeOut(tween(80)) + shrinkVertically(tween(160), shrinkTowards = Alignment.Top)
+        ) {
+            Column { content() }
+        }
+    }
+} //可折叠分组状态
+
+
+
+/** 分段选择：一行小胶囊，选中高亮蓝 */
+@Composable
+private fun ThinkSeg(items: List<Pair<String, String>>, cur: String, onPick: (String) -> Unit) {
+    items.forEach { (k, label) ->
+        Text(
+            label,
+            fontSize = 11.sp,
+            color = if (cur == k) AccentBlue else TextSecondary,
+            modifier = Modifier
+                .liquidBg(
+                    RoundedCornerShape(8.dp),
+                    tint = if (cur == k) AccentBlueSoft else SurfaceMuted,
+                    gate = 0.dp
+                )
+                .tap { onPick(k) }
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        )
+    }
+} //分段选择
+
+/** 弹窗里的一行开关 */
+@Composable
+private fun ThinkToggleRow(title: String, sub: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 12.sp, color = TextPrimary)
+            Text(sub, fontSize = 10.sp, color = TextSecondary)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+        )
+    }
+} //弹窗开关行
+
+
 private fun LazyListScope.modelVoiceSec() {
     item {
         Spacer(Modifier.height(14.dp))
@@ -876,9 +1529,153 @@ private fun LazyListScope.modelVoiceSec() {
 private fun LazyListScope.modelMemSec(onOpenMemory: () -> Unit) {
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("记忆", "跨会话长期记忆：模型会自己读写，也可以在这里手动增删改")
+        SectionTitle(stringResource(R.string.tx_44e4d7a3), stringResource(R.string.tx_08b3859a))
         CardBox {
-            LinkRow("记忆条目", "查看 / 编辑", onClick = onOpenMemory)
+            val ctxM = LocalContext.current
+            val rows = Memory.rows
+            //思维导图：中心节点 + 左侧主干线 + 每条记忆一个分支节点
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(10.dp).liquidBg(CircleShape, tint = AccentBlue, gate = 0.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        if (rows.isEmpty()) stringResource(R.string.tx_74f960c9) else stringResource(R.string.tx_6adeb861, rows.size),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        if (rows.isEmpty()) stringResource(R.string.tx_cedb8821) else stringResource(R.string.tx_4dc6270e),
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+            if (rows.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Column(Modifier.padding(start = 4.dp)) {
+                    rows.forEachIndexed { i, r ->
+                        //条目之间要能看出边界：底色和卡片太接近时整块会糊成一片（用户反馈「无分割」），
+                        //所以每条加一圈细边框，并留 4dp 呼吸位
+                        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                            //主干 + 分支：一格宽度里画「└─」形状，最后一条不画竖线
+                            Canvas(Modifier.width(16.dp).height(38.dp)) {
+                                val x = 5.dp.toPx()
+                                val mid = size.height / 2f
+                                drawLine(
+                                    BorderGray, androidx.compose.ui.geometry.Offset(x, 0f),
+                                    androidx.compose.ui.geometry.Offset(x, if (i == rows.lastIndex) mid else size.height),
+                                    strokeWidth = 1.2.dp.toPx()
+                                )
+                                drawLine(
+                                    BorderGray, androidx.compose.ui.geometry.Offset(x, mid),
+                                    androidx.compose.ui.geometry.Offset(size.width, mid),
+                                    strokeWidth = 1.2.dp.toPx()
+                                )
+                                drawCircle(AccentBlue, radius = 2.4.dp.toPx(), center = androidx.compose.ui.geometry.Offset(size.width, mid))
+                            }
+                            Row(
+                                Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 32.dp)
+                                    .liquidBg(RoundedCornerShape(9.dp), tint = SurfaceMuted)
+                                    .border(0.8.dp, BorderGray, RoundedCornerShape(9.dp))
+                                    .padding(start = 9.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    r.text,
+                                    fontSize = 11.sp,
+                                    color = TextPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    "✕",
+                                    fontSize = 11.sp,
+                                    color = TextSecondary,
+                                    modifier = Modifier.tap { Memory.delete(r.id) }.padding(4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            //整理：选一个模型把零散条目合并去重，结果先摆出来，点应用才落库
+            val profiles = Profiles.list
+            val cur = profiles.firstOrNull { it.id == Cfg.memProfileId }
+            SelectField(
+                stringResource(R.string.tx_582085bb),
+                cur?.label?.ifBlank { cur.model } ?: "跟随当前聊天",
+                listOf("") + profiles.map { it.id },
+                optionLabel = { id ->
+                    if (id.isBlank()) stringResource(R.string.tx_929ea71b)
+                    else profiles.firstOrNull { it.id == id }?.label?.ifBlank { id } ?: id
+                },
+                isSelected = { Cfg.memProfileId == it },
+                onSelect = { Cfg.memProfileId = it; MemOrganizer.clear() }
+            )
+            Spacer(Modifier.height(8.dp))
+            val scope = rememberCoroutineScope()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GhostButton(
+                    if (MemOrganizer.busy) stringResource(R.string.tx_653d2130) else stringResource(R.string.tx_607c0a3b),
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    if (!MemOrganizer.busy) scope.launch { MemOrganizer.run() }
+                }
+                if (MemOrganizer.suggestions.isNotEmpty()) {
+                    GhostButton(stringResource(R.string.tx_9f8beb63, MemOrganizer.suggestions.size), modifier = Modifier.height(36.dp)) {
+                        android.widget.Toast.makeText(
+                            ctxM, MemOrganizer.apply(), android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    GhostButton(stringResource(R.string.tx_5ac2011a), modifier = Modifier.height(36.dp)) { MemOrganizer.clear() }
+                }
+            }
+            if (MemOrganizer.error.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(MemOrganizer.error, fontSize = 10.sp, color = DangerRed)
+            }
+            //待确认结果：跟记忆节点同一套连线，让「整理前 / 整理后」看起来是一回事
+            if (MemOrganizer.suggestions.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(stringResource(R.string.tx_865347b7), fontSize = 11.sp, color = AccentBlue)
+                Spacer(Modifier.height(4.dp))
+                Column(Modifier.padding(start = 4.dp)) {
+                    MemOrganizer.suggestions.forEachIndexed { i, t ->
+                        Row(Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+                            Canvas(Modifier.width(16.dp).height(30.dp)) {
+                                val x = 5.dp.toPx()
+                                val mid = size.height / 2f
+                                drawLine(
+                                    AccentBlueSoft, androidx.compose.ui.geometry.Offset(x, 0f),
+                                    androidx.compose.ui.geometry.Offset(x, if (i == MemOrganizer.suggestions.lastIndex) mid else size.height),
+                                    strokeWidth = 1.2.dp.toPx()
+                                )
+                                drawLine(
+                                    AccentBlueSoft, androidx.compose.ui.geometry.Offset(x, mid),
+                                    androidx.compose.ui.geometry.Offset(size.width, mid),
+                                    strokeWidth = 1.2.dp.toPx()
+                                )
+                                drawCircle(AccentBlue, radius = 2.4.dp.toPx(), center = androidx.compose.ui.geometry.Offset(size.width, mid))
+                            }
+                            Text(
+                                t,
+                                fontSize = 11.sp,
+                                color = TextPrimary,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)
+                                    .border(0.8.dp, AccentBlue.copy(alpha = 0.25f), RoundedCornerShape(9.dp))
+                                    .padding(horizontal = 9.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 } //记忆子页
@@ -896,18 +1693,160 @@ private fun VoiceInCard() {
     }
     var loading by remember { mutableStateOf(false) }
     var pickErr by remember { mutableStateOf("") }
+    //STT 引擎：两个本地（系统识别 / Sherpa NCNN）+ 两个远程（OpenAI / Deepgram）。
+    //标签写明本地还是远程，离线模式下只列本地那两项，避免选了远程又被拒绝
+    val engineNames = mapOf(
+        "sys" to "系统识别（本地，免费）",
+        "sherpa" to "Sherpa NCNN（本地）",
+        "openai" to "OpenAI STT（远程）",
+        "deepgram" to "Deepgram STT（远程）"
+    )
+    val engine = Audio.engine()
+    //sherpa 的 so 只随 arm64-v8a 打：运行时加载不起来时这一项直接不列（v7a 设备点了也只会退化）
+    val sherpaOk = remember { b.ai.core.model.voice.SherpaAsr.runtimeOk() }
+    val engineOpts = buildList {
+        add("sys")
+        if (sherpaOk) add("sherpa")
+        //离线模式只给本地：远程项直接不列出来，比选完再弹提示更干净
+        if (!Cfg.asrOffline) {
+            add("openai")
+            add("deepgram")
+        }
+    }
     CardBox {
         SelectField(
-            stringResource(R.string.se_v_mode),
-            modeLabel(Cfg.asrMode),
-            listOf("sys", "api"),
-            optionLabel = { modeLabel(it) },
-            isSelected = { Cfg.asrMode == it },
-            onSelect = { Cfg.asrMode = it }
+            stringResource(R.string.tx_2604bcce),
+            //老配置里存着 sherpa 但这台设备跑不起来时，如实显示回落后的实际引擎
+            when {
+                engine == "sherpa" && !sherpaOk -> "系统识别（sherpa 运行时不可用）"
+                else -> engineNames[engine] ?: engine
+            },
+            engineOpts,
+            desc = if (Cfg.asrOffline) stringResource(R.string.tx_fdbc9a5f) else stringResource(R.string.tx_3df99821),
+            optionLabel = { engineNames[it] ?: it },
+            isSelected = { engine == it },
+            onSelect = {
+                Cfg.asrEngine = it
+                //旧的 asrMode 同步一份：别处还在读它判断走不走接口
+                Cfg.asrMode = if (it == "sys" || it == "sherpa") "sys" else "api"
+            }
         )
-        if (Cfg.asrMode == "api") {
+        //从属字段缩进一层：引擎是父项，下面的 Key / 模型 / 目录都属于它（用户反馈「与上一栏无缩进」）
+        Column(Modifier.fillMaxWidth().padding(start = 12.dp)) {
+        if (engine == "deepgram") {
+            Field(
+                label = "Deepgram API Key",
+                value = Cfg.asrDgKey,
+                onValueChange = { Cfg.asrDgKey = it },
+                placeholder = stringResource(R.string.tx_d822e614),
+                secret = true
+            )
             SelectField(
-                "服务商",
+                stringResource(R.string.tx_19497c0b),
+                Cfg.asrDgModel,
+                listOf("nova-3", "nova-2", "enhanced", "base"),
+                optionLabel = { it },
+                isSelected = { Cfg.asrDgModel == it },
+                onSelect = { Cfg.asrDgModel = it }
+            )
+            Field(
+                label = stringResource(R.string.tx_85624c8e),
+                value = Cfg.asrDgUrl,
+                onValueChange = { Cfg.asrDgUrl = it },
+                placeholder = "https://api.deepgram.com"
+            )
+            Text(
+                stringResource(R.string.tx_f490eaaa),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+        if (engine == "sherpa") {
+            Field(
+                label = stringResource(R.string.tx_e796d32d),
+                value = Cfg.asrSherpaDir,
+                onValueChange = { Cfg.asrSherpaDir = it },
+                placeholder = stringResource(R.string.tx_25b7fe70)
+            )
+            //提示改成动态判定：原来是写死的红字，内置了也照样喊「未内置」，反而误导用户
+            val dir = Cfg.asrSherpaDir
+            val bundled = remember { b.ai.core.model.voice.SherpaAsr.bundledModelOk() }
+            val dirOk = dir.isBlank() || b.ai.core.model.voice.SherpaAsr.modelOk(dir)
+            val abi = android.os.Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
+            val (msg, tint) = when {
+                !sherpaOk -> "本包在 $abi 上没有 sherpa 运行时，选它会改用系统识别" to DangerRed
+                !dirOk -> "目录不完整：需 7 个模型文件（encoder/decoder/joiner 的 param·bin + tokens.txt）" to DangerRed
+                dir.isBlank() && bundled -> "运行时与模型均已内置，目录留空即用内置模型" to OkGreen
+                dir.isBlank() -> "包内没带模型，请下载或填一个模型目录" to DangerRed
+                else -> "使用外部模型：$dir" to TextSecondary
+            }
+            Text(msg, fontSize = 10.sp, color = tint)
+            //模型下载：默认取本仓库 models 目录（七个文件逐个拉），也支持任意「目录前缀」或 zip 直链
+            var dlBusy by remember { mutableStateOf(false) }
+            var dlPct by remember { mutableStateOf(0) }
+            var dlNote by remember { mutableStateOf("") }
+            Spacer(Modifier.height(8.dp))
+            Field(
+                label = "模型下载地址",
+                value = Cfg.asrSherpaSrc,
+                onValueChange = { Cfg.asrSherpaSrc = it },
+                placeholder = b.ai.core.model.voice.ModelFetch.DEFAULT_SRC
+            )
+            //按钮跟输入框之间要留空：Row 紧贴 Field 底边会看起来糊成一团
+            Spacer(Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GhostButton(
+                    if (dlBusy) "下载中 $dlPct%" else "下载模型",
+                    modifier = Modifier.height(36.dp)
+                ) {
+                    if (dlBusy) return@GhostButton
+                    //地址留空就用默认源；下载在 IO 线程，进度靠回调刷回主线程
+                    val src = Cfg.asrSherpaSrc.ifBlank { b.ai.core.model.voice.ModelFetch.DEFAULT_SRC }
+                    dlBusy = true
+                    dlPct = 0
+                    dlNote = "准备中…"
+                    scope.launch {
+                        try {
+                            val dir = b.ai.core.model.voice.ModelFetch.fetch(src) { p ->
+                                dlPct = p.percent
+                                dlNote = p.note
+                            }
+                            //下完直接把目录填进去，用户不用手抄路径
+                            Cfg.asrSherpaDir = dir.absolutePath
+                            dlPct = 100
+                            dlNote = "已就绪：" + dir.absolutePath
+                        } catch (e: Exception) {
+                            dlNote = "下载失败：" + (e.message ?: e.javaClass.simpleName)
+                        } finally {
+                            dlBusy = false
+                        }
+                    }
+                }
+                GhostButton("用已下载的", modifier = Modifier.height(36.dp)) {
+                    val list = b.ai.core.model.voice.ModelFetch.installed()
+                    if (list.isEmpty()) {
+                        dlNote = "还没有下过模型"
+                    } else {
+                        val d = list.last()
+                        Cfg.asrSherpaDir = d.absolutePath
+                        dlNote = "已切换：" + d.name
+                    }
+                }
+            }
+            if (dlNote.isNotBlank()) {
+                Text(
+                    dlNote,
+                    fontSize = 10.sp,
+                    color = if (dlNote.startsWith("下载失败")) DangerRed else TextSecondary
+                )
+            }
+        }
+        if (engine == "openai") {
+            SelectField(
+                stringResource(R.string.tx_79f09f89),
                 preset.label,
                 AsrPresets.all,
                 optionLabel = { it.label },
@@ -935,7 +1874,7 @@ private fun VoiceInCard() {
             )
             if (models.isNotEmpty()) {
                 SelectField(
-                    "模型",
+                    stringResource(R.string.tx_8000f187),
                     Cfg.asrModel,
                     models,
                     optionLabel = { it },
@@ -945,7 +1884,7 @@ private fun VoiceInCard() {
             }
             Spacer(Modifier.height(8.dp))
             GhostButton(
-                if (loading) "拉取中…" else "从接口获取模型",
+                if (loading) stringResource(R.string.tx_629de16a) else stringResource(R.string.tx_e70a40b7),
                 modifier = Modifier.height(38.dp)
             ) {
                 if (loading) return@GhostButton
@@ -955,13 +1894,13 @@ private fun VoiceInCard() {
                     val r = withContext(Dispatchers.IO) { runCatching { Audio.listModels() } }
                     loading = false
                     r.onSuccess { list ->
-                        if (list.isEmpty()) pickErr = "接口没返回模型，下面手填"
+                        if (list.isEmpty()) pickErr = b.ai.App.self.getString(R.string.tx_9be9c76a)
                         else { models = list; Cfg.asrModel = list.first() }
                     }.onFailure { pickErr = it.message ?: "拉取失败" }
                 }
             }
             Field(
-                label = "模型（也能手填）",
+                label = stringResource(R.string.tx_f1153d97),
                 value = Cfg.asrModel,
                 onValueChange = { Cfg.asrModel = it },
                 placeholder = "whisper-1"
@@ -971,7 +1910,7 @@ private fun VoiceInCard() {
                 Text(pickErr, fontSize = 10.sp, color = DangerRed)
             }
             SelectField(
-                "录音采样率",
+                stringResource(R.string.tx_95e4a689),
                 "${Cfg.asrRate} Hz",
                 AsrPresets.rates,
                 optionLabel = { "$it Hz" },
@@ -979,10 +1918,10 @@ private fun VoiceInCard() {
                 onSelect = { Cfg.asrRate = it }
             )
             SelectField(
-                "单次最长录音",
-                "${Cfg.asrMaxSec} 秒",
+                stringResource(R.string.tx_0c4316d9),
+                stringResource(R.string.tx_a6f0b1dc, Cfg.asrMaxSec),
                 AsrPresets.maxSecs,
-                optionLabel = { "$it 秒" },
+                optionLabel = { stringResource(R.string.tx_b0c9ab6f) },
                 isSelected = { Cfg.asrMaxSec == it },
                 onSelect = { Cfg.asrMaxSec = it }
             )
@@ -997,13 +1936,21 @@ private fun VoiceInCard() {
             onValueChange = { Cfg.asrLang = it },
             placeholder = "zh-CN"
         )
+        } //引擎从属字段
         Spacer(Modifier.height(6.dp))
         CapSwitch(
-            "离线模式",
-            if (Cfg.asrOffline) "只在本机识别，音频不出设备"
-            else "允许识别服务联网（本机模型不全时更准）",
+            stringResource(R.string.tx_4a61c29a),
+            if (Cfg.asrOffline) stringResource(R.string.tx_5e408cf7)
+            else stringResource(R.string.tx_f643dfa4),
             Cfg.asrOffline
-        ) { Cfg.asrOffline = it }
+        ) { on ->
+            Cfg.asrOffline = on
+            //打开离线时把远程引擎切回本地默认；不切的话引擎下拉会显示一个不存在的选项
+            if (on && Audio.engine() != "sys" && Audio.engine() != "sherpa") {
+                Cfg.asrEngine = "sys"
+                Cfg.asrMode = "sys"
+            }
+        }
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.se_v_tip), fontSize = 10.sp, color = TextSecondary)
     }
@@ -1141,7 +2088,7 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
         Spacer(Modifier.height(8.dp))
         //摘要档位：字数上限跟着档位走，具体写多少由总结模型按内容自己控
         SelectField(
-            "摘要档位",
+            stringResource(R.string.tx_ecc33185),
             b.ai.core.model.chat.Sum.levelName(Cfg.summaryLevel),
             listOf(0, 1, 2),
             optionLabel = { b.ai.core.model.chat.Sum.levelName(it) },
@@ -1159,7 +2106,7 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
         val sumProfiles = Profiles.list
         val sumCur = sumProfiles.firstOrNull { it.id == Cfg.summaryProfileId }
         SelectField(
-            "总结用模型",
+            stringResource(R.string.tx_637321f6),
             sumCur?.label ?: "跟随当前聊天",
             listOf("") + sumProfiles.map { it.id },
             optionLabel = { id -> sumProfiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
@@ -1170,7 +2117,7 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
         //标题生成用模型：同一套候选，留空跟随当前聊天；新建会话取名只花几十 token
         val titleCur = sumProfiles.firstOrNull { it.id == Cfg.titleProfileId }
         SelectField(
-            "标题生成用模型",
+            stringResource(R.string.tx_3c70a377),
             titleCur?.label ?: "跟随当前聊天",
             listOf("") + sumProfiles.map { it.id },
             optionLabel = { id -> sumProfiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
@@ -1248,7 +2195,7 @@ private fun LazyListScope.chatInjectSec() {
             }
         }
         //注入位置打开后才滑出扩展项：精确位置注入（现取一次定位）、自动转地名（结果加密后本机缓存）
-        if (Cfg.injectPlace) {
+        FollowBlock(Cfg.injectPlace) {
             Spacer(Modifier.height(6.dp))
             CapSwitch(
                 stringResource(R.string.se_366),
@@ -1295,7 +2242,7 @@ private fun LazyListScope.chatInjectSec() {
                 Cfg.injectNoti = on
             }
         }
-        if (Cfg.injectNoti) {
+        FollowBlock(Cfg.injectNoti) {
             Spacer(Modifier.height(6.dp))
             NotiLimitRow()
         }
@@ -1320,6 +2267,80 @@ private fun LazyListScope.chatInjectSec() {
 
     }
 
+} //注入子页
+
+private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
+    item {
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
+    CardBox {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(Agent.sessionTitle.ifBlank { stringResource(R.string.ag_new_session) }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
+                Text(
+                    stringResource(R.string.se2_rec, stats.first, stats.second, Agent.sessions.size),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+            }
+            GhostButton(stringResource(R.string.se_131), modifier = Modifier.height(38.dp)) { Agent.newSession() }
+        }
+    }
+
+    }
+
+    item {
+    val appCtx = LocalContext.current
+    val appScope = rememberCoroutineScope()
+    //会话与导出：原来在抽屉底部，收进「对话」页
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.tx_70b562da), stringResource(R.string.tx_041b5d0d))
+    CardBox {
+        LinkRow("收藏夹", "查看收藏的会话", onClick = onOpenStars)
+        Spacer(Modifier.height(8.dp))
+        GhostButton(stringResource(R.string.dw_export), modifier = Modifier.height(38.dp)) {
+            appScope.launch {
+                val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
+                android.widget.Toast.makeText(
+                    appCtx,
+                    if (p == null) appCtx.getString(R.string.dw_none) else appCtx.getString(R.string.dw_exported, p),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+    }
+
+    item {
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
+    WsSection()
+    }
+} //会话与导出子页
+
+/** 输入与输出：回复怎么展示/怎么流式、草稿怎么存、输出偏好常驻文案；与提示词优化分开 */
+private fun LazyListScope.chatInOutSec() {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.tx_ae27e4da), stringResource(R.string.tx_1e4ab751))
+        CardBox {
+            //输出偏好：常驻拼进系统提示，跟角色人设并行不覆盖
+            Field(
+                label = stringResource(R.string.tx_c083b46f),
+                value = Cfg.replyStyle,
+                onValueChange = { Cfg.replyStyle = it },
+                placeholder = stringResource(R.string.tx_214a7d7d),
+                singleLine = false,
+                minLines = 3
+            )
+            Text(
+                stringResource(R.string.tx_5489c494),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
+    }
+
     item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_019), stringResource(R.string.se_115))
@@ -1341,7 +2362,7 @@ private fun LazyListScope.chatInjectSec() {
             Cfg.waifuMode = it
         }
         //分句气泡动画依赖上面那条：只有切成多条时才有「一条条弹出来」的画面
-        if (Cfg.waifuMode) {
+        FollowBlock(Cfg.waifuMode) {
             Spacer(Modifier.height(8.dp))
             CapSwitch(
                 stringResource(R.string.se_wbounce_t),
@@ -1380,56 +2401,77 @@ private fun LazyListScope.chatInjectSec() {
     }
 
     }
-} //注入与回复子页
-
-private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
     item {
     Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
+    SectionTitle(stringResource(R.string.tx_22b4334f), stringResource(R.string.tx_b472edb3))
     CardBox {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(Agent.sessionTitle.ifBlank { stringResource(R.string.ag_new_session) }, fontSize = 13.sp, color = TextPrimary, maxLines = 1)
-                Text(
-                    stringResource(R.string.se2_rec, stats.first, stats.second, Agent.sessions.size),
-                    fontSize = 11.sp,
-                    color = TextSecondary
-                )
-            }
-            GhostButton(stringResource(R.string.se_131), modifier = Modifier.height(38.dp)) { Agent.newSession() }
+        //图片默认不落盘：草稿里只留文字与文件引用，隐私风险与体积都能控住
+        CapSwitch(
+            stringResource(R.string.tx_4f3d139b),
+            if (Cfg.draftKeepImg) stringResource(R.string.tx_a114c7a8) else stringResource(R.string.tx_79a86fd2),
+            Cfg.draftKeepImg
+        ) { Cfg.draftKeepImg = it }
+        //有效期是跟随项：只有「保留图片」开着（草稿真的落盘）才滑下来，关着时整项不存在
+        FollowBlock(Cfg.draftKeepImg) {
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                stringResource(R.string.tx_090286ed),
+                if (Cfg.draftDays <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_5cd47992, Cfg.draftDays),
+                listOf(0, 1, 3, 7, 30),
+                optionLabel = { if (it <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_52273aab) },
+                isSelected = { Cfg.draftDays == it },
+                onSelect = { Cfg.draftDays = it }
+            )
+            Text(
+                stringResource(R.string.tx_0dd7ef22),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
         }
     }
-
     }
+} //输入与输出子页
 
+private fun LazyListScope.chatPromptSec() {
     item {
-    val appCtx = LocalContext.current
-    val appScope = rememberCoroutineScope()
-    //会话与导出：原来在抽屉底部，收进「对话」页
     Spacer(Modifier.height(14.dp))
-    SectionTitle("会话与导出", "收藏夹、以及把当前会话导成 Markdown")
+    SectionTitle(stringResource(R.string.tx_a2d86e87), stringResource(R.string.tx_0e48617f))
     CardBox {
-        LinkRow("收藏夹", "查看收藏的会话", onClick = onOpenStars)
+        val profiles = Profiles.list
+        val cur = profiles.firstOrNull { it.id == Cfg.promptOptProfileId }
+        //留空跟随当前聊天：省一份配置，多数人不需要单独开专用模型
+        SelectField(
+            stringResource(R.string.tx_c7049188),
+            cur?.label ?: "跟随当前聊天",
+            listOf("") + profiles.map { it.id },
+            optionLabel = { id -> profiles.firstOrNull { it.id == id }?.label ?: "跟随当前聊天" },
+            isSelected = { it == Cfg.promptOptProfileId },
+            onSelect = { Cfg.promptOptProfileId = it }
+        )
         Spacer(Modifier.height(8.dp))
-        GhostButton(stringResource(R.string.dw_export), modifier = Modifier.height(38.dp)) {
-            appScope.launch {
-                val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
-                android.widget.Toast.makeText(
-                    appCtx,
-                    if (p == null) appCtx.getString(R.string.dw_none) else appCtx.getString(R.string.dw_exported, p),
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        }
+        //保留原语言：中英混写时不至于被模型统一翻成英文
+        CapSwitch(
+            stringResource(R.string.tx_b886dc73),
+            if (Cfg.promptOptKeep) stringResource(R.string.tx_d28ecec9) else stringResource(R.string.tx_7ec62ce2),
+            Cfg.promptOptKeep
+        ) { Cfg.promptOptKeep = it }
+        Spacer(Modifier.height(8.dp))
+        Field(
+            label = stringResource(R.string.tx_84e40c91),
+            value = Cfg.promptOptStyle,
+            onValueChange = { Cfg.promptOptStyle = it },
+            placeholder = stringResource(R.string.tx_65557288),
+            singleLine = false,
+            minLines = 3
+        )
+        Text(
+            stringResource(R.string.tx_70d093e2),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
     }
     }
-
-    item {
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_023), stringResource(R.string.se_132))
-    WsSection()
-    }
-} //会话与导出子页
+} //提示词优化子页
 
 private fun LazyListScope.chatPermSec() {
     item { Spacer(Modifier.height(14.dp)) }
@@ -1651,7 +2693,7 @@ private fun LazyListScope.permTab() {
 
     item {
     Spacer(Modifier.height(14.dp))
-    SectionTitle("特殊权限", "按当前模式分档：普通用户要无障碍 + 保活 + 悬浮窗，Root 只要悬浮窗")
+    SectionTitle(stringResource(R.string.tx_7fc624f8), stringResource(R.string.tx_ac0cdee7))
     CardBox {
         val specials = Perms.specials(Cfg.workMode)
         //无障碍卡一律出现：Shizuku / Root 模式下它是「一键激活」入口，不需要去系统页手点
@@ -1663,7 +2705,7 @@ private fun LazyListScope.permTab() {
 
     item {
     Spacer(Modifier.height(14.dp))
-    SectionTitle("Shizuku", "用 shell / root 身份跑命令时走它；授权前要先在 Shizuku 里启动服务")
+    SectionTitle("Shizuku", stringResource(R.string.tx_bd7451f2))
     CardBox {
         val ctx = LocalContext.current
         var st by remember { mutableStateOf(Shiz.probe(ctx)) }
@@ -1676,8 +2718,8 @@ private fun LazyListScope.permTab() {
         }
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            GhostButton("重新检测") { st = Shiz.probe(ctx) }
-            GhostButton("申请授权") {
+            GhostButton(stringResource(R.string.tx_f515f8fb)) { st = Shiz.probe(ctx) }
+            GhostButton(stringResource(R.string.tx_5e34a485)) {
                 Shiz.ask { r ->
                     msg = when (r) {
                         Shiz.Perm.GRANTED -> null
@@ -1871,7 +2913,7 @@ private fun LazyListScope.uiLookSec() {
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("字体", "全局字体 / 我方气泡 / AI 回复各设一份，导入后立刻生效")
+        SectionTitle(stringResource(R.string.tx_8456bc40), stringResource(R.string.tx_0b5342ec))
         CardBox {
             //字体目录每次进页面重扫：用户可能刚用文件管理器把字体丢进 fonts
             var fontVer by remember { mutableIntStateOf(0) }
@@ -1882,40 +2924,40 @@ private fun LazyListScope.uiLookSec() {
                     val f = FontStore.import(ctx, uri)
                     if (f != null) {
                         fontVer = fontVer + 1
-                        Toast.makeText(ctx, "已导入 " + f.name, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, ctx.getString(R.string.tx_946262ed) + f.name, Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(ctx, "导入失败：只支持 ttf / otf / ttc", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, ctx.getString(R.string.tx_84defbe5), Toast.LENGTH_SHORT).show()
                     }
                 }
             } //导入字体
             SelectField(
-                "全局字体",
+                stringResource(R.string.tx_99557469),
                 FontStore.label(Cfg.uiFontFile),
                 opts,
-                desc = "所有没单独指定字体的文字都跟它走",
-                optionLabel = { if (it.isEmpty()) "系统默认" else FontStore.label(it) },
+                desc = stringResource(R.string.tx_a5bccdfb),
+                optionLabel = { if (it.isEmpty()) stringResource(R.string.tx_a52f5c20) else FontStore.label(it) },
                 isSelected = { Cfg.uiFontFile == it },
                 onSelect = { Cfg.uiFontFile = it }
             )
             SelectField(
-                "我方气泡字体",
+                stringResource(R.string.tx_c4e93556),
                 FontStore.label(Cfg.userFontFile),
                 opts,
-                optionLabel = { if (it.isEmpty()) "跟随全局" else FontStore.label(it) },
+                optionLabel = { if (it.isEmpty()) stringResource(R.string.tx_112be922) else FontStore.label(it) },
                 isSelected = { Cfg.userFontFile == it },
                 onSelect = { Cfg.userFontFile = it }
             )
             SelectField(
-                "AI 回复字体",
+                stringResource(R.string.tx_f2af02ae),
                 FontStore.label(Cfg.aiFontFile),
                 opts,
-                optionLabel = { if (it.isEmpty()) "跟随全局" else FontStore.label(it) },
+                optionLabel = { if (it.isEmpty()) stringResource(R.string.tx_112be922) else FontStore.label(it) },
                 isSelected = { Cfg.aiFontFile == it },
                 onSelect = { Cfg.aiFontFile = it }
             )
             Spacer(Modifier.height(8.dp))
             GlassSlider(
-                "全局缩进",
+                stringResource(R.string.tx_7b5ff17c),
                 "${Cfg.globalIndent} dp",
                 Cfg.globalIndent.toFloat(),
                 0f..32f,
@@ -1923,12 +2965,12 @@ private fun LazyListScope.uiLookSec() {
             ) { Cfg.globalIndent = it.toInt() }
             Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GhostButton("导入字体文件", modifier = Modifier.height(36.dp)) {
+                GhostButton(stringResource(R.string.tx_d94fd817), modifier = Modifier.height(36.dp)) {
                     pickFont.launch(arrayOf("*/*"))
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (opts.size <= 1) "还没有自定义字体：点左边导入 ttf / otf" else "已识别 ${opts.size - 1} 个字体文件",
+                    if (opts.size <= 1) stringResource(R.string.tx_4d6e461d) else stringResource(R.string.tx_935695b1, opts.size - 1),
                     fontSize = 10.5.sp,
                     color = TextSecondary
                 )
@@ -1937,31 +2979,39 @@ private fun LazyListScope.uiLookSec() {
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("弹窗与滑块", "弹窗圆角、滑块配色")
+        SectionTitle(stringResource(R.string.tx_366d6528), stringResource(R.string.tx_73d7e891))
         CardBox {
             GlassSlider(
-                "弹窗圆角",
+                stringResource(R.string.tx_4210b61b),
                 "${Cfg.dialogCorner} dp",
                 Cfg.dialogCorner.toFloat(),
                 0f..32f,
                 2f
             ) { Cfg.dialogCorner = it.toInt() }
             GlassSlider(
-                "滑块轨道浓度",
+                stringResource(R.string.tx_b972541e),
                 "${Cfg.sliderTrack}%",
                 Cfg.sliderTrack.toFloat(),
                 5f..60f,
                 5f
             ) { Cfg.sliderTrack = it.toInt() }
+            GlassSlider(
+                stringResource(R.string.tx_a83942eb),
+                "${Cfg.sliderTrackH} dp",
+                Cfg.sliderTrackH.toFloat(),
+                12f..48f,
+                2f
+            ) { Cfg.sliderTrackH = it.toInt() }
+            Text(stringResource(R.string.tx_5d94fa40), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 44.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("滑块继承主题色", fontSize = 13.5.sp, color = TextPrimary)
+                    Text(stringResource(R.string.tx_9bfd20b1), fontSize = 13.5.sp, color = TextPrimary)
                     Text(
-                        if (Cfg.sliderAccent) "激活段与滑块描边跟主题色" else "淡灰轨道 + 白色滑块",
+                        if (Cfg.sliderAccent) stringResource(R.string.tx_0556c32b) else stringResource(R.string.tx_daf51302),
                         fontSize = 10.5.sp,
                         color = TextSecondary
                     )
@@ -2038,42 +3088,42 @@ private fun LazyListScope.uiLookSec() {
             ) { Cfg.glassBlur = it.toInt() }
             Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
             //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
-            if (Cfg.glassCard) {
+            FollowBlock(Cfg.glassCard) {
                 Spacer(Modifier.height(10.dp))
-                GlassSlider("折射强度", "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
+                GlassSlider(stringResource(R.string.tx_713fd45a), "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
                     Cfg.glassLens = it.toInt()
                 }
-                Text("0 = 边缘不做透镜变形；越大边缘弯曲越明显", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_1b605a1e), fontSize = 10.sp, color = TextSecondary)
                 Spacer(Modifier.height(8.dp))
-                GlassSlider("高光强度", "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
+                GlassSlider(stringResource(R.string.tx_d73f1ed6), "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
                     Cfg.glassHi = it.toInt()
                 }
-                Text("卡片上沿那道亮边的浓度，50% 是默认", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_e82c50b0), fontSize = 10.sp, color = TextSecondary)
                 Spacer(Modifier.height(8.dp))
-                GlassSlider("乳白遮罩", "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
+                GlassSlider(stringResource(R.string.tx_fd5f796f), "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
                     Cfg.glassVeil = it.toInt()
                 }
-                Text("压住背景保住文字可读，0% 完全透明", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_ba3f1876), fontSize = 10.sp, color = TextSecondary)
             }
             //卡片不透明度：两种模式都生效——白卡模式直接调白底 alpha，玻璃模式按比例缩乳白遮罩
             Spacer(Modifier.height(10.dp))
-            GlassSlider("卡片不透明度", "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
+            GlassSlider(stringResource(R.string.tx_fa5d97dd), "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
                 Cfg.cardAlpha = it.toInt()
             }
-            Text("100% 是原来的观感；调低会露出背景，文本可读性也随之下降", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_47aeba9f), fontSize = 10.sp, color = TextSecondary)
             //卡片圆角：预设档位滑杆，不做输入框；白卡与玻璃卡共用
             Spacer(Modifier.height(10.dp))
-            GlassSlider("卡片圆角", "${Cfg.cardCorner} dp", Cfg.cardCorner.toFloat(), 0f..32f, step = 4f) {
+            GlassSlider(stringResource(R.string.tx_3d86509a), "${Cfg.cardCorner} dp", Cfg.cardCorner.toFloat(), 0f..32f, step = 4f) {
                 Cfg.cardCorner = it.toInt()
             }
-            Text("0 = 直角，16dp 是默认，32dp 接近胶囊；白卡与玻璃卡一起变", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_ec83af0d), fontSize = 10.sp, color = TextSecondary)
             //回到底部圆钮的配色：三档都给白卡 / 玻璃卡两种模式用，选哪个当场生效
             Spacer(Modifier.height(10.dp))
             SelectField(
-                label = "回到底部按钮",
+                label = stringResource(R.string.tx_f778da7e),
                 value = scrollBtnStyleLabels()[Cfg.scrollBtnStyle],
                 options = listOf(0, 1, 2),
-                desc = "聊天页右下角那颗圆钮的底与图标配色",
+                desc = stringResource(R.string.tx_96a5feb3),
                 optionLabel = { scrollBtnStyleLabels()[it] },
                 isSelected = { it == Cfg.scrollBtnStyle },
                 onSelect = { Cfg.scrollBtnStyle = it }
@@ -2104,7 +3154,7 @@ private fun LazyListScope.uiLookSec() {
                 stringResource(R.string.se_paste_d),
                 Cfg.pasteToFile
             ) { Cfg.pasteToFile = it }
-            if (Cfg.pasteToFile) {
+            FollowBlock(Cfg.pasteToFile) {
                 Spacer(Modifier.height(6.dp))
                 //同上：统一走 miuix 滑杆，500 一档，能继承主题色
                 GlassSlider(
@@ -2201,27 +3251,27 @@ private fun LazyListScope.uiNavSec() {
     //悬浮聊天窗：先自查权限，再给开关，最后是窗口参数——三项都在一页里调完
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("悬浮聊天窗", "在别的应用上面直接聊：回复按 Markdown 渲染，宽度 / 高度 / 透明度 / 字号都能实时调")
+        SectionTitle(stringResource(R.string.tx_2ecb1bb9), stringResource(R.string.tx_bb007351))
         CardBox {
             val fctx = LocalContext.current
             val overlayOk = Pet.canShow(fctx)
             val aliveOk = Perms.batteryFree(fctx)
             //权限自查：没悬浮窗权限时开关打开也显示不出来，以前只表现为「点了没反应」
             SelfCheckRow(
-                "悬浮窗权限",
-                if (overlayOk) "已授权，可以浮在别的应用上层" else "未授权，开关打开也不会显示",
+                stringResource(R.string.tx_720ab972),
+                if (overlayOk) stringResource(R.string.tx_0c47bf01) else stringResource(R.string.tx_b6f6ccf7),
                 overlayOk
             ) { PetGrant.openOverlaySetting(fctx) }
             Spacer(Modifier.height(8.dp))
             SelfCheckRow(
-                "后台保活",
-                if (aliveOk) "已在电池优化白名单，切到后台不会被掐掉" else "不在白名单，锁屏久了悬浮窗可能被系统收走",
+                stringResource(R.string.tx_2911c1e5),
+                if (aliveOk) stringResource(R.string.tx_cd36e684) else stringResource(R.string.tx_adc2cb46),
                 aliveOk
             ) { Perms.openSpecial(fctx, Perms.SP_BATTERY) }
             Spacer(Modifier.height(10.dp))
             CapSwitch(
-                "显示悬浮聊天窗",
-                if (Cfg.fcOn) "已显示：拖标题栏换位置，点右上角 × 收起" else "关着：打开后在别的应用上层也能直接聊",
+                stringResource(R.string.tx_3b4c7ed4),
+                if (Cfg.fcOn) stringResource(R.string.tx_d742e670) else stringResource(R.string.tx_9ec0f5da),
                 Cfg.fcOn
             ) { on ->
                 if (!on) {
@@ -2238,36 +3288,36 @@ private fun LazyListScope.uiNavSec() {
             }
             //窗口参数：改完立刻 apply()，窗口不重建、位置不变
             Spacer(Modifier.height(10.dp))
-            GlassSlider("悬浮窗宽度", "${Cfg.fcW} dp", Cfg.fcW.toFloat(), 220f..480f, step = 10f) {
+            GlassSlider(stringResource(R.string.tx_cae01fea), "${Cfg.fcW} dp", Cfg.fcW.toFloat(), 220f..480f, step = 10f) {
                 Cfg.fcW = it.toInt()
                 FChat.apply()
             }
             Spacer(Modifier.height(8.dp))
-            GlassSlider("悬浮窗高度", "${Cfg.fcH} dp", Cfg.fcH.toFloat(), 260f..900f, step = 20f) {
+            GlassSlider(stringResource(R.string.tx_c73258a2), "${Cfg.fcH} dp", Cfg.fcH.toFloat(), 260f..900f, step = 20f) {
                 Cfg.fcH = it.toInt()
                 FChat.apply()
             }
             Spacer(Modifier.height(8.dp))
-            GlassSlider("整窗透明度", "${Cfg.fcAlpha}%", Cfg.fcAlpha.toFloat(), 40f..100f, step = 5f) {
+            GlassSlider(stringResource(R.string.tx_e013ea26), "${Cfg.fcAlpha}%", Cfg.fcAlpha.toFloat(), 40f..100f, step = 5f) {
                 Cfg.fcAlpha = it.toInt()
                 FChat.apply()
             }
-            Text("100% 完全不透明；调低能透出后面的内容，但字会更难认", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_529f8817), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GlassSlider("回复字号", "${Cfg.fcFont} sp", Cfg.fcFont.toFloat(), 10f..22f, step = 1f) {
+            GlassSlider(stringResource(R.string.tx_48f369a7), "${Cfg.fcFont} sp", Cfg.fcFont.toFloat(), 10f..22f, step = 1f) {
                 Cfg.fcFont = it.toInt()
                 FChat.apply()
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 //位置复位：把 fcX / fcY 归 -1，apply() 时会落回默认的右上角
-                GhostButton("位置复位到右上角", modifier = Modifier.height(36.dp)) {
+                GhostButton(stringResource(R.string.tx_e90e4777), modifier = Modifier.height(36.dp)) {
                     Cfg.fcX = -1
                     Cfg.fcY = -1
                     FChat.apply()
                 }
                 GhostButton(
-                    if (Cfg.fcOn) "立刻收起" else "立刻显示",
+                    if (Cfg.fcOn) stringResource(R.string.tx_5f4766cc) else stringResource(R.string.tx_ea02bb1f),
                     modifier = Modifier.height(36.dp)
                 ) {
                     if (Cfg.fcOn) {
@@ -2302,7 +3352,7 @@ private fun LazyListScope.uiNavSec() {
                 color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
-            GhostButton("去系统「手势导航」设置", modifier = Modifier.height(36.dp)) {
+            GhostButton(stringResource(R.string.tx_0c1e4c99), modifier = Modifier.height(36.dp)) {
                 //直接跳到系统手势导航页：各家 ROM 的入口不同，跳不过去就退到应用详情页
                 runCatching {
                     //用字面量 action：部分编译 SDK 里没有 ACTION_GESTURE_NAVIGATION_SETTINGS 这个常量
@@ -2324,7 +3374,7 @@ private fun LazyListScope.extAutoSec(
 ) {
     //运行总览：三类自动化各自的开关状态，外加一键全停 / 全恢复
     item {
-        SectionTitle("运行总览", "三类自动化各自的启用情况；不想被打扰时可以一键全停，之后一键恢复")
+        SectionTitle(stringResource(R.string.tx_85067db3), stringResource(R.string.tx_3ab3186c))
         CardBox {
             val tasks0 = Schedules.list
             val flows0 = Flows.list
@@ -2338,13 +3388,13 @@ private fun LazyListScope.extAutoSec(
             )
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GhostButton("全部暂停", modifier = Modifier.weight(1f).height(38.dp)) {
+                GhostButton(stringResource(R.string.tx_e5c4f1fc), modifier = Modifier.weight(1f).height(38.dp)) {
                     //先取快照再逐个切：toggle 会改 state，边遍历边改会漏
                     tasks0.filter { it.on }.forEach { Schedules.toggle(it.id, false) }
                     flows0.filter { it.on }.forEach { Flows.toggle(it.id, false) }
                     rules0.filter { it.on }.forEach { Triggers.toggle(it.id, false) }
                 }
-                GhostButton("全部恢复", modifier = Modifier.weight(1f).height(38.dp)) {
+                GhostButton(stringResource(R.string.tx_f4590f7d), modifier = Modifier.weight(1f).height(38.dp)) {
                     tasks0.filterNot { it.on }.forEach { Schedules.toggle(it.id, true) }
                     flows0.filterNot { it.on }.forEach { Flows.toggle(it.id, true) }
                     rules0.filterNot { it.on }.forEach { Triggers.toggle(it.id, true) }
@@ -2352,7 +3402,7 @@ private fun LazyListScope.extAutoSec(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "全部恢复只把已有的条目重新打开，不会新建或改时间",
+                stringResource(R.string.tx_950a94dd),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -2395,7 +3445,7 @@ private fun LazyListScope.extAutoSec(
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("工作流", "多步按顺序跑，每步一个分智能体；可定时、失败可重试或跳过")
+        SectionTitle(stringResource(R.string.tx_228526dc), stringResource(R.string.tx_7bb29de8))
         CardBox {
             val flows = Flows.list
             val enabled = flows.count { it.on }
@@ -2415,7 +3465,7 @@ private fun LazyListScope.extAutoSec(
                         color = TextPrimary
                     )
                     Text(
-                        if (flows.isEmpty()) "写好几步存下来，就能一键跑或按点跑"
+                        if (flows.isEmpty()) stringResource(R.string.tx_df74b581)
                         else flows.take(2).joinToString("；") { f ->
                             f.name + "（" + f.steps.size + " 步" +
                                 (if (f.at > 0L) " · " + Alarms.fmt(f.at) else "") + "）"
@@ -2425,7 +3475,7 @@ private fun LazyListScope.extAutoSec(
                         maxLines = 2
                     )
                 }
-                GhostButton("管理工作流") { onNewFlow() }
+                GhostButton(stringResource(R.string.tx_86454fc7)) { onNewFlow() }
             }
         }
     }
@@ -2470,7 +3520,7 @@ private fun LazyListScope.extAutoSec(
     //到点能不能跑起来：定时任务三件套（精确闹钟 / 通知 / 后台保活）缺一个就会「设了没动静」
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("到点能不能跑起来", "定时任务靠系统闹钟、通知、后台保活三件套，缺一样就会出现「设了没反应」")
+        SectionTitle(stringResource(R.string.tx_0e2af5f5), stringResource(R.string.tx_5b921cf1))
         CardBox {
             val c = LocalContext.current
             val exact = Alarms.canExact(c)
@@ -2478,20 +3528,20 @@ private fun LazyListScope.extAutoSec(
                 Perms.granted(c, android.Manifest.permission.POST_NOTIFICATIONS)
             val alive = Perms.batteryFree(c)
             SelfCheckRow(
-                "精确闹钟",
-                if (exact) "已授权，按设定的时刻触发" else "未授权，系统会把触发时间往后挪几分钟到几十分钟",
+                stringResource(R.string.tx_15ec4b98),
+                if (exact) stringResource(R.string.tx_2627160e) else stringResource(R.string.tx_06972491),
                 exact
             ) { Alarms.openExactAlarmSettings(c) }
             Spacer(Modifier.height(8.dp))
             SelfCheckRow(
-                "通知",
-                if (noti) "已开启，到点会弹通知" else "已关闭，到点不会提醒你（自动执行仍然会跑）",
+                stringResource(R.string.tx_5660bcd2),
+                if (noti) stringResource(R.string.tx_a6a648c1) else stringResource(R.string.tx_8508566e),
                 noti
             ) { Perms.openNotiSettings(c) }
             Spacer(Modifier.height(8.dp))
             SelfCheckRow(
-                "后台保活",
-                if (alive) "已在电池优化白名单，锁屏后任务不会被掐掉" else "不在白名单，锁屏 / 后台一段时间后可能被系统杀掉",
+                stringResource(R.string.tx_2911c1e5),
+                if (alive) stringResource(R.string.tx_cc49b1fd) else stringResource(R.string.tx_b90dde67),
                 alive
             ) { Perms.openSpecial(c, Perms.SP_BATTERY) }
         }
@@ -2499,14 +3549,14 @@ private fun LazyListScope.extAutoSec(
     //接下来要跑：定时任务与已排期的工作流按时间合并，只列前三条
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("接下来要跑", "定时任务与已排期的工作流按时间排的前三条")
+        SectionTitle(stringResource(R.string.tx_9f2e930a), stringResource(R.string.tx_02895542))
         CardBox {
             val soon = (Schedules.active.map { it.at to it.prompt.replace("\n", " ").take(18) } +
                 Flows.list.filter { it.on && it.at > 0L }.map { it.at to ("工作流 · " + it.name) })
                 .sortedBy { it.first }
                 .take(3)
             if (soon.isEmpty()) {
-                Text("还没有排好的计划。上面点「管理」新建一条，或给工作流设个时间。", fontSize = 12.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_70607644), fontSize = 12.sp, color = TextSecondary)
             } else {
                 soon.forEachIndexed { i, (at, name) ->
                     if (i > 0) Spacer(Modifier.height(6.dp))
@@ -2518,25 +3568,25 @@ private fun LazyListScope.extAutoSec(
     //任务通知与灵动岛：原挂在「外观」页，本质是任务通知的显示策略，跟自动化放一起
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("任务通知与灵动岛", "每轮任务挂一条常驻通知，小米 / 华为等机型自动上岛；缺权限就只剩「跑了但没动静」")
+        SectionTitle(stringResource(R.string.tx_709d84ce), stringResource(R.string.tx_a71af5ad))
         CardBox {
             val c = LocalContext.current
             val notiOk = Build.VERSION.SDK_INT < 33 ||
                 Perms.granted(c, android.Manifest.permission.POST_NOTIFICATIONS)
             val aliveOk = Perms.batteryFree(c)
             SelfCheckRow(
-                "通知权限",
-                if (notiOk) "已开启，任务状态会实时出现在通知栏 / 岛上" else "已关闭，任务照常跑但看不到任何提示",
+                stringResource(R.string.tx_846cdaf0),
+                if (notiOk) stringResource(R.string.tx_c4da04aa) else stringResource(R.string.tx_b324c1b6),
                 notiOk
             ) { Perms.openNotiSettings(c) }
             Spacer(Modifier.height(8.dp))
             SelfCheckRow(
-                "后台保活",
-                if (aliveOk) "已在电池优化白名单，锁屏后通知不会被收走" else "不在白名单，锁屏久了通知可能被系统清掉",
+                stringResource(R.string.tx_2911c1e5),
+                if (aliveOk) stringResource(R.string.tx_3a605fa6) else stringResource(R.string.tx_2474be5f),
                 aliveOk
             ) { Perms.openSpecial(c, Perms.SP_BATTERY) }
             Spacer(Modifier.height(10.dp))
-            Text("当前机型识别：${Vendor.rom.label}", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_3aaccc6e, Vendor.rom.label), fontSize = 10.sp, color = TextSecondary)
             //通道级问题自查项覆盖不到（通知分类被关 / 厂商焦点通知没开），原样保留这条说明
             val blocked = Island.blockedReason()
             if (blocked != null) {
@@ -2551,33 +3601,33 @@ private fun LazyListScope.extAutoSec(
                         .padding(horizontal = 10.dp, vertical = 7.dp)
                 )
                 Text(
-                    "点上面这行直达系统通知设置；OPPO / 一加还要在「电池」里允许后台运行，否则锁屏后通知会被系统收走",
+                    stringResource(R.string.tx_af29b0db),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
             }
             Spacer(Modifier.height(10.dp))
             CapSwitch(
-                "任务通知",
-                "每轮任务开始发一条常驻通知；小米 / 华为主机会自动挂到岛上",
+                stringResource(R.string.tx_8280b5ae),
+                stringResource(R.string.tx_12c3b1d7),
                 Cfg.islandOn
             ) { Cfg.islandOn = it }
             Spacer(Modifier.height(10.dp))
             CapSwitch(
-                "完成后继续驻留",
-                "任务跑完不立刻撤通知，先切成完成态在岛 / 通知栏留一会儿",
+                stringResource(R.string.tx_b7a7dafe),
+                stringResource(R.string.tx_edd7189b),
                 Cfg.islandDone
             ) { Cfg.islandDone = it }
-            if (Cfg.islandDone) {
+            FollowBlock(Cfg.islandDone) {
                 Spacer(Modifier.height(8.dp))
                 GlassSlider(
-                    "驻留时长",
-                    "${Cfg.islandDoneSec} 秒",
+                    stringResource(R.string.tx_110dd655),
+                    stringResource(R.string.tx_a6f0b1dc, Cfg.islandDoneSec),
                     Cfg.islandDoneSec.toFloat(),
                     0f..300f,
                     step = 10f
                 ) { Cfg.islandDoneSec = it.toInt() }
-                Text("0 秒 = 任务完成后立刻撤掉", fontSize = 10.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_8c7432b9), fontSize = 10.sp, color = TextSecondary)
             }
         }
     }
@@ -2591,7 +3641,7 @@ private fun LazyListScope.extAutoSec(
 private fun SelfCheckRow(name: String, desc: String, ok: Boolean, onFix: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            if (ok) "已通过" else "未通过",
+            if (ok) stringResource(R.string.tx_ecfa64c1) else stringResource(R.string.tx_4fcdbfe5),
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
             color = if (ok) OkGreen else DangerRed,
@@ -2606,7 +3656,7 @@ private fun SelfCheckRow(name: String, desc: String, ok: Boolean, onFix: () -> U
         }
         if (!ok) {
             Text(
-                "去开启",
+                stringResource(R.string.tx_5e213ddb),
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier.tap { onFix() }.padding(horizontal = 8.dp, vertical = 6.dp)
@@ -2621,7 +3671,7 @@ private fun LazyListScope.extLinkSec(
     onEditMcp: (McpServer) -> Unit
 ) {
     item {
-        SectionTitle("A2A", "A2A 1.0 接口：本机可当客户端调用其他节点，也可开服务端接收任务")
+        SectionTitle("A2A", stringResource(R.string.tx_6e63dd3c))
         CardBox {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.padding(end = 8.dp)) {
@@ -2634,20 +3684,20 @@ private fun LazyListScope.extLinkSec(
                 }
                 Column(Modifier.weight(1f)) {
                     Text(
-                        "本机服务：" + if (A2aSrv.running) "已开启 " + A2aSrv.baseUrl() else "关闭",
+                        "本机服务：" + if (A2aSrv.running) stringResource(R.string.tx_d9524747) + A2aSrv.baseUrl() else stringResource(R.string.tx_b15d9127),
                         fontSize = 13.sp,
                         color = TextPrimary
                     )
                     Text(
-                        if (A2aNodes.list.isEmpty()) "还没加对端"
-                        else "对端 " + A2aNodes.list.size + " 个：" +
+                        if (A2aNodes.list.isEmpty()) stringResource(R.string.tx_c51ed4da)
+                        else stringResource(R.string.tx_ea9bc057) + A2aNodes.list.size + stringResource(R.string.tx_a3af3303) +
                             A2aNodes.list.take(2).joinToString("；") { it.name },
                         fontSize = 11.sp,
                         color = TextSecondary,
                         maxLines = 1
                     )
                 }
-                GhostButton("打开 A2A") { onOpenA2a() }
+                GhostButton(stringResource(R.string.tx_231fdea9)) { onOpenA2a() }
             }
         }
     }
@@ -2754,6 +3804,57 @@ private fun LazyListScope.extAgentSec(
                 fontSize = 10.sp,
                 color = if (Cfg.systemPrompt.isBlank()) TextSecondary else OkGreen
             )
+            Spacer(Modifier.height(6.dp))
+            //花括号参数：只在这里注入，点一下追加到提示末尾；拼系统提示时替换成真实值，聊天输入不受影响
+            Text(stringResource(R.string.tx_f05a0996), fontSize = 10.sp, color = TextSecondary)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                PromptVars.ALL.forEach { v ->
+                    Text(
+                        v.token,
+                        fontSize = 10.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
+                            .tap {
+                                //分隔符按需补：空提示直接写，末尾是空白就只追加 token
+                                val cur = Cfg.systemPrompt
+                                Cfg.systemPrompt = when {
+                                    cur.isBlank() -> v.token
+                                    cur.last().isWhitespace() -> cur + v.token
+                                    else -> cur + " " + v.token
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
+            }
+            Text(
+                stringResource(R.string.tx_2ae34d78),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(8.dp))
+            //拼接顺序：角色卡自带提示与这里写的预设谁在前；默认角色在前
+            SelectField(
+                stringResource(R.string.tx_28d68b24),
+                if (Cfg.promptOrder == 1) stringResource(R.string.tx_1cf2d4cf) else stringResource(R.string.tx_06d23d3f),
+                listOf(0, 1),
+                optionLabel = { if (it == 1) stringResource(R.string.tx_1cf2d4cf) else stringResource(R.string.tx_06d23d3f) },
+                isSelected = { Cfg.promptOrder == it },
+                onSelect = { Cfg.promptOrder = it }
+            )
+            Text(
+                "两段是叠加关系，不是二选一：角色卡里的提示与这里的预设都会进系统提示，" +
+                    "这一段只决定谁在前面。角色提示写得强势时选「自定义在前」，把人设压不住的那部分放到前面。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
         }
     }
     item {
@@ -2838,14 +3939,14 @@ private fun LazyListScope.extToolSec() {
     }
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("隐私与网页登录", "清掉内置浏览器、搜索工具与 WebView 里的登录态和缓存")
+        SectionTitle(stringResource(R.string.tx_c0a99954), stringResource(R.string.tx_bb3f978b))
         val ctx = LocalContext.current
         var wipeMsg by remember { mutableStateOf("") }
         var asking by remember { mutableStateOf(false) }
         HostInOverlay(asking) {
             if (asking) {
                 ScrimCard(onDismiss = { asking = false }) {
-                    Text("确认清除网页登录态？", fontSize = 16.sp, color = TextPrimary)
+                    Text(stringResource(R.string.tx_9ca1cb1f), fontSize = 16.sp, color = TextPrimary)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "会清掉 WebView 的 Cookie、WebStorage、缓存与表单记录，之后各网站都要重新登录。" +
@@ -2856,13 +3957,13 @@ private fun LazyListScope.extToolSec() {
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         Text(
-                            "取消",
+                            stringResource(R.string.tx_625fb26b),
                             fontSize = 13.sp,
                             color = TextSecondary,
                             modifier = Modifier.tap { asking = false }.padding(horizontal = 12.dp, vertical = 8.dp)
                         )
                         Text(
-                            "确认清除",
+                            stringResource(R.string.tx_0a60a66c),
                             fontSize = 13.sp,
                             color = AccentBlue,
                             modifier = Modifier
@@ -2884,7 +3985,7 @@ private fun LazyListScope.extToolSec() {
                 color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
-            GhostButton("清除 Cookie 与网页缓存") { asking = true }
+            GhostButton(stringResource(R.string.tx_2898cdb7)) { asking = true }
             if (wipeMsg.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(wipeMsg, fontSize = 11.sp, color = TextPrimary)
@@ -2898,18 +3999,18 @@ private fun LazyListScope.extWsSec() {
     //前置检查：工作区能绑到共享存储的前提是「全部文件访问」，没给就会绑不进任意目录
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("工作区前置检查", "工作区就是 AI 读写文件的地方；这一项没过，绑目录时会一直失败")
+        SectionTitle(stringResource(R.string.tx_59fee9a5), stringResource(R.string.tx_0450050c))
         CardBox {
             val c = LocalContext.current
             val allOk = Perms.allFiles()
             SelfCheckRow(
-                "全部文件访问",
-                if (allOk) "已开启，可以读写共享存储里的任意目录" else "未开启，工作区只能落在应用自己的私有目录里",
+                stringResource(R.string.tx_3ceeb66d),
+                if (allOk) stringResource(R.string.tx_f3b58907) else stringResource(R.string.tx_119c6296),
                 allOk
             ) { Perms.openAllFiles(c) }
             Spacer(Modifier.height(8.dp))
             Text(
-                "不同机型入口名字不一样：可能是「所有文件的管理权限」「文件和媒体」或「存储权限」；跑 Root / Shizuku 模式时不依赖它。",
+                stringResource(R.string.tx_90d5ce80),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -2930,20 +4031,21 @@ private fun LazyListScope.extLinuxSec() {
 } //Linux 沙箱子页
 
 //还剩文件沙箱一个专区的计划清单：页面上先讲清会有什么，别点进去一片空白
+/** 文件沙箱专区的计划清单：存资源 id，交给 extPlanSec 在 Composable 里解析 */
 private val EX_BOX_PLAN = listOf(
-    "允许目录白名单，读写权限分级",
-    "符号链接与越界读写拦截开关",
-    "操作审计日志"
+    R.string.tx_a39e54aa,
+    R.string.tx_ccd94af0,
+    R.string.tx_423b0645
 )
 
 /** 专区计划页：清单 + 一句状态说明，等实现落地后替换成真控件 */
-private fun LazyListScope.extPlanSec(titleRes: Int, subRes: Int, points: List<String>) {
+private fun LazyListScope.extPlanSec(titleRes: Int, subRes: Int, points: List<Int>) {
     item {
         SectionTitle(stringResource(titleRes), stringResource(subRes))
         CardBox {
-            points.forEachIndexed { i, s ->
+            points.forEachIndexed { i, res ->
                 if (i > 0) Spacer(Modifier.height(6.dp))
-                Text("· $s", fontSize = 12.sp, color = TextPrimary)
+                Text("· " + stringResource(res), fontSize = 12.sp, color = TextPrimary)
             }
             Spacer(Modifier.height(10.dp))
             Text(stringResource(R.string.se_hub_soon), fontSize = 10.sp, color = TextSecondary)
@@ -3057,7 +4159,7 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
                 modifier = Modifier.tap {
                     if (!Cfg.devShow && Dev.tap()) {
                         Cfg.devShow = true
-                        UpdateUi.tip = "开发者模式已解锁：看本页最下方"
+                        UpdateUi.tip = ctx.getString(R.string.tx_7e382efd)
                     }
                 }
             )
@@ -3109,55 +4211,6 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     }
     }
 
-    //Rust 内核：并行接入阶段的可见入口，只跑自检，不参与任何业务读写（删掉这块即可回滚）
-    item {
-    val scope = rememberCoroutineScope()
-    var busy by remember { mutableStateOf(false) }
-    var out by remember { mutableStateOf("") }
-    var err by remember { mutableStateOf("") }
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_kernel_t))
-    CardBox {
-        Text(stringResource(R.string.se_kernel_d), fontSize = 11.sp, color = TextSecondary)
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            //版本 + 状态：没带内核的 ABI（v7a）如实说明，不假装成功
-            Text("v" + BxKernel.version().ifBlank { "—" }, fontSize = 12.sp, color = TextPrimary)
-            Spacer(Modifier.weight(1f))
-            val okNow = out.contains("\"ok\":true")
-            val (label, tint) = when {
-                !BxKernel.available -> stringResource(R.string.se_kernel_na) to TextSecondary
-                okNow -> stringResource(R.string.se_kernel_ok) to OkGreen
-                out.isBlank() -> stringResource(R.string.se_kernel_run) to TextSecondary
-                else -> stringResource(R.string.se_kernel_fail) to DangerRed
-            }
-            Text(label, fontSize = 11.sp, color = tint)
-        }
-        Spacer(Modifier.height(10.dp))
-        GhostButton(
-            if (busy) stringResource(R.string.se_kernel_busy) else stringResource(R.string.se_kernel_run),
-            modifier = Modifier.height(38.dp)
-        ) {
-            if (busy) return@GhostButton
-            busy = true
-            scope.launch {
-                //自检会真写盘（临时桶写完即删），放到 IO 线程跑
-                val r = withContext(Dispatchers.IO) { BxKernel.selfcheck() }
-                busy = false
-                out = r
-                err = if (r.isBlank()) BxKernel.lastError() else ""
-            }
-        }
-        if (out.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(out, fontSize = 9.sp, color = TextSecondary)
-        }
-        if (err.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(err, fontSize = 9.sp, color = DangerRed)
-        }
-    }
-    }
 
     item {
     val ctx = LocalContext.current
@@ -3330,11 +4383,63 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
     ProtectSection()
     }
 
+    //Rust 内核：并行接入阶段的可见入口，只跑自检，不参与任何业务读写（删掉这块即可回滚）
+    //位置：关于页最底部（用户要求「Rust 自检放最下面」），排在开发者工具之前
+    item {
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var out by remember { mutableStateOf("") }
+    var err by remember { mutableStateOf("") }
+    Spacer(Modifier.height(14.dp))
+    SectionTitle(stringResource(R.string.se_kernel_t))
+    CardBox {
+        Text(stringResource(R.string.se_kernel_d), fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            //版本 + 状态：没带内核的 ABI（v7a）如实说明，不假装成功
+            Text("v" + BxKernel.version().ifBlank { "—" }, fontSize = 12.sp, color = TextPrimary)
+            Spacer(Modifier.weight(1f))
+            val okNow = out.contains("\"ok\":true")
+            val (label, tint) = when {
+                !BxKernel.available -> stringResource(R.string.se_kernel_na) to TextSecondary
+                okNow -> stringResource(R.string.se_kernel_ok) to OkGreen
+                out.isBlank() -> stringResource(R.string.se_kernel_run) to TextSecondary
+                else -> stringResource(R.string.se_kernel_fail) to DangerRed
+            }
+            Text(label, fontSize = 11.sp, color = tint)
+        }
+        Spacer(Modifier.height(10.dp))
+        GhostButton(
+            if (busy) stringResource(R.string.se_kernel_busy) else stringResource(R.string.se_kernel_run),
+            modifier = Modifier.height(38.dp)
+        ) {
+            if (busy) return@GhostButton
+            busy = true
+            scope.launch {
+                //自检会真写盘（临时桶写完即删），放到 IO 线程跑
+                val r = withContext(Dispatchers.IO) { BxKernel.selfcheck() }
+                busy = false
+                out = r
+                err = if (r.isBlank()) BxKernel.lastError() else ""
+            }
+        }
+        if (out.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(out, fontSize = 9.sp, color = TextSecondary)
+        }
+        if (err.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Text(err, fontSize = 9.sp, color = DangerRed)
+        }
+    }
+    }
+
     //开发者工具：只有连点版本号解锁过才出现，摆在关于页最下面，不干扰普通用户
+    //（这里是 LazyListScope，不是 Composable 作用域，展开动画交给 item 内部做）
     if (Cfg.devShow) {
         item {
             Spacer(Modifier.height(14.dp))
-            SectionTitle("开发者")
+            SectionTitle(stringResource(R.string.tx_c2e48855))
             DevSection()
         }
     }
@@ -3388,7 +4493,7 @@ private fun GuardSection() {
     HostInOverlay(mode != 0) {
         when (mode) {
             1 -> GuardWarnDialog(
-                cost = if (Guard.lastCostMs > 0) String.format("%.1f秒", Guard.lastCostMs / 1000f) else "2–4秒",
+                cost = if (Guard.lastCostMs > 0) String.format(stringResource(R.string.tx_1da7adbb), Guard.lastCostMs / 1000f) else stringResource(R.string.tx_09e4e337),
                 device = Guard.deviceName(),
                 onCancel = { mode = 0 },
                 onConfirm = {
@@ -4301,6 +5406,28 @@ private fun PetEntryRow(onOpenPet: () -> Unit) {
     }
 } //桌宠入口
 
+/** 跟随项统一展开容器：高度 + 透明度一起动画，滑下来不生硬，收起也不会瞬间消失 */
+@Composable
+private fun FollowBlock(visible: Boolean, content: @Composable () -> Unit) {
+    //高度只由一个 animateContentSize 驱动，内容只负责淡入淡出。
+    //之前 AnimatedVisibility 的 expandVertically 本身就是高度动画，跟内层一叠加，两次测量打架，
+    //展开途中文案会被后一项盖住（用户反馈「文字都压一起」）。clipToBounds 再兜一层，不让内容溢出。
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clipToBounds()
+            .animateContentSize(animationSpec = tween(240, easing = FastOutSlowInEasing))
+    ) {
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(animationSpec = tween(170, delayMillis = 60, easing = FastOutSlowInEasing)),
+            exit = fadeOut(animationSpec = tween(100, easing = LinearOutSlowInEasing))
+        ) {
+            Column(Modifier.fillMaxWidth()) { content() }
+        }
+    }
+} //跟随项展开
+
 /**
  * miuix 风格滑杆：标题 + 右侧当前值 + 26dp 粗轨道 + **完整包裹轨道的白色圆形滑块**。
  *
@@ -4332,9 +5459,10 @@ private fun GlassSlider(
     val activeColor = if (Cfg.sliderAccent) AccentBlue else SurfaceWhite.copy(alpha = 0.92f)
     val edgeColor = if (Cfg.sliderAccent) AccentBlue else BorderGray
     var width by remember { mutableIntStateOf(0) }
-    val track = 26.dp
-    val thumb = 32.dp
-    val rowH = 44.dp
+    //轨道高度可配：圆点直径 = 轨道 + 6dp，行高跟着撑开，避免圆点被裁
+    val track = Cfg.sliderTrackH.dp
+    val thumb = (Cfg.sliderTrackH + 6).dp
+    val rowH = (Cfg.sliderTrackH + 18).coerceAtLeast(44).dp
     val thumbPx = with(LocalDensity.current) { thumb.toPx() }
     val half = thumbPx / 2f
     //手指 x → 值：Rust 侧 bx_slider_value 同一套公式（见 core/feature/compute/slider.rs），此处为绘制期直算
@@ -4390,40 +5518,40 @@ private fun LazyListScope.mdSec() {
     item {
         Spacer(Modifier.height(14.dp))
         SectionTitle(
-            "Markdown 显示",
-            "AI 回复的排版：字号、行距、段间距、列表缩进、左右留白与代码块字号；下面预览用的是聊天同一套渲染"
+            stringResource(R.string.tx_ae6b6416),
+            stringResource(R.string.tx_8539beb4)
         )
         CardBox {
-            GlassSlider("正文字号", "${Cfg.mdFont} sp", Cfg.mdFont.toFloat(), 11f..18f, step = 1f) {
+            GlassSlider(stringResource(R.string.tx_5a3701e9), "${Cfg.mdFont} sp", Cfg.mdFont.toFloat(), 11f..18f, step = 1f) {
                 Cfg.mdFont = it.toInt()
             }
             Spacer(Modifier.height(8.dp))
-            GlassSlider("行距", "${Cfg.mdLine}%", Cfg.mdLine.toFloat(), 100f..220f, step = 5f) {
+            GlassSlider(stringResource(R.string.tx_6ca4489d), "${Cfg.mdLine}%", Cfg.mdLine.toFloat(), 100f..220f, step = 5f) {
                 Cfg.mdLine = it.toInt()
             }
-            Text("100% = 贴着字高，密一点能多看几行；160% 上下读起来最松", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_fa9bac8d), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GlassSlider("段间距", "${Cfg.mdGap} dp", Cfg.mdGap.toFloat(), 0f..20f, step = 2f) {
+            GlassSlider(stringResource(R.string.tx_13853b5a), "${Cfg.mdGap} dp", Cfg.mdGap.toFloat(), 0f..20f, step = 2f) {
                 Cfg.mdGap = it.toInt()
             }
-            Text("段落、标题、列表、代码块之间空多少", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_9fcf1606), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GlassSlider("列表缩进", "${Cfg.mdIndent} dp/级", Cfg.mdIndent.toFloat(), 0f..32f, step = 2f) {
+            GlassSlider(stringResource(R.string.tx_cd758e7e), stringResource(R.string.tx_b4d10c2d, Cfg.mdIndent), Cfg.mdIndent.toFloat(), 0f..32f, step = 2f) {
                 Cfg.mdIndent = it.toInt()
             }
-            Text("每深一层缩进多少；0 = 不缩进，只靠符号区分层级", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_8851751d), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GlassSlider("左右内边距", "${Cfg.mdPad} dp", Cfg.mdPad.toFloat(), 0f..24f, step = 2f) {
+            GlassSlider(stringResource(R.string.tx_b76fe1f2), "${Cfg.mdPad} dp", Cfg.mdPad.toFloat(), 0f..24f, step = 2f) {
                 Cfg.mdPad = it.toInt()
             }
-            Text("正文离气泡边缘的距离；长文想留白就加，想贴边就归零", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_75af6edf), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(8.dp))
-            GlassSlider("代码字号", "${Cfg.mdCode} sp", Cfg.mdCode.toFloat(), 9f..16f, step = 1f) {
+            GlassSlider(stringResource(R.string.tx_279a3789), "${Cfg.mdCode} sp", Cfg.mdCode.toFloat(), 9f..16f, step = 1f) {
                 Cfg.mdCode = it.toInt()
             }
-            Text("代码块与行内代码的字号，等宽字体单独一档", fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_fe8fe0cc), fontSize = 10.sp, color = TextSecondary)
             Spacer(Modifier.height(12.dp))
-            Text("预览", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tx_645dbc55), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.height(6.dp))
             //预览直接用聊天同一套 MdText：改哪个参数，这里立刻能看出来
             MdText(MD_PREVIEW)

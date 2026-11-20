@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:16
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.net.api.llm
 import b.ai.agent.tool.Tools
 import b.ai.core.cfg.app.Cfg
@@ -108,7 +122,13 @@ class LlmClient(
             b.ai.core.cfg.app.Cfg.baseUrl
         )
         //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
-        if (think && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn) {
+        //先让规则表说话：命中规则的模型按规则写（各家字段不同，用户可在设置里改）
+        val ruleDone = if (!searchOn) {
+            ThinkRules.apply(body, model, think, b.ai.core.cfg.app.Cfg.thinkLevel)
+        } else false
+        //思考能力兜底：模型不在思考白名单里（且规则表也没命中）时，就算配置里还留着 think=true 也不下发
+        val canThink = b.ai.core.model.chat.Thinking.supported(b.ai.core.cfg.app.Cfg.providerId, model)
+        if (think && canThink && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn && !ruleDone) {
             body.put("reasoning_effort", thinkEffort)
         }
         //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
@@ -118,8 +138,20 @@ class LlmClient(
         //所以带了原生联网搜索时不能再显式关思考，否则服务端直接拒绝：
         //  tools: client tools can only be used together with deepseek_web_search in thinking mode
         //（这是唯一一处「互斥」失效的厂商，属于服务端强制要求，不改就会被 400 挡死）
-        if (ds && !think && !searchOn) {
+        if (ds && !think && !searchOn && !ruleDone) {
             body.put("thinking", JSONObject().put("type", "disabled"))
+        }
+        //创造性 / 重复控制参数：负数或 0 表示不下发，交给服务端默认值
+        if (b.ai.core.cfg.app.Cfg.topP >= 0f) body.put("top_p", b.ai.core.cfg.app.Cfg.topP.toDouble())
+        if (b.ai.core.cfg.app.Cfg.topK > 0) body.put("top_k", b.ai.core.cfg.app.Cfg.topK)
+        if (b.ai.core.cfg.app.Cfg.presencePenalty > -9f) {
+            body.put("presence_penalty", b.ai.core.cfg.app.Cfg.presencePenalty.toDouble())
+        }
+        if (b.ai.core.cfg.app.Cfg.frequencyPenalty > -9f) {
+            body.put("frequency_penalty", b.ai.core.cfg.app.Cfg.frequencyPenalty.toDouble())
+        }
+        if (b.ai.core.cfg.app.Cfg.repeatPenalty > 0f) {
+            body.put("repeat_penalty", b.ai.core.cfg.app.Cfg.repeatPenalty.toDouble())
         }
         //附加参数浅合并，用来补厂商私有字段（如 thinking / enable_thinking）
         if (!extraParams.isNullOrBlank()) {

@@ -1,5 +1,21 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,7 +85,7 @@ private fun LanBody() {
         if (c.on && !Lan.isRunning()) Lan.start()
     }
     Column(Modifier.fillMaxWidth()) {
-        SectionTitle("面对面团队协作", "一台派活、一台接活：两边的大模型都能调工具，配对后就能把任务交给对方跑")
+        SectionTitle(stringResource(R.string.tx_eea76d6e), stringResource(R.string.tx_4f487d11))
         CardBox {
             Text(Team.self(), fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
@@ -77,9 +93,9 @@ private fun LanBody() {
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("允许对面派活进来", fontSize = 14.sp, color = TextPrimary)
+                    Text(stringResource(R.string.tx_57d21753), fontSize = 14.sp, color = TextPrimary)
                     Text(
-                        if (A2aSrv.running) "正在 " + A2aSrv.baseUrl() + " 接活" else "未接活",
+                        if (A2aSrv.running) stringResource(R.string.tx_a9fc6f2f) + A2aSrv.baseUrl() + " 接活" else stringResource(R.string.tx_cca228c7),
                         fontSize = 10.sp,
                         color = if (A2aSrv.running) OkGreen else TextSecondary
                     )
@@ -104,9 +120,9 @@ private fun LanBody() {
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Field(label = "接活端口", value = a2aPortDraft, onValueChange = { a2aPortDraft = it }, placeholder = "8720")
+            Field(label = stringResource(R.string.tx_bf8b66f3), value = a2aPortDraft, onValueChange = { a2aPortDraft = it }, placeholder = "8720")
             Spacer(Modifier.height(8.dp))
-            GhostButton("保存端口并重开", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_a25be09d), modifier = Modifier.height(38.dp)) {
                 val p = a2aPortDraft.trim().toIntOrNull()
                 if (p == null || p !in 1024..65535) {
                     a2aMsg = "端口要 1024~65535 之间的数字"
@@ -121,7 +137,7 @@ private fun LanBody() {
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "对面要在它那台也打开这个开关，再跟你配对一次——配对时两边会交换接活端口与凭据，之后模型就能互相派活。",
+                stringResource(R.string.tx_42ac4191),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
@@ -131,13 +147,13 @@ private fun LanBody() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("设备发现", "打开后本机才应答别人的扫描；关掉只影响「被发现」，自己扫别人仍然可以")
+        SectionTitle(stringResource(R.string.tx_bf77571e), stringResource(R.string.tx_8624e553))
         CardBox {
             Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("允许被发现", fontSize = 14.sp, color = TextPrimary)
+                    Text(stringResource(R.string.tx_37e72ddf), fontSize = 14.sp, color = TextPrimary)
                     Text(
-                        if (Lan.isRunning()) "正在监听端口 ${c.port}" else "未监听",
+                        if (Lan.isRunning()) stringResource(R.string.tx_19dd9c89, c.port) else stringResource(R.string.tx_a6821857),
                         fontSize = 10.sp,
                         color = if (Lan.isRunning()) OkGreen else TextSecondary
                     )
@@ -146,7 +162,7 @@ private fun LanBody() {
                     checked = c.on,
                     onCheckedChange = { on ->
                         val err = LanCfg.save(LanCfg.Cfg(on, c.name, c.port, c.conc, c.code))
-                        msg = if (err.isNotEmpty()) err else if (on) Lan.start().ifEmpty { "已开始监听" } else {
+                        msg = if (err.isNotEmpty()) err else if (on) Lan.start().ifEmpty { b.ai.App.self.getString(R.string.tx_dc7f3530) } else {
                             Lan.stop(); "已停止监听"
                         }
                         tick++
@@ -156,52 +172,52 @@ private fun LanBody() {
             }
             if (msg.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                Text(msg, fontSize = 11.sp, color = if (msg.contains("已") || msg.contains("成功")) OkGreen else DangerRed)
+                Text(msg, fontSize = 11.sp, color = if (msg.contains("已") || msg.contains(stringResource(R.string.tx_330363df))) OkGreen else DangerRed)
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("本机身份", "名字和配对码是给对方看的；配对码换了以后旧码立刻失效")
+        SectionTitle(stringResource(R.string.tx_53528c9d), stringResource(R.string.tx_49d52c8d))
         CardBox {
-            Field(label = "本机名称", value = name, onValueChange = { name = it }, placeholder = "客厅平板")
+            Field(label = stringResource(R.string.tx_4c9562fe), value = name, onValueChange = { name = it }, placeholder = stringResource(R.string.tx_857abb80))
             Spacer(Modifier.height(8.dp))
-            GhostButton("保存名称", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_160f1630), modifier = Modifier.height(38.dp)) {
                 val err = LanCfg.save(LanCfg.Cfg(c.on, name, c.port, c.conc, c.code))
-                msg = if (err.isEmpty()) "名称已保存" else err
+                msg = if (err.isEmpty()) b.ai.App.self.getString(R.string.tx_2bf9e6b5) else err
                 tick++
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("配对码 " + c.code, fontSize = 16.sp, color = TextPrimary)
-                    Text("对方配对时要输这一串", fontSize = 10.sp, color = TextSecondary)
+                    Text(stringResource(R.string.tx_03d448d3) + c.code, fontSize = 16.sp, color = TextPrimary)
+                    Text(stringResource(R.string.tx_7970c992), fontSize = 10.sp, color = TextSecondary)
                 }
-                GhostButton("换一个", modifier = Modifier.height(34.dp).width(76.dp)) {
+                GhostButton(stringResource(R.string.tx_b152d341), modifier = Modifier.height(34.dp).width(76.dp)) {
                     LanCfg.regenCode()
                     msg = "配对码已更新，旧码作废"
                     tick++
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Text("设备号 " + LanCfg.selfId(), fontSize = 10.sp, color = TextSecondary)
+            Text(stringResource(R.string.tx_97ab69b3) + LanCfg.selfId(), fontSize = 10.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("发现设备", "同一 Wi-Fi 下点扫描；对方也要把「允许被发现」打开")
+        SectionTitle(stringResource(R.string.tx_8d4d4b42), stringResource(R.string.tx_5d029e5a))
         CardBox {
-            GhostButton("扫描局域网", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_3a8e52ef), modifier = Modifier.height(38.dp)) {
                 msg = "正在扫描…"
                 scope.launch {
                     val r = withContext(Dispatchers.IO) { Lan.scan(2500) }
                     found = r
-                    msg = if (r.isEmpty()) "没扫到设备（不同网段，或对面没开发现）" else "扫到 ${r.size} 台"
+                    msg = if (r.isEmpty()) b.ai.App.self.getString(R.string.tx_d37a76e7) else b.ai.App.self.getString(R.string.tx_1488e82c, r.size)
                 }
             }
             if (found.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
                 Field(
-                    label = "对方的配对码",
+                    label = stringResource(R.string.tx_4a8edc80),
                     value = codeDraft,
                     onValueChange = { codeDraft = it },
-                    placeholder = "6 位数字"
+                    placeholder = stringResource(R.string.tx_a87595f9)
                 )
                 Spacer(Modifier.height(8.dp))
                 found.forEach { p ->
@@ -212,12 +228,12 @@ private fun LanBody() {
                         Column(Modifier.weight(1f)) {
                             Text(p.name.ifEmpty { p.id }, fontSize = 14.sp, color = TextPrimary)
                             Text(
-                                "${p.ip}:${p.port}" + if (p.a2aPort > 0) " · 可接活" else " · 没开协作",
+                                "${p.ip}:${p.port}" + if (p.a2aPort > 0) stringResource(R.string.tx_d424955f) else stringResource(R.string.tx_af1f045b),
                                 fontSize = 10.sp,
                                 color = TextSecondary
                             )
                         }
-                        GhostButton("配对", modifier = Modifier.height(34.dp).width(76.dp)) {
+                        GhostButton(stringResource(R.string.tx_e33ff6aa), modifier = Modifier.height(34.dp).width(76.dp)) {
                             msg = "正在配对…"
                             scope.launch {
                                 val err = withContext(Dispatchers.IO) { Lan.pair(p, codeDraft) }
@@ -231,46 +247,46 @@ private fun LanBody() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("已配对设备", "探活成功才算在线；点「协作」看对面能不能接活，能接活就能把任务派过去")
+        SectionTitle(stringResource(R.string.tx_96bfbadc), stringResource(R.string.tx_8eafe666))
         CardBox {
             if (peers.isEmpty()) {
-                Text("还没有配对过的设备", fontSize = 12.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_6261755b), fontSize = 12.sp, color = TextSecondary)
             } else {
                 peers.forEachIndexed { i, p ->
                     if (i > 0) Spacer(Modifier.height(10.dp))
                     Column(Modifier.fillMaxWidth()) {
                         Text(p.name.ifEmpty { p.id }, fontSize = 14.sp, color = TextPrimary)
                         val st = when (online[p.id]) {
-                            true -> "在线"
-                            false -> "无应答"
-                            null -> "未探活"
+                            true -> stringResource(R.string.tx_68905cf3)
+                            false -> stringResource(R.string.tx_ac6913a4)
+                            null -> stringResource(R.string.tx_fc7d3267)
                         }
                         Text(
-                            "${p.ip}:${p.port} · $st · " + (if (p.a2aPort > 0) "可接活 ${p.a2aPort}" else "没开协作"),
+                            "${p.ip}:${p.port} · $st · " + (if (p.a2aPort > 0) stringResource(R.string.tx_68e55fc5, p.a2aPort) else stringResource(R.string.tx_6d83b7fe)),
                             fontSize = 10.sp,
                             color = if (online[p.id] == true) OkGreen else TextSecondary
                         )
                         Spacer(Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            GhostButton("探活", modifier = Modifier.height(32.dp).width(64.dp)) {
+                            GhostButton(stringResource(R.string.tx_0edf7a8b), modifier = Modifier.height(32.dp).width(64.dp)) {
                                 msg = "正在探活…"
                                 scope.launch {
                                     val ok = withContext(Dispatchers.IO) { Lan.ping(p) }
                                     online = online + (p.id to ok)
-                                    msg = if (ok) "${p.name.ifEmpty { p.id }} 在线" else "没收到应答"
+                                    msg = if (ok) "${p.name.ifEmpty { p.id }} 在线" else b.ai.App.self.getString(R.string.tx_ca4ec8a5)
                                     tick++
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
-                            GhostButton("协作", modifier = Modifier.height(32.dp).width(64.dp)) {
+                            GhostButton(stringResource(R.string.tx_904e740d), modifier = Modifier.height(32.dp).width(64.dp)) {
                                 detail = "正在问对面…"
                                 scope.launch {
                                     val r = withContext(Dispatchers.IO) { Team.card(p) }
-                                    detail = if (r.ok) r.text.take(300) else "协作不通：" + r.text
+                                    detail = if (r.ok) r.text.take(300) else b.ai.App.self.getString(R.string.tx_cdd9c35a) + r.text
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
-                            GhostButton("移除", modifier = Modifier.height(32.dp).width(64.dp)) {
+                            GhostButton(stringResource(R.string.tx_86048b4f), modifier = Modifier.height(32.dp).width(64.dp)) {
                                 LanCfg.removePeer(p.id)
                                 msg = "已解除配对"
                                 detail = ""
@@ -286,11 +302,11 @@ private fun LanBody() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("传输端口与并发", "端口要两台设备一致才能互相发现；并发是同时传输的任务数上限")
+        SectionTitle(stringResource(R.string.tx_41b91d77), stringResource(R.string.tx_d765fbf8))
         CardBox {
-            Field(label = "端口", value = portDraft, onValueChange = { portDraft = it }, placeholder = "8388")
+            Field(label = stringResource(R.string.tx_c76cfefe), value = portDraft, onValueChange = { portDraft = it }, placeholder = "8388")
             Spacer(Modifier.height(8.dp))
-            GhostButton("保存端口", modifier = Modifier.height(38.dp)) {
+            GhostButton(stringResource(R.string.tx_4bece587), modifier = Modifier.height(38.dp)) {
                 val p = portDraft.trim().toIntOrNull()
                 if (p == null || p !in 1024..65535) {
                     msg = "端口要 1024~65535 之间的数字"
@@ -310,16 +326,16 @@ private fun LanBody() {
             }
         }
         Spacer(Modifier.height(14.dp))
-        SectionTitle("热点自建", "两个设备都不在同一个 Wi-Fi 时，用手机热点当传输通道：一台开热点，另一台连上再扫描")
+        SectionTitle(stringResource(R.string.tx_9e1fd27b), stringResource(R.string.tx_34a1a141))
         CardBox {
             Text(
-                "开热点那台记得把这里也设成同一个端口；连上以后扫描不到就先看是不是被系统挡了局域网访问权限。",
+                stringResource(R.string.tx_c054d288),
                 fontSize = 11.sp,
                 color = TextSecondary
             )
             Spacer(Modifier.height(8.dp))
-            GhostButton("打开热点设置", modifier = Modifier.height(38.dp)) {
-                msg = if (openTether()) "已打开系统热点设置" else "这台机器没有热点设置页，去系统设置里找「个人热点」"
+            GhostButton(stringResource(R.string.tx_87d6084a), modifier = Modifier.height(38.dp)) {
+                msg = if (openTether()) b.ai.App.self.getString(R.string.tx_0eafe8f0) else b.ai.App.self.getString(R.string.tx_8a67e9a7)
             }
         }
         Spacer(Modifier.height(10.dp))

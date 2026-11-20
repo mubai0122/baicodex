@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:21
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.chat
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
@@ -101,7 +115,7 @@ fun SessionSheet(onClose: () -> Unit) {
             Text("${list.size}", fontSize = 11.sp, color = TextSecondary)
             Spacer(Modifier.weight(1f))
             Text(
-                if (managing) "完成" else "管理",
+                if (managing) stringResource(R.string.tx_769d88e4) else stringResource(R.string.tx_08b55fea),
                 fontSize = 12.sp,
                 color = AccentBlue,
                 modifier = Modifier
@@ -212,7 +226,7 @@ fun SessionSheet(onClose: () -> Unit) {
                             Spacer(Modifier.weight(1f))
                             if (managing) {
                                 Text(
-                                    if (picked.contains(s.id)) "已选" else "未选",
+                                    if (picked.contains(s.id)) stringResource(R.string.tx_7bf54e28) else stringResource(R.string.tx_55dc6ec0),
                                     fontSize = 10.sp,
                                     color = if (picked.contains(s.id)) AccentBlue else TextSecondary
                                 )
@@ -261,24 +275,24 @@ fun SessionSheet(onClose: () -> Unit) {
             if (managing) {
                 //批量操作：导出选了哪些就导哪些，删一定要点两下
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    Text("${picked.size} 已选", fontSize = 10.sp, color = TextSecondary)
+                    Text(stringResource(R.string.tx_829cb2a2, picked.size), fontSize = 10.sp, color = TextSecondary)
                     Spacer(Modifier.weight(1f))
-                    GhostButton("导入…") { picker.launch("application/json") }
+                    GhostButton(stringResource(R.string.tx_27c2101a)) { picker.launch("application/json") }
                     Spacer(Modifier.width(10.dp))
-                    GhostButton("导出选中") {
+                    GhostButton(stringResource(R.string.tx_462400c7)) {
                         val (f, msg) = SessionIo.export(picked.toList())
                         note = msg
                         if (f != null) picked.clear()
                     }
                     Spacer(Modifier.width(10.dp))
                     GhostButton(
-                        if (wipeArm) "确认删除 ${picked.size} 个" else "删除选中"
+                        if (wipeArm) stringResource(R.string.tx_b90649bb, picked.size) else stringResource(R.string.tx_cd0b9aca)
                     ) {
                         if (!wipeArm) {
                             wipeArm = true
                         } else {
                             picked.forEach { Agent.deleteSession(it) }
-                            note = "已删除 ${picked.size} 个会话"
+                            note = b.ai.App.self.getString(R.string.tx_2cf379fe, picked.size)
                             picked.clear()
                             wipeArm = false
                             reload()
@@ -287,7 +301,7 @@ fun SessionSheet(onClose: () -> Unit) {
                 }
             } else {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GhostButton("导入…") { picker.launch("application/json") }
+                GhostButton(stringResource(R.string.tx_27c2101a)) { picker.launch("application/json") }
                 Spacer(Modifier.width(10.dp))
                 GhostButton(stringResource(R.string.ss_new)) {
                     Agent.newSession()

@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:19
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.glass
 import b.ai.ui.widget.tap
 
@@ -81,16 +95,9 @@ fun GlassPanel(
     Column(
         modifier
             .then(
-                if (glass) {
-                    Modifier.shadow(
-                        elevation = if (strong) 16.dp else 8.dp,
-                        shape = shape,
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.10f)
-                    )
-                } else {
-                    Modifier
-                }
+                //灰色投影去掉（用户反馈「设置卡片有灰阴影」）：玻璃自己靠描边与高光立起来，
+                //再叠一层黑投影会在浅色底上糊出一圈脏灰边
+                Modifier
             )
             .clip(shape)
             //只观察指针位置，不消费事件，滚动和点击都照常

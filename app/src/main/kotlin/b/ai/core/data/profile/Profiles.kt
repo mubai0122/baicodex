@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:06
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.data.profile
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.io.Paths
@@ -28,7 +42,11 @@ data class ModelProfile(
     /** 这条配置自己的上下文窗口（token）；0 表示跟随全局「模型窗口」设置 */
     val ctxTotal: Int = 0,
     /** 名字是否用户自定义：false 时始终按「厂商 · 模型」显示，改模型名字跟着变 */
-    val custom: Boolean = false
+    val custom: Boolean = false,
+    /** 这条模型认的思考档位（逗号分隔）；空 = 按厂商/型号自动推断 */
+    val thinkLevels: String = "",
+    /** 档位明细（JSON：显示名 / 写入路径 / 写入值），与 thinkLevels 一起存 */
+    val thinkLevelsJson: String = ""
 ) {
     val autoLabel: String get() = Profiles.autoLabel(providerId, model)
     val label: String get() = if (custom && name.isNotBlank()) name else autoLabel
@@ -173,6 +191,9 @@ object Profiles {
                 nativeSearch = o.optBoolean("nativeSearch", supportsNativeSearch(prov)),
                 maxTokens = o.optInt("maxTokens", o.optInt("max_tokens", 0)),
                 ctxTotal = o.optInt("ctxTotal", 0),
+                //档位以前只在内存里，没落盘，重启就丢（用户反馈「填了没用」）；现在跟配置一起存
+                thinkLevels = o.optString("thinkLevels", ""),
+                thinkLevelsJson = o.optString("thinkLevelsJson", ""),
                 //老文件没这个字段：名字正好等于自动名就算自动名，跟着模型走
                 custom = o.optBoolean("custom", name.isNotBlank() && name != autoLabel(prov, modelName))
             )
@@ -206,6 +227,8 @@ object Profiles {
                     .put("nativeSearch", p.nativeSearch)
                     .put("maxTokens", p.maxTokens)
                     .put("ctxTotal", p.ctxTotal)
+                    .put("thinkLevels", p.thinkLevels)
+                    .put("thinkLevelsJson", p.thinkLevelsJson)
                     .put("custom", p.custom)
             )
         }
@@ -282,6 +305,8 @@ object Profiles {
         Cfg.maxTokens = p.maxTokens
         //窗口不写进全局那份设置：全局是用户手填的默认值，这条配置没填（0）时继续用它
         Cfg.profCtxTotal = p.ctxTotal
+        Cfg.profThinkLevels = p.thinkLevels
+        Cfg.profThinkLevelsJson = p.thinkLevelsJson
         Cfg.profileName = p.name
         Cfg.profileCustom = p.custom
     } //把配置灌进全局
@@ -300,6 +325,14 @@ object Profiles {
         "openai", "deepseek", "moonshot", "dashscope", "zhipu" -> true
         else -> false
     } //原生 search 默认值
+
+    /**
+     * 这家厂商的原生联网搜索是不是「必须在思考模式下」：
+     * DeepSeek 官方硬约束（实测 400）——client tools 只能和 deepseek_web_search 一起、且在思考模式使用。
+     * 所以这家不是「思考与搜索互斥」，而是「搜索必须先开思考」。
+     */
+    fun searchNeedsThink(providerId: String): Boolean =
+        providerId.contains("deepseek", true) || b.ai.core.cfg.app.Cfg.baseUrl.contains("deepseek", true)
 
     /** 把当前 Cfg 的状态写回选中条目：实时跟随，改一个字段就落一次 */
     fun capture() {
@@ -324,7 +357,9 @@ object Profiles {
             reasoning = Cfg.modelReasoning,
             nativeSearch = Cfg.modelNativeSearch,
             maxTokens = Cfg.maxTokens,
-            ctxTotal = Cfg.profCtxTotal
+            ctxTotal = Cfg.profCtxTotal,
+            thinkLevels = Cfg.profThinkLevels.trim(),
+            thinkLevelsJson = Cfg.profThinkLevelsJson
         )
         upsert(p)
     } //当前值写回

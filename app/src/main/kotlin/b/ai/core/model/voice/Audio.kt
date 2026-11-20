@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:08
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.model.voice
 import b.ai.core.cfg.app.Cfg
 import b.ai.net.api.llm.text
@@ -61,7 +75,9 @@ object Audio {
             r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             //采样率按设置来：8k 适合窄带语音，16k 各家通吃，48k 留给音乐场景
-            r.setAudioSamplingRate(Cfg.asrRate.coerceIn(8000, 48000))
+            r.setAudioSamplingRate(
+                if (engine() == "sherpa") 16000 else Cfg.asrRate.coerceIn(8000, 48000)
+            )
             r.setAudioChannels(1)
             r.setOutputFile(f.absolutePath)
             r.prepare()
@@ -113,7 +129,7 @@ object Audio {
         busy = true
         error = ""
         Thread({
-            val r = runCatching { transcribe(f) }
+            val r = runCatching { transcribeAny(f) }
             f.delete()
             main.post {
                 busy = false
@@ -163,6 +179,80 @@ object Audio {
         recFile?.delete()
         recFile = null
     } //放弃这段录音
+
+    /** 清空错误：界面 3 秒自动消失与切换输入方式时调 */
+    fun clearError() {
+        error = ""
+    } //清错误
+
+    /** 当前 STT 引擎：asrEngine 优先，空则按旧的 asrMode 回落；离线模式下远程引擎统一回落本地 */
+    fun engine(): String {
+        val e = Cfg.asrEngine.trim().ifEmpty {
+            if (Cfg.asrMode == "api") "openai" else "sys"
+        }
+        //离线模式只允许本地：老配置里残留的 openai/deepgram 不再生效，避免音频被传出去
+        if (Cfg.asrOffline && (e == "openai" || e == "deepgram")) return "sys"
+        return e
+    } //当前引擎
+
+    /** 按引擎分派：远程两种都返回正文，本地 sherpa 需要内置运行时 */
+    fun transcribeAny(f: File): String = when (engine()) {
+        "deepgram" -> transcribeDeepgram(f)
+        "sherpa" -> transcribeSherpa(f)
+        else -> transcribe(f)
+    } //按引擎转写
+
+    /**
+     * Deepgram：POST /v1/listen，鉴权是 `Token <key>`（不是 Bearer），
+     * 音频走裸 body（不是 multipart），返回 results.channels[0].alternatives[0].transcript。
+     */
+    fun transcribeDeepgram(f: File): String {
+        val key = Cfg.asrDgKey.trim()
+        if (key.isEmpty()) throw IllegalStateException("Deepgram 还没填 API Key：设置 → 模型 → 语音输入")
+        val model = Cfg.asrDgModel.ifBlank { "nova-3" }
+        val lang = Cfg.asrLang.substringBefore('-').ifBlank { "zh" }
+        val url = URL(
+            Cfg.asrDgUrl.trimEnd('/') + "/v1/listen?model=" + java.net.URLEncoder.encode(model, "UTF-8") +
+                "&language=" + java.net.URLEncoder.encode(lang, "UTF-8") + "&smart_format=true&punctuate=true"
+        )
+        val c = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            connectTimeout = 30000
+            readTimeout = 120000
+            setRequestProperty("Authorization", "Token $key")
+            setRequestProperty("Content-Type", if (f.name.endsWith(".wav")) "audio/wav" else "audio/mp4")
+        }
+        c.outputStream.use { it.write(f.readBytes()) }
+        val code = c.responseCode
+        val text = (if (code in 200..299) c.inputStream else c.errorStream)
+            ?.bufferedReader()?.use { it.readText() }.orEmpty()
+        c.disconnect()
+        if (code !in 200..299) throw IllegalStateException("Deepgram HTTP $code " + text.take(200))
+        val t = runCatching {
+            JSONObject(text).getJSONObject("results").getJSONArray("channels")
+                .getJSONObject(0).getJSONArray("alternatives").getJSONObject(0).optString("transcript")
+        }.getOrDefault("")
+        if (t.isBlank()) throw IllegalStateException("Deepgram 没识别出内容")
+        return t.trim()
+    } //Deepgram 转写
+
+    /**
+     * Sherpa-NCNN 本地识别：需要 libsherpa-ncnn 与模型文件，当前构建没打进来，
+     * 这里给出明确指引而不是静默失败。
+     */
+    fun transcribeSherpa(f: File): String {
+        if (!SherpaAsr.runtimeOk()) {
+            throw IllegalStateException("本地识别运行时没加载起来：当前安装包可能不是 arm64 版本")
+        }
+        val dir = Cfg.asrSherpaDir.trim()
+        if (!SherpaAsr.modelOk(dir)) {
+            throw IllegalStateException("模型目录不完整（缺 param/bin/tokens）：$dir")
+        }
+        val t = SherpaAsr.recognize(f, dir)
+        if (t.isBlank()) throw IllegalStateException("没听清，再说一次")
+        return t
+    } //Sherpa 本地转写
 
     /** 音频转文字：multipart 上传，返回识别出的正文；失败抛异常由调用方出提示 */
     fun transcribe(f: File): String {

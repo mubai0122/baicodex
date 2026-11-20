@@ -284,6 +284,8 @@
     <string name="cs_close">閉じる</string>
     <string name="cs_summary">コンテキスト要約</string>
     <string name="cs_summary_done">以前の会話を圧縮しました</string>
+    <string name="cs_msg_ops">メッセージ操作</string>
+    <string name="cs_copy_all">全文をコピー</string>
     <string name="cs_this_msg">このメッセージ</string>
     <string name="cs_this_reply">この返信</string>
     <string name="cs_no_content">（内容なし）</string>
@@ -1616,4 +1618,990 @@
     <string name="acc_mine_fav">お気に入り</string>
     <string name="acc_up_empty">まだ投稿がありません</string>
     <string name="acc_fav_empty">まだお気に入りがありません</string>
+    <string name="pm_top_p">核サンプリング</string>
+    <string name="pm_top_k">候補数</string>
+    <string name="pm_presence">出現ペナルティ</string>
+    <string name="pm_frequency">頻度ペナルティ</string>
+    <string name="pm_repeat">繰り返しペナルティ</string>
+    <string name="pm_top_p_key">top_p</string>
+    <string name="pm_top_k_key">top_k</string>
+    <string name="pm_presence_key">presence_penalty</string>
+    <string name="pm_frequency_key">frequency_penalty</string>
+    <string name="pm_repeat_key">repeat_penalty</string>
+    <string name="tx_011d09ad" formatted="false">多段スライダー</string>
+    <string name="tx_02895542" formatted="false">定期タスクと予約済みワークフローを時刻順に並べた先頭3件</string>
+    <string name="tx_03dc6b51" formatted="false">＋ 設定を追加</string>
+    <string name="tx_041b5d0d" formatted="false">お気に入り、および現在の会話を Markdown に書き出し</string>
+    <string name="tx_0450050c" formatted="false">ワークスペースは AI がファイルを読み書きする場所。ここが未通過だとディレクトリの紐付けが失敗し続ける</string>
+    <string name="tx_0556c32b" formatted="false">アクティブ部分とスライダーの縁取りがテーマ色に追従</string>
+    <string name="tx_06972491" formatted="false">未許可のため、システムが実行時刻を数分〜数十分後ろにずらす</string>
+    <string name="tx_06d23d3f" formatted="false">ペルソナが先（既定）</string>
+    <string name="tx_078ab933" formatted="false">マッチ方式</string>
+    <string name="tx_08b3859a" formatted="false">会話をまたぐ長期メモリ。モデルが自動で読み書きし、ここから直接追加・削除・統合もできる</string>
+    <string name="tx_090286ed" formatted="false">下書きの有効期間</string>
+    <string name="tx_09e4e337" formatted="false">2〜4秒</string>
+    <string name="tx_0a60a66c" formatted="false">消去する</string>
+    <string name="tx_0b5342ec" formatted="false">全体フォント / 自分の吹き出し / AI 返信ごとに設定でき、インポート後すぐ反映</string>
+    <string name="tx_0c1e4c99" formatted="false">システムの「ジェスチャーナビゲーション」設定へ</string>
+    <string name="tx_0c4316d9" formatted="false">1 回の最長録音時間</string>
+    <string name="tx_0c47bf01" formatted="false">許可済み。他のアプリの上に重ねて表示できる</string>
+    <string name="tx_0dd7ef22" formatted="false">有効期限を過ぎた下書きは次に会話を切り替えたときに自動削除。送信に成功すると下書きはすぐ消える。</string>
+    <string name="tx_0e2af5f5" formatted="false">時刻どおりに実行できるか</string>
+    <string name="tx_0e48617f" formatted="false">入力欄右側の四芒星ボタンが使う接続とプロンプト。最適化後はワンタップで原文に戻せる</string>
+    <string name="tx_110dd655" formatted="false">残留時間</string>
+    <string name="tx_112be922" formatted="false">全体設定に従う</string>
+    <string name="tx_119c6296" formatted="false">オフのため、ワークスペースはアプリ専用のプライベートディレクトリのみ</string>
+    <string name="tx_12c3b1d7" formatted="false">各タスク開始時に常駐通知を出す。Xiaomi / HUAWEI 端末では自動で島に表示される</string>
+    <string name="tx_15ec4b98" formatted="false">正確なアラーム</string>
+    <string name="tx_16a79761" formatted="false">既定のリクエストパス</string>
+    <string name="tx_18c63459" formatted="false">既定</string>
+    <string name="tx_19497c0b" formatted="false">Deepgram モデル</string>
+    <string name="tx_1a212ec6" formatted="false">レベルの順序はスライダーの低い順で、最大 5 レベル。値は JSON 形式で記述（文字列は引用符付き、数値と真偽値はそのまま）</string>
+    <string name="tx_1b605a1e" formatted="false">0 = 端でレンズ変形なし。大きいほど端の湾曲が強くなる</string>
+    <string name="tx_1bf1dcd4" formatted="false">オン / オフ時に書き込む</string>
+    <string name="tx_1bfaf093" formatted="false">モデルをマッチ（完全な型番、複数はカンマ区切り）</string>
+    <string name="tx_1cf2d4cf" formatted="false">カスタムが先（プリセット優先）</string>
+    <string name="tx_1da7adbb" formatted="false">%.1f秒</string>
+    <string name="tx_1e4ab751" formatted="false">常時システムプロンプトに連結され、返信の書き方を決める。ペルソナカードの設定に上乗せされ、上書きはしない</string>
+    <string name="tx_214a7d7d" formatted="false">例：結論を先に、根拠を後に。表は 2 列のみ。コードブロックには言語を明記</string>
+    <string name="tx_2280a03a" formatted="false">チャットの思考スイッチを無視し、常に「オン」の値で送信</string>
+    <string name="tx_228526dc" formatted="false">ワークフロー</string>
+    <string name="tx_22b4334f" formatted="false">下書き</string>
+    <string name="tx_231fdea9" formatted="false">A2A を開く</string>
+    <string name="tx_2474be5f" formatted="false">ホワイトリスト外。長くロックすると通知がシステムに消される可能性がある</string>
+    <string name="tx_25b7fe70" formatted="false">encoder/decoder/joiner と tokens を含むディレクトリ</string>
+    <string name="tx_2604bcce" formatted="false">STT エンジン</string>
+    <string name="tx_2627160e" formatted="false">許可済み。設定した時刻に実行</string>
+    <string name="tx_2898cdb7" formatted="false">Cookie と Web キャッシュを消去</string>
+    <string name="tx_28d68b24" formatted="false">ペルソナプロンプトとの連結順序</string>
+    <string name="tx_2911c1e5" formatted="false">バックグラウンド維持</string>
+    <string name="tx_2ac5cf31" formatted="false">この項目をスキップ</string>
+    <string name="tx_2ae34d78" formatted="false">プレースホルダーはシステムプロンプトを組み立てるときに実際の値（時刻 / バッテリー / 現在のモデルなど）へ置換される。チャット入力欄の波かっこはそのまま</string>
+    <string name="tx_2ecb1bb9" formatted="false">フローティングチャット</string>
+    <string name="tx_2f4aaddd" formatted="false">削除</string>
+    <string name="tx_366d6528" formatted="false">ポップアップとスライダー</string>
+    <string name="tx_3a605fa6" formatted="false">バッテリー最適化のホワイトリスト済み。ロック後も通知は消されない</string>
+    <string name="tx_3ab3186c" formatted="false">3 種類の自動化の有効状態。邪魔なときは一括停止、あとで一括復帰できる</string>
+    <string name="tx_3b4c7ed4" formatted="false">フローティングチャットを表示</string>
+    <string name="tx_3c70a377" formatted="false">タイトル生成用モデル</string>
+    <string name="tx_3ceeb66d" formatted="false">すべてのファイルへのアクセス</string>
+    <string name="tx_3df99821" formatted="false">ローカル 2 項目 + リモート 2 項目</string>
+    <string name="tx_3fe3558b" formatted="false">ルール順に思考パラメータを照合し、最初に一致したものを適用</string>
+    <string name="tx_4210b61b" formatted="false">ポップアップの角丸</string>
+    <string name="tx_423b0645" formatted="false">操作監査ログ</string>
+    <string name="tx_42c4c7c5" formatted="false">top_p は低いほど保守的で、1.0 は絞り込みなし。top_k は国内数社とローカル推論でのみ有効で、0 はこのフィールドを送らない意味</string>
+    <string name="tx_44e4d7a3" formatted="false">メモリ</string>
+    <string name="tx_47aeba9f" formatted="false">100% で元の見た目。下げると背景が透け、文字も読みにくくなる</string>
+    <string name="tx_4a61c29a" formatted="false">オフラインモード</string>
+    <string name="tx_4d6e461d" formatted="false">カスタムフォントがありません。左から ttf / otf をインポート</string>
+    <string name="tx_4dc6270e" formatted="false">各行はシステムプロンプトと一緒に送信され、削除すると効かなくなる</string>
+    <string name="tx_4f3d139b" formatted="false">下書きに画像を残す</string>
+    <string name="tx_4fa79f06" formatted="false">スライダーのレベル</string>
+    <string name="tx_4fcdbfe5" formatted="false">未通過</string>
+    <string name="tx_520a162c" formatted="false">思考設定を新規作成</string>
+    <string name="tx_520e366b" formatted="false">常に思考をオン</string>
+    <string name="tx_52273aab" formatted="false">$it 日</string>
+    <string name="tx_529f8817" formatted="false">100% で完全に不透明。下げると後ろが透けるが、文字は読みにくくなる</string>
+    <string name="tx_5489c494" formatted="false">この部分は毎回ペルソナ設定とカスタムプロンプトの後に連結され、ペルソナカードの設定は上書きしない。</string>
+    <string name="tx_5660bcd2" formatted="false">通知</string>
+    <string name="tx_5756d0e9" formatted="false">期限なし</string>
+    <string name="tx_582085bb" formatted="false">整理用モデル</string>
+    <string name="tx_59fee9a5" formatted="false">ワークスペースの事前チェック</string>
+    <string name="tx_5ac2011a" formatted="false">キャンセル</string>
+    <string name="tx_5b921cf1" formatted="false">定期タスクはシステムのアラーム・通知・バックグラウンド維持の 3 点セット。1 つ欠けると「設定したのに動かない」になる</string>
+    <string name="tx_5d94fa40" formatted="false">トラックを高くすると内側のドットも比例して大きくなる</string>
+    <string name="tx_5dc7fa2b" formatted="false">思考設定</string>
+    <string name="tx_5e213ddb" formatted="false">オンにする</string>
+    <string name="tx_5e34a485" formatted="false">権限を許可</string>
+    <string name="tx_5e408cf7" formatted="false">ローカルエンジンのみ：システム認識 / Sherpa NCNN</string>
+    <string name="tx_5f4766cc" formatted="false">すぐにたたむ</string>
+    <string name="tx_607c0a3b" formatted="false">メモリを整理</string>
+    <string name="tx_625fb26b" formatted="false">キャンセル</string>
+    <string name="tx_629de16a" formatted="false">取得中…</string>
+    <string name="tx_637321f6" formatted="false">要約用モデル</string>
+    <string name="tx_645dbc55" formatted="false">プレビュー</string>
+    <string name="tx_653d2130" formatted="false">整理中…</string>
+    <string name="tx_65557288" formatted="false">例：Android + Kotlin 向け、文は短く、文の間はリストで</string>
+    <string name="tx_694297ce" formatted="false">書き込み先パス（空欄なら既定のパス）</string>
+    <string name="tx_69c6c8f3" formatted="false">繰り返し制御パラメータ</string>
+    <string name="tx_6b8361f5" formatted="false">リクエストパスごとに固定値を書き込む</string>
+    <string name="tx_6e63dd3c" formatted="false">A2A 1.0 インターフェース。この端末をクライアントとして他ノードを呼ぶことも、サーバーとしてタスクを受けることもできる</string>
+    <string name="tx_70607644" formatted="false">予定はまだありません。上の「管理」で新規作成するか、ワークフローに時刻を設定してください。</string>
+    <string name="tx_707c976d" formatted="false">未設定。メーカー / 型番から自動推定</string>
+    <string name="tx_709d84ce" formatted="false">タスク通知とダイナミックアイランド</string>
+    <string name="tx_70b562da" formatted="false">会話と書き出し</string>
+    <string name="tx_70d093e2" formatted="false">空欄なら内蔵テンプレートのみ。コードモードはコード要求、それ以外は日常タスクに沿って補完する。</string>
+    <string name="tx_720ab972" formatted="false">フローティングウィンドウの権限</string>
+    <string name="tx_73d7e891" formatted="false">ポップアップの角丸・スライダーの配色</string>
+    <string name="tx_74f960c9" formatted="false">メモリはまだない</string>
+    <string name="tx_75af6edf" formatted="false">本文と吹き出しの端との距離。長文で余白が欲しければ増やし、端に寄せたければ 0 に</string>
+    <string name="tx_7725233f" formatted="false">一致する設定項目がありません：$key</string>
+    <string name="tx_79a86fd2" formatted="false">既定はオフ。テキストとファイルのみ保持し、画像は保存しない</string>
+    <string name="tx_79f09f89" formatted="false">プロバイダー</string>
+    <string name="tx_7b5ff17c" formatted="false">全体のインデント</string>
+    <string name="tx_7bb29de8" formatted="false">複数ステップを順に実行し、各ステップをサブエージェントが担当。定期実行でき、失敗時は再試行かスキップを選べる</string>
+    <string name="tx_7c138c54" formatted="false">＋ レベルを追加</string>
+    <string name="tx_7e382efd" formatted="false">開発者モードを解除しました。このページの最下部を参照</string>
+    <string name="tx_7ec62ce2" formatted="false">モデルが場面に応じて言語を書き換えるのを許可</string>
+    <string name="tx_7fc624f8" formatted="false">特別な権限</string>
+    <string name="tx_8000f187" formatted="false">モデル</string>
+    <string name="tx_81ef7ad6" formatted="false">ルール順に思考パラメータを照合し、最初に一致したものを適用。どれも一致しなければ内蔵の既定値</string>
+    <string name="tx_8280b5ae" formatted="false">タスク通知</string>
+    <string name="tx_8456bc40" formatted="false">フォント</string>
+    <string name="tx_846cdaf0" formatted="false">通知の権限</string>
+    <string name="tx_84defbe5" formatted="false">インポート失敗：ttf / otf / ttc のみ対応</string>
+    <string name="tx_84e40c91" formatted="false">最適化の方向をカスタム</string>
+    <string name="tx_85067db3" formatted="false">実行概要</string>
+    <string name="tx_8508566e" formatted="false">オフ。時刻になっても通知しない（自動実行は続く）</string>
+    <string name="tx_8539beb4" formatted="false">AI 返信のレイアウト：文字サイズ、行間、段落間隔、リストのインデント、左右の余白、コードブロックの文字サイズ。下のプレビューはチャットと同じ描画</string>
+    <string name="tx_85624c8e" formatted="false">API アドレス</string>
+    <string name="tx_86454fc7" formatted="false">ワークフローを管理</string>
+    <string name="tx_865347b7" formatted="false">整理後（未適用）</string>
+    <string name="tx_8851751d" formatted="false">1 階層ごとのインデント量。0 = インデントなし、記号だけで階層を区別</string>
+    <string name="tx_8c7432b9" formatted="false">0 秒 = タスク完了後すぐに消す</string>
+    <string name="tx_8d2bc55b" formatted="false">この設定を有効化</string>
+    <string name="tx_8e1b47f0" formatted="false">思考も同時にオンにしました。DeepSeek の Web 検索は思考モードでのみ動作する</string>
+    <string name="tx_8e6ab923" formatted="false">表示名</string>
+    <string name="tx_90d5ce80" formatted="false">端末によって項目名が異なる（「すべてのファイルの管理権限」「ファイルとメディア」「ストレージ権限」など）。Root / Shizuku モードでは不要。</string>
+    <string name="tx_929ea71b" formatted="false">現在のチャットに従う</string>
+    <string name="tx_946262ed" formatted="false">インポート済み </string>
+    <string name="tx_950a94dd" formatted="false">一括復帰は既存項目をオンに戻すだけで、新規作成や時刻変更はしない</string>
+    <string name="tx_9559ce64" formatted="false">既定（送信しない）</string>
+    <string name="tx_95e4a689" formatted="false">録音のサンプルレート</string>
+    <string name="tx_96a5feb3" formatted="false">チャット画面右下の丸ボタンの背景とアイコンの配色</string>
+    <string name="tx_99557469" formatted="false">全体フォント</string>
+    <string name="tx_9be9c76a" formatted="false">API がモデルを返さなかった。下で手入力する</string>
+    <string name="tx_9bfd20b1" formatted="false">スライダーがテーマ色を継承</string>
+    <string name="tx_9c61a929" formatted="false">レベル </string>
+    <string name="tx_9ca1cb1f" formatted="false">Web のログイン状態を消去する？</string>
+    <string name="tx_9ec0f5da" formatted="false">オフ。オンにすると他アプリの上でも直接チャットできる</string>
+    <string name="tx_9f2e930a" formatted="false">次に実行する内容</string>
+    <string name="tx_9fcf1606" formatted="false">段落・見出し・リスト・コードブロック間の余白</string>
+    <string name="tx_a114c7a8" formatted="false">別画面に移動して戻っても、画像は入力欄に残る</string>
+    <string name="tx_a2d86e87" formatted="false">プロンプト最適化</string>
+    <string name="tx_a39e54aa" formatted="false">許可ディレクトリのホワイトリスト、読み書き権限を段階化</string>
+    <string name="tx_a3af3303" formatted="false"> 件：</string>
+    <string name="tx_a441b416" formatted="false">思考設定を編集</string>
+    <string name="tx_a52f5c20" formatted="false">システム既定</string>
+    <string name="tx_a5bccdfb" formatted="false">個別にフォント未指定の文字はすべてこれに従う</string>
+    <string name="tx_a6a648c1" formatted="false">オン。時刻になると通知が出る</string>
+    <string name="tx_a71af5ad" formatted="false">各タスクに常駐通知を付け、Xiaomi / HUAWEI などでは自動で島に表示。権限がないと「動いたのに何も出ない」状態になる</string>
+    <string name="tx_a75eff1a" formatted="false">内蔵ルールに戻す</string>
+    <string name="tx_a83942eb" formatted="false">スライダーのトラックの高さ</string>
+    <string name="tx_abbb0ab4" formatted="false">オン時に書き込む値</string>
+    <string name="tx_ac0cdee7" formatted="false">現在のモードで段階分け：一般ユーザーはアクセシビリティ + バックグラウンド維持 + フローティング、Root はフローティングのみ</string>
+    <string name="tx_adc2cb46" formatted="false">ホワイトリスト外。長くロックするとフローティングがシステムに消される可能性</string>
+    <string name="tx_ae27e4da" formatted="false">出力の好み</string>
+    <string name="tx_ae6b6416" formatted="false">Markdown 表示</string>
+    <string name="tx_af29b0db" formatted="false">上の行をタップするとシステムの通知設定へ。OPPO / OnePlus は「バッテリー」でバックグラウンド実行も許可しないと、ロック後に通知が消される</string>
+    <string name="tx_b0c9ab6f" formatted="false">$it 秒</string>
+    <string name="tx_b15d9127" formatted="false">オフ</string>
+    <string name="tx_b324c1b6" formatted="false">オフ。タスクは動くが何の表示も出ない</string>
+    <string name="tx_b472edb3" formatted="false">会話を切り替えても入力は消えない。各会話ごとに drafts/&lt;会話&gt;.prkcovs</string>
+    <string name="tx_b6f6ccf7" formatted="false">未許可。スイッチをオンにしても表示されない</string>
+    <string name="tx_b7a7dafe" formatted="false">完了後もしばらく残す</string>
+    <string name="tx_b886dc73" formatted="false">最適化時に元の言語を保つ</string>
+    <string name="tx_b90dde67" formatted="false">ホワイトリスト外。ロック / バックグラウンドでしばらくするとシステムに終了される可能性</string>
+    <string name="tx_b972541e" formatted="false">スライダーのトラックの濃さ</string>
+    <string name="tx_ba3f1876" formatted="false">背景を抑えて文字を読みやすく保つ。0% で完全に透明</string>
+    <string name="tx_bb007351" formatted="false">他アプリの上で直接チャット。返信は Markdown で描画され、幅 / 高さ / 透明度 / 文字サイズはリアルタイムに調整できる</string>
+    <string name="tx_bb3f978b" formatted="false">内蔵ブラウザ、検索ツール、WebView のログイン状態とキャッシュを消す</string>
+    <string name="tx_bd7451f2" formatted="false">shell / root 権限でコマンドを実行するときに使う。許可前に Shizuku でサービスを起動しておく</string>
+    <string name="tx_be5fbbe3" formatted="false">保存</string>
+    <string name="tx_c0410c62" formatted="false">このビルドには sherpa-ncnn ランタイムが含まれていない。選ぶと自動でシステム認識に切り替わり、入力欄の上に理由が出る。</string>
+    <string name="tx_c083b46f" formatted="false">出力の好み（常時）</string>
+    <string name="tx_c0a99954" formatted="false">プライバシーと Web ログイン</string>
+    <string name="tx_c2e48855" formatted="false">開発者</string>
+    <string name="tx_c4da04aa" formatted="false">オン。タスク状態が通知バー / 島にリアルタイム表示される</string>
+    <string name="tx_c4e93556" formatted="false">自分の吹き出しのフォント</string>
+    <string name="tx_c51ed4da" formatted="false">相手先が未追加</string>
+    <string name="tx_c56fbda3" formatted="false">思考レベル</string>
+    <string name="tx_c7049188" formatted="false">プロンプト最適化用モデル</string>
+    <string name="tx_c71ac55d" formatted="false">創造性パラメータ</string>
+    <string name="tx_c8b75cb0" formatted="false">レベル</string>
+    <string name="tx_c93d4306" formatted="false">最初の 3 レベルが負の値ならリクエストに含めず、サーバー既定に任せる。repeat_penalty は主にローカル推論と一部の中継サービスで使用。0 = 送信しない。</string>
+    <string name="tx_cc49b1fd" formatted="false">バッテリー最適化のホワイトリスト済み。ロック後もタスクは止められない</string>
+    <string name="tx_ccd94af0" formatted="false">シンボリックリンクと範囲外の読み書きを遮断するスイッチ</string>
+    <string name="tx_cd36e684" formatted="false">バッテリー最適化のホワイトリスト済み。バックグラウンドに回しても止められない</string>
+    <string name="tx_cedb8821" formatted="false">会話でモデルに「これを覚えて」と伝えると書き込まれる</string>
+    <string name="tx_cf2b2abc" formatted="false">マッチ対象にする</string>
+    <string name="tx_d28ecec9" formatted="false">ユーザーの原文の言語を保ち、翻訳しない</string>
+    <string name="tx_d3e52c96" formatted="false">書き込む値</string>
+    <string name="tx_d742e670" formatted="false">表示中。タイトルバーをドラッグして移動、右上の × でたたむ</string>
+    <string name="tx_d822e614" formatted="false">コンソールで作成、Token 認証</string>
+    <string name="tx_d94fd817" formatted="false">フォントファイルをインポート</string>
+    <string name="tx_d9524747" formatted="false">オン </string>
+    <string name="tx_daf51302" formatted="false">薄いグレーのトラック + 白いスライダー</string>
+    <string name="tx_df74b581" formatted="false">ステップを書いて保存すれば、ワンタップ実行や時刻実行ができる</string>
+    <string name="tx_e1b2f870" formatted="false">コントロール</string>
+    <string name="tx_e2956683" formatted="false">オフ時に書き込む値（空欄 = 送信しない）</string>
+    <string name="tx_e5c4f1fc" formatted="false">すべて一時停止</string>
+    <string name="tx_e70a40b7" formatted="false">API からモデルを取得</string>
+    <string name="tx_e796d32d" formatted="false">Sherpa モデルディレクトリ</string>
+    <string name="tx_e82c50b0" formatted="false">カード上端の光る縁の濃さ。50% が既定</string>
+    <string name="tx_e90e4777" formatted="false">位置を右上に戻す</string>
+    <string name="tx_ea02bb1f" formatted="false">すぐ表示</string>
+    <string name="tx_ea9bc057" formatted="false">相手先 </string>
+    <string name="tx_eb67ae08" formatted="false">空欄は「すべてのモデル」。リストの最後に保険として置くのがおすすめ。</string>
+    <string name="tx_ec691c16" formatted="false">思考とネイティブ Web 検索は併用できない。先に思考をオフに</string>
+    <string name="tx_ec83af0d" formatted="false">0 = 直角、16dp が既定、32dp でほぼカプセル形。白カードとガラスカードが一緒に変わる</string>
+    <string name="tx_ecc33185" formatted="false">要約レベル</string>
+    <string name="tx_ecfa64c1" formatted="false">通過</string>
+    <string name="tx_ed972708" formatted="false">すべてのモデル</string>
+    <string name="tx_edd7189b" formatted="false">タスク完了後すぐには通知を消さず、完了状態にして島 / 通知バーにしばらく残す</string>
+    <string name="tx_f0365c26" formatted="false">レベルごとにパスと値を個別指定できる（例：Claude の budget_tokens）。空欄ならルールの既定パスを使用。</string>
+    <string name="tx_f05a0996" formatted="false">パラメータを挿入</string>
+    <string name="tx_f1153d97" formatted="false">モデル（手入力も可）</string>
+    <string name="tx_f2af02ae" formatted="false">AI 返信のフォント</string>
+    <string name="tx_f3b58907" formatted="false">オン。共有ストレージ内の任意のディレクトリを読み書きできる</string>
+    <string name="tx_f4590f7d" formatted="false">すべて復帰</string>
+    <string name="tx_f490eaaa" formatted="false">/v1/listen を使用。生の音声を body に、Token をヘッダーに。言語は上の「認識言語」を使う。</string>
+    <string name="tx_f515f8fb" formatted="false">再チェック</string>
+    <string name="tx_f643dfa4" formatted="false">認識サービスのネット接続を許可（ローカルモデルが不完全なときに精度が上がる）</string>
+    <string name="tx_f778da7e" formatted="false">最下部へ戻るボタン</string>
+    <string name="tx_fa9bac8d" formatted="false">100% = 文字の高さぴったり。詰めると行数が多く見える。160% 前後が最もゆったり読める</string>
+    <string name="tx_fdbc9a5f" formatted="false">オフラインモード：ローカルエンジンのみ許可</string>
+    <string name="tx_fe8fe0cc" formatted="false">コードブロックとインラインコードの文字サイズ。等幅フォントは別枠</string>
+    <string name="tx_009fd879" formatted="false">インデックスを更新</string>
+    <string name="tx_02c2d3ce" formatted="false">名前（空欄可）</string>
+    <string name="tx_02cd23ff" formatted="false">arm64 のみ有効。OpenCL を使用（Adreno 750 / 8 系で検証済み）。ドライバが非対応なら自動で CPU のみに戻る。変更後はモデルの再読み込みが必要</string>
+    <string name="tx_032fe963" formatted="false">追加済み。上の「LAN をスキャン」でオンラインか確認できる</string>
+    <string name="tx_03d448d3" formatted="false">ペアリングコード </string>
+    <string name="tx_040a63aa" formatted="false">クラウド API</string>
+    <string name="tx_04470007" formatted="false">現在はカスタム画像を使用中</string>
+    <string name="tx_047dd4ac" formatted="false">GGUF がまだありません。「ローカルモデル」でインポートするかダウンロードしてください</string>
+    <string name="tx_04af1007" formatted="false">上のアドレスを他の A2A クライアントに登録すると、この端末が見つかる。</string>
+    <string name="tx_051c3313" formatted="false">音質を $q に切り替えました</string>
+    <string name="tx_07fa5f00" formatted="false">未挿入：local.properties に miot.client.id を設定して再インストール</string>
+    <string name="tx_08b55fea" formatted="false">管理</string>
+    <string name="tx_08df313c" formatted="false">現在の値：$v</string>
+    <string name="tx_08e0d546" formatted="false">「モデル設定」で「ローカルモデル」を選べばローカル推論、他社を選べばクラウド。ここでスイッチを重複して設ける必要はない</string>
+    <string name="tx_095e938e" formatted="false">停止</string>
+    <string name="tx_0976ccb2" formatted="false">1 回の最大生成量</string>
+    <string name="tx_09a56bd3" formatted="false">入力済み</string>
+    <string name="tx_0ac3aa0a" formatted="false">オフにするとこのカードと入口はたたまれ、スイッチの状態は保持される</string>
+    <string name="tx_0b55c2a3" formatted="false">（毎回この文を追加する。長すぎる内容は避ける）</string>
+    <string name="tx_0b5961c7" formatted="false">ログイン済み</string>
+    <string name="tx_0d22d46a" formatted="false">ローカルモデル</string>
+    <string name="tx_0e3297f4" formatted="false">画面操作にはアクセシビリティ権限が必要</string>
+    <string name="tx_0eafe8f0" formatted="false">システムのテザリング設定を開きました</string>
+    <string name="tx_0edf7a8b" formatted="false">死活監視</string>
+    <string name="tx_0f7d8564" formatted="false">取得中…</string>
+    <string name="tx_0fa57e4a" formatted="false">現在の状態：オフ</string>
+    <string name="tx_10cee180" formatted="false">」すべて通過</string>
+    <string name="tx_12d11a6b" formatted="false">クラウドと同期</string>
+    <string name="tx_12eb255e" formatted="false">ログイン状態</string>
+    <string name="tx_13968e19" formatted="false">（公開ディレクトリ。ファイルマネージャーで直接モデルを差し替え可能）</string>
+    <string name="tx_1535fcfa" formatted="false">送信</string>
+    <string name="tx_160f1630" formatted="false">名前を保存</string>
+    <string name="tx_1aed6ccf" formatted="false">デバイス </string>
+    <string name="tx_1b6949f5" formatted="false">開発者向けオプション</string>
+    <string name="tx_1cdd6eaf" formatted="false">LAN のみ：did + IP + 32 桁の 16 進 token</string>
+    <string name="tx_1ed34876" formatted="false">確認する</string>
+    <string name="tx_1f8dd094" formatted="false">ミラー</string>
+    <string name="tx_20b2103b" formatted="false">選択中のモデル</string>
+    <string name="tx_20c5f916" formatted="false">ブラウザを開けません</string>
+    <string name="tx_20d3e7ce" formatted="false">GGUF がまだありません。まず「ローカルモデル」からインポートするかダウンロードしてください。</string>
+    <string name="tx_2165b30a" formatted="false"> · 現在選択中</string>
+    <string name="tx_227355b0" formatted="false">現在のコマンドに入力し、Enter で送信</string>
+    <string name="tx_230e1087" formatted="false">ターミナルのフォント</string>
+    <string name="tx_24c9853a" formatted="false">未準備</string>
+    <string name="tx_25b347e9" formatted="false">現在は内蔵文字 </string>
+    <string name="tx_25f61a7d" formatted="false">時刻になると自動実行</string>
+    <string name="tx_2603ac37" formatted="false">API Key 未設定</string>
+    <string name="tx_2733a243" formatted="false">すべてコピー</string>
+    <string name="tx_27c2101a" formatted="false">インポート…</string>
+    <string name="tx_288f0c40" formatted="false">クリア</string>
+    <string name="tx_293460b2" formatted="false">何か聞いてみる…</string>
+    <string name="tx_2a2bf781" formatted="false">token なし</string>
+    <string name="tx_2ab5016f" formatted="false">例：毎日の巡回チェック</string>
+    <string name="tx_2b4607eb" formatted="false">調整</string>
+    <string name="tx_2b822c64" formatted="false">自己診断に失敗：計算結果が標準ベクトルと一致しない</string>
+    <string name="tx_2bd34d47" formatted="false">0 = 毎回同じ答え。高いほどばらつく</string>
+    <string name="tx_2bf9e6b5" formatted="false">名前を保存しました</string>
+    <string name="tx_2d5c2af2" formatted="false">保存済み：</string>
+    <string name="tx_2e3dda27" formatted="false">ログイン後のアドレスは …?code=xxxx の形式</string>
+    <string name="tx_2ff33d1a" formatted="false">テスト中…</string>
+    <string name="tx_3066b700" formatted="false">モデルから何も返ってこなかった</string>
+    <string name="tx_30f520b7" formatted="false">何か入力してください。返信は Markdown で描画される</string>
+    <string name="tx_315eacd1" formatted="false">上へ</string>
+    <string name="tx_31bf58fa" formatted="false">よく使う開発環境</string>
+    <string name="tx_31ce34b3" formatted="false">複数ステップを順に実行し、各ステップはサブエージェントに任せて完了後に次へ進む。各ステップは独立していて前の結果を引き継がないため、指示は省略せず書く</string>
+    <string name="tx_31ddf4f1" formatted="false">Mi Home アカウントでログイン</string>
+    <string name="tx_3244f52a" formatted="false">オフ（クライアントのみ）</string>
+    <string name="tx_330363df" formatted="false">成功</string>
+    <string name="tx_333db261" formatted="false">このディレクトリは空</string>
+    <string name="tx_34a1a141" formatted="false">2 台が同じ Wi-Fi にいないときは、スマホのテザリングを伝送路にする。片方でテザリングをオン、もう片方を接続してからスキャン</string>
+    <string name="tx_34d391e0" formatted="false">このモードで足りないのはフローティングウィンドウだけ。オンにすると他アプリ上で「xx 実行中」のカプセルが見える</string>
+    <string name="tx_370ec32f" formatted="false">● Ubuntu 未インストール</string>
+    <string name="tx_3776a3b6" formatted="false">相手先を保存</string>
+    <string name="tx_37cd8040" formatted="false">失敗時に再試行</string>
+    <string name="tx_37e72ddf" formatted="false">検出を許可</string>
+    <string name="tx_37f45cdf" formatted="false">カスタム絵文字</string>
+    <string name="tx_3a7b8b88" formatted="false">オンになりました。AI が画面を読み取り、代理操作できるようになった。</string>
+    <string name="tx_3a81b1ed" formatted="false">スニペットを編集</string>
+    <string name="tx_3a8e52ef" formatted="false">LAN をスキャン</string>
+    <string name="tx_3aed2c11" formatted="false">自動</string>
+    <string name="tx_3b566354" formatted="false">コンテキスト長</string>
+    <string name="tx_3bfac37e" formatted="false">環境をインストール</string>
+    <string name="tx_3c10b78c" formatted="false">token あり</string>
+    <string name="tx_3cd4be58" formatted="false"> · ピーク %.0f%%</string>
+    <string name="tx_3e424c4a" formatted="false">（全体で有効）</string>
+    <string name="tx_3fea387c" formatted="false">」ステップ失敗あり。詳細は会話を参照</string>
+    <string name="tx_402d19e5" formatted="false">ログイン</string>
+    <string name="tx_40f0918b" formatted="false">おすすめモデル</string>
+    <string name="tx_41873cd0" formatted="false">接続テスト</string>
+    <string name="tx_41b17b34" formatted="false">再試行しても失敗</string>
+    <string name="tx_41b91d77" formatted="false">転送ポートと同時実行数</string>
+    <string name="tx_42824410" formatted="false">試しに実行</string>
+    <string name="tx_42ac4191" formatted="false">相手側でもこのスイッチをオンにして、もう一度ペアリングする。ペアリング時に受注ポートと認証情報を交換し、以後はモデル同士でタスクを投げ合える。</string>
+    <string name="tx_433fd817" formatted="false">モデルが読み込まれていない</string>
+    <string name="tx_43a45e02" formatted="false">繰り返しペナルティ</string>
+    <string name="tx_4403fca0" formatted="false">消去</string>
+    <string name="tx_44544558" formatted="false"> · 通知のみ</string>
+    <string name="tx_448f42da" formatted="false">リビングの照明</string>
+    <string name="tx_44eac452" formatted="false">相手先の名前</string>
+    <string name="tx_44efd179" formatted="false">ログアウト</string>
+    <string name="tx_462400c7" formatted="false">選択項目を書き出す</string>
+    <string name="tx_473954cb" formatted="false">接続 ID</string>
+    <string name="tx_4793ea43" formatted="false">読み込む</string>
+    <string name="tx_479c40df" formatted="false">コールバック URL 内の code</string>
+    <string name="tx_48c0b024" formatted="false">+ ステップを追加</string>
+    <string name="tx_4911d772" formatted="false">$name を上へ移動しました</string>
+    <string name="tx_49d52c8d" formatted="false">名前とペアリングコードは相手に見せるもの。コードを変えると古いコードは即座に無効になる</string>
+    <string name="tx_4a067930" formatted="false">スニペットを新規作成</string>
+    <string name="tx_4a8edc80" formatted="false">相手のペアリングコード</string>
+    <string name="tx_4bece587" formatted="false">ポートを保存</string>
+    <string name="tx_4c9562fe" formatted="false">この端末の名前</string>
+    <string name="tx_4d4c3fd6" formatted="false">モデルをアンロード（メモリ解放）</string>
+    <string name="tx_4dfe7036" formatted="false">生成</string>
+    <string name="tx_4e40d39b" formatted="false">相手先のアドレス</string>
+    <string name="tx_4f487d11" formatted="false">片方が依頼、片方が受注。双方のモデルはツールを呼べるので、ペアリング後はタスクを相手に任せて実行できる</string>
+    <string name="tx_4f8d48ef" formatted="false">状態を更新</string>
+    <string name="tx_4ff1e74e" formatted="false">日付</string>
+    <string name="tx_50d4a850" formatted="false">オフライン</string>
+    <string name="tx_50e84fc2" formatted="false">プロパティの読み書き</string>
+    <string name="tx_5144e2e5" formatted="false">確認待ちのツールがあります。ここをタップしてアプリで処理</string>
+    <string name="tx_5349b266" formatted="false">実行中…</string>
+    <string name="tx_53528c9d" formatted="false">この端末の ID</string>
+    <string name="tx_53ace430" formatted="false">有効</string>
+    <string name="tx_53d28c51" formatted="false">A2A インターフェースを外部に公開</string>
+    <string name="tx_54763353" formatted="false">ついでにこの 2 つもオンに。でないとロック後にタスクがシステムに止められ、カプセルも表示されない。</string>
+    <string name="tx_552daf03" formatted="false">毎日 </string>
+    <string name="tx_55dc6ec0" formatted="false">未選択</string>
+    <string name="tx_56417f31" formatted="false">ダウンロードした音声とカバーはこのディレクトリに保存される。別の端末に移す前に消すこと</string>
+    <string name="tx_56ce38d7" formatted="false">ここをタップして「すべてのファイルへのアクセス」を許可。超強力暗号化がオンの場合は正しいバックアップキーに変えて再起動すれば復旧する</string>
+    <string name="tx_5765a580" formatted="false">環境を再インストール</string>
+    <string name="tx_57a3a77c" formatted="false">長いほどメモリを消費する。モデルの学習コンテキストを超えると自動で切り詰められる</string>
+    <string name="tx_57d21753" formatted="false">相手からの依頼を受け付ける</string>
+    <string name="tx_58378f0d" formatted="false">本文</string>
+    <string name="tx_58823c0a" formatted="false">例：コードのみ返す</string>
+    <string name="tx_58a3ff82" formatted="false">ターミナルの文字サイズ</string>
+    <string name="tx_597f1e0f" formatted="false">内蔵の絵文字に戻す？</string>
+    <string name="tx_59e9353c" formatted="false">挿入済み（</string>
+    <string name="tx_5ab380bd" formatted="false">^C で中断</string>
+    <string name="tx_5b58f2bd" formatted="false">アルバムから画像を変更</string>
+    <string name="tx_5d029e5a" formatted="false">同じ Wi-Fi でスキャンをタップ。相手側も「検出を許可」をオンにする</string>
+    <string name="tx_5d81c648" formatted="false">ノードがまだありません。下にアドレスを 1 件入れると他の A2A ノードを呼べる。</string>
+    <string name="tx_5d92b9b7" formatted="false">音質レベル</string>
+    <string name="tx_5dda83bb" formatted="false">時刻どおりに動くかは「設定 → 拡張 → 定期タスク」の正確なアラーム / バッテリー許可 / 通知の 3 権限次第。状態はそこで確認できる。</string>
+    <string name="tx_5e8eb212" formatted="false">接続中…</string>
+    <string name="tx_5ec38d72" formatted="false">しばらくお待ちください…</string>
+    <string name="tx_5ee6e604" formatted="false">接続 ID が未挿入：local.properties に miot.client.id を設定して再インストール</string>
+    <string name="tx_60dbc35c" formatted="false">モデルに渡す原文。例：考え方は説明せず、最終的なコードだけ返す</string>
+    <string name="tx_6261755b" formatted="false">ペアリング済みの端末はまだない</string>
+    <string name="tx_631cd220" formatted="false">削除する</string>
+    <string name="tx_639b6f4b" formatted="false">このリンクをダウンロード</string>
+    <string name="tx_63e85df1" formatted="false">未ログイン</string>
+    <string name="tx_63edd678" formatted="false">手動で追加</string>
+    <string name="tx_64a0f3cc" formatted="false">アクティベーションをやり直す</string>
+    <string name="tx_64e125eb" formatted="false">リージョンを $r に切り替えました。再ログインすると新しいリージョンの API を使う</string>
+    <string name="tx_65524e55" formatted="false">AI の返信に [e:名前] と書くと絵文字として描画される。内蔵のものも自分の画像に差し替え可能</string>
+    <string name="tx_65bfc2f8" formatted="false">コマンドを入力し、Enter で実行</string>
+    <string name="tx_68905cf3" formatted="false">オンライン</string>
+    <string name="tx_689fad20" formatted="false">名前</string>
+    <string name="tx_68c15533" formatted="false">スキャン中…</string>
+    <string name="tx_695609ba" formatted="false">base_url 未設定</string>
+    <string name="tx_69b0f684" formatted="false">無効</string>
+    <string name="tx_69dcc11d" formatted="false">コールバック URL：</string>
+    <string name="tx_6c38353d" formatted="false">ターミナルの配色</string>
+    <string name="tx_6c90deb5" formatted="false">待ち受け中 </string>
+    <string name="tx_6d489c3b" formatted="false">定期（空欄なら定期実行なし）</string>
+    <string name="tx_6d83b132" formatted="false">実行中：$busy</string>
+    <string name="tx_6d83b7fe" formatted="false">コラボ未開啟</string>
+    <string name="tx_6d8aba37" formatted="false">自動（速度測定で最適化）</string>
+    <string name="tx_6f1c8d30" formatted="false">機能の自己診断</string>
+    <string name="tx_7190c3e1" formatted="false">名前（マーカーで使う）</string>
+    <string name="tx_728c67c3" formatted="false">書き込み成功</string>
+    <string name="tx_73a8747c" formatted="false">（サイズ不明）</string>
+    <string name="tx_75b4235d" formatted="false">1 回 </string>
+    <string name="tx_75cbe201" formatted="false">テスト</string>
+    <string name="tx_769d88e4" formatted="false">完了</string>
+    <string name="tx_76a9ffa3" formatted="false">スニペットがありません。作成すると、チャット入力欄の添付パネルからタップして挿入できる。</string>
+    <string name="tx_7765b216" formatted="false">速度測定中…</string>
+    <string name="tx_78623eae" formatted="false">毎日</string>
+    <string name="tx_792b0724" formatted="false">ログイン成功。token を暗号化ストレージに保存しました</string>
+    <string name="tx_7970c992" formatted="false">相手はペアリング時にこの文字列を入力する</string>
+    <string name="tx_79e1bb3f" formatted="false">キャッシュをクリア</string>
+    <string name="tx_7b9962d9" formatted="false">パッケージ名を入力（例：python3 / vim）</string>
+    <string name="tx_7bf54e28" formatted="false">選択済み</string>
+    <string name="tx_7e33ff66" formatted="false">ワークフローを編集</string>
+    <string name="tx_7eb883d0" formatted="false">相手先を保存しました</string>
+    <string name="tx_7fae055f" formatted="false">それでも読み込む</string>
+    <string name="tx_8098e2b4" formatted="false">電話番号</string>
+    <string name="tx_80cfc33c" formatted="false">リセットする</string>
+    <string name="tx_8174c488" formatted="false">GGUF ファイルをインポート</string>
+    <string name="tx_81824cff" formatted="false">アンロード</string>
+    <string name="tx_8190cc38" formatted="false">LAN 優先</string>
+    <string name="tx_8194ea1b" formatted="false">メインは ModelScope、失敗時は自動で hf-mirror に切替。レジューム対応で、中断後にダウンロードを押すと続きから</string>
+    <string name="tx_825ff4d7" formatted="false">例：カスタム /感情</string>
+    <string name="tx_841c2e0d" formatted="false">一部をコピー</string>
+    <string name="tx_84d198e1" formatted="false">クラウドを直接使用</string>
+    <string name="tx_84fac467" formatted="false">ダウンロードを中止</string>
+    <string name="tx_857abb80" formatted="false">リビングのタブレット</string>
+    <string name="tx_86048b4f" formatted="false">削除</string>
+    <string name="tx_8624e553" formatted="false">オンにすると他端末のスキャンに応答する。オフでも「検出される」だけで、自分からスキャンは可能</string>
+    <string name="tx_86cd35c6" formatted="false">デバイスの数値 ID</string>
+    <string name="tx_86d74002" formatted="false">タイムアウトを保存</string>
+    <string name="tx_87d6084a" formatted="false">テザリング設定を開く</string>
+    <string name="tx_87e4d9ef" formatted="false">あとで</string>
+    <string name="tx_8982c592" formatted="false">スニペットがありません。「設定 → 会話 → プロンプトタグ」で先に作成してください。</string>
+    <string name="tx_8a67e9a7" formatted="false">この端末にテザリング設定ページがない。システム設定の「個人テザリング」を探す</string>
+    <string name="tx_8b920852" formatted="false">あとでやり直すときは 設定 → 権限 → 特別な権限 から。</string>
+    <string name="tx_8c8c9140" formatted="false">ブラウザで開きました。ログイン後、アドレスバーの code をコピーして戻す</string>
+    <string name="tx_8d4d4b42" formatted="false">デバイスを検出</string>
+    <string name="tx_8d92c895" formatted="false">例：自宅の PC</string>
+    <string name="tx_8eafe666" formatted="false">死活監視に成功してはじめてオンライン。「コラボ」で相手が受注できるか確認でき、可能ならタスクを任せられる</string>
+    <string name="tx_8fedcfe7" formatted="false">ワークフローを保存</string>
+    <string name="tx_904e740d" formatted="false">コラボ</string>
+    <string name="tx_91382d9c" formatted="false">画面をクリア</string>
+    <string name="tx_92636e8c" formatted="false">スキップ</string>
+    <string name="tx_957dc19a" formatted="false">どのステップで止まったかはここで分かる。ログを漁る必要なし</string>
+    <string name="tx_95b351c8" formatted="false">編集</string>
+    <string name="tx_96bfbadc" formatted="false">ペアリング済みの端末</string>
+    <string name="tx_96ed536e" formatted="false">サービス起動時に token が空なら自動生成して入力する。ポートや token を変えた場合、サービス稼働中ならそのまま新しい値に切り替わる。</string>
+    <string name="tx_96f68a9d" formatted="false">1 回書き込む</string>
+    <string name="tx_97ab69b3" formatted="false">デバイス番号 </string>
+    <string name="tx_98260c63" formatted="false">開発者ツールを開く</string>
+    <string name="tx_9873c205" formatted="false">1 回実行</string>
+    <string name="tx_99bdc9ec" formatted="false">認可コードモード：ブラウザでログインし、コールバック URL の code を貼り付ける</string>
+    <string name="tx_9aaf0ba9" formatted="false">取得に失敗：ログ bai.mi.auth を確認（リージョン / コールバック URL をプラットフォーム登録と一致させる）</string>
+    <string name="tx_9bc4c05a" formatted="false">検索中</string>
+    <string name="tx_9c4020f2" formatted="false">token をリセット（ペアリング済みの端末は再ペアリングが必要）</string>
+    <string name="tx_9c505d1e" formatted="false">$name の cookie を暗号化ストレージに保存しました</string>
+    <string name="tx_9d5bf2a1" formatted="false">インストール済み</string>
+    <string name="tx_9db7a84f" formatted="false">オン</string>
+    <string name="tx_9e1fd27b" formatted="false">テザリングを自前で立てる</string>
+    <string name="tx_9ed74fb4" formatted="false">アクセス token（自動生成・変更可）</string>
+    <string name="tx_a06cda21" formatted="false">token がありません</string>
+    <string name="tx_a0b7f94f" formatted="false">停止</string>
+    <string name="tx_a1122f98" formatted="false">認証コードを送信しました。SMS を待つ</string>
+    <string name="tx_a1451e0f" formatted="false">…、全 </string>
+    <string name="tx_a1faddfd" formatted="false">何でも聞いてみる</string>
+    <string name="tx_a20ab061" formatted="false">クラウドの一覧を 1 回取得</string>
+    <string name="tx_a25be09d" formatted="false">ポートを保存して再起動</string>
+    <string name="tx_a26d1460" formatted="false">先にインポート済みの GGUF モデルを選ぶ</string>
+    <string name="tx_a2830a88" formatted="false">再インストール失敗：上のログを確認し、ネットワークとミラーを確かめて再試行</string>
+    <string name="tx_a6821857" formatted="false">待ち受けしていない</string>
+    <string name="tx_a72a9ed7" formatted="false">1 回読み取る</string>
+    <string name="tx_a75f7665" formatted="false">Linux サンドボックス</string>
+    <string name="tx_a83a428f" formatted="false">● アイドル</string>
+    <string name="tx_a87595f9" formatted="false">6 桁の数字</string>
+    <string name="tx_a8f37df4" formatted="false">カスタムのダウンロードリンク</string>
+    <string name="tx_a9997318" formatted="false">GGUF を公開ディレクトリに置く </string>
+    <string name="tx_a9fc6f2f" formatted="false">実行中 </string>
+    <string name="tx_aa76a23a" formatted="false">モデルが大きめ。読み込み後にカクつく可能性</string>
+    <string name="tx_aadb83b2" formatted="false">スレッド数</string>
+    <string name="tx_acb7ed5c" formatted="false">まだありません。上でステップを書いて保存すると、ワンタップ実行や定期実行ができる。</string>
+    <string name="tx_ae577ece" formatted="false">（無効）</string>
+    <string name="tx_aeadd7b2" formatted="false">文字（空欄可。あとで画像に差し替え可能）</string>
+    <string name="tx_af1f045b" formatted="false"> · コラボ未開啟</string>
+    <string name="tx_b0bf14a8" formatted="false">既存のワークフロー</string>
+    <string name="tx_b152d341" formatted="false">別のものに</string>
+    <string name="tx_b26eb8c0" formatted="false">cookie 保存済み（</string>
+    <string name="tx_b2b2c8e5" formatted="false"> · 達成</string>
+    <string name="tx_b2f2364e" formatted="false">等幅の既定</string>
+    <string name="tx_b2f28a22" formatted="false">● 実行中</string>
+    <string name="tx_b63585d6" formatted="false">内蔵に戻す</string>
+    <string name="tx_b736eacc" formatted="false">2 項目とも緑になって初めて端末接続が可能</string>
+    <string name="tx_b768f17f" formatted="false">本文を長押しして範囲を選び、離すとコピーできる。全体コピーは右上をタップ。</string>
+    <string name="tx_b7f18f1e" formatted="false">モデルが大きすぎる。読み込むとスマホが使い物にならないほど重くなる可能性</string>
+    <string name="tx_b9fbdeb2" formatted="false">書き込む値</string>
+    <string name="tx_ba2a95b6" formatted="false">先にモデルを読み込む</string>
+    <string name="tx_ba769ad1" formatted="false">← 戻る</string>
+    <string name="tx_bad2f54e" formatted="false">ステップをオン</string>
+    <string name="tx_bc083719" formatted="false">CPU のみ</string>
+    <string name="tx_bc64a057" formatted="false">現在の使用量 </string>
+    <string name="tx_be58e065" formatted="false">まだオフ。スイッチを入れるまで画面系ツールは動かない。</string>
+    <string name="tx_bebd3740" formatted="false">量子化は Q4_K_M 推奨：7B で約 4.4GB、3B で約 2GB、1.5B で約 1.2GB のメモリ。スマホなら 1.5B〜3B がおすすめ。</string>
+    <string name="tx_bec4568c" formatted="false">GPU レイヤー数</string>
+    <string name="tx_bef6b130" formatted="false">実行中…</string>
+    <string name="tx_bf4a564e" formatted="false">画面操作をオンにする</string>
+    <string name="tx_bf6a1ea5" formatted="false">ファイルが多すぎる。1 パッケージ最大 $ENTRY_MAX 件</string>
+    <string name="tx_bf77571e" formatted="false">デバイス検出</string>
+    <string name="tx_bf8b66f3" formatted="false">受注ポート</string>
+    <string name="tx_bfe68d58" formatted="false">リンク</string>
+    <string name="tx_c054d288" formatted="false">テザリングする側もここを同じポートに設定する。接続後にスキャンできなければ、システムに LAN アクセスを遮られていないか確認。</string>
+    <string name="tx_c15c91c7" formatted="false">AES-128-CBC / MD5 / SHA-1 自己診断に合格</string>
+    <string name="tx_c1d8772d" formatted="false">サンプリング中…</string>
+    <string name="tx_c2da1104" formatted="false">認証情報ストアを開けない（旧バージョンの鍵が合わない）。API Key を入れ直して保存すると、旧ストアをアーカイブして再構築する</string>
+    <string name="tx_c46cea79" formatted="false">アカウント照会</string>
+    <string name="tx_c46e3a43" formatted="false">cookie がありません</string>
+    <string name="tx_c4a9649c" formatted="false">インストール済み</string>
+    <string name="tx_c5575b3f" formatted="false">変更を保存</string>
+    <string name="tx_c6a97bb0" formatted="false">同期中…</string>
+    <string name="tx_c6c9da2b" formatted="false">テスト結果</string>
+    <string name="tx_c76cfefe" formatted="false">ポート</string>
+    <string name="tx_c8c4c57f" formatted="false">[非対応] この端末は 32 ビット（armeabi-v7a）。内蔵 Ubuntu サンドボックスは arm64 端末のみ対応</string>
+    <string name="tx_c9bf0b88" formatted="false">温度</string>
+    <string name="tx_ca160a43" formatted="false">チャネル設定</string>
+    <string name="tx_ca4ec8a5" formatted="false">応答なし</string>
+    <string name="tx_cadff0ad" formatted="false">全文を開き、長押しでコピーする範囲を選択</string>
+    <string name="tx_cbb46593" formatted="false">編集を中止</string>
+    <string name="tx_cca228c7" formatted="false">受注していない</string>
+    <string name="tx_cd08d0ab" formatted="false">自動 = コア数 − 2、最大 6。コアが多いほど値が上がり電力消費も増える</string>
+    <string name="tx_cd0b9aca" formatted="false">選択項目を削除</string>
+    <string name="tx_cdd9c35a" formatted="false">コラボ不通：</string>
+    <string name="tx_cde0ad30" formatted="false">結果をコピー</string>
+    <string name="tx_cded648b" formatted="false">未挿入</string>
+    <string name="tx_ce26955a" formatted="false">了解</string>
+    <string name="tx_ce813e67" formatted="false">プロンプトタグ</string>
+    <string name="tx_cefac3f1" formatted="false">本体・ターミナルセッション・実行プロセスを別々に計測し、1.5 秒ごとに更新</string>
+    <string name="tx_cf7ceff5" formatted="false">一般ユーザーモードでは、AI はアクセシビリティサービスで画面を読み取り、タップする。現在の画面のコントロールと座標を把握し、タップ・スワイプ・長押し・入力も代行できる。</string>
+    <string name="tx_d0771a42" formatted="false">分類</string>
+    <string name="tx_d0ee51ab" formatted="false">パッケージ管理</string>
+    <string name="tx_d11f8934" formatted="false">このステップで何を、どこで、どんな形式で出すか</string>
+    <string name="tx_d1849aef" formatted="false">現在の状態：オン</string>
+    <string name="tx_d1e4a7e9" formatted="false">利用不可</string>
+    <string name="tx_d2406fdf" formatted="false">スマホ上の GGUF を使う。base_url と Key の入力は不要</string>
+    <string name="tx_d37a76e7" formatted="false">デバイスが見つからない（別サブネット、または相手が検出をオンにしていない）</string>
+    <string name="tx_d3ce40d8" formatted="false">リージョン</string>
+    <string name="tx_d424955f" formatted="false"> · 受注可</string>
+    <string name="tx_d5bd674d" formatted="false">認証コードを送信</string>
+    <string name="tx_d70c841a" formatted="false">（オフ）</string>
+    <string name="tx_d741c7ad" formatted="false">ローカルモデルは base_url と API key の入力が不要。チャット時に選んだ GGUF をスマホ上で直接動かす</string>
+    <string name="tx_d765fbf8" formatted="false">ポートは 2 台で揃えないと互いに見つからない。同時実行数は同時転送タスクの上限</string>
+    <string name="tx_d7ec2d3f" formatted="false">名前</string>
+    <string name="tx_d82daace" formatted="false">台帳に保存</string>
+    <string name="tx_d8c3355e" formatted="false">デバイス一覧</string>
+    <string name="tx_d8f4952f" formatted="false">クラウドから 1 回取得し、LAN スキャンで IP を補完。オフラインでも IP + token で直接接続できる</string>
+    <string name="tx_da59f6c4" formatted="false">分類ごとに自己診断。機能を追加するたびにテストが 1 件増える</string>
+    <string name="tx_da9de6ce" formatted="false">1.0 = オフ。同じことを繰り返す場合は 1.1〜1.2 に上げる</string>
+    <string name="tx_dae9a428" formatted="false">有効なスニペットは毎回システムプロンプトに連結される。挿入は今回の発言だけに影響</string>
+    <string name="tx_db28b874" formatted="false">各社の内部コードは異なるため、ここでは共通レベルだけを保存し、呼び出し時にプラットフォーム側で対応付ける</string>
+    <string name="tx_db75b769" formatted="false">1 回のみ</string>
+    <string name="tx_dc7f3530" formatted="false">待ち受けを開始しました</string>
+    <string name="tx_dcc25a21" formatted="false">スマホ上のローカル GGUF。base_url と Key は不要</string>
+    <string name="tx_de027789" formatted="false">クイックコマンド</string>
+    <string name="tx_dec42aa1" formatted="false">この端末のサーバー</string>
+    <string name="tx_def9e98b" formatted="false">たたむ</string>
+    <string name="tx_e0423a8e" formatted="false">絵文字を新規作成</string>
+    <string name="tx_e2c0dc29" formatted="false">（なし）</string>
+    <string name="tx_e2df88e7" formatted="false">code を token に交換</string>
+    <string name="tx_e33ff6aa" formatted="false">ペアリング</string>
+    <string name="tx_e4554821" formatted="false">先ほどのステップが失敗したのは、アクセシビリティサービスがオフだったため。AI がコントロールの座標を取得できず、画面もタップできない。</string>
+    <string name="tx_e4b51d5c" formatted="false">実行状態</string>
+    <string name="tx_e5210db4" formatted="false">同時実行数を $n に変更</string>
+    <string name="tx_e5f71fc3" formatted="false">検索</string>
+    <string name="tx_e655a410" formatted="false">インストール</string>
+    <string name="tx_e80c310e" formatted="false">キャッシュ</string>
+    <string name="tx_ea0844f0" formatted="false">ポートを $p に変更。スイッチを入れ直すと反映される</string>
+    <string name="tx_ea4a363d" formatted="false">オフ</string>
+    <string name="tx_eb76c062" formatted="false">SMS 認証コード</string>
+    <string name="tx_ebfb5648" formatted="false">ディレクトリが大きすぎる。処理上限は 64MB</string>
+    <string name="tx_ec361222" formatted="false">実行中…</string>
+    <string name="tx_ecb7e8a2" formatted="false">変更はすぐ反映され、再起動は不要</string>
+    <string name="tx_ed22b17a" formatted="false">ワンタップで環境を拡張</string>
+    <string name="tx_ed275d6f" formatted="false">開発者ツール</string>
+    <string name="tx_eea76d6e" formatted="false">対面チームコラボ</string>
+    <string name="tx_eeb83a34" formatted="false">32 桁の 16 進数</string>
+    <string name="tx_eedbfbcf" formatted="false">非 PTY セッション：コマンド出力・中断・stdin 入力は確実。Tab 補完や矢印キーは、行編集を必要とするプログラムでは通常の文字として扱われることがある。</string>
+    <string name="tx_eeeb0354" formatted="false">アクセシビリティをオンにする</string>
+    <string name="tx_ef121b59" formatted="false">速度を再測定</string>
+    <string name="tx_ef29d483" formatted="false">ターミナルを再起動</string>
+    <string name="tx_f02de109" formatted="false">画面操作</string>
+    <string name="tx_f0bd413c" formatted="false">内蔵 Ubuntu（proot）· ターミナル直結 · ワンタップで開発環境を導入</string>
+    <string name="tx_f147798d" formatted="false">A2A 1.0 インターフェース。2 方向：この端末がクライアントとして他ノードを呼ぶ、サーバーとしてタスクを受ける。</string>
+    <string name="tx_f182d08f" formatted="false">メッセージの暗号化・復号</string>
+    <string name="tx_f18fd725" formatted="false">読み取れない（端末オフライン / token 不一致 / プロパティ番号の誤り）</string>
+    <string name="tx_f26ef914" formatted="false">ダウンロード</string>
+    <string name="tx_f28e75cf" formatted="false"> 成功</string>
+    <string name="tx_f32ae05c" formatted="false">LAN をスキャン</string>
+    <string name="tx_f45c4e65" formatted="false">未インストール</string>
+    <string name="tx_f4c9c9c5" formatted="false">NetEase Cloud Music は SMS 認証コードでのログインに対応。他のプラットフォームはブラウザでログイン後の cookie を 1 行まるごと貼り付ける。いずれも暗号化ストアに保存し、平文は残さない</string>
+    <string name="tx_f4eec2ab" formatted="false">apt インデックスを取得中…</string>
+    <string name="tx_f6135cae" formatted="false">自分で追加した項目と差し替えた画像は削除され、内蔵のセットが元に戻る。</string>
+    <string name="tx_f6c58938" formatted="false">累積確率の上位 p までの語から選ぶ。小さいほど安定</string>
+    <string name="tx_f729e121" formatted="false">相手先の token（なければ空欄）</string>
+    <string name="tx_f73d0c19" formatted="false"> 失敗</string>
+    <string name="tx_f745e83a" formatted="false">まず LAN（500ms 程度）を使い、通らなければクラウドに戻る</string>
+    <string name="tx_f7552158" formatted="false">認可ページを開く</string>
+    <string name="tx_f79de08c" formatted="false">例：サボり</string>
+    <string name="tx_f7ba9c52" formatted="false">同時に 1 つのプラットフォームだけが応答する。オンで最上位のものだけが受注し、上に移動するとメインが切り替わる</string>
+    <string name="tx_f8f0ec92" formatted="false">台帳が空。まずログインして同期するか、手動で 1 台追加する</string>
+    <string name="tx_f91d273b" formatted="false">不明な原因</string>
+    <string name="tx_f98a8254" formatted="false">プラットフォームの優先順位</string>
+    <string name="tx_fb085f04" formatted="false">GGUF の直リンクを入れるだけ（ModelScope / hf-mirror / 自前サーバーいずれも可）。ファイル名はリンクの最後の部分を使う</string>
+    <string name="tx_fb34db95" formatted="false">相手先（この端末はクライアント）</string>
+    <string name="tx_fbb1d2ab" formatted="false">タイムアウト（ミリ秒）</string>
+    <string name="tx_fc36d633" formatted="false">準備済み</string>
+    <string name="tx_fc8f9040" formatted="false">（外部ストレージが使えないため、プライベートディレクトリに戻した）</string>
+    <string name="tx_fc960862" formatted="false">接続テスト（「テストテスト」を送信）</string>
+    <string name="tx_fd4bef54" formatted="false">診断</string>
+    <string name="tx_fda7a982" formatted="false">メッセージの一部をコピー</string>
+    <string name="tx_fed34fcc" formatted="false">会話 1 回あたりの生成上限。CPU のみの場合は 1024 以上で明らかに遅くなる。長文を書くときはさらに上げる</string>
+    <string name="tx_3aaccc6e" formatted="false">検出した機種：%1$s</string>
+    <string name="tx_5cd47992" formatted="false">%1$s 日</string>
+    <string name="tx_6adeb861" formatted="false">長期メモリ · %1$s 件</string>
+    <string name="tx_8bdbcde3" formatted="false">%1$s 段階、スライダーの長さを決定</string>
+    <string name="tx_8cae3683" formatted="false">レベル %1$s</string>
+    <string name="tx_935695b1" formatted="false">%1$s 個のフォントファイルを認識</string>
+    <string name="tx_9f8beb63" formatted="false">%1$s 件適用</string>
+    <string name="tx_a6f0b1dc" formatted="false">%1$s 秒</string>
+    <string name="tx_b4d10c2d" formatted="false">%1$s dp/レベル</string>
+    <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
+    <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
+    <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
+    <string name="tx_0d011d38" formatted="false">読み込み済み：%1$s（$desc · 学習コンテキスト $nctx）</string>
+    <string name="tx_12a1e1ea" formatted="false">元の言語を保持：%1$s\n</string>
+    <string name="tx_136b30f6" formatted="false">アプリ内コマンド code=%1$s：</string>
+    <string name="tx_1488e82c" formatted="false">%1$s 台検出</string>
+    <string name="tx_19dd9c89" formatted="false">ポート %1$s を待ち受け中</string>
+    <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
+    <string name="tx_1f6f6b55" formatted="false">旧ディレクトリの %1$s 個のモデルを ${ModelHu%2$s に移行しました</string>
+    <string name="tx_215a9629" formatted="false">ファイル数：%1$s\n</string>
+    <string name="tx_238b0ba6" formatted="false">出力の希望長さ：%1$s 文字</string>
+    <string name="tx_2408091c" formatted="false">現在のベンダーの対応 = %1$s</string>
+    <string name="tx_2a8058ac" formatted="false">空き容量：%1$s MB\n</string>
+    <string name="tx_2b10449e" formatted="false">プレースホルダー：%2$s\n描画結果：%1$s\n</string>
+    <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
+    <string name="tx_2cf379fe" formatted="false">%1$s 件の会話を削除しました</string>
+    <string name="tx_3108ce07" formatted="false"> · メモリ %1$s（空き ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" formatted="false">画像保持：%1$s / 有効期間：${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" formatted="false">アプリディレクトリ：%1$s\n</string>
+    <string name="tx_3c1c4b90" formatted="false">GPU レイヤーを %1$s に設定しました。モデル再読み込み後に有効になります</string>
+    <string name="tx_3ee9b024" formatted="false">ノード %1$s 個、速度測定を開始…</string>
+    <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
+    <string name="tx_430495aa" formatted="false">利用可能なパラメータ %1$s 個：</string>
+    <string name="tx_45b8d0ba" formatted="false">先に説明を最後までお読みください（%1$s）</string>
+    <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
+    <string name="tx_52280f7d" formatted="false">最適化に失敗：%1$s</string>
+    <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
+    <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
+    <string name="tx_642e64e8" formatted="false">削除しました：%1$s</string>
+    <string name="tx_651eb991" formatted="false">完了：%2$s token / %1$sms（約 $tps tok/s）</string>
+    <string name="tx_66a69bbf" formatted="false">%1$s をダウンロード中：</string>
+    <string name="tx_67957ccd" formatted="false">%1$s を削除しますか？（${hum%2$s</string>
+    <string name="tx_68e55fc5" formatted="false">受付可能 %1$s</string>
+    <string name="tx_697e775f" formatted="false">保存先：%1$s</string>
+    <string name="tx_69d06c37" formatted="false">第 %1$s ステップ</string>
+    <string name="tx_70bc66d5" formatted="false">%2$s 件有効 · 全 %1$s 件</string>
+    <string name="tx_70e28d57" formatted="false">システム：Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
+    <string name="tx_7a43344e" formatted="false">%2$s → 利用不可（%1$s）</string>
+    <string name="tx_7a776792" formatted="false">合計 %1$s · ${s.procs} %2$s プロセス、プロセス単位ではプラグイン項目を分離不可</string>
+    <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
+    <string name="tx_803ae150" formatted="false">現在のスイッチ：think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" formatted="false">接続テスト成功：%1$s が $%2$s 文字を受信（$rc token、約 $tps tok/s）\n返信の概要：${txt.take%3$s</string>
+    <string name="tx_829cb2a2" formatted="false">%1$s 選択済み</string>
+    <string name="tx_82a30a52" formatted="false">合格しきい値：TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" formatted="false">API Key が暗号化ストアに保存されていません：%1$s</string>
+    <string name="tx_86c68249" formatted="false">現在の会話 %5$s：空=%1$s 文字=${cur.text%2$sr.images.size} 添付=${%3$s%4$s</string>
+    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s を合格とし、合格者のうち最速を採用</string>
+    <string name="tx_89e93f24" formatted="false">並列速度測定中（%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" formatted="false">✓ %1$s · モデルが純黒を認識 · ${v%2$s</string>
+    <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
+    <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
+    <string name="tx_957699dd" formatted="false">、本機の総メモリ %1$s の ${(ratio * 100)%2$s</string>
+    <string name="tx_960ae310" formatted="false">モデルファイルがありません。上の「インポート」を押すか、ファイルマネージャーで .gguf を %1$s/ に置いてください。</string>
+    <string name="tx_983d58f9" formatted="false">フレーム落ち %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" formatted="false">エンドポイント：%1$s</string>
+    <string name="tx_9fc79d7a" formatted="false">ストレージ不足：空き %1$s、最低 300MB 必要</string>
+    <string name="tx_a33a9bb0" formatted="false">デバイス：%1$s</string>
+    <string name="tx_aab79711" formatted="false">現在ユーザー選択か = %1$s</string>
+    <string name="tx_ac635e14" formatted="false">ステップ（最大 %1$s ステップ）</string>
+    <string name="tx_b6e53767" formatted="false">保存場所：%1$s</string>
+    <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
+    <string name="tx_b82d7fd4" formatted="false">ファイル：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" formatted="false">%1$s 件を削除しますか</string>
+    <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
+    <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
+    <string name="tx_c3af4af2" formatted="false">モデル %1$s 件成功 / コスト ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" formatted="false">利用不可（%1$s）</string>
+    <string name="tx_c83a29fe" formatted="false">デバイス：%1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" formatted="false">下書きディレクトリ：%1$s\n</string>
+    <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
+    <string name="tx_cb625f26" formatted="false">現在の providerId = %1$s</string>
+    <string name="tx_cbb1ac45" formatted="false">ベンダー：%1$s / モデル：$model\n</string>
+    <string name="tx_cbdacbb2" formatted="false">インポート済み：%1$s（${hum%2$s</string>
+    <string name="tx_cf954d3a" formatted="false">カスタム方向の長さ：%1$s 文字\n</string>
+    <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
+    <string name="tx_d1977545" formatted="false">パッケージ：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" formatted="false">失敗：%1$s</string>
+    <string name="tx_d9366fc9" formatted="false">内蔵フォールバックノード %1$s 個は引き続き利用可能</string>
+    <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
+    <string name="tx_e03b4047" formatted="false">default ディレクトリの存在 = %1$s</string>
+    <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
+    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" formatted="false">削除に失敗：%1$s</string>
+    <string name="tx_f8e3d0b7" formatted="false">内容が長すぎます（上限 %1$s 文字）。短くしてから最適化してください</string>
+    <string name="tx_f934698e" formatted="false">選択中のモデル %1$s</string>
+    <string name="tx_fe42d9b6" formatted="false">GPU レイヤー %1$s、ドライバ非対応時は CPU にフォールバック</string>
+    <string name="tx_fee8e550" formatted="false">容量不足：%1$s 必要、空き ${human(fr%2$s</string>
+    <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
+    <string name="tx_13853b5a" formatted="false">段落間隔</string>
+    <string name="tx_279a3789" formatted="false">コードの文字サイズ</string>
+    <string name="tx_3d86509a" formatted="false">カードの角丸</string>
+    <string name="tx_48f369a7" formatted="false">返信の文字サイズ</string>
+    <string name="tx_5a3701e9" formatted="false">本文の文字サイズ</string>
+    <string name="tx_6ca4489d" formatted="false">行間</string>
+    <string name="tx_713fd45a" formatted="false">屈折の強さ</string>
+    <string name="tx_b76fe1f2" formatted="false">左右の内側余白</string>
+    <string name="tx_c73258a2" formatted="false">フローティングウィンドウの高さ</string>
+    <string name="tx_cae01fea" formatted="false">フローティングウィンドウの幅</string>
+    <string name="tx_cd758e7e" formatted="false">リストのインデント</string>
+    <string name="tx_d73f1ed6" formatted="false">ハイライトの強さ</string>
+    <string name="tx_e013ea26" formatted="false">ウィンドウ全体の透明度</string>
+    <string name="tx_fa5d97dd" formatted="false">カードの不透明度</string>
+    <string name="tx_fd5f796f" formatted="false">乳白色マスク</string>
+    <string name="tx_06e12adc" formatted="false">出力コールバックが利用不可（release 難読化）、APK を更新してください</string>
+    <string name="tx_0cac8c4c" formatted="false">リンクは http:// または https:// で始めてください</string>
+    <string name="tx_159a3a80" formatted="false">ミラーを更新</string>
+    <string name="tx_2111ccbb" formatted="false">キャンセル済み</string>
+    <string name="tx_2acb7b31" formatted="false">ワークスペースモード</string>
+    <string name="tx_2d455ce5" formatted="false">ダウンロード中</string>
+    <string name="tx_2dc1a7bf" formatted="false">● 環境準備完了</string>
+    <string name="tx_34b2bda9" formatted="false">● 内蔵 Ubuntu は arm64 のみ対応（32bit 非対応）</string>
+    <string name="tx_38ce27d8" formatted="false">次へ</string>
+    <string name="tx_4649c53d" formatted="false">高権限あり、ワンタップで有効化</string>
+    <string name="tx_4885f20e" formatted="false">[パッケージ名が不正]英数字と . - + _ のみ使用可</string>
+    <string name="tx_4b72c2b7" formatted="false">0（CPU のみ）</string>
+    <string name="tx_5614002d" formatted="false">下書き保存</string>
+    <string name="tx_5c362d71" formatted="false">ネイティブ検索注入</string>
+    <string name="tx_6e081357" formatted="false">思考ルール</string>
+    <string name="tx_73500eb7" formatted="false">スキップ · </string>
+    <string name="tx_76d88dfc" formatted="false">プロンプトがコンテキストを超過</string>
+    <string name="tx_7e50d092" formatted="false">ツール権限</string>
+    <string name="tx_9719fec8" formatted="false">ダウンロード済み</string>
+    <string name="tx_a46ee2bc" formatted="false">[先に Ubuntu 環境を導入]上の「環境をインストール」をタップ</string>
+    <string name="tx_ac6913a4" formatted="false">応答なし</string>
+    <string name="tx_af0a9b8b" formatted="false">● 環境導入済み、ターミナル未接続</string>
+    <string name="tx_b52f2284" formatted="false">チャットテスト</string>
+    <string name="tx_b967fdef" formatted="false">デバイス情報</string>
+    <string name="tx_bd5451bc" formatted="false">ミラー一覧</string>
+    <string name="tx_c4952839" formatted="false">中括弧変数</string>
+    <string name="tx_c5d9c84c" formatted="false">環境セルフチェック</string>
+    <string name="tx_cb201444" formatted="false">アンインストールして再インストール</string>
+    <string name="tx_e22c257e" formatted="false">ミラー速度テスト</string>
+    <string name="tx_ecfc4318" formatted="false">コマンドマウント</string>
+    <string name="tx_efcc3f48" formatted="false">スキル @ 解析</string>
+    <string name="tx_f348d6c3" formatted="false">チャット履歴検索</string>
+    <string name="tx_f47f7cb9" formatted="false">99（全レイヤー）</string>
+    <string name="tx_f65125e4" formatted="false">メモリ整理</string>
+    <string name="tx_fc7d3267" formatted="false">未確認</string>
+    <string name="cs_voice_hold" formatted="false">長押しで話す</string>
+    <string name="cs_voice_end" formatted="false">離して送信</string>
+    <string name="cs_voice_cancel" formatted="false">離してキャンセル</string>
+    <string name="cs_keyboard" formatted="false">キーボード</string>
+    <string name="cs_typing" formatted="false">入力中…</string>
+    <string name="wp_pick_hint" formatted="false">選んだフォルダはこの会話にのみ紐づきます</string>
+    <string name="se_wreal_t" formatted="false">より自然な文分割</string>
+    <string name="se_wreal_d" formatted="false">読点でも区切り、吹き出し幅を画面の 3/7 に絞り、出現アニメをフェード＋せり上がりに変更。短いメッセージを連投する感じに近づきます</string>
+    <string name="se_wtype_t" formatted="false">分割ごとの入力速度</string>
+    <string name="se_wtype_v" formatted="false">%1$d ms/字</string>
+    <string name="se_wtyping_t" formatted="false">入力中表示を出す</string>
+    <string name="se_wtyping_d" formatted="false">分割の間に「入力中…」を表示。滞在時間 = その分割の文字数 × 入力速度</string>
+    <string name="se_tools_more" formatted="false">ツール %1$d 件をすべて表示</string>
+    <string name="se_bk_secrets" formatted="false">暗号化設定を書き出す</string>
+    <string name="se_bk_secrets_d" formatted="false">API キー、SSH パスワード、GitHub トークン、スキル秘密鍵をまとめて梱包し、別端末で復元できます。暗号文のままで、同じバージョンの Baicodex だけが開けます</string>
+    <string name="se_bk_fail_x" formatted="false">書き出しに失敗：%1$s</string>
+    <string name="se_bk_bad_x" formatted="false">読み込みに失敗：%1$s</string>
+    <string name="se_366" formatted="false">正確な位置の注入</string>
+    <string name="se_367" formatted="false">毎回測位し直すため、前回の記録より正確</string>
+    <string name="se_368" formatted="false">オフ：前回の位置のみ使用し、能動的な測位はしない</string>
+    <string name="se_369" formatted="false">地名に変換</string>
+    <string name="se_370" formatted="false">座標を市区町村と街区に変換し、暗号化して端末にキャッシュ</string>
+    <string name="se_371" formatted="false">オフ：緯度経度のみ、ネット検索なし</string>
+    <string name="plg_off_title" formatted="false">プラグイン広場はメンテナンス中…</string>
+    <string name="plg_off_body" formatted="false">登録・ログイン・アップロードを停止しているため、広場は現在利用できません。インストール済みのプラグインはそのまま動作します</string>
+    <string name="plg_off_back" formatted="false">戻る</string>
+    <string name="se_gd_title" formatted="false">データ超強暗号化</string>
+    <string name="se_gd_state_off" formatted="false">未設定</string>
+    <string name="se_gd_state_bad" formatted="false">スイッチはオンですが、この端末では鍵素材を復号できません</string>
+    <string name="se_gd_state_on" formatted="false">有効 · 三層暗号化が動作中</string>
+    <string name="se_gd_note" formatted="false">有効にすると、認証系データ（API キー / アカウントトークン / SSH パスワード / スキル秘密鍵 / 地名キャッシュ）は三層鍵で書き込まれ、端末に強く紐づきます。バックアップには移行しません</string>
+    <string name="se_gd_tip_on" formatted="false">有効：新しい認証情報は三層鍵で保存</string>
+    <string name="se_gd_fail" formatted="false">有効化に失敗：セキュアチップが利用できません</string>
+    <string name="se_gd_busy_title" formatted="false">強化中</string>
+    <string name="se_gd_busy" formatted="false">鍵を導出し、すべての暗号文を書き換えています。終了しないでください</string>
+    <string name="se_gd_cleared_title" formatted="false">消去済み</string>
+    <string name="se_gd_cleared_body" formatted="false">認証系データをすべて削除しました。きれいな状態に戻すにはアプリを再起動してください</string>
+    <string name="se_gd_warn_title" formatted="false">有効化時はソルトの初期化と複数鍵の演算を行うため、CPU を一時的に使います。この端末（%1$s）では約 %2$s かかり、その間 UI が少し固まる場合があります</string>
+    <string name="se_gd_w1_t" formatted="false">有効化後は元に戻せない</string>
+    <string name="se_gd_w1_b" formatted="false">戻す手段は強制消去のみです。暗号化済みの API キー、アカウントトークン、Cookie、GitHub トークンなどはその場で削除され、復元できません</string>
+    <string name="se_gd_w2_t" formatted="false">データは端末に追従する</string>
+    <string name="se_gd_w2_b" formatted="false">端末の深い識別子に紐づきます。機種変更・再書き込み・初期化のいずれでも復号できなくなります。技術的には移行も可能ですが、安全上の理由から提供しません</string>
+    <string name="se_gd_w3_t" formatted="false">自己責任</string>
+    <string name="se_gd_w3_b" formatted="false">上記の結果は利用者が負うものとします。この層が本当に必要だと確信してから有効にしてください</string>
+    <string name="se_gd_layers" formatted="false">その代わり、ディスク上のデータは三層を通ります：</string>
+    <string name="se_gd_l1_t" formatted="false">端末鍵</string>
+    <string name="se_gd_l1_b" formatted="false">ランダムな半鍵をセキュアチップに封入、書き出し不可</string>
+    <string name="se_gd_l2_t" formatted="false">合成鍵</string>
+    <string name="se_gd_l2_b" formatted="false">シードと端末要素から残りの半分を導出し、XOR でデータ鍵にする</string>
+    <string name="se_gd_l3_t" formatted="false">内容暗号化</string>
+    <string name="se_gd_l3_b" formatted="false">ファイル全体を AES-256-GCM で暗号化し、ヘッダを新バージョンに書き換え</string>
+    <string name="se_gd_off_title" formatted="false">強制オフと消去</string>
+    <string name="se_gd_off_body" formatted="false">データ保護を切ると、暗号化済みデータを直ちにすべて削除します。取り消しもゴミ箱もありません</string>
+    <string name="se_gd_off_i1" formatted="false">API キー（モデル / 音声 / 検索）</string>
+    <string name="se_gd_off_i2" formatted="false">アカウントのログイン状態、フィードバックトークン、GitHub トークン、Cookie</string>
+    <string name="se_gd_off_i3" formatted="false">SSH パスワードとスキルパックの秘密鍵</string>
+    <string name="se_gd_off_i4" formatted="false">地名キャッシュ</string>
+    <string name="se_gd_off_note" formatted="false">消去後は端末が未暗号化状態に戻り、以前書き出した古いバックアップも開けなくなります</string>
+    <string name="se_gd_cancel" formatted="false">キャンセル</string>
+    <string name="se_gd_keep" formatted="false">保持</string>
+    <string name="se_gd_go" formatted="false">理解しました、有効にする</string>
+    <string name="se_gd_go_wait" formatted="false">最後まで読んでから（%1$ds）</string>
+    <string name="se_gd_wipe" formatted="false">消去を確認しました</string>
+    <string name="se_gd_wipe_wait" formatted="false">消去を確認（%1$ds）</string>
+    <string name="se_sec_tab" formatted="false">プライバシーと安全</string>
+    <string name="se_sec_sub" formatted="false">認証情報と私的データを守るスイッチ。変更前に警告を最後までお読みください</string>
+    <string name="se_pt_tab" formatted="false">追加保護</string>
+    <string name="se_pt_sub" formatted="false">インジェクションと漏洩への二重の防御。既定はすべてオフ、いつでも切り替え可能</string>
+    <string name="se_pt_mask_t" formatted="false">出力データのマスク</string>
+    <string name="se_pt_mask_on" formatted="false">有効 · パスワード / トークンをマスク</string>
+    <string name="se_pt_mask_off" formatted="false">無効 · 返信はそのまま表示</string>
+    <string name="se_pt_mask_note" formatted="false">返信本文・推論・ツール出力に password や token といった項目が現れたとき、値をマスクします。ルールはサーバーから取得し、照合は端末内で行います。できる範囲の対策で、完全な防御ではありません</string>
+    <string name="se_pt_mask_stream" formatted="false">有効にするとストリーミングは自動でオフになります。一文字ずつの表示は後から濾過できません</string>
+    <string name="se_pt_mask_rules" formatted="false">現在のルール：キー %1$d 件、接頭辞 %2$d 件</string>
+    <string name="se_pt_mask_ok" formatted="false">ルールを更新しました：サーバーの最新版を取得</string>
+    <string name="se_pt_mask_fail" formatted="false">ルール更新に失敗：端末内の予備セットで継続</string>
+    <string name="se_pt_shot_t" formatted="false">スクリーンショットと録画を禁止</string>
+    <string name="se_pt_shot_on" formatted="false">有効 · システムはチャット画面を取得できない</string>
+    <string name="se_pt_shot_off" formatted="false">無効 · スクリーンショットと録画は通常どおり</string>
+    <string name="se_pt_shot_note" formatted="false">チャット画面にシステムレベルの保護フラグを付けます。スクリーンショットや録画は真っ黒になります。必要なら先にこのスイッチを切ってください</string>
+    <string name="se_pt_warn_title" formatted="false">出力マスクを有効にする</string>
+    <string name="se_pt_warn_head" formatted="false">これは端末内のフィルタです。できることとできないことを確認してから有効にしてください</string>
+    <string name="se_pt_w1_t" formatted="false">すること</string>
+    <string name="se_pt_w1_b" formatted="false">返信本文・推論・ツール出力を表示前と保存前に一通り検査し、キー名と構造は残したまま値をマスクに置き換えます</string>
+    <string name="se_pt_w2_t" formatted="false">防げないこと</string>
+    <string name="se_pt_w2_b" formatted="false">分割・エンコード・改行で組み直された認証情報はすり抜けることがあり、モデルがそもそも書かない選択もできます。これは「注入文で丸ごと吐かされる」最も多い失態を止めるものです</string>
+    <string name="se_pt_w3_t" formatted="false">一緒に変わること</string>
+    <string name="se_pt_w3_b" formatted="false">ストリーミングが切れ、返信は一括表示になります。一文字ずつの表示に戻すには自分でストリーミングを入れ直してください</string>
+    <string name="se_pt_warn_back" formatted="false">もう一度：完全に安全ではありません</string>
+    <string name="se_pt_go" formatted="false">理解しました、有効にする</string>
+    <string name="se_pt_go_wait" formatted="false">最後まで読んでから（%1$ds）</string>
+    <string name="se_ns_t" formatted="false">ストリーミングを切る</string>
+    <string name="se_ns_on" formatted="false">オフ：モデルが書き終えてから一括表示、一文字ずつの表示はなし</string>
+    <string name="se_ns_off" formatted="false">通常のストリーミング：生成しながら一文字ずつ表示</string>
+    <string name="ag_stream_off" formatted="false">完全な返信を待機中</string>
+    <string name="se_gd_pg_title" formatted="false">データ超強暗号化を有効化中</string>
+    <string name="se_gd_pg_keep" formatted="false">処理中はこの画面を閉じられません。ここで強制終了すると半端に暗号化されたデータが残ります</string>
+    <string name="se_gd_pg1_t" formatted="false">鍵を生成</string>
+    <string name="se_gd_pg1_b" formatted="false">端末の半鍵 R を Keystore で包み、合成鍵 K2 はネイティブ層で導出</string>
+    <string name="se_gd_pg2_t" formatted="false">旧データを移行</string>
+    <string name="se_gd_pg2_b" formatted="false">従来の平文キー表と旧暗号文をまずメモリに復号し、同じ鍵セットに統一</string>
+    <string name="se_gd_pg3_t" formatted="false">暗号化して保存</string>
+    <string name="se_gd_pg3_b" formatted="false">各認証ファイルを三層鍵で再暗号化して書き戻し</string>
+    <string name="se_gd_pg4_t" formatted="false">完了</string>
+    <string name="se_gd_pg4_b" formatted="false">鍵はこのハードウェアに紐づき、機種変更や再書き込みでは開けません</string>
+    <string name="se_gd_covers" formatted="false">対象：モデル / 音声 / 検索 / MCP / A2A の鍵、アカウントとフィードバックのトークン、SSH パスワード、スキルパックの鍵、地名キャッシュ</string>
+    <string name="cs_max_on" formatted="false">最大 · オン</string>
+    <string name="cs_queue_title" formatted="false">送信待ちキュー</string>
+    <string name="cs_more_rounds" formatted="false">さらに前の %1$d ターンを表示</string>
+    <string name="cs_queue_tip" formatted="false">返信中に入力した内容はここに並び、このターンが終わると順に送信されます</string>
+    <string name="ag_queue_next" formatted="false">先頭に移動：このターンが終わり次第すぐ送信</string>
+    <string name="ag_queue_other" formatted="false">これは別の会話のものです。戻ってから送信できます</string>
+    <string name="ag_par_fmt" formatted="false">ツール %1$d 件を並列実行</string>
+    <string name="se_pg_voice" formatted="false">音声</string>
+    <string name="se_pg_voice_sub" formatted="false">音声認識、音声合成、返信の読み上げ</string>
+    <string name="se_pg_mem" formatted="false">記憶</string>
+    <string name="se_pg_mem_sub" formatted="false">会話をまたぐ長期記憶。モデル自身が読み書きします</string>
+    <string name="se_pg_local" formatted="false">ローカルモデル</string>
+    <string name="se_pg_local_sub" formatted="false">GGUF のオフライン推論。取り込めばすぐ使え、ネットなしでも動きます</string>
+    <string name="se_pg_perm" formatted="false">権限</string>
+    <string name="se_pg_perm_sub" formatted="false">動作方式、システム権限、Shizuku、試験的機能</string>
+    <string name="se_pg_avatar" formatted="false">アイコン</string>
+    <string name="se_pg_avatar_sub" formatted="false">自分とアシスタントのアイコン</string>
+    <string name="se_pg_float" formatted="false">フローティングチャット</string>
+    <string name="se_pg_float_sub" formatted="false">他のアプリの上でそのまま会話</string>
+    <string name="se_pg_auto" formatted="false">自動化</string>
+    <string name="se_pg_auto_sub" formatted="false">定期タスク、ワークフロー、通知トリガー</string>
+    <string name="se_pg_agent" formatted="false">スキルとロール</string>
+    <string name="se_pg_agent_sub" formatted="false">ロール、システムプロンプト、スキル広場とスキルパック</string>
+    <string name="se_pg_link" formatted="false">接続</string>
+    <string name="se_pg_link_sub" formatted="false">MCP、A2A、検索プラットフォーム</string>
+    <string name="se_pg_data" formatted="false">データと安全</string>
+    <string name="se_pg_data_sub" formatted="false">バックアップ、暗号化、セキュリティ設定</string>
+    <string name="se_pg_model_cfg" formatted="false">モデル設定</string>
+    <string name="se_pg_model_cfg_sub" formatted="false">モデル、現在の構成、能力、深い思考</string>
+    <string name="se_pg_chat_ctx" formatted="false">コンテキストと圧縮</string>
+    <string name="se_pg_chat_ctx_sub" formatted="false">ウィンドウ、圧縮しきい値、使用量</string>
+    <string name="se_pg_chat_inject" formatted="false">注入</string>
+    <string name="se_pg_chat_inject_sub" formatted="false">コンテキスト注入と返信情報</string>
+    <string name="se_pg_chat_session" formatted="false">会話と書き出し</string>
+    <string name="se_pg_chat_session_sub" formatted="false">会話管理、お気に入り、Markdown 書き出し</string>
+    <string name="se_pg_chat_tags" formatted="false">プロンプトタグ</string>
+    <string name="se_pg_chat_tags_sub" formatted="false">再利用できる断片。入力欄に挿入、または全体で有効化</string>
+    <string name="se_pg_emoji" formatted="false">カスタム絵文字</string>
+    <string name="se_pg_emoji_sub" formatted="false">分類、画像の差し替え、リセット。返信内のマーカーから描画</string>
+    <string name="se_pg_ui_theme" formatted="false">外観</string>
+    <string name="se_pg_ui_theme_sub" formatted="false">言語、テーマ色、文字サイズ、背景、ガラス質感、カードと入力欄</string>
+    <string name="se_pg_md" formatted="false">Markdown レイアウト</string>
+    <string name="se_pg_md_sub" formatted="false">本文サイズ、行間、段落間隔、リストの字下げ、左右余白、コードサイズ。ライブプレビュー付き</string>
+    <string name="se_pg_ui_nav" formatted="false">フローティングとジェスチャー</string>
+    <string name="se_pg_ui_nav_sub" formatted="false">フローティングチャットの権限・サイズ・位置、戻るジェスチャー</string>
+    <string name="se_pg_ui_input" formatted="false">入力</string>
+    <string name="se_pg_ui_input_sub" formatted="false">入力欄、プロンプト、アイコン</string>
+    <string name="se_pg_ext_auto" formatted="false">自動化</string>
+    <string name="se_pg_ext_auto_sub" formatted="false">定期タスク、ワークフロー、通知トリガー</string>
+    <string name="se_pg_ext_link" formatted="false">接続</string>
+    <string name="se_pg_ext_link_sub" formatted="false">A2A ノード、検索プラットフォーム、MCP サービス</string>
+    <string name="se_pg_ext_ws" formatted="false">ワークスペース</string>
+    <string name="se_pg_ext_ws_sub" formatted="false">データのルート、会話ワークスペースの紐づけ、ディレクトリツリー</string>
+    <string name="se_pg_linux" formatted="false">Linux サンドボックス</string>
+    <string name="se_pg_linux_sub" formatted="false">Ubuntu 環境の展開、依存の導入、セルフチェック</string>
+    <string name="se_pg_mi_sub" formatted="false">QR / 電話番号ログイン、端末台帳と属性パネル</string>
+    <string name="se_pg_mi_login" formatted="false">ログインとアカウント</string>
+    <string name="se_pg_mi_login_sub" formatted="false">認可ページでコードを取得しトークンに交換、ログイン状態とログアウト</string>
+    <string name="se_pg_mi_dev" formatted="false">端末</string>
+    <string name="se_pg_mi_dev_sub" formatted="false">台帳一覧、LAN スキャン、属性の読み書き</string>
+    <string name="se_pg_mi_ch" formatted="false">チャネル</string>
+    <string name="se_pg_mi_ch_sub" formatted="false">リージョン、LAN 優先、診断</string>
+    <string name="se_pg_music_sub" formatted="false">NetEase / QQ / Kuwo のログインと音質段階</string>
+    <string name="se_pg_lan_sub" formatted="false">端末検出、ペアリングコード、転送ポート</string>
+    <string name="se_pg_box_sub" formatted="false">ディレクトリの許可リスト、読み書きの段階、範囲外の遮断</string>
+    <string name="se_pg_model_param" formatted="false">モデルパラメータ</string>
+    <string name="se_pg_model_param_sub" formatted="false">深い思考、温度、追加のリクエストパラメータ</string>
+    <string name="se_pg_ui_person" formatted="false">パーソナライズ</string>
+    <string name="se_pg_ui_person_sub" formatted="false">アイコン、吹き出しカプセル、デスクトップペット</string>
+    <string name="island_ch_name" formatted="false">タスクの進捗</string>
+    <string name="island_no_perm" formatted="false">通知権限がオフです。システムはタスク通知を破棄します。タップして有効化</string>
+    <string name="island_ch_off" formatted="false">「タスクの進捗」通知カテゴリがオフです。通知は表示されません。タップして有効化</string>
+    <string name="island_stop" formatted="false">タスクを停止</string>
+    <string name="island_task_title" formatted="false">Baicodex のタスク</string>
+    <string name="island_running" formatted="false">実行中…</string>
+    <string name="island_bg_keep" formatted="false">タスクはバックグラウンドで継続します</string>
+    <string name="island_done" formatted="false">タスク完了</string>
+    <string name="ag_err_unknown" formatted="false">送信に失敗しました。原因不明です</string>
+    <string name="cs_fail_title" formatted="false">送信に失敗</string>
+    <string name="cs_fail_more" formatted="false">そのまま送信</string>
+    <string name="cs_fail_retry" formatted="false">再送</string>
+    <string name="cs_fail_keep" formatted="false">このメッセージは会話に残っています。下からそのまま再送できます</string>
+    <string name="cs_fail_again" formatted="false">そのまま再送</string>
+    <string name="cs_err_go_cfg" formatted="false">設定へ</string>
+    <string name="ag_err_kw_perm" formatted="false">権限</string>
+    <string name="ag_err_kw_env" formatted="false">未インストール</string>
+    <string name="se_kernel_t" formatted="false">Rust カーネル</string>
+    <string name="se_kernel_d" formatted="false">保存と暗号化は Rust が担当（アトミック書き込み + AES-256-GCM エンベロープ）。セルフチェックはカーネル自身の一時バケットで書き・読み・削除を行います</string>
+    <string name="se_kernel_run" formatted="false">セルフチェックを実行</string>
+    <string name="se_kernel_busy" formatted="false">チェック中…</string>
+    <string name="se_kernel_ok" formatted="false">セルフチェック合格</string>
+    <string name="se_kernel_fail" formatted="false">セルフチェック不合格</string>
+    <string name="se_kernel_na" formatted="false">この ABI には Rust カーネルがありません（arm64-v8a のみ）</string>
+    <string name="se_pg_prompt" formatted="false">プロンプト最適化</string>
+    <string name="se_pg_prompt_sub" formatted="false">最適化に使うモデル、原文言語の保持、独自の方向性</string>
+    <string name="se_pg_inout" formatted="false">入力と出力</string>
+    <string name="se_pg_inout_sub" formatted="false">返信情報の表示、ストリーミング、下書き保持、出力の好み</string>
+    <string name="se_pg_think" formatted="false">思考設定</string>
+    <string name="se_pg_think_sub" formatted="false">モデル名で照合し、思考フィールドのリクエストへの入れ方を決めます。追加・変更・削除・既定値の復元が可能</string>
 </resources>

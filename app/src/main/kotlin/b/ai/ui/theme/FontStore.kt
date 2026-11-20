@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:25
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 /**
  * 字体库：把用户丢进来的字体文件（ttf / otf / ttc）转成 Compose 的 FontFamily。
  * 目录放外部私有目录 fonts（免存储权限，卸载跟着清），设置页有「导入字体」按钮从系统文件选择器拷进来。
@@ -5,6 +19,8 @@
  */
 package b.ai.ui.theme
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.compositionLocalOf
@@ -74,7 +90,7 @@ object FontStore {
 
     /** 显示用短名：去掉目录与扩展名 */
     fun label(path: String): String {
-        if (path.isBlank()) return "默认"
+        if (path.isBlank()) return b.ai.App.self.getString(R.string.tx_18c63459)
         return File(path).nameWithoutExtension
     } //字体短名
 

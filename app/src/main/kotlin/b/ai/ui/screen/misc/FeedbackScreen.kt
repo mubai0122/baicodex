@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:21
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.misc
 import b.ai.ui.glass.ProvideCardBackdrop
 import b.ai.ui.glass.glassScrollState
@@ -10,6 +24,7 @@ import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.tap
 import b.ai.App
+import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.io.Attach
 import b.ai.net.api.llm.text
 
@@ -41,6 +56,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -86,7 +102,8 @@ private val EMAIL_RE = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
 fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
     var cat by remember { mutableStateOf(Feedback.BUG) }
     var content by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
+    //邮箱沿用上次填过的：进来就带出来，离开时落盘
+    var contact by remember { mutableStateOf(Cfg.fbEmail) }
     var busy by remember { mutableStateOf(false) }
     var tip by remember { mutableStateOf("") }
     var ok by remember { mutableStateOf(false) }
@@ -97,6 +114,9 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
     //邮箱必填：格式不对就不让提交
     val emailOk = EMAIL_RE.matches(contact.trim())
     val ctx = LocalContext.current
+    DisposableEffect(Unit) {
+        onDispose { Cfg.fbEmail = contact.trim() }
+    }
     val scope = rememberCoroutineScope()
     val mBigImg = stringResource(R.string.fb_att_img_big)
     val mBigLog = stringResource(R.string.fb_att_log_big)
@@ -330,7 +350,7 @@ fun FeedbackScreen(onBack: () -> Unit, onOpenDetail: (Int) -> Unit) {
                     busy = false
                     r.onSuccess {
                         content = ""
-                        contact = ""
+                        Cfg.fbEmail = contact.trim()
                         atts = emptyList()
                         attErr = ""
                         ok = true

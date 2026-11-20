@@ -1,4 +1,20 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:19
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.dialog
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.PolicyChip
@@ -77,12 +93,12 @@ fun FlowSheet(onClose: () -> Unit) {
     ScrimCard(onDismiss = onClose) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (editId.isBlank()) "工作流" else "编辑工作流",
+                if (editId.isBlank()) stringResource(R.string.tx_228526dc) else stringResource(R.string.tx_7e33ff66),
                 fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary
             )
             Spacer(Modifier.weight(1f))
             Text(
-                "关闭",
+                stringResource(R.string.tx_b15d9127),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
@@ -100,12 +116,12 @@ fun FlowSheet(onClose: () -> Unit) {
                 .verticalScroll(glassScrollState())
         ) {
             Text(
-                "多步按顺序跑，每步交给一个分智能体做完再进下一步。每步独立，拿不到上一步的结论，所以指令要写全。",
+                stringResource(R.string.tx_31ce34b3),
                 fontSize = 10.sp, color = TextSecondary
             )
-            Field("名称", name, { name = it }, "例如：每日巡检")
+            Field(stringResource(R.string.tx_d7ec2d3f), name, { name = it }, stringResource(R.string.tx_2ab5016f))
             Spacer(Modifier.height(6.dp))
-            Text("步骤（最多 ${Flows.MAX_STEPS} 步）", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Text(stringResource(R.string.tx_ac635e14, Flows.MAX_STEPS), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             steps.forEachIndexed { i, s ->
                 StepCard(
                     index = i,
@@ -118,25 +134,25 @@ fun FlowSheet(onClose: () -> Unit) {
                 )
             }
             if (steps.size < Flows.MAX_STEPS) {
-                GhostButton("+ 再加一步", Modifier.fillMaxWidth()) {
+                GhostButton(stringResource(R.string.tx_48c0b024), Modifier.fillMaxWidth()) {
                     steps = steps + StepDraft("", 1, "stop")
                 }
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f)) {
-                    Field("定时（留空就不定时）", time, { time = it }, "08:30")
+                    Field(stringResource(R.string.tx_6d489c3b), time, { time = it }, "08:30")
                 }
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) {
-                    Field("日期", date, { date = it }, "2026-01-01")
+                    Field(stringResource(R.string.tx_4ff1e74e), date, { date = it }, "2026-01-01")
                 }
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PolicyChip("每天", daily) { daily = true }
-                PolicyChip("仅一次", !daily) { daily = false }
-                PolicyChip("到点自动跑", auto) { auto = !auto }
+                PolicyChip(stringResource(R.string.tx_78623eae), daily) { daily = true }
+                PolicyChip(stringResource(R.string.tx_db75b769), !daily) { daily = false }
+                PolicyChip(stringResource(R.string.tx_25f61a7d), auto) { auto = !auto }
             }
             if (err.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
@@ -144,7 +160,7 @@ fun FlowSheet(onClose: () -> Unit) {
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                if (editId.isBlank()) "保存工作流" else "保存修改",
+                if (editId.isBlank()) stringResource(R.string.tx_8fedcfe7) else stringResource(R.string.tx_c5575b3f),
                 fontSize = 13.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -180,7 +196,7 @@ fun FlowSheet(onClose: () -> Unit) {
                                 time = ""
                                 editId = ""
                                 android.widget.Toast
-                                    .makeText(ctx, "已保存：" + f.name, android.widget.Toast.LENGTH_SHORT)
+                                    .makeText(ctx, b.ai.App.self.getString(R.string.tx_2d5c2af2) + f.name, android.widget.Toast.LENGTH_SHORT)
                                     .show()
                             }
                         }
@@ -189,7 +205,7 @@ fun FlowSheet(onClose: () -> Unit) {
             )
             if (editId.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
-                GhostButton("取消编辑", Modifier.fillMaxWidth()) {
+                GhostButton(stringResource(R.string.tx_cbb46593), Modifier.fillMaxWidth()) {
                     editId = ""
                     name = ""
                     steps = listOf(StepDraft("", 1, "stop"))
@@ -197,10 +213,10 @@ fun FlowSheet(onClose: () -> Unit) {
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("已有工作流", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Text(stringResource(R.string.tx_b0bf14a8), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             if (flows.isEmpty()) {
                 Text(
-                    "还没有。上面写几步保存下来，就能一键跑或定时跑。",
+                    stringResource(R.string.tx_acb7ed5c),
                     fontSize = 11.sp, color = TextSecondary, modifier = Modifier.padding(vertical = 6.dp)
                 )
             } else {
@@ -222,7 +238,7 @@ fun FlowSheet(onClose: () -> Unit) {
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                "到点能不能准时，取决于「设置 → 扩展 → 定时任务」里的精确闹钟 / 电池白名单 / 通知三项权限，状态在那边看。",
+                stringResource(R.string.tx_5dda83bb),
                 fontSize = 10.sp, color = TextSecondary
             )
         }
@@ -247,11 +263,11 @@ private fun StepCard(
             .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("第 ${index + 1} 步", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+            Text(stringResource(R.string.tx_69d06c37, index + 1), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             if (canDel) {
                 Text(
-                    "删除",
+                    stringResource(R.string.tx_2f4aaddd),
                     fontSize = 10.sp,
                     color = DangerRed,
                     modifier = Modifier
@@ -265,13 +281,13 @@ private fun StepCard(
             label = "",
             value = draft.task,
             onValueChange = onTask,
-            placeholder = "这一步要做什么、在哪做、要什么格式的结果",
+            placeholder = stringResource(R.string.tx_d11f8934),
             singleLine = false,
             minLines = 2
         )
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("失败重试", fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(top = 4.dp))
+            Text(stringResource(R.string.tx_37cd8040), fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(top = 4.dp))
             PolicyChip("0", draft.retry == 0) { onRetry(0) }
             PolicyChip("1", draft.retry == 1) { onRetry(1) }
             PolicyChip("2", draft.retry == 2) { onRetry(2) }
@@ -279,9 +295,9 @@ private fun StepCard(
         }
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("重试后仍失败", fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(top = 4.dp))
-            PolicyChip("停住", draft.onFail.equals("stop", true)) { onFail("stop") }
-            PolicyChip("跳过", draft.onFail.equals("skip", true)) { onFail("skip") }
+            Text(stringResource(R.string.tx_41b17b34), fontSize = 10.sp, color = TextSecondary, modifier = Modifier.padding(top = 4.dp))
+            PolicyChip(stringResource(R.string.tx_a0b7f94f), draft.onFail.equals("stop", true)) { onFail("stop") }
+            PolicyChip(stringResource(R.string.tx_92636e8c), draft.onFail.equals("skip", true)) { onFail("skip") }
         }
     }
 } //一步的编辑卡
@@ -301,21 +317,21 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    f.name + if (f.on) "" else "（已关）",
+                    f.name + if (f.on) "" else stringResource(R.string.tx_d70c841a),
                     fontSize = 12.sp,
                     color = if (f.on) TextPrimary else TextSecondary
                 )
                 val head = StringBuilder().append(f.steps.size).append(" 步")
                 if (f.at > 0L) {
-                    head.append(" · ").append(if (f.daily) "每天 " else "单次 ").append(Alarms.fmt(f.at))
-                    if (!f.auto) head.append(" · 只提醒")
+                    head.append(" · ").append(if (f.daily) stringResource(R.string.tx_552daf03) else stringResource(R.string.tx_75b4235d)).append(Alarms.fmt(f.at))
+                    if (!f.auto) head.append(stringResource(R.string.tx_44544558))
                 } else {
                     head.append(" · 未定时")
                 }
                 Text(head.toString(), fontSize = 10.sp, color = TextSecondary)
                 if (f.lastAt > 0L) {
                     Text(
-                        "上次 " + Alarms.fmt(f.lastAt) + if (f.lastOk) " 成功" else " 失败" +
+                        "上次 " + Alarms.fmt(f.lastAt) + if (f.lastOk) stringResource(R.string.tx_f28e75cf) else stringResource(R.string.tx_f73d0c19) +
                             if (f.lastNote.isBlank()) "" else "：" + f.lastNote.replace("\n", " ").take(28),
                         fontSize = 10.sp,
                         color = if (f.lastOk) OkGreen else DangerRed,
@@ -336,7 +352,7 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
         Spacer(Modifier.height(4.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                if (running) "跑着呢…" else "跑一次",
+                if (running) stringResource(R.string.tx_ec361222) else stringResource(R.string.tx_9873c205),
                 fontSize = 11.sp,
                 color = if (running) TextSecondary else AccentBlue,
                 modifier = Modifier
@@ -347,7 +363,7 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
                             running = false
                             android.widget.Toast.makeText(
                                 ctx,
-                                if (out.ok) "「" + f.name + "」全部通过" else "「" + f.name + "」有步骤失败，详情见对话",
+                                if (out.ok) "「" + f.name + b.ai.App.self.getString(R.string.tx_10cee180) else "「" + f.name + b.ai.App.self.getString(R.string.tx_3fea387c),
                                 android.widget.Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -355,7 +371,7 @@ private fun FlowRow(f: Flow, onEdit: () -> Unit) {
                     .padding(horizontal = 8.dp, vertical = 5.dp)
             )
             Text(
-                "删除",
+                stringResource(R.string.tx_2f4aaddd),
                 fontSize = 11.sp,
                 color = DangerRed,
                 modifier = Modifier

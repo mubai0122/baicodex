@@ -1,4 +1,20 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:20
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.overlay
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.IcSend
@@ -101,7 +117,7 @@ fun FChatUi(onClose: () -> Unit) {
             Text("Baicodex", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             Text(
-                if (tune) "收起" else "调节",
+                if (tune) stringResource(R.string.tx_def9e98b) else stringResource(R.string.tx_2b4607eb),
                 fontSize = 11.sp,
                 color = AccentBlue,
                 modifier = Modifier.tap { tune = !tune }.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -128,13 +144,13 @@ fun FChatUi(onClose: () -> Unit) {
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("有工具等你确认：点这里回 App 处理", fontSize = 10.sp, color = DangerRed)
+                Text(stringResource(R.string.tx_5144e2e5), fontSize = 10.sp, color = DangerRed)
             }
         }
 
         if (shown.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("说点什么，回复按 Markdown 渲染", fontSize = 11.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_30f520b7), fontSize = 11.sp, color = TextSecondary)
             }
         } else {
             LazyColumn(
@@ -172,7 +188,7 @@ fun FChatUi(onClose: () -> Unit) {
                     .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
-                if (draft.isEmpty()) Text("问点什么…", fontSize = 12.sp, color = TextSecondary)
+                if (draft.isEmpty()) Text(stringResource(R.string.tx_293460b2), fontSize = 12.sp, color = TextSecondary)
                 BasicTextField(
                     value = draft,
                     onValueChange = { draft = it },

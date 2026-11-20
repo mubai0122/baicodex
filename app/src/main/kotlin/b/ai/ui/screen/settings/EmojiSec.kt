@@ -1,5 +1,21 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -77,20 +93,20 @@ private fun EmojiBody() {
     HostInOverlay(creating || target != null || wiping) {
         if (creating) {
             ScrimCard(onDismiss = { creating = false }) {
-                Text("新建表情", fontSize = 16.sp, color = TextPrimary)
+                Text(stringResource(R.string.tx_e0423a8e), fontSize = 16.sp, color = TextPrimary)
                 Spacer(Modifier.height(4.dp))
-                Field("名字（标记里用这个）", name, { name = it }, placeholder = "比如：摸鱼")
-                Field("分类", group, { group = it }, placeholder = "比如：自定义 /情绪")
-                Field("字符（可不填，之后换成图片）", ch, { ch = it }, placeholder = "🐟")
+                Field(stringResource(R.string.tx_7190c3e1), name, { name = it }, placeholder = stringResource(R.string.tx_f79de08c))
+                Field(stringResource(R.string.tx_d0771a42), group, { group = it }, placeholder = stringResource(R.string.tx_825ff4d7))
+                Field(stringResource(R.string.tx_aeadd7b2), ch, { ch = it }, placeholder = "🐟")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Text(
-                        "取消",
+                        stringResource(R.string.tx_625fb26b),
                         fontSize = 13.sp,
                         color = TextSecondary,
                         modifier = Modifier.tap { creating = false }.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                     Text(
-                        "保存",
+                        stringResource(R.string.tx_be5fbbe3),
                         fontSize = 13.sp,
                         color = AccentBlue,
                         modifier = Modifier
@@ -115,7 +131,7 @@ private fun EmojiBody() {
                     EmojiChipArt(t, 40)
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        if (t.file.isNotBlank()) "当前用的是自定义图片" else "当前是内置字符 " + t.emoji,
+                        if (t.file.isNotBlank()) stringResource(R.string.tx_04470007) else stringResource(R.string.tx_25b347e9) + t.emoji,
                         fontSize = 11.sp,
                         color = TextSecondary
                     )
@@ -123,14 +139,14 @@ private fun EmojiBody() {
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Text(
-                        "从相册换图",
+                        stringResource(R.string.tx_5b58f2bd),
                         fontSize = 13.sp,
                         color = AccentBlue,
                         modifier = Modifier.tap { picker.launch("image/*") }.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "删除",
+                        stringResource(R.string.tx_2f4aaddd),
                         fontSize = 13.sp,
                         color = TextSecondary,
                         modifier = Modifier
@@ -146,19 +162,19 @@ private fun EmojiBody() {
         }
         if (wiping) {
             ScrimCard(onDismiss = { wiping = false }) {
-                Text("重置成内置表情？", fontSize = 16.sp, color = TextPrimary)
+                Text(stringResource(R.string.tx_597f1e0f), fontSize = 16.sp, color = TextPrimary)
                 Spacer(Modifier.height(6.dp))
-                Text("自己加的条目和换过的图片都会删掉，内置那套恢复原样。", fontSize = 12.sp, color = TextSecondary)
+                Text(stringResource(R.string.tx_f6135cae), fontSize = 12.sp, color = TextSecondary)
                 Spacer(Modifier.height(10.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     Text(
-                        "取消",
+                        stringResource(R.string.tx_625fb26b),
                         fontSize = 13.sp,
                         color = TextSecondary,
                         modifier = Modifier.tap { wiping = false }.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                     Text(
-                        "确认重置",
+                        stringResource(R.string.tx_80cfc33c),
                         fontSize = 13.sp,
                         color = AccentBlue,
                         modifier = Modifier
@@ -175,7 +191,7 @@ private fun EmojiBody() {
     }
 
     Column {
-        SectionTitle("自定义表情", "AI 回复里写 [e:名字] 就渲染成表情；内置的也能换成自己的图")
+        SectionTitle(stringResource(R.string.tx_37f45cdf), stringResource(R.string.tx_65524e55))
         CardBox {
             Text(
                 "图片放在 " + Emojis.dir().absolutePath + "，索引跟着配置一起存。删掉的那条模型再也调不出来，换图只影响显示。",
@@ -200,7 +216,7 @@ private fun EmojiBody() {
         }
         Spacer(Modifier.height(10.dp))
         CardBox {
-            GhostButton("新建表情") {
+            GhostButton(stringResource(R.string.tx_e0423a8e)) {
                 creating = true
                 name = ""
                 group = ""
@@ -209,7 +225,7 @@ private fun EmojiBody() {
         }
         Spacer(Modifier.height(8.dp))
         CardBox {
-            GhostButton("重置为内置") { wiping = true }
+            GhostButton(stringResource(R.string.tx_b63585d6)) { wiping = true }
         }
     }
 } //自定义表情子页

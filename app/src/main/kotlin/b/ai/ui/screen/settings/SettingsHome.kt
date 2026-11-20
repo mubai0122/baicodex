@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:23
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
 import androidx.compose.foundation.layout.Column
@@ -37,7 +51,8 @@ import b.ai.ui.widget.tap
  */
 fun LazyListScope.seCatHome(catLabel: Int, sub: String, pages: List<SePage>, onOpen: (SePage) -> Unit) {
     item {
-        SectionTitle(stringResource(catLabel), sub)
+        //分类名已经在标题栏右侧回显，这里不再重复画一遍大标题
+        if (sub.isNotBlank()) SectionTitle(stringResource(catLabel), sub)
         CardBox {
             pages.forEachIndexed { i, p ->
                 if (i > 0) Spacer(Modifier.height(2.dp))

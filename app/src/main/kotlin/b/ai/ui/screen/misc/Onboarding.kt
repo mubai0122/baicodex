@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:21
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.misc
 import b.ai.device.shell.root.Root
 import b.ai.ui.dialog.Overlay
@@ -479,8 +493,8 @@ private fun StepPermission(
         Spacer(Modifier.height(12.dp))
         SpecialPermCard(
             Perms.specials(Cfg.workMode).filter { it != Perms.SP_A11Y },
-            if (needA11y) "顺便把这两样也开了，不然锁屏后任务会被系统掐掉、胶囊也浮不出来。"
-            else "这个模式下只差悬浮窗：开了才能在别的应用上看到「正在进行 xx」的胶囊。"
+            if (needA11y) stringResource(R.string.tx_54763353)
+            else stringResource(R.string.tx_34d391e0)
         )
     }
 }
@@ -559,7 +573,7 @@ private fun StepEnv() {
         Spacer(Modifier.height(8.dp))
         val mLabel = run {
             val mid = Cfg.linuxMirrorNode
-            if (mid.isBlank()) "自动（测速择优）"
+            if (mid.isBlank()) stringResource(R.string.tx_6d8aba37)
             else LinuxMirror.FALLBACK_NODES.firstOrNull { it.id == mid }?.name ?: mid
         }
         //镜像源：跟设置页同一个选择器，装环境前就能指定节点

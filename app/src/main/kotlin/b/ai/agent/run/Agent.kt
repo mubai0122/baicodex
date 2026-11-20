@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:04
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.agent.run
 import b.ai.agent.flow.FlowRunner
 import b.ai.agent.sub.SubAgents
@@ -19,6 +33,7 @@ import b.ai.R
 import java.io.File
 import b.ai.core.model.chat.ChatMsg
 import b.ai.core.cfg.env.Env
+import b.ai.core.cfg.env.PromptVars
 import b.ai.agent.flow.Flow
 import b.ai.agent.flow.Flows
 import b.ai.agent.memory.Memory
@@ -200,8 +215,12 @@ object Agent {
         curRun?.answerPlan(v)
     } //计划回填
 
-    /**发送：按 sessionId 分流到对应会话的通道上，互不排队 */
-    fun send(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+    /**
+     * 发送：按 sessionId 分流到对应会话的通道上，互不排队。
+     * 注意：用户消息原样发出，不做花括号替换 —— 花括号参数只服务「自定义系统提示」。
+     */
+    fun send(raw: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        val text = raw
         val id = sessionId
         if (id != null) {
             runOf(id).send(text, images, files)
@@ -218,8 +237,9 @@ object Agent {
         }
     } //发送
 
-    fun enqueue(text: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
-        curRun?.enqueue(text, images, files)
+    fun enqueue(raw: String, images: List<String> = emptyList(), files: List<String> = emptyList()) {
+        //用户消息原样入队，不做参数替换（同上：花括号只用于系统提示）
+        curRun?.enqueue(raw, images, files)
     } //压入当前会话的队列
 
     fun dropQueued(id: Long) {
@@ -1617,8 +1637,14 @@ object Agent {
         val tools = Tools.all.filter { Tools.allowed(it) }.joinToString(" / ")
         //顺序：角色 → 自定义提示 → 工作流 → 设备与规则 → 工作区 → 技能
         return buildString {
-            if (persona.isNotBlank()) append(persona).append("\n\n")
-            if (custom.isNotBlank()) append(custom).append("\n\n")
+            //拼接顺序：默认角色在前；用户在设置里选了「自定义优先」就先铺预设，角色人设只做补充，避免被压住
+            if (Cfg.promptOrder == 1) {
+                if (custom.isNotBlank()) append(custom).append("\n\n")
+                if (persona.isNotBlank()) append(persona).append("\n\n")
+            } else {
+                if (persona.isNotBlank()) append(persona).append("\n\n")
+                if (custom.isNotBlank()) append(custom).append("\n\n")
+            }
             if (tags.isNotBlank()) append(tags).append("\n\n")
             if (emoji.isNotBlank()) append(emoji).append("\n")
             append(flow).append("\n\n")

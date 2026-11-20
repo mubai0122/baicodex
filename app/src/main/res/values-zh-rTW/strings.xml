@@ -284,6 +284,8 @@
     <string name="cs_close">關閉</string>
     <string name="cs_summary">上下文摘要</string>
     <string name="cs_summary_done">已壓縮早期對話</string>
+    <string name="cs_msg_ops">操作訊息</string>
+    <string name="cs_copy_all">複製全部內容</string>
     <string name="cs_this_msg">這則訊息</string>
     <string name="cs_this_reply">這則回覆</string>
     <string name="cs_no_content">（無內容）</string>
@@ -1617,4 +1619,990 @@
     <string name="acc_mine_fav">我收藏的</string>
     <string name="acc_up_empty">還沒上傳過外掛</string>
     <string name="acc_fav_empty">還沒收藏過外掛</string>
+    <string name="pm_top_p">核取樣</string>
+    <string name="pm_top_k">候選數</string>
+    <string name="pm_presence">出現懲罰</string>
+    <string name="pm_frequency">頻率懲罰</string>
+    <string name="pm_repeat">重複懲罰</string>
+    <string name="pm_top_p_key">top_p</string>
+    <string name="pm_top_k_key">top_k</string>
+    <string name="pm_presence_key">presence_penalty</string>
+    <string name="pm_frequency_key">frequency_penalty</string>
+    <string name="pm_repeat_key">repeat_penalty</string>
+    <string name="tx_011d09ad" formatted="false">多檔滑桿</string>
+    <string name="tx_02895542" formatted="false">定時任務與已排程的工作流程依時間排序的前三筆</string>
+    <string name="tx_03dc6b51" formatted="false">＋ 新增設定</string>
+    <string name="tx_041b5d0d" formatted="false">收藏夾，以及把目前工作階段匯出成 Markdown</string>
+    <string name="tx_0450050c" formatted="false">工作區就是 AI 讀寫檔案的地方；這一項沒過，綁目錄時會一直失敗</string>
+    <string name="tx_0556c32b" formatted="false">啟用段與滑桿描邊跟隨主題色</string>
+    <string name="tx_06972491" formatted="false">未授權，系統會把觸發時間往後挪幾分鐘到幾十分鐘</string>
+    <string name="tx_06d23d3f" formatted="false">角色在前（預設）</string>
+    <string name="tx_078ab933" formatted="false">比對方式</string>
+    <string name="tx_08b3859a" formatted="false">跨工作階段長期記憶：模型會自己讀寫，也可以在這裡直接新增、刪除、合併整理</string>
+    <string name="tx_090286ed" formatted="false">草稿有效期限</string>
+    <string name="tx_09e4e337" formatted="false">2–4秒</string>
+    <string name="tx_0a60a66c" formatted="false">確認清除</string>
+    <string name="tx_0b5342ec" formatted="false">全域字型 / 我方氣泡 / AI 回覆各設一份，匯入後立刻生效</string>
+    <string name="tx_0c1e4c99" formatted="false">去系統「手勢導覽」設定</string>
+    <string name="tx_0c4316d9" formatted="false">單次最長錄音</string>
+    <string name="tx_0c47bf01" formatted="false">已授權，可以浮在其他應用程式上層</string>
+    <string name="tx_0dd7ef22" formatted="false">超過有效期限的草稿在下次切換工作階段時自動刪除；傳送成功後草稿立刻清空。</string>
+    <string name="tx_0e2af5f5" formatted="false">到點能不能跑起來</string>
+    <string name="tx_0e48617f" formatted="false">輸入框右側四芒星按鈕用的連線與寫法；最佳化後可一鍵回復原文</string>
+    <string name="tx_110dd655" formatted="false">駐留時長</string>
+    <string name="tx_112be922" formatted="false">跟隨全域</string>
+    <string name="tx_119c6296" formatted="false">未開啟，工作區只能落在應用程式自己的私有目錄裡</string>
+    <string name="tx_12c3b1d7" formatted="false">每輪任務開始發一則常駐通知；小米 / 華為主機會自動掛到島上</string>
+    <string name="tx_15ec4b98" formatted="false">精確鬧鐘</string>
+    <string name="tx_16a79761" formatted="false">預設請求路徑</string>
+    <string name="tx_18c63459" formatted="false">預設</string>
+    <string name="tx_19497c0b" formatted="false">Deepgram 模型</string>
+    <string name="tx_1a212ec6" formatted="false">檔位順序就是滑桿從低到高；最多 5 檔。寫入值依 JSON 格式：字串加引號，數字與布林值直接寫。</string>
+    <string name="tx_1b605a1e" formatted="false">0 = 邊緣不做透鏡變形；越大邊緣彎曲越明顯</string>
+    <string name="tx_1bf1dcd4" formatted="false">開啟 / 關閉時寫入</string>
+    <string name="tx_1bfaf093" formatted="false">比對模型（完整型號，多個以逗號分隔）</string>
+    <string name="tx_1cf2d4cf" formatted="false">自訂在前（預設優先）</string>
+    <string name="tx_1da7adbb" formatted="false">%.1f秒</string>
+    <string name="tx_1e4ab751" formatted="false">常駐拼在系統提示裡，決定回覆怎麼寫；與角色卡設定疊加，不覆蓋</string>
+    <string name="tx_214a7d7d" formatted="false">例如：先給結論再給依據；表格只用兩欄；程式碼區塊標注語言</string>
+    <string name="tx_2280a03a" formatted="false">不看聊天裡的思考開關，一律以開啟值送出</string>
+    <string name="tx_228526dc" formatted="false">工作流程</string>
+    <string name="tx_22b4334f" formatted="false">草稿</string>
+    <string name="tx_231fdea9" formatted="false">開啟 A2A</string>
+    <string name="tx_2474be5f" formatted="false">不在白名單，鎖屏久了通知可能被系統清掉</string>
+    <string name="tx_25b7fe70" formatted="false">含 encoder/decoder/joiner 與 tokens 的目錄</string>
+    <string name="tx_2604bcce" formatted="false">STT 引擎</string>
+    <string name="tx_2627160e" formatted="false">已授權，依設定的時刻觸發</string>
+    <string name="tx_2898cdb7" formatted="false">清除 Cookie 與網頁快取</string>
+    <string name="tx_28d68b24" formatted="false">與角色提示的拼接順序</string>
+    <string name="tx_2911c1e5" formatted="false">背景保持運作</string>
+    <string name="tx_2ac5cf31" formatted="false">跳過這筆</string>
+    <string name="tx_2ae34d78" formatted="false">佔位符在拼系統提示時替換成真實值（時間 / 電量 / 目前模型等）；聊天輸入框裡的大括號保持原樣。</string>
+    <string name="tx_2ecb1bb9" formatted="false">懸浮聊天視窗</string>
+    <string name="tx_2f4aaddd" formatted="false">刪除</string>
+    <string name="tx_366d6528" formatted="false">彈窗與滑桿</string>
+    <string name="tx_3a605fa6" formatted="false">已在電池最佳化白名單，鎖屏後通知不會被收走</string>
+    <string name="tx_3ab3186c" formatted="false">三類自動化各自的啟用狀況；不想被打擾時可以一鍵全停，之後一鍵恢復</string>
+    <string name="tx_3b4c7ed4" formatted="false">顯示懸浮聊天視窗</string>
+    <string name="tx_3c70a377" formatted="false">標題生成用模型</string>
+    <string name="tx_3ceeb66d" formatted="false">所有檔案存取</string>
+    <string name="tx_3df99821" formatted="false">本機兩項 + 遠端兩項</string>
+    <string name="tx_3fe3558b" formatted="false">依規則順序比對思考參數，第一筆命中生效</string>
+    <string name="tx_4210b61b" formatted="false">彈窗圓角</string>
+    <string name="tx_423b0645" formatted="false">操作稽核日誌</string>
+    <string name="tx_42c4c7c5" formatted="false">top_p 越低越保守，1.0 等於不裁剪；top_k 只在國內幾家與本機推論生效，0 表示不送這個欄位。</string>
+    <string name="tx_44e4d7a3" formatted="false">記憶</string>
+    <string name="tx_47aeba9f" formatted="false">100% 是原本的觀感；調低會露出背景，文字可讀性也跟著下降</string>
+    <string name="tx_4a61c29a" formatted="false">離線模式</string>
+    <string name="tx_4d6e461d" formatted="false">還沒有自訂字型：點左邊匯入 ttf / otf</string>
+    <string name="tx_4dc6270e" formatted="false">每筆都隨系統提示送出，刪掉即失效</string>
+    <string name="tx_4f3d139b" formatted="false">草稿保留圖片</string>
+    <string name="tx_4fa79f06" formatted="false">滑桿檔位</string>
+    <string name="tx_4fcdbfe5" formatted="false">未通過</string>
+    <string name="tx_520a162c" formatted="false">新增思考設定</string>
+    <string name="tx_520e366b" formatted="false">始終開啟思考</string>
+    <string name="tx_52273aab" formatted="false">$it 天</string>
+    <string name="tx_529f8817" formatted="false">100% 完全不透明；調低能透出後面的內容，但字會更難認</string>
+    <string name="tx_5489c494" formatted="false">這一段每輪都拼在角色人設與自訂提示後面，不覆蓋角色卡裡的設定。</string>
+    <string name="tx_5660bcd2" formatted="false">通知</string>
+    <string name="tx_5756d0e9" formatted="false">不過期</string>
+    <string name="tx_582085bb" formatted="false">整理用模型</string>
+    <string name="tx_59fee9a5" formatted="false">工作區前置檢查</string>
+    <string name="tx_5ac2011a" formatted="false">放棄</string>
+    <string name="tx_5b921cf1" formatted="false">定時任務靠系統鬧鐘、通知、背景保持運作三件套，缺一樣就會出現「設了沒反應」</string>
+    <string name="tx_5d94fa40" formatted="false">軌道加高時內部圓點跟著一起變大，比例保持不變</string>
+    <string name="tx_5dc7fa2b" formatted="false">思考設定</string>
+    <string name="tx_5e213ddb" formatted="false">去開啟</string>
+    <string name="tx_5e34a485" formatted="false">申請授權</string>
+    <string name="tx_5e408cf7" formatted="false">只允許本機引擎：系統辨識 / Sherpa NCNN</string>
+    <string name="tx_5f4766cc" formatted="false">立刻收起</string>
+    <string name="tx_607c0a3b" formatted="false">整理記憶</string>
+    <string name="tx_625fb26b" formatted="false">取消</string>
+    <string name="tx_629de16a" formatted="false">拉取中…</string>
+    <string name="tx_637321f6" formatted="false">總結用模型</string>
+    <string name="tx_645dbc55" formatted="false">預覽</string>
+    <string name="tx_653d2130" formatted="false">整理中…</string>
+    <string name="tx_65557288" formatted="false">例如：面向 Android + Kotlin，句子短、句子間用清單</string>
+    <string name="tx_694297ce" formatted="false">寫入路徑（留空沿用預設路徑）</string>
+    <string name="tx_69c6c8f3" formatted="false">重複控制參數</string>
+    <string name="tx_6b8361f5" formatted="false">依請求路徑寫入固定值</string>
+    <string name="tx_6e63dd3c" formatted="false">A2A 1.0 介面：本機可當用戶端呼叫其他節點，也可開伺服器端接收任務</string>
+    <string name="tx_70607644" formatted="false">還沒有排好的計畫。上面點「管理」新增一筆，或給工作流程設個時間。</string>
+    <string name="tx_707c976d" formatted="false">未設定，依廠商/型號自動推斷</string>
+    <string name="tx_709d84ce" formatted="false">任務通知與靈動島</string>
+    <string name="tx_70b562da" formatted="false">工作階段與匯出</string>
+    <string name="tx_70d093e2" formatted="false">留空則只用內建範本：程式碼模式圍繞程式碼需求補全，其他模式圍繞日常任務補全。</string>
+    <string name="tx_720ab972" formatted="false">懸浮視窗權限</string>
+    <string name="tx_73d7e891" formatted="false">彈窗圓角、滑桿配色</string>
+    <string name="tx_74f960c9" formatted="false">還沒有記憶</string>
+    <string name="tx_75af6edf" formatted="false">正文離氣泡邊緣的距離；長文想留白就加，想貼邊就歸零</string>
+    <string name="tx_7725233f" formatted="false">沒有符合的設定項：$key</string>
+    <string name="tx_79a86fd2" formatted="false">預設關閉：只保留文字與檔案，圖片不落地</string>
+    <string name="tx_79f09f89" formatted="false">服務商</string>
+    <string name="tx_7b5ff17c" formatted="false">全域縮排</string>
+    <string name="tx_7bb29de8" formatted="false">多步驟依序跑，每步一個子智慧代理；可定時、失敗可重試或跳過</string>
+    <string name="tx_7c138c54" formatted="false">＋ 新增檔位</string>
+    <string name="tx_7e382efd" formatted="false">開發人員模式已解鎖：看本頁最下方</string>
+    <string name="tx_7ec62ce2" formatted="false">允許模型依情境改寫語言</string>
+    <string name="tx_7fc624f8" formatted="false">特殊權限</string>
+    <string name="tx_8000f187" formatted="false">模型</string>
+    <string name="tx_81ef7ad6" formatted="false">依規則順序比對思考參數，第一筆命中生效；都沒命中就走內建預設</string>
+    <string name="tx_8280b5ae" formatted="false">任務通知</string>
+    <string name="tx_8456bc40" formatted="false">字型</string>
+    <string name="tx_846cdaf0" formatted="false">通知權限</string>
+    <string name="tx_84defbe5" formatted="false">匯入失敗：只支援 ttf / otf / ttc</string>
+    <string name="tx_84e40c91" formatted="false">最佳化方向自訂</string>
+    <string name="tx_85067db3" formatted="false">執行總覽</string>
+    <string name="tx_8508566e" formatted="false">已關閉，到點不會提醒你（自動執行仍然會跑）</string>
+    <string name="tx_8539beb4" formatted="false">AI 回覆的排版：字級、行距、段落間距、清單縮排、左右留白與程式碼區塊字級；下面預覽用的是聊天同一套呈現</string>
+    <string name="tx_85624c8e" formatted="false">介面位址</string>
+    <string name="tx_86454fc7" formatted="false">管理工作流程</string>
+    <string name="tx_865347b7" formatted="false">整理後（尚未套用）</string>
+    <string name="tx_8851751d" formatted="false">每深一層縮排多少；0 = 不縮排，只靠符號區分層級</string>
+    <string name="tx_8c7432b9" formatted="false">0 秒 = 任務完成後立刻撤掉</string>
+    <string name="tx_8d2bc55b" formatted="false">啟用此設定</string>
+    <string name="tx_8e1b47f0" formatted="false">已同時開啟思考：DeepSeek 的聯網搜尋必須在思考模式下執行</string>
+    <string name="tx_8e6ab923" formatted="false">顯示名稱</string>
+    <string name="tx_90d5ce80" formatted="false">不同機型入口名稱不一樣：可能是「所有檔案的管理權限」「檔案和媒體」或「儲存權限」；跑 Root / Shizuku 模式時不依賴它。</string>
+    <string name="tx_929ea71b" formatted="false">跟隨目前聊天</string>
+    <string name="tx_946262ed" formatted="false">已匯入 </string>
+    <string name="tx_950a94dd" formatted="false">全部恢復只把已有的項目重新開啟，不會新增或改時間</string>
+    <string name="tx_9559ce64" formatted="false">預設（不送）</string>
+    <string name="tx_95e4a689" formatted="false">錄音取樣率</string>
+    <string name="tx_96a5feb3" formatted="false">聊天頁右下角那顆圓鈕的底色與圖示配色</string>
+    <string name="tx_99557469" formatted="false">全域字型</string>
+    <string name="tx_9be9c76a" formatted="false">介面沒回傳模型，下面手動填</string>
+    <string name="tx_9bfd20b1" formatted="false">滑桿繼承主題色</string>
+    <string name="tx_9c61a929" formatted="false">檔位 </string>
+    <string name="tx_9ca1cb1f" formatted="false">確認清除網頁登入狀態？</string>
+    <string name="tx_9ec0f5da" formatted="false">關著：開啟後在別的應用程式上層也能直接聊</string>
+    <string name="tx_9f2e930a" formatted="false">接下來要跑</string>
+    <string name="tx_9fcf1606" formatted="false">段落、標題、清單、程式碼區塊之間空多少</string>
+    <string name="tx_a114c7a8" formatted="false">切走再回來，圖片也掛在輸入區</string>
+    <string name="tx_a2d86e87" formatted="false">提示詞最佳化</string>
+    <string name="tx_a39e54aa" formatted="false">允許目錄白名單，讀寫權限分級</string>
+    <string name="tx_a3af3303" formatted="false"> 個：</string>
+    <string name="tx_a441b416" formatted="false">編輯思考設定</string>
+    <string name="tx_a52f5c20" formatted="false">系統預設</string>
+    <string name="tx_a5bccdfb" formatted="false">所有沒單獨指定字型的文字都跟它走</string>
+    <string name="tx_a6a648c1" formatted="false">已開啟，到點會彈通知</string>
+    <string name="tx_a71af5ad" formatted="false">每輪任務掛一則常駐通知，小米 / 華為等機型自動上島；缺權限就只剩「跑了但沒動靜」</string>
+    <string name="tx_a75eff1a" formatted="false">恢復內建規則</string>
+    <string name="tx_a83942eb" formatted="false">滑桿軌道高度</string>
+    <string name="tx_abbb0ab4" formatted="false">開啟時寫入的值</string>
+    <string name="tx_ac0cdee7" formatted="false">依目前模式分檔：一般使用者要無障礙 + 背景保持 + 懸浮視窗，Root 只要懸浮視窗</string>
+    <string name="tx_adc2cb46" formatted="false">不在白名單，鎖屏久了懸浮視窗可能被系統收走</string>
+    <string name="tx_ae27e4da" formatted="false">輸出偏好</string>
+    <string name="tx_ae6b6416" formatted="false">Markdown 顯示</string>
+    <string name="tx_af29b0db" formatted="false">點上面這行直達系統通知設定；OPPO / 一加還要在「電池」裡允許背景執行，否則鎖屏後通知會被系統收走</string>
+    <string name="tx_b0c9ab6f" formatted="false">$it 秒</string>
+    <string name="tx_b15d9127" formatted="false">關閉</string>
+    <string name="tx_b324c1b6" formatted="false">已關閉，任務照常跑但看不到任何提示</string>
+    <string name="tx_b472edb3" formatted="false">切工作階段不丟輸入；每個工作階段一份 drafts/&lt;工作階段&gt;.prkcovs</string>
+    <string name="tx_b6f6ccf7" formatted="false">未授權，開關打開也不會顯示</string>
+    <string name="tx_b7a7dafe" formatted="false">完成後繼續駐留</string>
+    <string name="tx_b886dc73" formatted="false">最佳化時保留原語言</string>
+    <string name="tx_b90dde67" formatted="false">不在白名單，鎖屏 / 背景一段時間後可能被系統終止</string>
+    <string name="tx_b972541e" formatted="false">滑桿軌道濃度</string>
+    <string name="tx_ba3f1876" formatted="false">壓住背景保住文字可讀，0% 完全透明</string>
+    <string name="tx_bb007351" formatted="false">在別的應用程式上面直接聊：回覆依 Markdown 呈現，寬度 / 高度 / 透明度 / 字級都能即時調</string>
+    <string name="tx_bb3f978b" formatted="false">清掉內建瀏覽器、搜尋工具與 WebView 裡的登入狀態和快取</string>
+    <string name="tx_bd7451f2" formatted="false">用 shell / root 身分跑指令時走它；授權前要先在 Shizuku 裡啟動服務</string>
+    <string name="tx_be5fbbe3" formatted="false">儲存</string>
+    <string name="tx_c0410c62" formatted="false">目前安裝包未內建 sherpa-ncnn 執行環境：選它會自動改用系統辨識，並在輸入框上方提示原因。</string>
+    <string name="tx_c083b46f" formatted="false">輸出偏好（常駐）</string>
+    <string name="tx_c0a99954" formatted="false">隱私與網頁登入</string>
+    <string name="tx_c2e48855" formatted="false">開發人員</string>
+    <string name="tx_c4da04aa" formatted="false">已開啟，任務狀態會即時出現在通知欄 / 島上</string>
+    <string name="tx_c4e93556" formatted="false">我方氣泡字型</string>
+    <string name="tx_c51ed4da" formatted="false">還沒加對端</string>
+    <string name="tx_c56fbda3" formatted="false">思考檔位</string>
+    <string name="tx_c7049188" formatted="false">提示詞最佳化用模型</string>
+    <string name="tx_c71ac55d" formatted="false">創造性參數</string>
+    <string name="tx_c8b75cb0" formatted="false">檔位</string>
+    <string name="tx_c93d4306" formatted="false">前三檔為負數時表示不寫進請求，交給伺服器端預設；repeat_penalty 主要是本機推論與部分中轉站在用，0 = 不送。</string>
+    <string name="tx_cc49b1fd" formatted="false">已在電池最佳化白名單，鎖屏後任務不會被中止</string>
+    <string name="tx_ccd94af0" formatted="false">符號連結與越界讀寫攔截開關</string>
+    <string name="tx_cd36e684" formatted="false">已在電池最佳化白名單，切到背景不會被中止</string>
+    <string name="tx_cedb8821" formatted="false">對話裡讓模型「記住這件事」就會寫進來</string>
+    <string name="tx_cf2b2abc" formatted="false">參與比對</string>
+    <string name="tx_d28ecec9" formatted="false">保持使用者原文語言，不翻譯</string>
+    <string name="tx_d3e52c96" formatted="false">寫入值</string>
+    <string name="tx_d742e670" formatted="false">已顯示：拖標題列換位置，點右上角 × 收起</string>
+    <string name="tx_d822e614" formatted="false">在主控台建立，Token 驗證</string>
+    <string name="tx_d94fd817" formatted="false">匯入字型檔案</string>
+    <string name="tx_d9524747" formatted="false">已開啟 </string>
+    <string name="tx_daf51302" formatted="false">淡灰軌道 + 白色滑桿</string>
+    <string name="tx_df74b581" formatted="false">寫好幾步存下來，就能一鍵跑或按點跑</string>
+    <string name="tx_e1b2f870" formatted="false">控制項</string>
+    <string name="tx_e2956683" formatted="false">關閉時寫入的值（留空 = 不下送）</string>
+    <string name="tx_e5c4f1fc" formatted="false">全部暫停</string>
+    <string name="tx_e70a40b7" formatted="false">從介面取得模型</string>
+    <string name="tx_e796d32d" formatted="false">Sherpa 模型目錄</string>
+    <string name="tx_e82c50b0" formatted="false">卡片上沿那道亮邊的濃度，50% 是預設</string>
+    <string name="tx_e90e4777" formatted="false">位置復位到右上角</string>
+    <string name="tx_ea02bb1f" formatted="false">立刻顯示</string>
+    <string name="tx_ea9bc057" formatted="false">對端 </string>
+    <string name="tx_eb67ae08" formatted="false">留空表示「所有模型」，建議放在清單最後當備援。</string>
+    <string name="tx_ec691c16" formatted="false">思考與原生聯網搜尋互斥，請先關閉思考</string>
+    <string name="tx_ec83af0d" formatted="false">0 = 直角，16dp 是預設，32dp 接近膠囊；白卡與玻璃卡一起變</string>
+    <string name="tx_ecc33185" formatted="false">摘要檔位</string>
+    <string name="tx_ecfa64c1" formatted="false">已通過</string>
+    <string name="tx_ed972708" formatted="false">所有模型</string>
+    <string name="tx_edd7189b" formatted="false">任務跑完不立刻撤通知，先切成完成狀態在島 / 通知欄留一會兒</string>
+    <string name="tx_f0365c26" formatted="false">每檔可單獨寫路徑與值（例如 Claude 的 budget_tokens）；留空則沿用規則裡的預設路徑。</string>
+    <string name="tx_f05a0996" formatted="false">插入參數</string>
+    <string name="tx_f1153d97" formatted="false">模型（也能手動填）</string>
+    <string name="tx_f2af02ae" formatted="false">AI 回覆字型</string>
+    <string name="tx_f3b58907" formatted="false">已開啟，可以讀寫共享儲存空間裡的任意目錄</string>
+    <string name="tx_f4590f7d" formatted="false">全部恢復</string>
+    <string name="tx_f490eaaa" formatted="false">走 /v1/listen，原始音訊 body + Token 標頭；語種取上面的「辨識語種」。</string>
+    <string name="tx_f515f8fb" formatted="false">重新偵測</string>
+    <string name="tx_f643dfa4" formatted="false">允許辨識服務聯網（本機模型不全時更準）</string>
+    <string name="tx_f778da7e" formatted="false">回到底部按鈕</string>
+    <string name="tx_fa9bac8d" formatted="false">100% = 貼著字高，密一點能多看幾行；160% 上下讀起來最鬆</string>
+    <string name="tx_fdbc9a5f" formatted="false">離線模式：只允許本機引擎</string>
+    <string name="tx_fe8fe0cc" formatted="false">程式碼區塊與行內程式碼的字級，等寬字型單獨一檔</string>
+    <string name="tx_009fd879" formatted="false">重新整理索引</string>
+    <string name="tx_02c2d3ce" formatted="false">名稱（可留空）</string>
+    <string name="tx_02cd23ff" formatted="false">僅 arm64 生效，走 OpenCL（Adreno 750 / 8 系列已驗證）；驅動不支援時自動退回純 CPU。改完要重新載入模型</string>
+    <string name="tx_032fe963" formatted="false">已新增，點上方掃描區域網路可以確認是否在線</string>
+    <string name="tx_03d448d3" formatted="false">配對碼 </string>
+    <string name="tx_040a63aa" formatted="false">雲端 API</string>
+    <string name="tx_04470007" formatted="false">目前使用的是自訂圖片</string>
+    <string name="tx_047dd4ac" formatted="false">還沒有匯入任何 GGUF，先去「本機模型」匯入或下載一個</string>
+    <string name="tx_04af1007" formatted="false">把上面這個位址填進別人的 A2A 用戶端就能找到本機。</string>
+    <string name="tx_051c3313" formatted="false">音質已切換到 $q</string>
+    <string name="tx_07fa5f00" formatted="false">未注入：local.properties 裡填 miot.client.id 後重新安裝</string>
+    <string name="tx_08b55fea" formatted="false">管理</string>
+    <string name="tx_08df313c" formatted="false">目前值：$v</string>
+    <string name="tx_08e0d546" formatted="false">在「模型設定」裡選「本機模型」就是本機推論，選別的廠商就是雲端；這裡不重複設開關</string>
+    <string name="tx_095e938e" formatted="false">停止</string>
+    <string name="tx_0976ccb2" formatted="false">單輪最多生成</string>
+    <string name="tx_09a56bd3" formatted="false">已填</string>
+    <string name="tx_0ac3aa0a" formatted="false">關掉後這張卡與入口一起收起，開關狀態保留</string>
+    <string name="tx_0b55c2a3" formatted="false">（每輪多帶這些字，別放太長的）</string>
+    <string name="tx_0b5961c7" formatted="false">已登入</string>
+    <string name="tx_0d22d46a" formatted="false">本機模型</string>
+    <string name="tx_0e3297f4" formatted="false">螢幕操作需要無障礙權限</string>
+    <string name="tx_0eafe8f0" formatted="false">已開啟系統熱點設定</string>
+    <string name="tx_0edf7a8b" formatted="false">探活</string>
+    <string name="tx_0f7d8564" formatted="false">換取中…</string>
+    <string name="tx_0fa57e4a" formatted="false">目前狀態：未開啟</string>
+    <string name="tx_10cee180" formatted="false">」全部通過</string>
+    <string name="tx_12d11a6b" formatted="false">同步雲端</string>
+    <string name="tx_12eb255e" formatted="false">登入狀態</string>
+    <string name="tx_13968e19" formatted="false">（公共目錄，可用檔案管理員直接換模型）</string>
+    <string name="tx_1535fcfa" formatted="false">傳送</string>
+    <string name="tx_160f1630" formatted="false">儲存名稱</string>
+    <string name="tx_1aed6ccf" formatted="false">裝置 </string>
+    <string name="tx_1b6949f5" formatted="false">開發人員選項</string>
+    <string name="tx_1cdd6eaf" formatted="false">只走區域網路：did + IP + 32 位十六進位 token</string>
+    <string name="tx_1ed34876" formatted="false">確認一下</string>
+    <string name="tx_1f8dd094" formatted="false">鏡像來源</string>
+    <string name="tx_20b2103b" formatted="false">所選模型</string>
+    <string name="tx_20c5f916" formatted="false">無法開啟瀏覽器</string>
+    <string name="tx_20d3e7ce" formatted="false">還沒有匯入 GGUF。先去「本機模型」分區匯入或下載一個。</string>
+    <string name="tx_2165b30a" formatted="false"> · 目前選取</string>
+    <string name="tx_227355b0" formatted="false">給目前命令輸入內容，按 Enter 傳送</string>
+    <string name="tx_230e1087" formatted="false">終端機字型</string>
+    <string name="tx_24c9853a" formatted="false">未備</string>
+    <string name="tx_25b347e9" formatted="false">目前是內建字元 </string>
+    <string name="tx_25f61a7d" formatted="false">到點自動跑</string>
+    <string name="tx_2603ac37" formatted="false">未設定 API Key</string>
+    <string name="tx_2733a243" formatted="false">複製全部</string>
+    <string name="tx_27c2101a" formatted="false">匯入…</string>
+    <string name="tx_288f0c40" formatted="false">清空</string>
+    <string name="tx_293460b2" formatted="false">問點什麼…</string>
+    <string name="tx_2a2bf781" formatted="false">無 token</string>
+    <string name="tx_2ab5016f" formatted="false">例如：每日巡檢</string>
+    <string name="tx_2b4607eb" formatted="false">調節</string>
+    <string name="tx_2b822c64" formatted="false">自檢失敗：演算法結果與標準向量不符</string>
+    <string name="tx_2bd34d47" formatted="false">0 = 每次都給同一個答案；越高越發散</string>
+    <string name="tx_2bf9e6b5" formatted="false">名稱已儲存</string>
+    <string name="tx_2d5c2af2" formatted="false">已儲存：</string>
+    <string name="tx_2e3dda27" formatted="false">登入完成後位址形如 …?code=xxxx</string>
+    <string name="tx_2ff33d1a" formatted="false">測試中…</string>
+    <string name="tx_3066b700" formatted="false">模型沒有回傳任何內容</string>
+    <string name="tx_30f520b7" formatted="false">說點什麼，回覆依 Markdown 呈現</string>
+    <string name="tx_315eacd1" formatted="false">上移</string>
+    <string name="tx_31bf58fa" formatted="false">常用開發環境</string>
+    <string name="tx_31ce34b3" formatted="false">多步驟依序跑，每步交給一個子智慧代理做完再進下一步。每步獨立，拿不到上一步的結論，所以指令要寫全。</string>
+    <string name="tx_31ddf4f1" formatted="false">登入米家帳號</string>
+    <string name="tx_3244f52a" formatted="false">關閉（只當用戶端）</string>
+    <string name="tx_330363df" formatted="false">成功</string>
+    <string name="tx_333db261" formatted="false">這個目錄是空的</string>
+    <string name="tx_34a1a141" formatted="false">兩個裝置都不在同一個 Wi-Fi 時，用手機熱點當傳輸通道：一台開熱點，另一台連上再掃描</string>
+    <string name="tx_34d391e0" formatted="false">這個模式下只差懸浮視窗：開了才能在別的應用程式上看到「正在進行 xx」的膠囊。</string>
+    <string name="tx_370ec32f" formatted="false">● 還沒裝 Ubuntu</string>
+    <string name="tx_3776a3b6" formatted="false">儲存對端</string>
+    <string name="tx_37cd8040" formatted="false">失敗重試</string>
+    <string name="tx_37e72ddf" formatted="false">允許被發現</string>
+    <string name="tx_37f45cdf" formatted="false">自訂表情</string>
+    <string name="tx_3a7b8b88" formatted="false">已開啟，AI 現在可以讀屏和代你操作。</string>
+    <string name="tx_3a81b1ed" formatted="false">編輯片段</string>
+    <string name="tx_3a8e52ef" formatted="false">掃描區域網路</string>
+    <string name="tx_3aed2c11" formatted="false">自動</string>
+    <string name="tx_3b566354" formatted="false">上下文長度</string>
+    <string name="tx_3bfac37e" formatted="false">安裝環境</string>
+    <string name="tx_3c10b78c" formatted="false">有 token</string>
+    <string name="tx_3cd4be58" formatted="false"> · 峰值 %.0f%%</string>
+    <string name="tx_3e424c4a" formatted="false">（已全域啟用）</string>
+    <string name="tx_3fea387c" formatted="false">」有步驟失敗，詳情見對話</string>
+    <string name="tx_402d19e5" formatted="false">登入</string>
+    <string name="tx_40f0918b" formatted="false">推薦模型</string>
+    <string name="tx_41873cd0" formatted="false">測試連通性</string>
+    <string name="tx_41b17b34" formatted="false">重試後仍失敗</string>
+    <string name="tx_41b91d77" formatted="false">傳輸埠與並行數</string>
+    <string name="tx_42824410" formatted="false">試跑</string>
+    <string name="tx_42ac4191" formatted="false">對方要在它那台也開啟這個開關，再跟你配對一次——配對時兩邊會交換接案埠與憑證，之後模型就能互相派案。</string>
+    <string name="tx_433fd817" formatted="false">目前沒有載入模型</string>
+    <string name="tx_43a45e02" formatted="false">重複懲罰</string>
+    <string name="tx_4403fca0" formatted="false">清除</string>
+    <string name="tx_44544558" formatted="false"> · 只提醒</string>
+    <string name="tx_448f42da" formatted="false">客廳燈</string>
+    <string name="tx_44eac452" formatted="false">對端名稱</string>
+    <string name="tx_44efd179" formatted="false">登出</string>
+    <string name="tx_462400c7" formatted="false">匯出選取</string>
+    <string name="tx_473954cb" formatted="false">接入身分</string>
+    <string name="tx_4793ea43" formatted="false">載入</string>
+    <string name="tx_479c40df" formatted="false">回呼位址裡的 code</string>
+    <string name="tx_48c0b024" formatted="false">+ 再加一步</string>
+    <string name="tx_4911d772" formatted="false">$name 已上移</string>
+    <string name="tx_49d52c8d" formatted="false">名稱和配對碼是給對方看的；配對碼換了以後舊碼立刻失效</string>
+    <string name="tx_4a067930" formatted="false">新增片段</string>
+    <string name="tx_4a8edc80" formatted="false">對方的配對碼</string>
+    <string name="tx_4bece587" formatted="false">儲存埠</string>
+    <string name="tx_4c9562fe" formatted="false">本機名稱</string>
+    <string name="tx_4d4c3fd6" formatted="false">卸載模型（釋放記憶體）</string>
+    <string name="tx_4dfe7036" formatted="false">產生</string>
+    <string name="tx_4e40d39b" formatted="false">對端位址</string>
+    <string name="tx_4f487d11" formatted="false">一台派案、一台接案：兩邊的大模型都能呼叫工具，配對後就能把任務交給對方跑</string>
+    <string name="tx_4f8d48ef" formatted="false">重新整理狀態</string>
+    <string name="tx_4ff1e74e" formatted="false">日期</string>
+    <string name="tx_50d4a850" formatted="false">離線</string>
+    <string name="tx_50e84fc2" formatted="false">屬性讀寫</string>
+    <string name="tx_5144e2e5" formatted="false">有工具等你確認：點這裡回 App 處理</string>
+    <string name="tx_5349b266" formatted="false">執行中…</string>
+    <string name="tx_53528c9d" formatted="false">本機身分</string>
+    <string name="tx_53ace430" formatted="false">已啟用</string>
+    <string name="tx_53d28c51" formatted="false">對外提供 A2A 介面</string>
+    <string name="tx_54763353" formatted="false">順便把這兩樣也開了，不然鎖屏後任務會被系統中止、膠囊也浮不出來。</string>
+    <string name="tx_552daf03" formatted="false">每天 </string>
+    <string name="tx_55dc6ec0" formatted="false">未選</string>
+    <string name="tx_56417f31" formatted="false">下載的音訊與封面都放在這個目錄，換機器記得先清</string>
+    <string name="tx_56ce38d7" formatted="false">點這裡開啟「所有檔案存取」權限；開著「資料超強加密」時換成正確的備份金鑰後重新啟動即可恢復</string>
+    <string name="tx_5765a580" formatted="false">重裝環境</string>
+    <string name="tx_57a3a77c" formatted="false">越長越耗記憶體，超過模型訓練上下文會自動壓回</string>
+    <string name="tx_57d21753" formatted="false">允許對方派案進來</string>
+    <string name="tx_58378f0d" formatted="false">正文</string>
+    <string name="tx_58823c0a" formatted="false">例如：只回程式碼</string>
+    <string name="tx_58a3ff82" formatted="false">終端機字級</string>
+    <string name="tx_597f1e0f" formatted="false">重設成內建表情？</string>
+    <string name="tx_59e9353c" formatted="false">已注入（</string>
+    <string name="tx_5ab380bd" formatted="false">^C 中斷</string>
+    <string name="tx_5b58f2bd" formatted="false">從相簿換圖</string>
+    <string name="tx_5d029e5a" formatted="false">同一 Wi-Fi 下點掃描；對方也要把「允許被發現」打開</string>
+    <string name="tx_5d81c648" formatted="false">還沒加節點。下面填一筆位址就能呼叫其他 A2A 節點。</string>
+    <string name="tx_5d92b9b7" formatted="false">音質檔位</string>
+    <string name="tx_5dda83bb" formatted="false">到點能不能準時，取決於「設定 → 擴充 → 定時任務」裡的精確鬧鐘 / 電池白名單 / 通知三項權限，狀態在那邊看。</string>
+    <string name="tx_5e8eb212" formatted="false">連線中…</string>
+    <string name="tx_5ec38d72" formatted="false">請稍候…</string>
+    <string name="tx_5ee6e604" formatted="false">接入身分沒注入：local.properties 填 miot.client.id 重裝</string>
+    <string name="tx_60dbc35c" formatted="false">要貼給模型的原文，例如：不要解釋思路，只給最終程式碼</string>
+    <string name="tx_6261755b" formatted="false">還沒有配對過的裝置</string>
+    <string name="tx_631cd220" formatted="false">確認刪除</string>
+    <string name="tx_639b6f4b" formatted="false">下載這個連結</string>
+    <string name="tx_63e85df1" formatted="false">未登入</string>
+    <string name="tx_63edd678" formatted="false">手動新增</string>
+    <string name="tx_64a0f3cc" formatted="false">重走啟用流程</string>
+    <string name="tx_64e125eb" formatted="false">區域已切到 $r，重新登入一次才會用新區域的介面</string>
+    <string name="tx_65524e55" formatted="false">AI 回覆裡寫 [e:名稱] 就會呈現成表情；內建的也能換成自己的圖</string>
+    <string name="tx_65bfc2f8" formatted="false">輸入指令，按 Enter 執行</string>
+    <string name="tx_68905cf3" formatted="false">在線</string>
+    <string name="tx_689fad20" formatted="false">名稱</string>
+    <string name="tx_68c15533" formatted="false">掃描中…</string>
+    <string name="tx_695609ba" formatted="false">未設定 base_url</string>
+    <string name="tx_69b0f684" formatted="false">已停用</string>
+    <string name="tx_69dcc11d" formatted="false">回呼位址：</string>
+    <string name="tx_6c38353d" formatted="false">終端機配色</string>
+    <string name="tx_6c90deb5" formatted="false">已監聽 </string>
+    <string name="tx_6d489c3b" formatted="false">定時（留空就不定時）</string>
+    <string name="tx_6d83b132" formatted="false">執行中：$busy</string>
+    <string name="tx_6d83b7fe" formatted="false">沒開協作</string>
+    <string name="tx_6d8aba37" formatted="false">自動（測速擇優）</string>
+    <string name="tx_6f1c8d30" formatted="false">能力自檢</string>
+    <string name="tx_7190c3e1" formatted="false">名稱（標記裡用這個）</string>
+    <string name="tx_728c67c3" formatted="false">寫入成功</string>
+    <string name="tx_73a8747c" formatted="false">（大小未知）</string>
+    <string name="tx_75b4235d" formatted="false">單次 </string>
+    <string name="tx_75cbe201" formatted="false">測卡</string>
+    <string name="tx_769d88e4" formatted="false">完成</string>
+    <string name="tx_76a9ffa3" formatted="false">還沒有片段。新增一筆後可以在聊天輸入框的附件面板裡點它插入。</string>
+    <string name="tx_7765b216" formatted="false">測速中…</string>
+    <string name="tx_78623eae" formatted="false">每天</string>
+    <string name="tx_792b0724" formatted="false">登入成功，token 已存進加密資料庫</string>
+    <string name="tx_7970c992" formatted="false">對方配對時要輸入這一串</string>
+    <string name="tx_79e1bb3f" formatted="false">清空快取</string>
+    <string name="tx_7b9962d9" formatted="false">輸入套件名稱，如 python3 / vim</string>
+    <string name="tx_7bf54e28" formatted="false">已選</string>
+    <string name="tx_7e33ff66" formatted="false">編輯工作流程</string>
+    <string name="tx_7eb883d0" formatted="false">已儲存對端</string>
+    <string name="tx_7fae055f" formatted="false">仍然載入</string>
+    <string name="tx_8098e2b4" formatted="false">手機號碼</string>
+    <string name="tx_80cfc33c" formatted="false">確認重設</string>
+    <string name="tx_8174c488" formatted="false">匯入 GGUF 檔案</string>
+    <string name="tx_81824cff" formatted="false">卸載</string>
+    <string name="tx_8190cc38" formatted="false">區域網路優先</string>
+    <string name="tx_8194ea1b" formatted="false">主源 ModelScope，失敗自動換 hf-mirror；支援續傳，中斷後點下載會接著下</string>
+    <string name="tx_825ff4d7" formatted="false">例如：自訂 /情緒</string>
+    <string name="tx_841c2e0d" formatted="false">複製部分內容</string>
+    <string name="tx_84d198e1" formatted="false">直接走雲端</string>
+    <string name="tx_84fac467" formatted="false">取消下載</string>
+    <string name="tx_857abb80" formatted="false">客廳平板</string>
+    <string name="tx_86048b4f" formatted="false">移除</string>
+    <string name="tx_8624e553" formatted="false">開啟後本機才會回應別人的掃描；關掉只影響「被發現」，自己掃別人仍然可以</string>
+    <string name="tx_86cd35c6" formatted="false">裝置數字 id</string>
+    <string name="tx_86d74002" formatted="false">儲存逾時</string>
+    <string name="tx_87d6084a" formatted="false">開啟熱點設定</string>
+    <string name="tx_87e4d9ef" formatted="false">稍後再說</string>
+    <string name="tx_8982c592" formatted="false">還沒有片段。到 設定 → 對話 → 提示詞標籤 裡先建一筆。</string>
+    <string name="tx_8a67e9a7" formatted="false">這台機器沒有熱點設定頁，去系統設定裡找「個人熱點」</string>
+    <string name="tx_8b920852" formatted="false">以後想重開或重走這個流程：設定 → 權限 → 特殊權限。</string>
+    <string name="tx_8c8c9140" formatted="false">已在瀏覽器開啟；登入後把網址列裡的 code 複製回來</string>
+    <string name="tx_8d4d4b42" formatted="false">探索裝置</string>
+    <string name="tx_8d92c895" formatted="false">例如：家裡電腦</string>
+    <string name="tx_8eafe666" formatted="false">探活成功才算在線；點「協作」看對方能不能接案，能接案就能把任務派過去</string>
+    <string name="tx_8fedcfe7" formatted="false">儲存工作流程</string>
+    <string name="tx_904e740d" formatted="false">協作</string>
+    <string name="tx_91382d9c" formatted="false">清屏</string>
+    <string name="tx_92636e8c" formatted="false">跳過</string>
+    <string name="tx_957dc19a" formatted="false">哪一步斷了在這裡看結果，不用翻日誌</string>
+    <string name="tx_95b351c8" formatted="false">編輯</string>
+    <string name="tx_96bfbadc" formatted="false">已配對裝置</string>
+    <string name="tx_96ed536e" formatted="false">起服務時 token 為空會自動產生並填上去；改埠或 token 後服務開著就直接換新的。</string>
+    <string name="tx_96f68a9d" formatted="false">寫一次</string>
+    <string name="tx_97ab69b3" formatted="false">裝置號 </string>
+    <string name="tx_98260c63" formatted="false">開啟開發人員工具</string>
+    <string name="tx_9873c205" formatted="false">跑一次</string>
+    <string name="tx_99bdc9ec" formatted="false">授權碼模式：在瀏覽器登入，把回呼位址上的 code 貼回來</string>
+    <string name="tx_9aaf0ba9" formatted="false">換取失敗：看日誌 bai.mi.auth（區域 / 回呼位址要和平台登記一致）</string>
+    <string name="tx_9bc4c05a" formatted="false">搜尋中</string>
+    <string name="tx_9c4020f2" formatted="false">重設 token（已配對的裝置要重新配對）</string>
+    <string name="tx_9c505d1e" formatted="false">$name cookie 已存進加密資料庫</string>
+    <string name="tx_9d5bf2a1" formatted="false">已安裝</string>
+    <string name="tx_9db7a84f" formatted="false">已開啟</string>
+    <string name="tx_9e1fd27b" formatted="false">熱點自建</string>
+    <string name="tx_9ed74fb4" formatted="false">存取 token（自動產生，可改）</string>
+    <string name="tx_a06cda21" formatted="false">缺 token</string>
+    <string name="tx_a0b7f94f" formatted="false">停住</string>
+    <string name="tx_a1122f98" formatted="false">驗證碼已送出，等簡訊</string>
+    <string name="tx_a1451e0f" formatted="false">…，共 </string>
+    <string name="tx_a1faddfd" formatted="false">隨便問一句</string>
+    <string name="tx_a20ab061" formatted="false">跑一次雲端清單</string>
+    <string name="tx_a25be09d" formatted="false">儲存埠並重開</string>
+    <string name="tx_a26d1460" formatted="false">先選一個已匯入的 GGUF 模型</string>
+    <string name="tx_a2830a88" formatted="false">重裝失敗：看上面日誌，確認網路與鏡像來源後重試</string>
+    <string name="tx_a6821857" formatted="false">未監聽</string>
+    <string name="tx_a72a9ed7" formatted="false">讀一次</string>
+    <string name="tx_a75f7665" formatted="false">Linux 沙箱</string>
+    <string name="tx_a83a428f" formatted="false">● 閒置</string>
+    <string name="tx_a87595f9" formatted="false">6 位數字</string>
+    <string name="tx_a8f37df4" formatted="false">自訂下載連結</string>
+    <string name="tx_a9997318" formatted="false">GGUF 放在公共目錄 </string>
+    <string name="tx_a9fc6f2f" formatted="false">正在 </string>
+    <string name="tx_aa76a23a" formatted="false">模型偏大，載入後可能卡頓</string>
+    <string name="tx_aadb83b2" formatted="false">執行緒數</string>
+    <string name="tx_acb7ed5c" formatted="false">還沒有。上面寫幾步儲存下來，就能一鍵跑或定時跑。</string>
+    <string name="tx_ae577ece" formatted="false">（已停用）</string>
+    <string name="tx_aeadd7b2" formatted="false">字元（可不填，之後換成圖片）</string>
+    <string name="tx_af1f045b" formatted="false"> · 沒開協作</string>
+    <string name="tx_b0bf14a8" formatted="false">已有工作流程</string>
+    <string name="tx_b152d341" formatted="false">換一個</string>
+    <string name="tx_b26eb8c0" formatted="false">已存 cookie（</string>
+    <string name="tx_b2b2c8e5" formatted="false"> · 達標</string>
+    <string name="tx_b2f2364e" formatted="false">等寬預設</string>
+    <string name="tx_b2f28a22" formatted="false">● 執行中</string>
+    <string name="tx_b63585d6" formatted="false">重設為內建</string>
+    <string name="tx_b736eacc" formatted="false">兩項都綠才談得上連裝置</string>
+    <string name="tx_b768f17f" formatted="false">長按正文選取片段，鬆手後可複製；整則複製點右上角。</string>
+    <string name="tx_b7f18f1e" formatted="false">模型過大，載入後手機可能卡到沒法用</string>
+    <string name="tx_b9fbdeb2" formatted="false">要寫入的值</string>
+    <string name="tx_ba2a95b6" formatted="false">先載入模型</string>
+    <string name="tx_ba769ad1" formatted="false">← 返回</string>
+    <string name="tx_bad2f54e" formatted="false">開啟步驟</string>
+    <string name="tx_bc083719" formatted="false">純 CPU</string>
+    <string name="tx_bc64a057" formatted="false">目前佔用 </string>
+    <string name="tx_be58e065" formatted="false">還沒開：開關沒打開之前，螢幕類工具會跑不通。</string>
+    <string name="tx_bebd3740" formatted="false">量化建議 Q4_K_M：7B 約 4.4GB 記憶體，3B 約 2GB，1.5B 約 1.2GB。手機建議 1.5B～3B。</string>
+    <string name="tx_bec4568c" formatted="false">GPU 層數</string>
+    <string name="tx_bef6b130" formatted="false">執行中…</string>
+    <string name="tx_bf4a564e" formatted="false">把螢幕操作開起來</string>
+    <string name="tx_bf6a1ea5" formatted="false">檔案太多了，一個包最多 $ENTRY_MAX 個</string>
+    <string name="tx_bf77571e" formatted="false">裝置探索</string>
+    <string name="tx_bf8b66f3" formatted="false">接案埠</string>
+    <string name="tx_bfe68d58" formatted="false">連結</string>
+    <string name="tx_c054d288" formatted="false">開熱點那台記得把這裡也設成同一個埠；連上以後掃描不到就先看是不是被系統擋了區域網路存取權限。</string>
+    <string name="tx_c15c91c7" formatted="false">AES-128-CBC / MD5 / SHA-1 自檢通過</string>
+    <string name="tx_c1d8772d" formatted="false">取樣中…</string>
+    <string name="tx_c2da1104" formatted="false">憑證資料庫解不開（舊版本的金鑰對不上）：重新填一次 API Key 並儲存，會自動封存舊資料庫並重建</string>
+    <string name="tx_c46cea79" formatted="false">查帳號</string>
+    <string name="tx_c46e3a43" formatted="false">還沒有 cookie</string>
+    <string name="tx_c4a9649c" formatted="false">已裝</string>
+    <string name="tx_c5575b3f" formatted="false">儲存修改</string>
+    <string name="tx_c6a97bb0" formatted="false">同步中…</string>
+    <string name="tx_c6c9da2b" formatted="false">測試結果</string>
+    <string name="tx_c76cfefe" formatted="false">埠</string>
+    <string name="tx_c8c4c57f" formatted="false">[不支援]目前裝置是 32 位（armeabi-v7a），內建 Ubuntu 沙箱只支援 arm64 裝置</string>
+    <string name="tx_c9bf0b88" formatted="false">溫度</string>
+    <string name="tx_ca160a43" formatted="false">通道設定</string>
+    <string name="tx_ca4ec8a5" formatted="false">沒收到回應</string>
+    <string name="tx_cadff0ad" formatted="false">開啟全文，長按選取要複製的片段</string>
+    <string name="tx_cbb46593" formatted="false">取消編輯</string>
+    <string name="tx_cca228c7" formatted="false">未接案</string>
+    <string name="tx_cd08d0ab" formatted="false">自動 = 核心數減 2，最多 6；核心越多數值越高越耗電</string>
+    <string name="tx_cd0b9aca" formatted="false">刪除選取</string>
+    <string name="tx_cdd9c35a" formatted="false">協作不通：</string>
+    <string name="tx_cde0ad30" formatted="false">複製結果</string>
+    <string name="tx_cded648b" formatted="false">未注入</string>
+    <string name="tx_ce26955a" formatted="false">知道了</string>
+    <string name="tx_ce813e67" formatted="false">提示詞標籤</string>
+    <string name="tx_cefac3f1" formatted="false">本體、終端機工作階段、執行程序分開計算，1.5 秒重新整理一次</string>
+    <string name="tx_cf7ceff5" formatted="false">一般使用者模式下，AI 靠無障礙服務讀屏、點屏：能看清目前頁面的控制項和座標，也能代你點、滑、長按、輸入。</string>
+    <string name="tx_d0771a42" formatted="false">分類</string>
+    <string name="tx_d0ee51ab" formatted="false">套件管理</string>
+    <string name="tx_d11f8934" formatted="false">這一步要做什麼、在哪做、要什麼格式的結果</string>
+    <string name="tx_d1849aef" formatted="false">目前狀態：已開啟</string>
+    <string name="tx_d1e4a7e9" formatted="false">不可用</string>
+    <string name="tx_d2406fdf" formatted="false">用手機上的 GGUF，不用填 base_url 與 Key</string>
+    <string name="tx_d37a76e7" formatted="false">沒掃到裝置（不同網段，或對方沒開探索）</string>
+    <string name="tx_d3ce40d8" formatted="false">區域</string>
+    <string name="tx_d424955f" formatted="false"> · 可接案</string>
+    <string name="tx_d5bd674d" formatted="false">發驗證碼</string>
+    <string name="tx_d70c841a" formatted="false">（已關）</string>
+    <string name="tx_d741c7ad" formatted="false">本機模型不用填 base_url 與 API key：聊天時直接在手機上跑選的 GGUF</string>
+    <string name="tx_d765fbf8" formatted="false">埠要兩台裝置一致才能互相發現；並行是同時傳輸的任務數上限</string>
+    <string name="tx_d7ec2d3f" formatted="false">名稱</string>
+    <string name="tx_d82daace" formatted="false">存進清冊</string>
+    <string name="tx_d8c3355e" formatted="false">裝置清單</string>
+    <string name="tx_d8f4952f" formatted="false">雲端拉一次，再掃區域網路把 IP 補上；離線也能用 IP + token 直連</string>
+    <string name="tx_da59f6c4" formatted="false">依分類自檢，每加一個功能就多一筆測試</string>
+    <string name="tx_da9de6ce" formatted="false">1.0 = 關閉；重複跳針明顯時調到 1.1～1.2</string>
+    <string name="tx_dae9a428" formatted="false">啟用的片段每輪都拼進系統提示；插入只影響這一次發言</string>
+    <string name="tx_db28b874" formatted="false">各家內部 code 不一樣，這裡只存統一檔位，呼叫時由平台自己對應</string>
+    <string name="tx_db75b769" formatted="false">僅一次</string>
+    <string name="tx_dc7f3530" formatted="false">已開始監聽</string>
+    <string name="tx_dcc25a21" formatted="false">手機本機 GGUF，不用 base_url 與 Key</string>
+    <string name="tx_de027789" formatted="false">快捷指令</string>
+    <string name="tx_dec42aa1" formatted="false">本機伺服器端</string>
+    <string name="tx_def9e98b" formatted="false">收起</string>
+    <string name="tx_e0423a8e" formatted="false">新增表情</string>
+    <string name="tx_e2c0dc29" formatted="false">（無）</string>
+    <string name="tx_e2df88e7" formatted="false">用 code 換 token</string>
+    <string name="tx_e33ff6aa" formatted="false">配對</string>
+    <string name="tx_e4554821" formatted="false">剛才那一步沒跑通，是因為無障礙服務沒開：AI 拿不到控制項座標，也點不了螢幕。</string>
+    <string name="tx_e4b51d5c" formatted="false">執行狀態</string>
+    <string name="tx_e5210db4" formatted="false">並行改成 $n 路</string>
+    <string name="tx_e5f71fc3" formatted="false">搜尋</string>
+    <string name="tx_e655a410" formatted="false">安裝</string>
+    <string name="tx_e80c310e" formatted="false">快取</string>
+    <string name="tx_ea0844f0" formatted="false">埠改成 $p，重開開關後生效</string>
+    <string name="tx_ea4a363d" formatted="false">未開啟</string>
+    <string name="tx_eb76c062" formatted="false">簡訊驗證碼</string>
+    <string name="tx_ebfb5648" formatted="false">目錄太大，處理上限 64MB</string>
+    <string name="tx_ec361222" formatted="false">跑著呢…</string>
+    <string name="tx_ecb7e8a2" formatted="false">改了立刻生效，不用重新啟動</string>
+    <string name="tx_ed22b17a" formatted="false">一鍵擴充環境</string>
+    <string name="tx_ed275d6f" formatted="false">開發人員工具</string>
+    <string name="tx_eea76d6e" formatted="false">面對面團隊協作</string>
+    <string name="tx_eeb83a34" formatted="false">32 位十六進位</string>
+    <string name="tx_eedbfbcf" formatted="false">非 PTY 工作階段：指令輸出、中斷、stdin 輸入都可靠；Tab 補全與方向鍵在需要行編輯的程式裡可能只作一般字元。</string>
+    <string name="tx_eeeb0354" formatted="false">去開啟無障礙</string>
+    <string name="tx_ef121b59" formatted="false">重新測速</string>
+    <string name="tx_ef29d483" formatted="false">重開終端機</string>
+    <string name="tx_f02de109" formatted="false">螢幕操作</string>
+    <string name="tx_f0bd413c" formatted="false">內建 Ubuntu（proot）· 終端機直連 · 一鍵裝開發環境</string>
+    <string name="tx_f147798d" formatted="false">A2A 1.0 介面。兩個方向：本機當用戶端呼叫其他節點，本機當伺服器端接收任務。</string>
+    <string name="tx_f182d08f" formatted="false">封包加解密</string>
+    <string name="tx_f18fd725" formatted="false">沒讀到（裝置離線 / token 不對 / 屬性號錯）</string>
+    <string name="tx_f26ef914" formatted="false">下載</string>
+    <string name="tx_f28e75cf" formatted="false"> 成功</string>
+    <string name="tx_f32ae05c" formatted="false">掃區域網路</string>
+    <string name="tx_f45c4e65" formatted="false">未安裝</string>
+    <string name="tx_f4c9c9c5" formatted="false">網易雲支援手機驗證碼登入；其他平台把瀏覽器裡登入後的 cookie 整行貼進來，都存加密資料庫，不落明文</string>
+    <string name="tx_f4eec2ab" formatted="false">正在查詢 apt 索引…</string>
+    <string name="tx_f6135cae" formatted="false">自己加的項目和換過的圖片都會刪掉，內建那套恢復原樣。</string>
+    <string name="tx_f6c58938" formatted="false">只從累計機率前 p 的詞裡挑，越小越穩</string>
+    <string name="tx_f729e121" formatted="false">對端 token（沒有就留空）</string>
+    <string name="tx_f73d0c19" formatted="false"> 失敗</string>
+    <string name="tx_f745e83a" formatted="false">先走區域網路（500ms 級），不通再回落雲端</string>
+    <string name="tx_f7552158" formatted="false">開啟授權頁</string>
+    <string name="tx_f79de08c" formatted="false">例如：摸魚</string>
+    <string name="tx_f7ba9c52" formatted="false">同時只讓一個平台說話：開著且排在最前的才接案，上移就是換主平台</string>
+    <string name="tx_f8f0ec92" formatted="false">清冊還是空的：先登入同步，或手動加一台</string>
+    <string name="tx_f91d273b" formatted="false">未知原因</string>
+    <string name="tx_f98a8254" formatted="false">平台優先順序</string>
+    <string name="tx_fb085f04" formatted="false">填 GGUF 直連即可（ModelScope / hf-mirror / 自己的伺服器都行），檔名取連結最後一段</string>
+    <string name="tx_fb34db95" formatted="false">對端（本機當用戶端）</string>
+    <string name="tx_fbb1d2ab" formatted="false">逾時（毫秒）</string>
+    <string name="tx_fc36d633" formatted="false">已備</string>
+    <string name="tx_fc8f9040" formatted="false">（外部儲存空間不可用，已退回私有目錄）</string>
+    <string name="tx_fc960862" formatted="false">連通性測試（發「測試測試」）</string>
+    <string name="tx_fd4bef54" formatted="false">診斷</string>
+    <string name="tx_fda7a982" formatted="false">複製部分訊息</string>
+    <string name="tx_fed34fcc" formatted="false">對話裡每輪允許產生的上限；純 CPU 時 1024 以上會明顯變慢，長文寫作再調大</string>
+    <string name="tx_3aaccc6e" formatted="false">目前機型識別：%1$s</string>
+    <string name="tx_5cd47992" formatted="false">%1$s 天</string>
+    <string name="tx_6adeb861" formatted="false">長期記憶 · %1$s 筆</string>
+    <string name="tx_8bdbcde3" formatted="false">%1$s 個檔位，決定滑桿長度</string>
+    <string name="tx_8cae3683" formatted="false">檔位 %1$s</string>
+    <string name="tx_935695b1" formatted="false">已識別 %1$s 個字型檔案</string>
+    <string name="tx_9f8beb63" formatted="false">套用 %1$s 筆</string>
+    <string name="tx_a6f0b1dc" formatted="false">%1$s 秒</string>
+    <string name="tx_b4d10c2d" formatted="false">%1$s dp/級</string>
+    <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
+    <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
+    <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
+    <string name="tx_0d011d38" formatted="false">已載入：%1$s（$desc · 訓練上下文 $nctx）</string>
+    <string name="tx_12a1e1ea" formatted="false">保留原語言：%1$s\n</string>
+    <string name="tx_136b30f6" formatted="false">應用程式內指令 code=%1$s：</string>
+    <string name="tx_1488e82c" formatted="false">掃到 %1$s 台</string>
+    <string name="tx_19dd9c89" formatted="false">正在監聽埠 %1$s</string>
+    <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
+    <string name="tx_1f6f6b55" formatted="false">已把舊目錄裡的 %1$s 個模型移到 ${ModelHu%2$s</string>
+    <string name="tx_215a9629" formatted="false">檔案數：%1$s\n</string>
+    <string name="tx_238b0ba6" formatted="false">輸出偏好長度：%1$s 字</string>
+    <string name="tx_2408091c" formatted="false">目前廠商是否支援 = %1$s</string>
+    <string name="tx_2a8058ac" formatted="false">可用空間：%1$s MB\n</string>
+    <string name="tx_2b10449e" formatted="false">佔位符：%2$s\n渲染結果：%1$s\n</string>
+    <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
+    <string name="tx_2cf379fe" formatted="false">已刪除 %1$s 個對話</string>
+    <string name="tx_3108ce07" formatted="false"> · 記憶體 %1$s（可用 ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" formatted="false">保留圖片：%1$s / 有效期：${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" formatted="false">應用程式目錄：%1$s\n</string>
+    <string name="tx_3c1c4b90" formatted="false">GPU 層數已設為 %1$s，重新載入模型後生效</string>
+    <string name="tx_3ee9b024" formatted="false">節點 %1$s 個，開始測速…</string>
+    <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
+    <string name="tx_430495aa" formatted="false">可用參數 %1$s 個：</string>
+    <string name="tx_45b8d0ba" formatted="false">請先看完說明（%1$s）</string>
+    <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
+    <string name="tx_52280f7d" formatted="false">最佳化失敗：%1$s</string>
+    <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
+    <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
+    <string name="tx_642e64e8" formatted="false">已刪除：%1$s</string>
+    <string name="tx_651eb991" formatted="false">完成：%2$s token / %1$sms（約 $tps tok/s）</string>
+    <string name="tx_66a69bbf" formatted="false">正在下載 %1$s：</string>
+    <string name="tx_67957ccd" formatted="false">確認刪除 %1$s？（${hum%2$s</string>
+    <string name="tx_68e55fc5" formatted="false">可接單 %1$s</string>
+    <string name="tx_697e775f" formatted="false">將儲存為：%1$s</string>
+    <string name="tx_69d06c37" formatted="false">第 %1$s 步</string>
+    <string name="tx_70bc66d5" formatted="false">啟用 %2$s 筆 · 共 %1$s 筆</string>
+    <string name="tx_70e28d57" formatted="false">系統：Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
+    <string name="tx_7a43344e" formatted="false">%2$s → 無法使用（%1$s）</string>
+    <string name="tx_7a776792" formatted="false">合計 %1$s · ${s.procs} %2$s 行程，行程層級無法區分外掛單項</string>
+    <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
+    <string name="tx_803ae150" formatted="false">目前開關：think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" formatted="false">連線測試通過：%1$s 收到 $%2$s 字（$rc token，約 $tps tok/s）\n回覆摘要：${txt.take%3$s</string>
+    <string name="tx_829cb2a2" formatted="false">已選 %1$s</string>
+    <string name="tx_82a30a52" formatted="false">達標閨值：TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" formatted="false">API Key 未存進加密庫：%1$s</string>
+    <string name="tx_86c68249" formatted="false">目前對話 %5$s：空=%1$s 文字=${cur.text%2$sr.images.size} 附件=${%3$s%4$s</string>
+    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s 視為達標，達標者取最快</string>
+    <string name="tx_89e93f24" formatted="false">並行測速中（%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" formatted="false">✓ %1$s · 模型認出純黑 · ${v%2$s</string>
+    <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
+    <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
+    <string name="tx_957699dd" formatted="false">，佔本機總記憶體 %1$s 的 ${(ratio * 100)%2$s</string>
+    <string name="tx_960ae310" formatted="false">還沒有模型檔案。點上方匯入，或用檔案管理器把 .gguf 放進 %1$s/。</string>
+    <string name="tx_983d58f9" formatted="false">掉幀 %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" formatted="false">介面：%1$s</string>
+    <string name="tx_9fc79d7a" formatted="false">儲存空間不足：可用 %1$s，至少需保留 300MB</string>
+    <string name="tx_a33a9bb0" formatted="false">裝置：%1$s</string>
+    <string name="tx_aab79711" formatted="false">目前是否使用者自選 = %1$s</string>
+    <string name="tx_ac635e14" formatted="false">步驟（最多 %1$s 步）</string>
+    <string name="tx_b6e53767" formatted="false">存放位置：%1$s</string>
+    <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
+    <string name="tx_b82d7fd4" formatted="false">檔案：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" formatted="false">確認刪除 %1$s 個</string>
+    <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
+    <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
+    <string name="tx_c3af4af2" formatted="false">模型 %1$s 個通過 / 耗時 ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" formatted="false">無法使用（%1$s）</string>
+    <string name="tx_c83a29fe" formatted="false">裝置：%1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" formatted="false">草稿目錄：%1$s\n</string>
+    <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
+    <string name="tx_cb625f26" formatted="false">目前 providerId = %1$s</string>
+    <string name="tx_cbb1ac45" formatted="false">廠商：%1$s / 模型：$model\n</string>
+    <string name="tx_cbdacbb2" formatted="false">已匯入：%1$s（${hum%2$s</string>
+    <string name="tx_cf954d3a" formatted="false">自訂方向長度：%1$s 字\n</string>
+    <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
+    <string name="tx_d1977545" formatted="false">套件：%1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" formatted="false">失敗：%1$s</string>
+    <string name="tx_d9366fc9" formatted="false">內建備援節點 %1$s 個仍可用</string>
+    <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
+    <string name="tx_e03b4047" formatted="false">default 目錄存在 = %1$s</string>
+    <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
+    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" formatted="false">刪除失敗：%1$s</string>
+    <string name="tx_f8e3d0b7" formatted="false">內容太長（上限 %1$s 字），先精簡再最佳化</string>
+    <string name="tx_f934698e" formatted="false">所選模型 %1$s</string>
+    <string name="tx_fe42d9b6" formatted="false">GPU 層 %1$s，驅動不支援時回退 CPU</string>
+    <string name="tx_fee8e550" formatted="false">空間不足：需要 %1$s，可用 ${human(fr%2$s</string>
+    <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
+    <string name="tx_13853b5a" formatted="false">段落間距</string>
+    <string name="tx_279a3789" formatted="false">程式碼字級</string>
+    <string name="tx_3d86509a" formatted="false">卡片圓角</string>
+    <string name="tx_48f369a7" formatted="false">回覆字級</string>
+    <string name="tx_5a3701e9" formatted="false">內文字級</string>
+    <string name="tx_6ca4489d" formatted="false">行距</string>
+    <string name="tx_713fd45a" formatted="false">折射強度</string>
+    <string name="tx_b76fe1f2" formatted="false">左右內距</string>
+    <string name="tx_c73258a2" formatted="false">懸浮視窗高度</string>
+    <string name="tx_cae01fea" formatted="false">懸浮視窗寬度</string>
+    <string name="tx_cd758e7e" formatted="false">清單縮排</string>
+    <string name="tx_d73f1ed6" formatted="false">高光強度</string>
+    <string name="tx_e013ea26" formatted="false">整窗透明度</string>
+    <string name="tx_fa5d97dd" formatted="false">卡片不透明度</string>
+    <string name="tx_fd5f796f" formatted="false">乳白遮罩</string>
+    <string name="tx_06e12adc" formatted="false">輸出回呼不可用（release 混淆），請更新 APK</string>
+    <string name="tx_0cac8c4c" formatted="false">連結必須以 http:// 或 https:// 開頭</string>
+    <string name="tx_159a3a80" formatted="false">更新鏡像</string>
+    <string name="tx_2111ccbb" formatted="false">已取消</string>
+    <string name="tx_2acb7b31" formatted="false">工作區模式</string>
+    <string name="tx_2d455ce5" formatted="false">下載中</string>
+    <string name="tx_2dc1a7bf" formatted="false">● 環境已就緒</string>
+    <string name="tx_34b2bda9" formatted="false">● 32 位元裝置不支援內建 Ubuntu（僅 arm64）</string>
+    <string name="tx_38ce27d8" formatted="false">下一步</string>
+    <string name="tx_4649c53d" formatted="false">有高權限，可一鍵啟用</string>
+    <string name="tx_4885f20e" formatted="false">[套件名稱不合法]只允許字母、數字與 . - + _</string>
+    <string name="tx_4b72c2b7" formatted="false">0（純 CPU）</string>
+    <string name="tx_5614002d" formatted="false">草稿儲存</string>
+    <string name="tx_5c362d71" formatted="false">原生搜尋注入</string>
+    <string name="tx_6e081357" formatted="false">思考規則</string>
+    <string name="tx_73500eb7" formatted="false">略過 · </string>
+    <string name="tx_76d88dfc" formatted="false">提示超出上下文</string>
+    <string name="tx_7e50d092" formatted="false">工具權限</string>
+    <string name="tx_9719fec8" formatted="false">已下載</string>
+    <string name="tx_a46ee2bc" formatted="false">[先安裝 Ubuntu 環境]點上方「安裝環境」</string>
+    <string name="tx_ac6913a4" formatted="false">無回應</string>
+    <string name="tx_af0a9b8b" formatted="false">● 環境已裝，終端待連線</string>
+    <string name="tx_b52f2284" formatted="false">測試對話</string>
+    <string name="tx_b967fdef" formatted="false">裝置資訊</string>
+    <string name="tx_bd5451bc" formatted="false">鏡像清單</string>
+    <string name="tx_c4952839" formatted="false">大括號參數</string>
+    <string name="tx_c5d9c84c" formatted="false">環境自我檢查</string>
+    <string name="tx_cb201444" formatted="false">一鍵解除安裝重裝</string>
+    <string name="tx_e22c257e" formatted="false">鏡像測速</string>
+    <string name="tx_ecfc4318" formatted="false">指令掛載</string>
+    <string name="tx_efcc3f48" formatted="false">技能 @ 解析</string>
+    <string name="tx_f348d6c3" formatted="false">聊天記錄檢索</string>
+    <string name="tx_f47f7cb9" formatted="false">99（全部層）</string>
+    <string name="tx_f65125e4" formatted="false">記憶整理</string>
+    <string name="tx_fc7d3267" formatted="false">未探活</string>
+    <string name="cs_voice_hold" formatted="false">長按說話</string>
+    <string name="cs_voice_end" formatted="false">放開結束</string>
+    <string name="cs_voice_cancel" formatted="false">放開取消</string>
+    <string name="cs_keyboard" formatted="false">鍵盤</string>
+    <string name="cs_typing" formatted="false">對方正在輸入</string>
+    <string name="wp_pick_hint" formatted="false">選取的目錄只綁定到本對話</string>
+    <string name="se_wreal_t" formatted="false">使用更真實的分句引擎</string>
+    <string name="se_wreal_d" formatted="false">分句更細（逗號處也斷），氣泡寬度收到螢幕的 3/7，彈出動畫換成淡入上浮的緩動，更像真人連發短訊息</string>
+    <string name="se_wtype_t" formatted="false">分句打字速度</string>
+    <string name="se_wtype_v" formatted="false">%1$d ms/字</string>
+    <string name="se_wtyping_t" formatted="false">模擬對方正在輸入</string>
+    <string name="se_wtyping_d" formatted="false">兩則分句之間顯示「正在輸入…」提示，停留時間 = 本則字數 × 打字速度</string>
+    <string name="se_tools_more" formatted="false">展開全部 %1$d 個工具</string>
+    <string name="se_bk_secrets" formatted="false">匯出加密設定</string>
+    <string name="se_bk_secrets_d" formatted="false">把 API Key / SSH / GitHub 權杖 / 技能金鑰等加密設定一起打包，換機後可一併還原；它們是密文，只有同版本的 Baicodex 能解開</string>
+    <string name="se_bk_fail_x" formatted="false">匯出失敗：%1$s</string>
+    <string name="se_bk_bad_x" formatted="false">匯入失敗：%1$s</string>
+    <string name="se_366" formatted="false">精確位置注入</string>
+    <string name="se_367" formatted="false">現取一次目前定位，比上次記錄更準</string>
+    <string name="se_368" formatted="false">關閉：只用上次定位，不主動定位</string>
+    <string name="se_369" formatted="false">自動轉地名</string>
+    <string name="se_370" formatted="false">把座標轉成城市與街區，結果加密後快取在本機</string>
+    <string name="se_371" formatted="false">關閉：只給經緯度，不連網查地名</string>
+    <string name="plg_off_title" formatted="false">外掛廣場維護升級中…</string>
+    <string name="plg_off_body" formatted="false">伺服器已停止註冊、登入與上傳，廣場暫時無法使用。已安裝的外掛照常運作，不受影響</string>
+    <string name="plg_off_back" formatted="false">返回</string>
+    <string name="se_gd_title" formatted="false">資料超強加密</string>
+    <string name="se_gd_state_off" formatted="false">未開啟</string>
+    <string name="se_gd_state_bad" formatted="false">開關開著，但本機解不開金鑰材料</string>
+    <string name="se_gd_state_on" formatted="false">已開啟 · 三層加密生效</string>
+    <string name="se_gd_note" formatted="false">開啟後憑證類資料（API Key / 帳號 token / SSH 密碼 / 技能金鑰 / 地名快取）改為三層金鑰加密寫入，與裝置深度綁定，不隨備份移轉</string>
+    <string name="se_gd_tip_on" formatted="false">已開啟：新寫入的憑證都走三層金鑰</string>
+    <string name="se_gd_fail" formatted="false">開啟失敗：本機安全晶片無法使用</string>
+    <string name="se_gd_busy_title" formatted="false">正在加固</string>
+    <string name="se_gd_busy" formatted="false">正在衍生金鑰並重寫全部密文，請勿離開</string>
+    <string name="se_gd_cleared_title" formatted="false">已清空</string>
+    <string name="se_gd_cleared_body" formatted="false">憑證類資料已全部刪除。應用程式需要重新啟動才能回到乾淨狀態</string>
+    <string name="se_gd_warn_title" formatted="false">開啟時 App 要初始化鹽、做多金鑰組合運算，會短暫佔用 CPU。依本機（%1$s）推算約 %2$s，期間介面可能卡一下</string>
+    <string name="se_gd_w1_t" formatted="false">開啟後無法關閉</string>
+    <string name="se_gd_w1_b" formatted="false">想關只能強制清空：已加密的 API Key、帳號 token、Cookie、GitHub token 等會當場刪除，找不回來</string>
+    <string name="se_gd_w2_t" formatted="false">資料跟著裝置走</string>
+    <string name="se_gd_w2_b" formatted="false">與裝置底層識別深度綁定。換機、刷機、恢復原廠都會解不開，雖然技術上能做出移轉，但為安全風險考量不提供</string>
+    <string name="se_gd_w3_t" formatted="false">後果自負</string>
+    <string name="se_gd_w3_b" formatted="false">以上後果由使用者自行承擔，請確認你確實需要這一層保護再開啟</string>
+    <string name="se_gd_layers" formatted="false">作為交換，寫入磁碟的資料會經過三層加密：</string>
+    <string name="se_gd_l1_t" formatted="false">裝置金鑰</string>
+    <string name="se_gd_l1_b" formatted="false">隨機半金鑰鎖進本機安全晶片，無法匯出</string>
+    <string name="se_gd_l2_t" formatted="false">組合金鑰</string>
+    <string name="se_gd_l2_b" formatted="false">種子與裝置因子衍生另一半，以 XOR 組成資料金鑰</string>
+    <string name="se_gd_l3_t" formatted="false">內容加密</string>
+    <string name="se_gd_l3_b" formatted="false">AES-256-GCM 整份檔案加密，標頭換成新版本</string>
+    <string name="se_gd_off_title" formatted="false">強制關閉並清空</string>
+    <string name="se_gd_off_body" formatted="false">關閉資料保障會立刻刪除全部已加密資料，無法復原，也沒有資源回收筒</string>
+    <string name="se_gd_off_i1" formatted="false">API Key（模型 / 語音 / 搜尋）</string>
+    <string name="se_gd_off_i2" formatted="false">帳號登入狀態、意見回饋 token、GitHub token、Cookie</string>
+    <string name="se_gd_off_i3" formatted="false">SSH 密碼與技能包金鑰</string>
+    <string name="se_gd_off_i4" formatted="false">位置地名快取</string>
+    <string name="se_gd_off_note" formatted="false">清理後本機回到未加密狀態，之前匯出的舊備份同樣解不開</string>
+    <string name="se_gd_cancel" formatted="false">取消</string>
+    <string name="se_gd_keep" formatted="false">保留</string>
+    <string name="se_gd_go" formatted="false">我已了解，開啟</string>
+    <string name="se_gd_go_wait" formatted="false">讀完再開（%1$ds）</string>
+    <string name="se_gd_wipe" formatted="false">我確認清空</string>
+    <string name="se_gd_wipe_wait" formatted="false">確認清空（%1$ds）</string>
+    <string name="se_sec_tab" formatted="false">隱私與安全</string>
+    <string name="se_sec_sub" formatted="false">憑證與私密資料的保護開關，變更前請讀完整段警告</string>
+    <string name="se_pt_tab" formatted="false">新增保護</string>
+    <string name="se_pt_sub" formatted="false">防注入與防外洩的兩層防線，預設全關，隨時可關</string>
+    <string name="se_pt_mask_t" formatted="false">資料輸出脫敏</string>
+    <string name="se_pt_mask_on" formatted="false">已開啟 · 密碼 / token 打成遮罩</string>
+    <string name="se_pt_mask_off" formatted="false">未開啟 · 回覆原樣顯示</string>
+    <string name="se_pt_mask_note" formatted="false">回覆正文、推理與工具輸出出現 password / token 這類欄位時，把值打成遮罩。規則從伺服器取得，本機只做比對，盡力而為，不是絕對防護</string>
+    <string name="se_pt_mask_stream" formatted="false">開啟時會自動關掉串流輸出：逐字顯示沒辦法事後過濾</string>
+    <string name="se_pt_mask_rules" formatted="false">目前規則：%1$d 個鍵名、%2$d 個前綴</string>
+    <string name="se_pt_mask_ok" formatted="false">規則已更新：已取得伺服器最新一份</string>
+    <string name="se_pt_mask_fail" formatted="false">規則更新失敗：繼續用本機備援那一套</string>
+    <string name="se_pt_shot_t" formatted="false">禁止截圖與錄影</string>
+    <string name="se_pt_shot_on" formatted="false">已開啟 · 系統截不到聊天頁畫面</string>
+    <string name="se_pt_shot_off" formatted="false">未開啟 · 截圖與錄影正常</string>
+    <string name="se_pt_shot_note" formatted="false">開啟後聊天頁加上系統級防截取標記，截圖與錄影拿到的是黑畫面，要截圖得先關掉這個開關</string>
+    <string name="se_pt_warn_title" formatted="false">開啟資料輸出脫敏</string>
+    <string name="se_pt_warn_head" formatted="false">這是一層本機過濾，先把能做到與做不到的說清楚再開</string>
+    <string name="se_pt_w1_t" formatted="false">會做什麼</string>
+    <string name="se_pt_w1_b" formatted="false">正文、推理與工具輸出在顯示與寫入前統一過一遍，鍵名與結構保留，值換成遮罩</string>
+    <string name="se_pt_w2_t" formatted="false">防不住什麼</string>
+    <string name="se_pt_w2_b" formatted="false">被拆開、編碼、換行拼出來的憑證仍可能漏出去；模型也可以選擇不寫憑證。它擋的是「被注入話術誘導後整段倒出」這種最常見的失手</string>
+    <string name="se_pt_w3_t" formatted="false">會一起改什麼</string>
+    <string name="se_pt_w3_b" formatted="false">串流輸出自動關閉，回覆改成整段一次顯示；要恢復逐字輸出得自己把串流開關重新打開</string>
+    <string name="se_pt_warn_back" formatted="false">再說一次：並不完全安全</string>
+    <string name="se_pt_go" formatted="false">我已了解，開啟</string>
+    <string name="se_pt_go_wait" formatted="false">讀完再開（%1$ds）</string>
+    <string name="se_ns_t" formatted="false">關閉串流輸出</string>
+    <string name="se_ns_on" formatted="false">已關閉：等模型整段寫完一次顯示，看不到逐字輸出</string>
+    <string name="se_ns_off" formatted="false">正常串流：邊產生邊逐字顯示</string>
+    <string name="ag_stream_off" formatted="false">等待完整回覆</string>
+    <string name="se_gd_pg_title" formatted="false">正在開啟資料超強加密</string>
+    <string name="se_gd_pg_keep" formatted="false">處理期間關不掉這個視窗；這時強制結束應用程式會留下半加密的資料</string>
+    <string name="se_gd_pg1_t" formatted="false">產生金鑰</string>
+    <string name="se_gd_pg1_b" formatted="false">裝置半金鑰 R 交給 Keystore 包裹，組合金鑰 K2 在原生層衍生</string>
+    <string name="se_gd_pg2_t" formatted="false">移轉舊資料</string>
+    <string name="se_gd_pg2_b" formatted="false">歷史明文鍵表與舊版密文先解進記憶體，統一成同一套金鑰</string>
+    <string name="se_gd_pg3_t" formatted="false">加密寫入</string>
+    <string name="se_gd_pg3_b" formatted="false">每個憑證檔按三層金鑰重新加密寫回</string>
+    <string name="se_gd_pg4_t" formatted="false">完成</string>
+    <string name="se_gd_pg4_b" formatted="false">金鑰與本機硬體綁定，換機與刷機都解不開</string>
+    <string name="se_gd_covers" formatted="false">納入加密：模型 / 語音 / 搜尋 / MCP / A2A 金鑰、帳號與回饋 token、SSH 密碼、技能包金鑰、位置地名快取</string>
+    <string name="cs_max_on" formatted="false">最大 · 開</string>
+    <string name="cs_queue_title" formatted="false">待傳送佇列</string>
+    <string name="cs_more_rounds" formatted="false">展開更早的 %1$d 輪對話</string>
+    <string name="cs_queue_tip" formatted="false">傳送中又輸入的內容排在這裡，本輪結束後依序自動傳送</string>
+    <string name="ag_queue_next" formatted="false">已提到佇列最前：本輪結束後立刻傳送</string>
+    <string name="ag_queue_other" formatted="false">這則屬於別的對話，切回去才能傳送</string>
+    <string name="ag_par_fmt" formatted="false">並行執行 %1$d 個工具</string>
+    <string name="se_pg_voice" formatted="false">語音</string>
+    <string name="se_pg_voice_sub" formatted="false">語音辨識、語音合成與朗讀回覆</string>
+    <string name="se_pg_mem" formatted="false">記憶</string>
+    <string name="se_pg_mem_sub" formatted="false">跨對話的長期記憶，模型自行讀寫</string>
+    <string name="se_pg_local" formatted="false">本機模型</string>
+    <string name="se_pg_local_sub" formatted="false">GGUF 離線推理，匯入即用，不連網也能跑</string>
+    <string name="se_pg_perm" formatted="false">權限</string>
+    <string name="se_pg_perm_sub" formatted="false">工作方式、系統權限、Shizuku、實驗性功能</string>
+    <string name="se_pg_avatar" formatted="false">頭像</string>
+    <string name="se_pg_avatar_sub" formatted="false">自己與助理的頭像</string>
+    <string name="se_pg_float" formatted="false">懸浮聊天視窗</string>
+    <string name="se_pg_float_sub" formatted="false">在其他應用程式上面直接聊</string>
+    <string name="se_pg_auto" formatted="false">自動化</string>
+    <string name="se_pg_auto_sub" formatted="false">排程任務、工作流程、通知觸發</string>
+    <string name="se_pg_agent" formatted="false">技能與角色</string>
+    <string name="se_pg_agent_sub" formatted="false">角色、系統提示、技能專區與技能包</string>
+    <string name="se_pg_link" formatted="false">接入</string>
+    <string name="se_pg_link_sub" formatted="false">MCP、A2A、搜尋平台</string>
+    <string name="se_pg_data" formatted="false">資料與安全</string>
+    <string name="se_pg_data_sub" formatted="false">備份、加密、安全設定</string>
+    <string name="se_pg_model_cfg" formatted="false">模型設定</string>
+    <string name="se_pg_model_cfg_sub" formatted="false">模型、目前設定、能力、深度思考</string>
+    <string name="se_pg_chat_ctx" formatted="false">上下文與壓縮</string>
+    <string name="se_pg_chat_ctx_sub" formatted="false">視窗、壓縮門檻與用量</string>
+    <string name="se_pg_chat_inject" formatted="false">注入</string>
+    <string name="se_pg_chat_inject_sub" formatted="false">上下文注入與回覆資訊</string>
+    <string name="se_pg_chat_session" formatted="false">對話與匯出</string>
+    <string name="se_pg_chat_session_sub" formatted="false">對話管理、收藏夾、匯出 Markdown</string>
+    <string name="se_pg_chat_tags" formatted="false">提示詞標籤</string>
+    <string name="se_pg_chat_tags_sub" formatted="false">可重複使用的片段，插入輸入框或全域啟用</string>
+    <string name="se_pg_emoji" formatted="false">自訂表情</string>
+    <string name="se_pg_emoji_sub" formatted="false">表情分類、換圖、重設，回覆裡按標記渲染</string>
+    <string name="se_pg_ui_theme" formatted="false">外觀</string>
+    <string name="se_pg_ui_theme_sub" formatted="false">語言、主題色、字級、背景、玻璃質感、卡片外觀與輸入框</string>
+    <string name="se_pg_md" formatted="false">Markdown 排版</string>
+    <string name="se_pg_md_sub" formatted="false">正文字級、行距、段間距、清單縮排、左右留白、程式碼字級，附即時預覽</string>
+    <string name="se_pg_ui_nav" formatted="false">懸浮與手勢</string>
+    <string name="se_pg_ui_nav_sub" formatted="false">懸浮聊天視窗的權限、尺寸與位置，返回手勢</string>
+    <string name="se_pg_ui_input" formatted="false">輸入</string>
+    <string name="se_pg_ui_input_sub" formatted="false">輸入框、提示詞與頭像</string>
+    <string name="se_pg_ext_auto" formatted="false">自動化</string>
+    <string name="se_pg_ext_auto_sub" formatted="false">排程任務、工作流程、通知觸發</string>
+    <string name="se_pg_ext_link" formatted="false">接入</string>
+    <string name="se_pg_ext_link_sub" formatted="false">A2A 節點、搜尋平台、MCP 服務</string>
+    <string name="se_pg_ext_ws" formatted="false">工作區</string>
+    <string name="se_pg_ext_ws_sub" formatted="false">資料根目錄、對話工作區綁定與目錄樹</string>
+    <string name="se_pg_linux" formatted="false">Linux 沙箱</string>
+    <string name="se_pg_linux_sub" formatted="false">Ubuntu 環境解包、依賴安裝與自我檢查</string>
+    <string name="se_pg_mi_sub" formatted="false">掃碼 / 手機號登入、裝置清冊與屬性面板</string>
+    <string name="se_pg_mi_login" formatted="false">登入與帳號</string>
+    <string name="se_pg_mi_login_sub" formatted="false">授權頁取 code 換 token、登入狀態與登出</string>
+    <string name="se_pg_mi_dev" formatted="false">裝置</string>
+    <string name="se_pg_mi_dev_sub" formatted="false">清冊清單、區域網路掃描、屬性讀寫</string>
+    <string name="se_pg_mi_ch" formatted="false">通道</string>
+    <string name="se_pg_mi_ch_sub" formatted="false">區域、區域網路優先與診斷</string>
+    <string name="se_pg_music_sub" formatted="false">網易雲 / QQ / 酷我登入與音質等級</string>
+    <string name="se_pg_lan_sub" formatted="false">裝置探索、配對碼與傳輸埠</string>
+    <string name="se_pg_box_sub" formatted="false">目錄白名單、讀寫分級與越界攔截</string>
+    <string name="se_pg_model_param" formatted="false">模型參數</string>
+    <string name="se_pg_model_param_sub" formatted="false">深度思考、溫度與額外請求參數</string>
+    <string name="se_pg_ui_person" formatted="false">個人化</string>
+    <string name="se_pg_ui_person_sub" formatted="false">頭像、氣泡膠囊與桌寵</string>
+    <string name="island_ch_name" formatted="false">任務進度</string>
+    <string name="island_no_perm" formatted="false">通知權限未開啟：系統會直接丟掉任務通知，點這裡去開</string>
+    <string name="island_ch_off" formatted="false">「任務進度」通知分類被關閉了：通知不會出現，點這裡去開</string>
+    <string name="island_stop" formatted="false">停止任務</string>
+    <string name="island_task_title" formatted="false">Baicodex 任務</string>
+    <string name="island_running" formatted="false">正在執行任務…</string>
+    <string name="island_bg_keep" formatted="false">任務在背景繼續執行</string>
+    <string name="island_done" formatted="false">任務已完成</string>
+    <string name="ag_err_unknown" formatted="false">傳送失敗，原因不明</string>
+    <string name="cs_fail_title" formatted="false">傳送失敗</string>
+    <string name="cs_fail_more" formatted="false">仍然傳送</string>
+    <string name="cs_fail_retry" formatted="false">重傳</string>
+    <string name="cs_fail_keep" formatted="false">這則訊息已留在對話裡，可以直接在下方重傳</string>
+    <string name="cs_fail_again" formatted="false">仍然重傳</string>
+    <string name="cs_err_go_cfg" formatted="false">去設定</string>
+    <string name="ag_err_kw_perm" formatted="false">權限</string>
+    <string name="ag_err_kw_env" formatted="false">未安裝</string>
+    <string name="se_kernel_t" formatted="false">Rust 核心</string>
+    <string name="se_kernel_d" formatted="false">儲存與加密走 Rust（原子寫入 + AES-256-GCM 信封），自我檢查會用核心自己的暫存桶跑一遍寫、讀、刪</string>
+    <string name="se_kernel_run" formatted="false">跑一次自我檢查</string>
+    <string name="se_kernel_busy" formatted="false">檢查中…</string>
+    <string name="se_kernel_ok" formatted="false">檢查通過</string>
+    <string name="se_kernel_fail" formatted="false">檢查未通過</string>
+    <string name="se_kernel_na" formatted="false">這個 ABI 沒帶 Rust 核心（只編 arm64-v8a）</string>
+    <string name="se_pg_prompt" formatted="false">提示詞最佳化</string>
+    <string name="se_pg_prompt_sub" formatted="false">最佳化用模型、保留原語言、自訂最佳化方向</string>
+    <string name="se_pg_inout" formatted="false">輸入與輸出</string>
+    <string name="se_pg_inout_sub" formatted="false">回覆資訊顯示、串流輸出、草稿保留與輸出偏好</string>
+    <string name="se_pg_think" formatted="false">思考設定</string>
+    <string name="se_pg_think_sub" formatted="false">依模型名稱比對，決定思考欄位如何寫進請求；可新增、刪除、修改、還原內建</string>
 </resources>

@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:08
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.core.model.chat
 
 /**
@@ -12,7 +26,10 @@ object Effort {
     /** 最保守的三档：绝大多数中转站都认 */
     private val SAFE = listOf("low", "medium", "high")
 
-    fun levels(providerId: String, model: String): List<String> {
+    fun levels(providerId: String, model: String, custom: String = ""): List<String> {
+        //配置里手填了档位就以它为准：中转站/私有部署的档位与厂商白名单经常对不上
+        val own = custom.split(',', '，').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+        if (own.isNotEmpty()) return own.distinct()
         val pid = providerId.lowercase()
         val m = model.lowercase()
         if (pid.contains("deepseek") || m.contains("deepseek")) return listOf("low", "high", "max")

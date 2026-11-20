@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:24
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 /**
  * MirrorPicker.kt — Ubuntu 镜像源选择弹窗
  *
@@ -8,6 +22,8 @@
  */
 package b.ai.ui.screen.settings
 
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -90,11 +106,11 @@ fun MirrorPickerDialog(onDismiss: () -> Unit) {
     //挂到根弹窗层：背景模糊与其它弹窗保持一致
     HostInOverlay(active = true) {
         ScrimCard(onDismiss = onDismiss) {
-            Text("镜像源", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            Text(stringResource(R.string.tx_1f8dd094), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
-                if (busy) "并行测速中（${probes.size}/${nodes.size}）…"
-                else "TTFB ≤ ${LinuxMirror.fastTtfbMs}ms 视为达标，达标者取最快",
+                if (busy) stringResource(R.string.tx_89e93f24, probes.size, nodes.size)
+                else stringResource(R.string.tx_89bde44d, LinuxMirror.fastTtfbMs),
                 fontSize = 11.sp,
                 color = TextSecondary
             )
@@ -107,8 +123,8 @@ fun MirrorPickerDialog(onDismiss: () -> Unit) {
             ) {
                 //自动档：不写死节点，交给客户端每次安装时重新择优
                 MirrorRow(
-                    title = "自动（测速择优）",
-                    subtitle = if (busy) "测速中…" else "当前最优：${best?.node?.name ?: "无可用节点"}",
+                    title = stringResource(R.string.tx_6d8aba37),
+                    subtitle = if (busy) stringResource(R.string.tx_7765b216) else "当前最优：${best?.node?.name ?: "无可用节点"}",
                     selected = picked.isBlank(),
                     accent = true
                 ) {
@@ -119,8 +135,8 @@ fun MirrorPickerDialog(onDismiss: () -> Unit) {
                     val p = byId[node.id]
                     val speed = when {
                         p == null -> "等待测速…"
-                        !p.ok -> "不可用（${p.err}）"
-                        else -> "TTFB ${p.ttfbMs}ms · ${p.speedText()}" + if (p.fast()) " · 达标" else ""
+                        !p.ok -> stringResource(R.string.tx_c6d082e2, p.err)
+                        else -> "TTFB ${p.ttfbMs}ms · ${p.speedText()}" + if (p.fast()) stringResource(R.string.tx_b2b2c8e5) else ""
                     }
                     MirrorRow(
                         title = node.name,
@@ -135,7 +151,7 @@ fun MirrorPickerDialog(onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                GhostButton(if (busy) "测速中…" else "重新测速") { if (!busy) round++ }
+                GhostButton(if (busy) stringResource(R.string.tx_7765b216) else stringResource(R.string.tx_ef121b59)) { if (!busy) round++ }
                 Spacer(Modifier.width(10.dp))
                 PrimaryButton("完成") { onDismiss() }
             }

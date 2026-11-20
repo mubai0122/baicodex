@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:21
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.market
 import b.ai.ui.dialog.BottomSheetCard
 import b.ai.ui.dialog.HostInOverlay
@@ -1883,7 +1897,7 @@ private fun zipDir(ctx: android.content.Context, tree: Uri): Pair<File, String> 
         }
     }
     walk(root, "")
-    if (files.isEmpty()) error("这个目录是空的")
+    if (files.isEmpty()) error(b.ai.App.self.getString(R.string.tx_333db261))
     //和安装时同一条规则：包根目录要有 skill.json 或 SKILL.md
     if (files.none { p -> p.first == "skill.json" || p.first == "SKILL.md" }) {
         error("目录里要有 skill.json 或 SKILL.md")
@@ -1901,7 +1915,7 @@ private fun zipDir(ctx: android.content.Context, tree: Uri): Pair<File, String> 
                         val n = i.read(buf)
                         if (n <= 0) break
                         raw += n
-                        if (raw > RAW_MAX) error("目录太大，处理上限 64MB")
+                        if (raw > RAW_MAX) error(b.ai.App.self.getString(R.string.tx_ebfb5648))
                         zos.write(buf, 0, n)
                     }
                     zos.closeEntry()

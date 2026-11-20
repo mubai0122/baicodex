@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:20
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.chat
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.widget.tap
@@ -33,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.agent.tool.Tools
 import b.ai.net.mcp.Mcp
 import b.ai.net.mcp.McpTool
+import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.Skills
 import b.ai.device.fs.Workspace
 import b.ai.ui.theme.BorderGray
@@ -143,10 +158,12 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
                     }
                 }
             } else {
+                //技能以技能包为准（含目录型「猪肉的技能」），列表里只放名字，点一下插 @名称
+                val kps = SkillPacks.packs
                 val ks = if (raw.isBlank()) {
-                    Skills.list
+                    kps
                 } else {
-                    Skills.list.filter { it.name.contains(raw, true) || it.desc.contains(raw, true) }
+                    kps.filter { it.name.contains(raw, true) || it.id.contains(raw, true) || it.desc.contains(raw, true) }
                 }
                 val ts = if (raw.isBlank()) {
                     Tools.all
@@ -163,11 +180,11 @@ fun MentionPanel(token: String, onPick: (String) -> Unit) {
                 } else {
                     items(ks.size) { i ->
                         val s = ks[i]
+                        val nm = s.name.ifBlank { s.id }
                         MentionRow(
-                            title = Skills.displayName(ctx, s) + if (s.on) "" else stringResource(R.string.mn_off),
-                            sub = if (s.desc.isBlank()) stringResource(R.string.mn_chars, s.body.length)
-                            else Skills.displayDesc(ctx, s),
-                            onTap = { onPick(skillText(ctx, s.name, s.body)) }
+                            title = nm + if (s.on) "" else stringResource(R.string.mn_off),
+                            sub = s.desc.ifBlank { s.readme.take(40) },
+                            onTap = { onPick("@$nm ") }
                         )
                     }
                 }
@@ -261,3 +278,38 @@ private fun sizeText(n: Long): String = when {
     n >= 1L shl 10 -> "${n / (1L shl 10)} KB"
     else -> "$n B"
 } //文件大小
+/** 输入框里的 @技能 片段：认到空白为止，最长 40 字，避免把整句话都染色 */
+val MENTION_RE = Regex("@[^\\s@]{1,40}")
+
+/** 蓝色标签渲染：只加样式不加字符，OffsetMapping 恒等，光标与选区不受影响 */
+fun mentionVisual(): androidx.compose.ui.text.input.VisualTransformation =
+    androidx.compose.ui.text.input.VisualTransformation { text ->
+        val sb = androidx.compose.ui.text.AnnotatedString.Builder(text)
+        MENTION_RE.findAll(text).forEach { m ->
+            sb.addStyle(
+                androidx.compose.ui.text.SpanStyle(
+                    color = b.ai.ui.theme.AccentBlue,
+                    background = b.ai.ui.theme.AccentBlueSoft,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                m.range.first,
+                m.range.last + 1
+            )
+        }
+        androidx.compose.ui.text.input.TransformedText(
+            sb.toAnnotatedString(),
+            androidx.compose.ui.text.input.OffsetMapping.Identity
+        )
+    }
+
+/**
+ * 整段删除：退格落在 @名称 里任意一个字符上，一次抹掉整个 token（用户要求「视作一个整体」）。
+ * 只处理「少一个字符」的删除，多选删除原样放过。
+ */
+fun atomicMentionDelete(old: String, new: String): String {
+    if (old.length != new.length + 1) return new
+    var i = 0
+    while (i < new.length && old[i] == new[i]) i++
+    val hit = MENTION_RE.findAll(old).firstOrNull { i in it.range } ?: return new
+    return old.removeRange(hit.range.first, hit.range.last + 1)
+}

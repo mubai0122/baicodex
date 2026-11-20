@@ -65,3 +65,6 @@ desktop/legacy-kotlin/.kotlin/
 /baicodex-release.jks
 *.jks
 *.keystore
+
+#打许可
+app/src/main/许可.sh

@@ -1,4 +1,20 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:22
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
@@ -59,7 +75,7 @@ fun A2aPanel(onClose: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var serving by remember { mutableStateOf(A2aSrv.running) }
-    var srvMsg by remember { mutableStateOf(if (A2aSrv.running) "已监听 " + A2aSrv.baseUrl() else "未开启") }
+    var srvMsg by remember { mutableStateOf(if (A2aSrv.running) b.ai.App.self.getString(R.string.tx_6c90deb5) + A2aSrv.baseUrl() else b.ai.App.self.getString(R.string.tx_ea4a363d)) }
     var port by remember { mutableStateOf(Cfg.a2aPort.toString()) }
     var token by remember { mutableStateOf(Cfg.a2aToken) }
     var name by remember { mutableStateOf("") }
@@ -88,7 +104,7 @@ fun A2aPanel(onClose: () -> Unit) {
             Text("A2A", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
             Spacer(Modifier.weight(1f))
             Text(
-                "关闭",
+                stringResource(R.string.tx_b15d9127),
                 fontSize = 12.sp,
                 color = TextSecondary,
                 modifier = Modifier
@@ -106,12 +122,12 @@ fun A2aPanel(onClose: () -> Unit) {
                 .verticalScroll(glassScrollState())
         ) {
             Text(
-                "A2A 1.0 接口。两个方向：本机当客户端调用其他节点，本机当服务端接收任务。",
+                stringResource(R.string.tx_f147798d),
                 fontSize = 10.sp, color = TextSecondary
             )
 
             Spacer(Modifier.height(10.dp))
-            Text("本机服务端", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Text(stringResource(R.string.tx_dec42aa1), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -122,7 +138,7 @@ fun A2aPanel(onClose: () -> Unit) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (serving) "对外提供 A2A 接口" else "关闭（只当客户端）",
+                        if (serving) stringResource(R.string.tx_53d28c51) else stringResource(R.string.tx_3244f52a),
                         fontSize = 12.sp, color = TextPrimary
                     )
                     Text(srvMsg, fontSize = 10.sp, color = if (serving) OkGreen else TextSecondary)
@@ -150,7 +166,7 @@ fun A2aPanel(onClose: () -> Unit) {
             }
             Row(Modifier.fillMaxWidth()) {
                 Box(Modifier.weight(1f)) {
-                    Field("端口", port, {
+                    Field(stringResource(R.string.tx_c76cfefe), port, {
                         port = it.filter { c -> c.isDigit() }.take(5)
                         // 改动即生效：服务开着就换个端口重开，不用再点开关
                         port.toIntOrNull()?.let { p -> if (p in 1024..65535) restart(p, token) }
@@ -158,19 +174,19 @@ fun A2aPanel(onClose: () -> Unit) {
                 }
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f)) {
-                    Field("访问 token（自动生成，可改）", token, {
+                    Field(stringResource(R.string.tx_9ed74fb4), token, {
                         token = it
                         restart(port.toIntOrNull() ?: Cfg.a2aPort, it)
                     }, "留空则自动生成")
                 }
             }
             Text(
-                "起服务时 token 为空会自动生成并填上去；改端口或 token 后服务开着就直接换新的。",
+                stringResource(R.string.tx_96ed536e),
                 fontSize = 10.sp, color = TextSecondary
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "重置 token（已配对的设备要重新配对）",
+                stringResource(R.string.tx_9c4020f2),
                 fontSize = 10.sp,
                 color = AccentBlue,
                 modifier = Modifier
@@ -188,16 +204,16 @@ fun A2aPanel(onClose: () -> Unit) {
                     fontSize = 10.sp, color = AccentBlue, maxLines = 2
                 )
                 Text(
-                    "把上面这个地址填进别人的 A2A 客户端就能找到本机。",
+                    stringResource(R.string.tx_04af1007),
                     fontSize = 10.sp, color = TextSecondary
                 )
             }
 
             Spacer(Modifier.height(12.dp))
-            Text("对端（本机当客户端）", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Text(stringResource(R.string.tx_fb34db95), fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
             if (nodes.isEmpty()) {
                 Text(
-                    "还没加节点。下面填一条地址就能调用其他 A2A 节点。",
+                    stringResource(R.string.tx_5d81c648),
                     fontSize = 11.sp, color = TextSecondary, modifier = Modifier.padding(vertical = 6.dp)
                 )
             } else {
@@ -219,12 +235,12 @@ fun A2aPanel(onClose: () -> Unit) {
                     )
                 }
             }
-            Field("对端名字", name, { name = it }, "例如：家里电脑")
-            Field("对端地址", url, { url = it }, "http://192.168.1.20:8080")
-            Field("对端 token（没有就留空）", nodeToken, { nodeToken = it }, "可留空")
+            Field(stringResource(R.string.tx_44eac452), name, { name = it }, stringResource(R.string.tx_8d92c895))
+            Field(stringResource(R.string.tx_4e40d39b), url, { url = it }, "http://192.168.1.20:8080")
+            Field(stringResource(R.string.tx_f729e121), nodeToken, { nodeToken = it }, "可留空")
             Spacer(Modifier.height(8.dp))
             Text(
-                "保存对端",
+                stringResource(R.string.tx_3776a3b6),
                 fontSize = 13.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center,
@@ -239,7 +255,7 @@ fun A2aPanel(onClose: () -> Unit) {
                             url = ""
                             nodeToken = ""
                             android.widget.Toast
-                                .makeText(ctx, "已保存对端", android.widget.Toast.LENGTH_SHORT)
+                                .makeText(ctx, b.ai.App.self.getString(R.string.tx_7eb883d0), android.widget.Toast.LENGTH_SHORT)
                                 .show()
                         }
                     }
@@ -247,7 +263,7 @@ fun A2aPanel(onClose: () -> Unit) {
             )
             if (result.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
-                Text("测试结果", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+                Text(stringResource(R.string.tx_c6c9da2b), fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
                 Text(
                     result,
                     fontSize = 10.sp,
@@ -283,7 +299,7 @@ private fun NodeRow(n: A2aNode, testing: Boolean, onTest: () -> Unit) {
             Text(n.url, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
         }
         Text(
-            if (testing) "连接中…" else "测卡",
+            if (testing) stringResource(R.string.tx_5e8eb212) else stringResource(R.string.tx_75cbe201),
             fontSize = 11.sp,
             color = if (testing) TextSecondary else AccentBlue,
             modifier = Modifier
@@ -293,7 +309,7 @@ private fun NodeRow(n: A2aNode, testing: Boolean, onTest: () -> Unit) {
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            "删除",
+            stringResource(R.string.tx_2f4aaddd),
             fontSize = 11.sp,
             color = DangerRed,
             modifier = Modifier

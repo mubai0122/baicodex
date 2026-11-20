@@ -284,6 +284,8 @@
     <string name="cs_close">Fermer</string>
     <string name="cs_summary">Résumé du contexte</string>
     <string name="cs_summary_done">Messages antérieurs compressés</string>
+    <string name="cs_msg_ops">Actions du message</string>
+    <string name="cs_copy_all">Copier tout le texte</string>
     <string name="cs_this_msg">Ce message</string>
     <string name="cs_this_reply">Cette réponse</string>
     <string name="cs_no_content">(vide)</string>
@@ -1616,4 +1618,990 @@
     <string name="acc_mine_fav">Mes favoris</string>
     <string name="acc_up_empty">Aucune publication</string>
     <string name="acc_fav_empty">Aucun favori</string>
+    <string name="pm_top_p">Échantillonnage noyau</string>
+    <string name="pm_top_k">Candidats top-k</string>
+    <string name="pm_presence">Pénalité de présence</string>
+    <string name="pm_frequency">Pénalité de fréquence</string>
+    <string name="pm_repeat">Pénalité de répétition</string>
+    <string name="pm_top_p_key">top_p</string>
+    <string name="pm_top_k_key">top_k</string>
+    <string name="pm_presence_key">presence_penalty</string>
+    <string name="pm_frequency_key">frequency_penalty</string>
+    <string name="pm_repeat_key">repeat_penalty</string>
+    <string name="tx_011d09ad" formatted="false">Curseur multi-niveaux</string>
+    <string name="tx_02895542" formatted="false">Les trois premières tâches planifiées et les trois premiers workflows par heure</string>
+    <string name="tx_03dc6b51" formatted="false">＋ Nouveau profil</string>
+    <string name="tx_041b5d0d" formatted="false">Favoris, et export de la conversation en cours en Markdown</string>
+    <string name="tx_0450050c" formatted="false">L\'espace de travail est l\'endroit où l\'IA lit et écrit les fichiers. Si cette vérification échoue, la liaison d\'un dossier échouera systématiquement</string>
+    <string name="tx_0556c32b" formatted="false">Segment actif et contour du curseur suivent la couleur du thème</string>
+    <string name="tx_06972491" formatted="false">Non autorisé. Le système décale le déclenchement de quelques minutes à plusieurs dizaines de minutes</string>
+    <string name="tx_06d23d3f" formatted="false">Persona d\'abord (par défaut)</string>
+    <string name="tx_078ab933" formatted="false">Mode de correspondance</string>
+    <string name="tx_08b3859a" formatted="false">Mémoire à long terme inter-sessions : le modèle la lit et l\'écrit lui-même, et vous pouvez ajouter, supprimer ou fusionner des entrées ici</string>
+    <string name="tx_090286ed" formatted="false">Validité du brouillon</string>
+    <string name="tx_09e4e337" formatted="false">2–4 s</string>
+    <string name="tx_0a60a66c" formatted="false">Confirmer l\'effacement</string>
+    <string name="tx_0b5342ec" formatted="false">Un réglage chacun pour la police globale, vos bulles et les réponses de l\'IA ; appliqué dès l\'import</string>
+    <string name="tx_0c1e4c99" formatted="false">Ouvrir les réglages système « Navigation par gestes »</string>
+    <string name="tx_0c4316d9" formatted="false">Durée max d\'enregistrement</string>
+    <string name="tx_0c47bf01" formatted="false">Autorisé ; la fenêtre peut s\'afficher au-dessus des autres applications</string>
+    <string name="tx_0dd7ef22" formatted="false">Les brouillons expirés sont supprimés au prochain changement de conversation ; un brouillon est effacé dès l\'envoi.</string>
+    <string name="tx_0e2af5f5" formatted="false">Si la tâche se lancera bien à l\'heure</string>
+    <string name="tx_0e48617f" formatted="false">Connexion et formulation utilisées par le bouton étoile à quatre branches à droite du champ ; retour à l\'original en un geste après optimisation</string>
+    <string name="tx_110dd655" formatted="false">Durée d\'affichage</string>
+    <string name="tx_112be922" formatted="false">Suivre le réglage global</string>
+    <string name="tx_119c6296" formatted="false">Désactivé : l\'espace de travail reste dans le dossier privé de l\'application</string>
+    <string name="tx_12c3b1d7" formatted="false">Affiche une notification permanente au début de chaque tour ; les téléphones Xiaomi / Huawei l\'épinglent automatiquement à l\'îlot</string>
+    <string name="tx_15ec4b98" formatted="false">Alarmes exactes</string>
+    <string name="tx_16a79761" formatted="false">Chemin de requête par défaut</string>
+    <string name="tx_18c63459" formatted="false">Par défaut</string>
+    <string name="tx_19497c0b" formatted="false">Modèle Deepgram</string>
+    <string name="tx_1a212ec6" formatted="false">Les niveaux suivent le curseur du plus bas au plus haut, 5 maximum. Écrivez les valeurs en JSON : chaînes entre guillemets, nombres et booléens sans guillemets.</string>
+    <string name="tx_1b605a1e" formatted="false">0 = aucune déformation de lentille sur les bords ; plus la valeur est élevée, plus les bords se courbent</string>
+    <string name="tx_1bf1dcd4" formatted="false">Écrire à l\'activation / à la désactivation</string>
+    <string name="tx_1bfaf093" formatted="false">Modèles correspondants (noms complets, séparés par des virgules)</string>
+    <string name="tx_1cf2d4cf" formatted="false">Personnalisé en premier (les préréglages priment)</string>
+    <string name="tx_1da7adbb" formatted="false">%.1f s</string>
+    <string name="tx_1e4ab751" formatted="false">Toujours ajouté à l\'invite système pour orienter les réponses ; se cumule avec la fiche persona sans l\'écraser</string>
+    <string name="tx_214a7d7d" formatted="false">ex. : conclusion d\'abord, puis les preuves ; tableaux à deux colonnes seulement ; indiquer le langage des blocs de code</string>
+    <string name="tx_2280a03a" formatted="false">Ignore l\'interrupteur de réflexion du chat et envoie toujours la valeur activée</string>
+    <string name="tx_228526dc" formatted="false">Workflow</string>
+    <string name="tx_22b4334f" formatted="false">Brouillon</string>
+    <string name="tx_231fdea9" formatted="false">Ouvrir A2A</string>
+    <string name="tx_2474be5f" formatted="false">Hors liste blanche ; les notifications peuvent être supprimées par le système après un certain temps écran verrouillé</string>
+    <string name="tx_25b7fe70" formatted="false">Dossier contenant encoder/decoder/joiner et tokens</string>
+    <string name="tx_2604bcce" formatted="false">Moteur STT</string>
+    <string name="tx_2627160e" formatted="false">Autorisé ; se déclenche à l\'heure définie</string>
+    <string name="tx_2898cdb7" formatted="false">Effacer les cookies et le cache web</string>
+    <string name="tx_28d68b24" formatted="false">Ordre par rapport à l\'invite persona</string>
+    <string name="tx_2911c1e5" formatted="false">Maintien en arrière-plan</string>
+    <string name="tx_2ac5cf31" formatted="false">Ignorer celui-ci</string>
+    <string name="tx_2ae34d78" formatted="false">Les espaces réservés sont remplacés par les valeurs réelles lors de la construction de l\'invite système (heure / batterie / modèle actuel, etc.) ; les accolades saisies dans le champ de chat restent telles quelles.</string>
+    <string name="tx_2ecb1bb9" formatted="false">Fenêtre de chat flottante</string>
+    <string name="tx_2f4aaddd" formatted="false">Supprimer</string>
+    <string name="tx_366d6528" formatted="false">Fenêtres et curseurs</string>
+    <string name="tx_3a605fa6" formatted="false">Sur liste blanche d\'optimisation de la batterie ; les notifications survivent à l\'écran verrouillé</string>
+    <string name="tx_3ab3186c" formatted="false">État d\'activation des trois types d\'automatisation ; tout mettre en pause en un geste quand vous voulez le calme, puis tout rétablir de la même façon</string>
+    <string name="tx_3b4c7ed4" formatted="false">Afficher la fenêtre de chat flottante</string>
+    <string name="tx_3c70a377" formatted="false">Modèle pour les titres</string>
+    <string name="tx_3ceeb66d" formatted="false">Accès à tous les fichiers</string>
+    <string name="tx_3df99821" formatted="false">Deux locaux + deux distants</string>
+    <string name="tx_3fe3558b" formatted="false">Les paramètres de réflexion sont appliqués dans l\'ordre des règles ; la première correspondance l\'emporte</string>
+    <string name="tx_4210b61b" formatted="false">Rayon des coins des fenêtres</string>
+    <string name="tx_423b0645" formatted="false">Journal d\'audit des actions</string>
+    <string name="tx_42c4c7c5" formatted="false">Un top_p plus bas est plus prudent ; 1.0 signifie aucune troncature. top_k ne s\'applique qu\'à quelques fournisseurs chinois et à l\'inférence locale ; 0 signifie que le champ n\'est pas envoyé.</string>
+    <string name="tx_44e4d7a3" formatted="false">Mémoire</string>
+    <string name="tx_47aeba9f" formatted="false">100 % correspond à l\'aspect d\'origine ; en baissant, l\'arrière-plan apparaît et le texte devient moins lisible</string>
+    <string name="tx_4a61c29a" formatted="false">Mode hors ligne</string>
+    <string name="tx_4d6e461d" formatted="false">Aucune police personnalisée : appuyez à gauche pour importer ttf / otf</string>
+    <string name="tx_4dc6270e" formatted="false">Chaque entrée est envoyée avec l\'invite système ; la supprimer la retire</string>
+    <string name="tx_4f3d139b" formatted="false">Conserver les images dans les brouillons</string>
+    <string name="tx_4fa79f06" formatted="false">Niveaux du curseur</string>
+    <string name="tx_4fcdbfe5" formatted="false">Non validé</string>
+    <string name="tx_520a162c" formatted="false">Nouveau profil de réflexion</string>
+    <string name="tx_520e366b" formatted="false">Toujours activer la réflexion</string>
+    <string name="tx_52273aab" formatted="false">$it j</string>
+    <string name="tx_529f8817" formatted="false">100 % est totalement opaque ; en baissant, le contenu derrière transparaît, mais le texte devient moins lisible</string>
+    <string name="tx_5489c494" formatted="false">Ce bloc est ajouté après la persona et l\'invite personnalisée à chaque tour ; il n\'écrase pas la fiche persona.</string>
+    <string name="tx_5660bcd2" formatted="false">Notifications</string>
+    <string name="tx_5756d0e9" formatted="false">N\'expire jamais</string>
+    <string name="tx_582085bb" formatted="false">Modèle de rangement</string>
+    <string name="tx_59fee9a5" formatted="false">Vérification préalable de l\'espace de travail</string>
+    <string name="tx_5ac2011a" formatted="false">Abandonner</string>
+    <string name="tx_5b921cf1" formatted="false">Les tâches planifiées reposent sur trois éléments : alarmes système, notifications et maintien en arrière-plan. S\'il en manque un, on obtient « c\'est réglé mais rien ne se passe »</string>
+    <string name="tx_5d94fa40" formatted="false">Quand le rail s\'épaissit, le curseur grandit avec lui en gardant les mêmes proportions</string>
+    <string name="tx_5dc7fa2b" formatted="false">Profil de réflexion</string>
+    <string name="tx_5e213ddb" formatted="false">Activer</string>
+    <string name="tx_5e34a485" formatted="false">Demander l\'autorisation</string>
+    <string name="tx_5e408cf7" formatted="false">Moteurs locaux uniquement : reconnaissance système / Sherpa NCNN</string>
+    <string name="tx_5f4766cc" formatted="false">Replier maintenant</string>
+    <string name="tx_607c0a3b" formatted="false">Ranger la mémoire</string>
+    <string name="tx_625fb26b" formatted="false">Annuler</string>
+    <string name="tx_629de16a" formatted="false">Récupération…</string>
+    <string name="tx_637321f6" formatted="false">Modèle pour les résumés</string>
+    <string name="tx_645dbc55" formatted="false">Aperçu</string>
+    <string name="tx_653d2130" formatted="false">Rangement…</string>
+    <string name="tx_65557288" formatted="false">ex. : orienté Android + Kotlin, phrases courtes, listes entre les phrases</string>
+    <string name="tx_694297ce" formatted="false">Chemin d\'écriture (vide = chemin par défaut)</string>
+    <string name="tx_69c6c8f3" formatted="false">Paramètres de contrôle de répétition</string>
+    <string name="tx_6b8361f5" formatted="false">Écrire une valeur fixe par chemin de requête</string>
+    <string name="tx_6e63dd3c" formatted="false">API A2A 1.0 : cet appareil peut appeler d\'autres nœuds en tant que client, ou servir de serveur pour recevoir des tâches</string>
+    <string name="tx_70607644" formatted="false">Aucune planification. Appuyez sur « Gérer » ci-dessus pour en créer une, ou définissez une heure pour un workflow.</string>
+    <string name="tx_707c976d" formatted="false">Non configuré ; déduit du fournisseur / du modèle</string>
+    <string name="tx_709d84ce" formatted="false">Notifications de tâches et îlot dynamique</string>
+    <string name="tx_70b562da" formatted="false">Conversations et export</string>
+    <string name="tx_70d093e2" formatted="false">Laissez vide pour n\'utiliser que le modèle intégré : le mode code complète les besoins de code, les autres modes les tâches quotidiennes.</string>
+    <string name="tx_720ab972" formatted="false">Autorisation de superposition</string>
+    <string name="tx_73d7e891" formatted="false">Coins des fenêtres, couleurs du curseur</string>
+    <string name="tx_74f960c9" formatted="false">Aucune mémoire</string>
+    <string name="tx_75af6edf" formatted="false">Distance entre le texte et le bord de la bulle ; augmentez-la pour aérer les textes longs, mettez zéro pour coller au bord</string>
+    <string name="tx_7725233f" formatted="false">Aucun réglage correspondant : $key</string>
+    <string name="tx_79a86fd2" formatted="false">Désactivé par défaut : le texte et les fichiers sont conservés, les images non</string>
+    <string name="tx_79f09f89" formatted="false">Fournisseur</string>
+    <string name="tx_7b5ff17c" formatted="false">Indentation globale</string>
+    <string name="tx_7bb29de8" formatted="false">Les étapes s\'exécutent dans l\'ordre, un sous-agent par étape ; planifiable, avec nouvelle tentative ou passage en cas d\'échec</string>
+    <string name="tx_7c138c54" formatted="false">＋ Ajouter un niveau</string>
+    <string name="tx_7e382efd" formatted="false">Mode développeur déverrouillé : voir le bas de cette page</string>
+    <string name="tx_7ec62ce2" formatted="false">Autoriser le modèle à adapter la langue au contexte</string>
+    <string name="tx_7fc624f8" formatted="false">Autorisations spéciales</string>
+    <string name="tx_8000f187" formatted="false">Modèle</string>
+    <string name="tx_81ef7ad6" formatted="false">Les paramètres de réflexion sont appliqués dans l\'ordre des règles ; la première correspondance l\'emporte, sinon la valeur intégrée par défaut s\'applique</string>
+    <string name="tx_8280b5ae" formatted="false">Notifications de tâches</string>
+    <string name="tx_8456bc40" formatted="false">Police</string>
+    <string name="tx_846cdaf0" formatted="false">Autorisation de notifications</string>
+    <string name="tx_84defbe5" formatted="false">Import échoué : seuls ttf / otf / ttc sont pris en charge</string>
+    <string name="tx_84e40c91" formatted="false">Axe d\'optimisation personnalisé</string>
+    <string name="tx_85067db3" formatted="false">Vue d\'ensemble de l\'exécution</string>
+    <string name="tx_8508566e" formatted="false">Désactivé ; aucune notification à l\'heure prévue (l\'exécution automatique a toujours lieu)</string>
+    <string name="tx_8539beb4" formatted="false">Mise en page des réponses de l\'IA : taille de police, interligne, espacement des paragraphes, retrait des listes, marges latérales et taille des blocs de code ; l\'aperçu ci-dessous utilise le même rendu que le chat</string>
+    <string name="tx_85624c8e" formatted="false">URL de l\'API</string>
+    <string name="tx_86454fc7" formatted="false">Gérer les workflows</string>
+    <string name="tx_865347b7" formatted="false">Après rangement (non appliqué)</string>
+    <string name="tx_8851751d" formatted="false">Retrait par niveau d\'imbrication ; 0 = aucun retrait, les niveaux sont indiqués par les puces</string>
+    <string name="tx_8c7432b9" formatted="false">0 s = retirée dès la fin de la tâche</string>
+    <string name="tx_8d2bc55b" formatted="false">Activer ce profil</string>
+    <string name="tx_8e1b47f0" formatted="false">La réflexion a aussi été activée : la recherche web de DeepSeek ne fonctionne qu\'en mode réflexion</string>
+    <string name="tx_8e6ab923" formatted="false">Nom affiché</string>
+    <string name="tx_90d5ce80" formatted="false">Le nom varie selon l\'appareil : « Gestion de tous les fichiers », « Fichiers et médias » ou « Autorisation de stockage » ; le mode Root / Shizuku n\'en dépend pas.</string>
+    <string name="tx_929ea71b" formatted="false">Suivre le chat actuel</string>
+    <string name="tx_946262ed" formatted="false">Importé </string>
+    <string name="tx_950a94dd" formatted="false">Tout rétablir réactive seulement les entrées existantes ; rien n\'est créé et les heures ne changent pas</string>
+    <string name="tx_9559ce64" formatted="false">Par défaut (non envoyé)</string>
+    <string name="tx_95e4a689" formatted="false">Fréquence d\'échantillonnage</string>
+    <string name="tx_96a5feb3" formatted="false">Couleurs du fond et de l\'icône du bouton rond en bas à droite du chat</string>
+    <string name="tx_99557469" formatted="false">Police globale</string>
+    <string name="tx_9be9c76a" formatted="false">L\'API n\'a renvoyé aucun modèle ; saisissez-en un ci-dessous</string>
+    <string name="tx_9bfd20b1" formatted="false">Le curseur reprend la couleur du thème</string>
+    <string name="tx_9c61a929" formatted="false">Niveau </string>
+    <string name="tx_9ca1cb1f" formatted="false">Effacer l\'état de connexion web ?</string>
+    <string name="tx_9ec0f5da" formatted="false">Désactivé : une fois activé, vous pouvez discuter par-dessus les autres applications</string>
+    <string name="tx_9f2e930a" formatted="false">À suivre</string>
+    <string name="tx_9fcf1606" formatted="false">Espacement entre paragraphes, titres, listes et blocs de code</string>
+    <string name="tx_a114c7a8" formatted="false">Changez de page et revenez, l\'image reste dans la zone de saisie</string>
+    <string name="tx_a2d86e87" formatted="false">Optimisation d\'invite</string>
+    <string name="tx_a39e54aa" formatted="false">Liste blanche de dossiers, droits de lecture/écriture par niveaux</string>
+    <string name="tx_a3af3303" formatted="false"> éléments : </string>
+    <string name="tx_a441b416" formatted="false">Modifier le profil de réflexion</string>
+    <string name="tx_a52f5c20" formatted="false">Par défaut du système</string>
+    <string name="tx_a5bccdfb" formatted="false">Tout texte sans police propre utilise celle-ci</string>
+    <string name="tx_a6a648c1" formatted="false">Activé ; une notification s\'affiche à l\'heure prévue</string>
+    <string name="tx_a71af5ad" formatted="false">Une notification permanente par tour de tâche, épinglée à l\'îlot sur Xiaomi / Huawei et modèles similaires ; sans autorisation, elle s\'exécute sans bruit</string>
+    <string name="tx_a75eff1a" formatted="false">Rétablir les règles intégrées</string>
+    <string name="tx_a83942eb" formatted="false">Hauteur du rail du curseur</string>
+    <string name="tx_abbb0ab4" formatted="false">Valeur écrite à l\'activation</string>
+    <string name="tx_ac0cdee7" formatted="false">Selon le mode : un utilisateur normal a besoin de l\'accessibilité + du maintien en arrière-plan + de la superposition ; Root n\'a besoin que de la superposition</string>
+    <string name="tx_adc2cb46" formatted="false">Hors liste blanche ; la superposition peut être retirée par le système après un certain temps écran verrouillé</string>
+    <string name="tx_ae27e4da" formatted="false">Préférence de sortie</string>
+    <string name="tx_ae6b6416" formatted="false">Affichage Markdown</string>
+    <string name="tx_af29b0db" formatted="false">Appuyez sur la ligne ci-dessus pour accéder aux réglages de notifications ; sur OPPO / OnePlus, autorisez aussi l\'exécution en arrière-plan dans « Batterie », sinon les notifications sont supprimées écran verrouillé</string>
+    <string name="tx_b0c9ab6f" formatted="false">$it s</string>
+    <string name="tx_b15d9127" formatted="false">Désactivé</string>
+    <string name="tx_b324c1b6" formatted="false">Désactivé ; les tâches s\'exécutent mais sans aucune indication</string>
+    <string name="tx_b472edb3" formatted="false">La saisie est conservée lors du changement de conversation ; un fichier drafts/&lt;conversation&gt;.prkcovs par conversation</string>
+    <string name="tx_b6f6ccf7" formatted="false">Non autorisé ; rien ne s\'affiche même avec l\'interrupteur activé</string>
+    <string name="tx_b7a7dafe" formatted="false">Rester affiché après la fin</string>
+    <string name="tx_b886dc73" formatted="false">Conserver la langue d\'origine lors de l\'optimisation</string>
+    <string name="tx_b90dde67" formatted="false">Hors liste blanche ; peut être tué par le système après un certain temps écran verrouillé ou en arrière-plan</string>
+    <string name="tx_b972541e" formatted="false">Opacité du rail du curseur</string>
+    <string name="tx_ba3f1876" formatted="false">Atténue l\'arrière-plan pour garder le texte lisible ; 0 % est totalement transparent</string>
+    <string name="tx_bb007351" formatted="false">Discutez par-dessus les autres applications : les réponses s\'affichent en Markdown et la largeur / hauteur / opacité / taille de police se règlent en direct</string>
+    <string name="tx_bb3f978b" formatted="false">Efface l\'état de connexion et le cache du navigateur intégré, de l\'outil de recherche et de la WebView</string>
+    <string name="tx_bd7451f2" formatted="false">Utilisé pour exécuter des commandes en shell / root ; démarrez le service dans Shizuku avant d\'autoriser</string>
+    <string name="tx_be5fbbe3" formatted="false">Enregistrer</string>
+    <string name="tx_c0410c62" formatted="false">Cette version n\'intègre pas le runtime sherpa-ncnn : le sélectionner bascule sur la reconnaissance système et affiche la raison au-dessus du champ de saisie.</string>
+    <string name="tx_c083b46f" formatted="false">Préférence de sortie (permanente)</string>
+    <string name="tx_c0a99954" formatted="false">Confidentialité et connexion web</string>
+    <string name="tx_c2e48855" formatted="false">Développeur</string>
+    <string name="tx_c4da04aa" formatted="false">Activé ; l\'état des tâches apparaît en direct dans la barre de notifications / sur l\'îlot</string>
+    <string name="tx_c4e93556" formatted="false">Police de vos bulles</string>
+    <string name="tx_c51ed4da" formatted="false">Aucun pair ajouté</string>
+    <string name="tx_c56fbda3" formatted="false">Niveau de réflexion</string>
+    <string name="tx_c7049188" formatted="false">Modèle pour l\'optimisation d\'invite</string>
+    <string name="tx_c71ac55d" formatted="false">Paramètres de créativité</string>
+    <string name="tx_c8b75cb0" formatted="false">Niveau</string>
+    <string name="tx_c93d4306" formatted="false">Des valeurs négatives sur les trois premiers niveaux signifient que le champ n\'est pas envoyé et que le serveur applique sa valeur par défaut. repeat_penalty sert surtout à l\'inférence locale et à certains relais ; 0 = non envoyé.</string>
+    <string name="tx_cc49b1fd" formatted="false">Sur liste blanche d\'optimisation de la batterie ; les tâches survivent à l\'écran verrouillé</string>
+    <string name="tx_ccd94af0" formatted="false">Interrupteur de blocage des liens symboliques et des accès hors périmètre</string>
+    <string name="tx_cd36e684" formatted="false">Sur liste blanche d\'optimisation de la batterie ; survit au passage en arrière-plan</string>
+    <string name="tx_cedb8821" formatted="false">Demandez au modèle de « retenir ceci » dans le chat et l\'entrée est ajoutée ici</string>
+    <string name="tx_cf2b2abc" formatted="false">Inclure dans la correspondance</string>
+    <string name="tx_d28ecec9" formatted="false">Conserver la langue d\'origine de l\'utilisateur, sans traduction</string>
+    <string name="tx_d3e52c96" formatted="false">Valeur écrite</string>
+    <string name="tx_d742e670" formatted="false">Affiché : faites glisser la barre de titre pour le déplacer, appuyez sur × en haut à droite pour le replier</string>
+    <string name="tx_d822e614" formatted="false">À créer dans la console ; authentification par token</string>
+    <string name="tx_d94fd817" formatted="false">Importer un fichier de police</string>
+    <string name="tx_d9524747" formatted="false">Activé </string>
+    <string name="tx_daf51302" formatted="false">Rail gris clair + curseur blanc</string>
+    <string name="tx_df74b581" formatted="false">Écrivez quelques étapes et enregistrez ; lancement en un geste ou à l\'heure prévue</string>
+    <string name="tx_e1b2f870" formatted="false">Contrôle</string>
+    <string name="tx_e2956683" formatted="false">Valeur écrite à la désactivation (vide = non envoyée)</string>
+    <string name="tx_e5c4f1fc" formatted="false">Tout suspendre</string>
+    <string name="tx_e70a40b7" formatted="false">Récupérer les modèles depuis l\'API</string>
+    <string name="tx_e796d32d" formatted="false">Dossier des modèles Sherpa</string>
+    <string name="tx_e82c50b0" formatted="false">Intensité du liseré lumineux sur le bord supérieur de la carte ; 50 % par défaut</string>
+    <string name="tx_e90e4777" formatted="false">Position réinitialisée en haut à droite</string>
+    <string name="tx_ea02bb1f" formatted="false">Afficher maintenant</string>
+    <string name="tx_ea9bc057" formatted="false">Pair </string>
+    <string name="tx_eb67ae08" formatted="false">Vide signifie « tous les modèles » ; placez-la en dernier dans la liste comme solution de repli.</string>
+    <string name="tx_ec691c16" formatted="false">La réflexion et la recherche web native sont incompatibles ; désactivez d\'abord la réflexion</string>
+    <string name="tx_ec83af0d" formatted="false">0 = angles droits, 16dp par défaut, 32dp proche d\'une pilule ; s\'applique aux cartes blanches comme aux cartes en verre</string>
+    <string name="tx_ecc33185" formatted="false">Niveau de résumé</string>
+    <string name="tx_ecfa64c1" formatted="false">Validé</string>
+    <string name="tx_ed972708" formatted="false">Tous les modèles</string>
+    <string name="tx_edd7189b" formatted="false">Une fois la tâche terminée, la notification n\'est pas retirée immédiatement ; elle passe en terminé et reste un moment sur l\'îlot / dans la barre de notifications</string>
+    <string name="tx_f0365c26" formatted="false">Chaque niveau peut avoir son propre chemin et sa valeur (par ex. budget_tokens de Claude) ; laissez vide pour utiliser le chemin par défaut de la règle.</string>
+    <string name="tx_f05a0996" formatted="false">Insérer des paramètres</string>
+    <string name="tx_f1153d97" formatted="false">Modèle (saisie manuelle possible)</string>
+    <string name="tx_f2af02ae" formatted="false">Police des réponses de l\'IA</string>
+    <string name="tx_f3b58907" formatted="false">Activé ; lecture et écriture possibles dans n\'importe quel dossier du stockage partagé</string>
+    <string name="tx_f4590f7d" formatted="false">Tout rétablir</string>
+    <string name="tx_f490eaaa" formatted="false">Utilise /v1/listen avec un corps audio brut et un en-tête de token ; la langue vient de « Langue de reconnaissance » ci-dessus.</string>
+    <string name="tx_f515f8fb" formatted="false">Revérifier</string>
+    <string name="tx_f643dfa4" formatted="false">Autoriser le service de reconnaissance à se connecter (plus précis quand le modèle local est incomplet)</string>
+    <string name="tx_f778da7e" formatted="false">Bouton retour en bas</string>
+    <string name="tx_fa9bac8d" formatted="false">100 % = ajusté à la hauteur du texte, plus dense pour voir plus de lignes ; autour de 160 %, la lecture est plus aérée</string>
+    <string name="tx_fdbc9a5f" formatted="false">Mode hors ligne : moteurs locaux uniquement</string>
+    <string name="tx_fe8fe0cc" formatted="false">Taille de police des blocs de code et du code en ligne ; la monospace a son propre réglage</string>
+    <string name="tx_009fd879" formatted="false">Actualiser l\'index</string>
+    <string name="tx_02c2d3ce" formatted="false">Nom (facultatif)</string>
+    <string name="tx_02cd23ff" formatted="false">Actif uniquement sur arm64, via OpenCL (Adreno 750 / série 8 vérifiés) ; retour au CPU pur si le pilote ne le prend pas en charge. Rechargez le modèle après modification</string>
+    <string name="tx_032fe963" formatted="false">Ajouté. Appuyez sur Scanner le réseau local ci-dessus pour vérifier qu\'il est en ligne</string>
+    <string name="tx_03d448d3" formatted="false">Code d\'appairage </string>
+    <string name="tx_040a63aa" formatted="false">API cloud</string>
+    <string name="tx_04470007" formatted="false">Image personnalisée actuellement utilisée</string>
+    <string name="tx_047dd4ac" formatted="false">Aucun GGUF importé. Allez dans « Modèles locaux » pour en importer ou en télécharger un</string>
+    <string name="tx_04af1007" formatted="false">Saisissez l\'adresse ci-dessus dans le client A2A d\'un autre appareil pour joindre celui-ci.</string>
+    <string name="tx_051c3313" formatted="false">Qualité audio réglée sur $q</string>
+    <string name="tx_07fa5f00" formatted="false">Non injecté : renseignez miot.client.id dans local.properties puis réinstallez</string>
+    <string name="tx_08b55fea" formatted="false">Gérer</string>
+    <string name="tx_08df313c" formatted="false">Valeur actuelle : $v</string>
+    <string name="tx_08e0d546" formatted="false">Choisir « Modèle local » dans « Profil de modèle » active l\'inférence locale ; tout autre fournisseur passe par le cloud. Pas d\'interrupteur séparé ici</string>
+    <string name="tx_095e938e" formatted="false">Arrêter</string>
+    <string name="tx_0976ccb2" formatted="false">Génération max par tour</string>
+    <string name="tx_09a56bd3" formatted="false">Rempli</string>
+    <string name="tx_0ac3aa0a" formatted="false">Une fois désactivé, cette carte et son entrée se replient ; l\'état de l\'interrupteur est conservé</string>
+    <string name="tx_0b55c2a3" formatted="false">(Ces mots sont ajoutés à chaque tour ; ne les faites pas trop longs)</string>
+    <string name="tx_0b5961c7" formatted="false">Connecté</string>
+    <string name="tx_0d22d46a" formatted="false">Modèle local</string>
+    <string name="tx_0e3297f4" formatted="false">Le contrôle de l\'écran nécessite l\'autorisation d\'accessibilité</string>
+    <string name="tx_0eafe8f0" formatted="false">Réglages du point d\'accès système ouverts</string>
+    <string name="tx_0edf7a8b" formatted="false">Sonde</string>
+    <string name="tx_0f7d8564" formatted="false">Échange en cours…</string>
+    <string name="tx_0fa57e4a" formatted="false">État : désactivé</string>
+    <string name="tx_10cee180" formatted="false"> » tout est validé</string>
+    <string name="tx_12d11a6b" formatted="false">Synchroniser avec le cloud</string>
+    <string name="tx_12eb255e" formatted="false">État de connexion</string>
+    <string name="tx_13968e19" formatted="false">(Dossier public ; vous pouvez changer de modèle directement depuis un gestionnaire de fichiers)</string>
+    <string name="tx_1535fcfa" formatted="false">Envoyer</string>
+    <string name="tx_160f1630" formatted="false">Enregistrer le nom</string>
+    <string name="tx_1aed6ccf" formatted="false">Appareil </string>
+    <string name="tx_1b6949f5" formatted="false">Options pour les développeurs</string>
+    <string name="tx_1cdd6eaf" formatted="false">Réseau local uniquement : did + IP + token hexadécimal de 32 caractères</string>
+    <string name="tx_1ed34876" formatted="false">Vérifier</string>
+    <string name="tx_1f8dd094" formatted="false">Miroir</string>
+    <string name="tx_20b2103b" formatted="false">Modèle sélectionné</string>
+    <string name="tx_20c5f916" formatted="false">Impossible d\'ouvrir le navigateur</string>
+    <string name="tx_20d3e7ce" formatted="false">Aucun GGUF importé. Allez dans la section « Modèles locaux » pour en importer ou en télécharger un.</string>
+    <string name="tx_2165b30a" formatted="false"> · sélectionné</string>
+    <string name="tx_227355b0" formatted="false">Saisissez l\'entrée de la commande en cours, Entrée pour envoyer</string>
+    <string name="tx_230e1087" formatted="false">Police du terminal</string>
+    <string name="tx_24c9853a" formatted="false">Non prêt</string>
+    <string name="tx_25b347e9" formatted="false">Caractère intégré actuel </string>
+    <string name="tx_25f61a7d" formatted="false">S\'exécute automatiquement à l\'heure prévue</string>
+    <string name="tx_2603ac37" formatted="false">Clé API non configurée</string>
+    <string name="tx_2733a243" formatted="false">Tout copier</string>
+    <string name="tx_27c2101a" formatted="false">Importer…</string>
+    <string name="tx_288f0c40" formatted="false">Vider</string>
+    <string name="tx_293460b2" formatted="false">Posez une question…</string>
+    <string name="tx_2a2bf781" formatted="false">Aucun token</string>
+    <string name="tx_2ab5016f" formatted="false">ex. : Inspection quotidienne</string>
+    <string name="tx_2b4607eb" formatted="false">Ajuster</string>
+    <string name="tx_2b822c64" formatted="false">Auto-test échoué : le résultat de l\'algorithme ne correspond pas au vecteur de référence</string>
+    <string name="tx_2bd34d47" formatted="false">0 = toujours la même réponse ; plus la valeur est élevée, plus les réponses varient</string>
+    <string name="tx_2bf9e6b5" formatted="false">Nom enregistré</string>
+    <string name="tx_2d5c2af2" formatted="false">Enregistré : </string>
+    <string name="tx_2e3dda27" formatted="false">Après connexion, l\'adresse ressemble à …?code=xxxx</string>
+    <string name="tx_2ff33d1a" formatted="false">Test en cours…</string>
+    <string name="tx_3066b700" formatted="false">Le modèle n\'a rien renvoyé</string>
+    <string name="tx_30f520b7" formatted="false">Dites quelque chose ; les réponses s\'affichent en Markdown</string>
+    <string name="tx_315eacd1" formatted="false">Monter</string>
+    <string name="tx_31bf58fa" formatted="false">Environnements de développement courants</string>
+    <string name="tx_31ce34b3" formatted="false">Les étapes s\'exécutent dans l\'ordre ; chacune est confiée à un sous-agent avant de passer à la suivante. Les étapes sont indépendantes et n\'ont pas accès au résultat précédent : rédigez des consignes complètes.</string>
+    <string name="tx_31ddf4f1" formatted="false">Se connecter à Mi Home</string>
+    <string name="tx_3244f52a" formatted="false">Désactivé (client uniquement)</string>
+    <string name="tx_330363df" formatted="false">Succès</string>
+    <string name="tx_333db261" formatted="false">Ce dossier est vide</string>
+    <string name="tx_34a1a141" formatted="false">Si les deux appareils ne sont pas sur le même Wi-Fi, utilisez le point d\'accès d\'un téléphone comme canal : activez-le sur l\'un, connectez l\'autre, puis scannez</string>
+    <string name="tx_34d391e0" formatted="false">Dans ce mode, il ne manque que la fenêtre flottante : activez-la pour voir la capsule « xx en cours » par-dessus les autres applications.</string>
+    <string name="tx_370ec32f" formatted="false">● Ubuntu pas encore installé</string>
+    <string name="tx_3776a3b6" formatted="false">Enregistrer le pair</string>
+    <string name="tx_37cd8040" formatted="false">Nouvelle tentative en cas d\'échec</string>
+    <string name="tx_37e72ddf" formatted="false">Autoriser la découverte</string>
+    <string name="tx_37f45cdf" formatted="false">Émojis personnalisés</string>
+    <string name="tx_3a7b8b88" formatted="false">Activé. L\'IA peut désormais lire l\'écran et agir à votre place.</string>
+    <string name="tx_3a81b1ed" formatted="false">Modifier l\'extrait</string>
+    <string name="tx_3a8e52ef" formatted="false">Scanner le réseau local</string>
+    <string name="tx_3aed2c11" formatted="false">Auto</string>
+    <string name="tx_3b566354" formatted="false">Longueur du contexte</string>
+    <string name="tx_3bfac37e" formatted="false">Installer l\'environnement</string>
+    <string name="tx_3c10b78c" formatted="false">Token présent</string>
+    <string name="tx_3cd4be58" formatted="false"> · pic %.0f%%</string>
+    <string name="tx_3e424c4a" formatted="false">(Activé globalement)</string>
+    <string name="tx_3fea387c" formatted="false"> » : des étapes ont échoué, voir la conversation</string>
+    <string name="tx_402d19e5" formatted="false">Se connecter</string>
+    <string name="tx_40f0918b" formatted="false">Modèle recommandé</string>
+    <string name="tx_41873cd0" formatted="false">Tester la connexion</string>
+    <string name="tx_41b17b34" formatted="false">Échec persistant après nouvelle tentative</string>
+    <string name="tx_41b91d77" formatted="false">Port de transfert et concurrence</string>
+    <string name="tx_42824410" formatted="false">Essai</string>
+    <string name="tx_42ac4191" formatted="false">L\'autre appareil doit aussi activer ce réglage et s\'appairer à nouveau avec vous — l\'appairage échange les ports de tâches et les identifiants, après quoi les modèles peuvent se déléguer du travail.</string>
+    <string name="tx_433fd817" formatted="false">Aucun modèle chargé</string>
+    <string name="tx_43a45e02" formatted="false">Pénalité de répétition</string>
+    <string name="tx_4403fca0" formatted="false">Effacer</string>
+    <string name="tx_44544558" formatted="false"> · notification seule</string>
+    <string name="tx_448f42da" formatted="false">Lampe du salon</string>
+    <string name="tx_44eac452" formatted="false">Nom du pair</string>
+    <string name="tx_44efd179" formatted="false">Se déconnecter</string>
+    <string name="tx_462400c7" formatted="false">Exporter la sélection</string>
+    <string name="tx_473954cb" formatted="false">Identité d\'accès</string>
+    <string name="tx_4793ea43" formatted="false">Charger</string>
+    <string name="tx_479c40df" formatted="false">Le code de l\'URL de rappel</string>
+    <string name="tx_48c0b024" formatted="false">+ Ajouter une étape</string>
+    <string name="tx_4911d772" formatted="false">$name déplacé vers le haut</string>
+    <string name="tx_49d52c8d" formatted="false">Le nom et le code d\'appairage sont ce que voit l\'autre appareil ; un nouveau code invalide immédiatement l\'ancien</string>
+    <string name="tx_4a067930" formatted="false">Nouvel extrait</string>
+    <string name="tx_4a8edc80" formatted="false">Son code d\'appairage</string>
+    <string name="tx_4bece587" formatted="false">Enregistrer le port</string>
+    <string name="tx_4c9562fe" formatted="false">Nom de l\'appareil</string>
+    <string name="tx_4d4c3fd6" formatted="false">Décharger le modèle (libère la mémoire)</string>
+    <string name="tx_4dfe7036" formatted="false">Générer</string>
+    <string name="tx_4e40d39b" formatted="false">Adresse du pair</string>
+    <string name="tx_4f487d11" formatted="false">Un appareil délègue, l\'autre exécute : les deux modèles peuvent appeler des outils et, une fois appairés, exécuter des tâches l\'un pour l\'autre</string>
+    <string name="tx_4f8d48ef" formatted="false">Actualiser l\'état</string>
+    <string name="tx_4ff1e74e" formatted="false">Date</string>
+    <string name="tx_50d4a850" formatted="false">Hors ligne</string>
+    <string name="tx_50e84fc2" formatted="false">Lecture/écriture des propriétés</string>
+    <string name="tx_5144e2e5" formatted="false">Un outil attend votre validation : appuyez ici pour le traiter dans l\'application</string>
+    <string name="tx_5349b266" formatted="false">En cours…</string>
+    <string name="tx_53528c9d" formatted="false">Identité de cet appareil</string>
+    <string name="tx_53ace430" formatted="false">Activé</string>
+    <string name="tx_53d28c51" formatted="false">Exposer l\'API A2A</string>
+    <string name="tx_54763353" formatted="false">Activez aussi ces deux éléments, sinon le système tuera les tâches écran verrouillé et la capsule ne s\'affichera pas.</string>
+    <string name="tx_552daf03" formatted="false">Tous les jours </string>
+    <string name="tx_55dc6ec0" formatted="false">Non sélectionné</string>
+    <string name="tx_56417f31" formatted="false">Les audios et pochettes téléchargés vont dans ce dossier ; pensez à le vider avant de changer de machine</string>
+    <string name="tx_56ce38d7" formatted="false">Appuyez ici pour ouvrir l\'autorisation « Accès à tous les fichiers ». Si le chiffrement renforcé des données est actif, utilisez la bonne clé de sauvegarde et redémarrez pour récupérer</string>
+    <string name="tx_5765a580" formatted="false">Réinstaller l\'environnement</string>
+    <string name="tx_57a3a77c" formatted="false">Plus c\'est long, plus ça consomme de mémoire ; au-delà du contexte d\'entraînement du modèle, c\'est tronqué automatiquement</string>
+    <string name="tx_57d21753" formatted="false">Autoriser la réception de tâches</string>
+    <string name="tx_58378f0d" formatted="false">Corps</string>
+    <string name="tx_58823c0a" formatted="false">ex. : code uniquement</string>
+    <string name="tx_58a3ff82" formatted="false">Taille de police du terminal</string>
+    <string name="tx_597f1e0f" formatted="false">Réinitialiser avec les émojis intégrés ?</string>
+    <string name="tx_59e9353c" formatted="false">Injecté (</string>
+    <string name="tx_5ab380bd" formatted="false">^C pour interrompre</string>
+    <string name="tx_5b58f2bd" formatted="false">Choisir dans la galerie</string>
+    <string name="tx_5d029e5a" formatted="false">Appuyez sur Scanner sur le même Wi-Fi ; l\'autre appareil doit aussi activer « Autoriser la découverte »</string>
+    <string name="tx_5d81c648" formatted="false">Aucun nœud pour l\'instant. Ajoutez une adresse ci-dessous pour appeler d\'autres nœuds A2A.</string>
+    <string name="tx_5d92b9b7" formatted="false">Niveau de qualité audio</string>
+    <string name="tx_5dda83bb" formatted="false">La ponctualité dépend des autorisations d\'alarme exacte, de liste blanche de batterie et de notifications dans « Réglages → Extensions → Tâches planifiées » ; consultez leur état à cet endroit.</string>
+    <string name="tx_5e8eb212" formatted="false">Connexion…</string>
+    <string name="tx_5ec38d72" formatted="false">Veuillez patienter…</string>
+    <string name="tx_5ee6e604" formatted="false">Identité d\'accès non injectée : renseignez miot.client.id dans local.properties et réinstallez</string>
+    <string name="tx_60dbc35c" formatted="false">Le texte exact à fournir au modèle, ex. : n\'explique pas ton raisonnement, donne seulement le code final</string>
+    <string name="tx_6261755b" formatted="false">Aucun appareil appairé</string>
+    <string name="tx_631cd220" formatted="false">Confirmer la suppression</string>
+    <string name="tx_639b6f4b" formatted="false">Télécharger ce lien</string>
+    <string name="tx_63e85df1" formatted="false">Non connecté</string>
+    <string name="tx_63edd678" formatted="false">Ajouter manuellement</string>
+    <string name="tx_64a0f3cc" formatted="false">Relancer l\'activation</string>
+    <string name="tx_64e125eb" formatted="false">Région passée à $r ; reconnectez-vous pour utiliser l\'API de la nouvelle région</string>
+    <string name="tx_65524e55" formatted="false">Écrivez [e:nom] dans une réponse de l\'IA pour afficher un émoji ; les émojis intégrés peuvent être remplacés par votre propre image</string>
+    <string name="tx_65bfc2f8" formatted="false">Saisissez une commande, Entrée pour exécuter</string>
+    <string name="tx_68905cf3" formatted="false">En ligne</string>
+    <string name="tx_689fad20" formatted="false">Nom</string>
+    <string name="tx_68c15533" formatted="false">Analyse…</string>
+    <string name="tx_695609ba" formatted="false">base_url non configurée</string>
+    <string name="tx_69b0f684" formatted="false">Désactivé</string>
+    <string name="tx_69dcc11d" formatted="false">URL de rappel : </string>
+    <string name="tx_6c38353d" formatted="false">Couleurs du terminal</string>
+    <string name="tx_6c90deb5" formatted="false">En écoute sur </string>
+    <string name="tx_6d489c3b" formatted="false">Planification (vide = aucune)</string>
+    <string name="tx_6d83b132" formatted="false">En cours : $busy</string>
+    <string name="tx_6d83b7fe" formatted="false">Collaboration désactivée</string>
+    <string name="tx_6d8aba37" formatted="false">Auto (meilleur débit)</string>
+    <string name="tx_6f1c8d30" formatted="false">Auto-test des capacités</string>
+    <string name="tx_7190c3e1" formatted="false">Nom (utilisé dans la balise)</string>
+    <string name="tx_728c67c3" formatted="false">Écriture réussie</string>
+    <string name="tx_73a8747c" formatted="false">(taille inconnue)</string>
+    <string name="tx_75b4235d" formatted="false">Par exécution </string>
+    <string name="tx_75cbe201" formatted="false">Tester la carte</string>
+    <string name="tx_769d88e4" formatted="false">Terminé</string>
+    <string name="tx_76a9ffa3" formatted="false">Aucun extrait. Créez-en un et insérez-le depuis le panneau de pièces jointes du champ de chat.</string>
+    <string name="tx_7765b216" formatted="false">Test de débit…</string>
+    <string name="tx_78623eae" formatted="false">Tous les jours</string>
+    <string name="tx_792b0724" formatted="false">Connexion réussie ; le token est dans le coffre chiffré</string>
+    <string name="tx_7970c992" formatted="false">L\'autre appareil saisit cette chaîne lors de l\'appairage</string>
+    <string name="tx_79e1bb3f" formatted="false">Vider le cache</string>
+    <string name="tx_7b9962d9" formatted="false">Saisissez un nom de paquet, ex. : python3 / vim</string>
+    <string name="tx_7bf54e28" formatted="false">Sélectionné</string>
+    <string name="tx_7e33ff66" formatted="false">Modifier le workflow</string>
+    <string name="tx_7eb883d0" formatted="false">Pair enregistré</string>
+    <string name="tx_7fae055f" formatted="false">Charger quand même</string>
+    <string name="tx_8098e2b4" formatted="false">Numéro de téléphone</string>
+    <string name="tx_80cfc33c" formatted="false">Confirmer la réinitialisation</string>
+    <string name="tx_8174c488" formatted="false">Importer un fichier GGUF</string>
+    <string name="tx_81824cff" formatted="false">Décharger</string>
+    <string name="tx_8190cc38" formatted="false">Réseau local d\'abord</string>
+    <string name="tx_8194ea1b" formatted="false">Source principale ModelScope, bascule automatique sur hf-mirror ; téléchargement reprenable, appuyer sur télécharger après une interruption reprend le transfert</string>
+    <string name="tx_825ff4d7" formatted="false">ex. : Personnalisé /Émotion</string>
+    <string name="tx_841c2e0d" formatted="false">Copier une partie du contenu</string>
+    <string name="tx_84d198e1" formatted="false">Passer directement par le cloud</string>
+    <string name="tx_84fac467" formatted="false">Annuler le téléchargement</string>
+    <string name="tx_857abb80" formatted="false">Tablette du salon</string>
+    <string name="tx_86048b4f" formatted="false">Retirer</string>
+    <string name="tx_8624e553" formatted="false">Cet appareil ne répond aux analyses des autres que si c\'est activé ; le désactiver n\'affecte que la découverte, vous pouvez toujours scanner les autres</string>
+    <string name="tx_86cd35c6" formatted="false">ID numérique de l\'appareil</string>
+    <string name="tx_86d74002" formatted="false">Enregistrer le délai d\'expiration</string>
+    <string name="tx_87d6084a" formatted="false">Ouvrir les réglages du point d\'accès</string>
+    <string name="tx_87e4d9ef" formatted="false">Plus tard</string>
+    <string name="tx_8982c592" formatted="false">Aucun extrait. Créez-en un dans Réglages → Conversations → Balises d\'invite.</string>
+    <string name="tx_8a67e9a7" formatted="false">Cet appareil n\'a pas de page de réglages du point d\'accès ; cherchez « Point d\'accès personnel » dans les réglages système</string>
+    <string name="tx_8b920852" formatted="false">Pour rouvrir ou refaire ce parcours plus tard : Réglages → Autorisations → Autorisations spéciales.</string>
+    <string name="tx_8c8c9140" formatted="false">Ouvert dans le navigateur ; après connexion, copiez le code de la barre d\'adresse ici</string>
+    <string name="tx_8d4d4b42" formatted="false">Découvrir des appareils</string>
+    <string name="tx_8d92c895" formatted="false">ex. : PC maison</string>
+    <string name="tx_8eafe666" formatted="false">Il n\'est en ligne que si la sonde réussit ; appuyez sur « Collaborer » pour voir si le pair accepte des tâches, et si oui vous pouvez lui en confier</string>
+    <string name="tx_8fedcfe7" formatted="false">Enregistrer le workflow</string>
+    <string name="tx_904e740d" formatted="false">Collaborer</string>
+    <string name="tx_91382d9c" formatted="false">Effacer l\'écran</string>
+    <string name="tx_92636e8c" formatted="false">Ignorer</string>
+    <string name="tx_957dc19a" formatted="false">Voyez ici quelle étape a échoué, sans fouiller les journaux</string>
+    <string name="tx_95b351c8" formatted="false">Modifier</string>
+    <string name="tx_96bfbadc" formatted="false">Appareils appairés</string>
+    <string name="tx_96ed536e" formatted="false">Si le token est vide au démarrage du service, il est généré et renseigné ; changer le port ou le token pendant que le service tourne bascule directement sur le nouveau.</string>
+    <string name="tx_96f68a9d" formatted="false">Écrire une fois</string>
+    <string name="tx_97ab69b3" formatted="false">Numéro d\'appareil </string>
+    <string name="tx_98260c63" formatted="false">Ouvrir les outils de développement</string>
+    <string name="tx_9873c205" formatted="false">Lancer une fois</string>
+    <string name="tx_99bdc9ec" formatted="false">Mode code d\'autorisation : connectez-vous dans le navigateur, puis collez ici le code de l\'URL de rappel</string>
+    <string name="tx_9aaf0ba9" formatted="false">Échec de l\'échange : consultez le journal bai.mi.auth (la région / l\'URL de rappel doit correspondre à l\'enregistrement sur la plateforme)</string>
+    <string name="tx_9bc4c05a" formatted="false">Recherche</string>
+    <string name="tx_9c4020f2" formatted="false">Réinitialiser le token (les appareils appairés devront se réappairer)</string>
+    <string name="tx_9c505d1e" formatted="false">Cookie $name enregistré dans le coffre chiffré</string>
+    <string name="tx_9d5bf2a1" formatted="false">Installé</string>
+    <string name="tx_9db7a84f" formatted="false">Activé</string>
+    <string name="tx_9e1fd27b" formatted="false">Point d\'accès du téléphone</string>
+    <string name="tx_9ed74fb4" formatted="false">Token d\'accès (généré, modifiable)</string>
+    <string name="tx_a06cda21" formatted="false">Token manquant</string>
+    <string name="tx_a0b7f94f" formatted="false">Suspendre</string>
+    <string name="tx_a1122f98" formatted="false">Code envoyé ; en attente du SMS</string>
+    <string name="tx_a1451e0f" formatted="false">…, total </string>
+    <string name="tx_a1faddfd" formatted="false">Posez une question</string>
+    <string name="tx_a20ab061" formatted="false">Lancer la liste cloud une fois</string>
+    <string name="tx_a25be09d" formatted="false">Enregistrer le port et redémarrer</string>
+    <string name="tx_a26d1460" formatted="false">Choisissez d\'abord un modèle GGUF importé</string>
+    <string name="tx_a2830a88" formatted="false">Réinstallation échouée : consultez le journal ci-dessus, vérifiez le réseau et le miroir, puis réessayez</string>
+    <string name="tx_a6821857" formatted="false">Aucune écoute</string>
+    <string name="tx_a72a9ed7" formatted="false">Lire une fois</string>
+    <string name="tx_a75f7665" formatted="false">Bac à sable Linux</string>
+    <string name="tx_a83a428f" formatted="false">● Inactif</string>
+    <string name="tx_a87595f9" formatted="false">6 chiffres</string>
+    <string name="tx_a8f37df4" formatted="false">Lien de téléchargement personnalisé</string>
+    <string name="tx_a9997318" formatted="false">GGUF dans le dossier public </string>
+    <string name="tx_a9fc6f2f" formatted="false">En cours </string>
+    <string name="tx_aa76a23a" formatted="false">Modèle volumineux ; il peut saccader après chargement</string>
+    <string name="tx_aadb83b2" formatted="false">Threads</string>
+    <string name="tx_acb7ed5c" formatted="false">Aucun pour l\'instant. Écrivez quelques étapes ci-dessus et enregistrez ; vous pourrez ensuite le lancer en un geste ou planifier son exécution.</string>
+    <string name="tx_ae577ece" formatted="false">(Désactivé)</string>
+    <string name="tx_aeadd7b2" formatted="false">Caractère (facultatif ; remplaçable par une image plus tard)</string>
+    <string name="tx_af1f045b" formatted="false"> · collaboration désactivée</string>
+    <string name="tx_b0bf14a8" formatted="false">Workflows existants</string>
+    <string name="tx_b152d341" formatted="false">Changer</string>
+    <string name="tx_b26eb8c0" formatted="false">Cookie enregistré (</string>
+    <string name="tx_b2b2c8e5" formatted="false"> · conforme</string>
+    <string name="tx_b2f2364e" formatted="false">Monospace par défaut</string>
+    <string name="tx_b2f28a22" formatted="false">● En cours</string>
+    <string name="tx_b63585d6" formatted="false">Rétablir les valeurs intégrées</string>
+    <string name="tx_b736eacc" formatted="false">Les deux doivent être au vert pour pouvoir connecter un appareil</string>
+    <string name="tx_b768f17f" formatted="false">Appuyez longuement sur le texte pour sélectionner un passage et relâchez pour copier ; pour tout copier, appuyez en haut à droite.</string>
+    <string name="tx_b7f18f1e" formatted="false">Modèle trop volumineux ; le téléphone peut devenir inutilisable après chargement</string>
+    <string name="tx_b9fbdeb2" formatted="false">Valeur à écrire</string>
+    <string name="tx_ba2a95b6" formatted="false">Chargez d\'abord un modèle</string>
+    <string name="tx_ba769ad1" formatted="false">← Retour</string>
+    <string name="tx_bad2f54e" formatted="false">Étapes d\'activation</string>
+    <string name="tx_bc083719" formatted="false">CPU pur</string>
+    <string name="tx_bc64a057" formatted="false">Utilisé </string>
+    <string name="tx_be58e065" formatted="false">Pas encore activé : les outils d\'écran ne fonctionneront pas tant que l\'interrupteur est éteint.</string>
+    <string name="tx_bebd3740" formatted="false">Quantification conseillée : Q4_K_M. 7B demande environ 4,4 Go de RAM, 3B environ 2 Go, 1,5B environ 1,2 Go. Sur téléphone, préférez 1,5B–3B.</string>
+    <string name="tx_bec4568c" formatted="false">Couches GPU</string>
+    <string name="tx_bef6b130" formatted="false">Exécution…</string>
+    <string name="tx_bf4a564e" formatted="false">Activer le contrôle de l\'écran</string>
+    <string name="tx_bf6a1ea5" formatted="false">Trop de fichiers ; un paquet contient au maximum $ENTRY_MAX</string>
+    <string name="tx_bf77571e" formatted="false">Découverte d\'appareils</string>
+    <string name="tx_bf8b66f3" formatted="false">Port de tâches</string>
+    <string name="tx_bfe68d58" formatted="false">Lien</string>
+    <string name="tx_c054d288" formatted="false">Sur l\'appareil qui partage son point d\'accès, réglez ici le même port ; si l\'analyse ne trouve rien après connexion, vérifiez si le système bloque l\'accès au réseau local.</string>
+    <string name="tx_c15c91c7" formatted="false">Auto-test AES-128-CBC / MD5 / SHA-1 réussi</string>
+    <string name="tx_c1d8772d" formatted="false">Échantillonnage…</string>
+    <string name="tx_c2da1104" formatted="false">Le coffre d\'identifiants ne peut pas être ouvert (la clé de l\'ancienne version ne correspond pas) : ressaisissez la clé API et enregistrez ; l\'ancien coffre sera archivé et recréé automatiquement</string>
+    <string name="tx_c46cea79" formatted="false">Vérifier le compte</string>
+    <string name="tx_c46e3a43" formatted="false">Aucun cookie</string>
+    <string name="tx_c4a9649c" formatted="false">Installé</string>
+    <string name="tx_c5575b3f" formatted="false">Enregistrer les modifications</string>
+    <string name="tx_c6a97bb0" formatted="false">Synchronisation…</string>
+    <string name="tx_c6c9da2b" formatted="false">Résultat du test</string>
+    <string name="tx_c76cfefe" formatted="false">Port</string>
+    <string name="tx_c8c4c57f" formatted="false">[Non pris en charge] Cet appareil est en 32 bits (armeabi-v7a) ; le bac à sable Ubuntu intégré ne prend en charge que les appareils arm64</string>
+    <string name="tx_c9bf0b88" formatted="false">Température</string>
+    <string name="tx_ca160a43" formatted="false">Réglages du canal</string>
+    <string name="tx_ca4ec8a5" formatted="false">Aucune réponse reçue</string>
+    <string name="tx_cadff0ad" formatted="false">Ouvrez le texte complet et appuyez longuement pour sélectionner le passage à copier</string>
+    <string name="tx_cbb46593" formatted="false">Annuler la modification</string>
+    <string name="tx_cca228c7" formatted="false">Aucune tâche acceptée</string>
+    <string name="tx_cd08d0ab" formatted="false">Auto = cœurs moins 2, 6 maximum ; sur un téléphone à nombreux cœurs, une valeur élevée vide plus vite la batterie</string>
+    <string name="tx_cd0b9aca" formatted="false">Supprimer la sélection</string>
+    <string name="tx_cdd9c35a" formatted="false">Collaboration indisponible : </string>
+    <string name="tx_cde0ad30" formatted="false">Copier le résultat</string>
+    <string name="tx_cded648b" formatted="false">Non injecté</string>
+    <string name="tx_ce26955a" formatted="false">Compris</string>
+    <string name="tx_ce813e67" formatted="false">Balises d\'invite</string>
+    <string name="tx_cefac3f1" formatted="false">L\'application, les sessions de terminal et les processus d\'exécution sont comptés séparément, rafraîchis toutes les 1,5 s</string>
+    <string name="tx_cf7ceff5" formatted="false">En mode normal, l\'IA lit et actionne l\'écran via le service d\'accessibilité : elle voit les contrôles et leurs coordonnées sur la page, et peut appuyer, balayer, appuyer longuement et saisir à votre place.</string>
+    <string name="tx_d0771a42" formatted="false">Catégorie</string>
+    <string name="tx_d0ee51ab" formatted="false">Gestionnaire de paquets</string>
+    <string name="tx_d11f8934" formatted="false">Ce que cette étape doit faire, où, et sous quel format de résultat</string>
+    <string name="tx_d1849aef" formatted="false">État : activé</string>
+    <string name="tx_d1e4a7e9" formatted="false">Indisponible</string>
+    <string name="tx_d2406fdf" formatted="false">Utilise le GGUF du téléphone ; ni base_url ni clé nécessaires</string>
+    <string name="tx_d37a76e7" formatted="false">Aucun appareil détecté (sous-réseau différent ou découverte désactivée en face)</string>
+    <string name="tx_d3ce40d8" formatted="false">Région</string>
+    <string name="tx_d424955f" formatted="false"> · accepte des tâches</string>
+    <string name="tx_d5bd674d" formatted="false">Envoyer le code</string>
+    <string name="tx_d70c841a" formatted="false">(Désactivé)</string>
+    <string name="tx_d741c7ad" formatted="false">Les modèles locaux ne nécessitent ni base_url ni clé API : le chat exécute le GGUF choisi sur le téléphone</string>
+    <string name="tx_d765fbf8" formatted="false">Les deux appareils doivent utiliser le même port pour se découvrir ; la concurrence limite le nombre de transferts simultanés</string>
+    <string name="tx_d7ec2d3f" formatted="false">Nom</string>
+    <string name="tx_d82daace" formatted="false">Enregistrer dans le registre</string>
+    <string name="tx_d8c3355e" formatted="false">Liste des appareils</string>
+    <string name="tx_d8f4952f" formatted="false">Récupérez une fois depuis le cloud, puis scannez le réseau local pour compléter les IP ; hors ligne, la connexion directe par IP + token reste possible</string>
+    <string name="tx_da59f6c4" formatted="false">Auto-test par catégorie ; chaque nouvelle fonction ajoute un test</string>
+    <string name="tx_da9de6ce" formatted="false">1.0 = désactivé ; montez à 1,1–1,2 si le modèle se répète</string>
+    <string name="tx_dae9a428" formatted="false">Les extraits activés sont ajoutés à l\'invite système à chaque tour ; l\'insertion n\'affecte que ce message</string>
+    <string name="tx_db28b874" formatted="false">Chaque fournisseur a ses propres codes internes ; seul le niveau unifié est stocké ici et chaque plateforme le convertit à l\'appel</string>
+    <string name="tx_db75b769" formatted="false">Une seule fois</string>
+    <string name="tx_dc7f3530" formatted="false">Écoute démarrée</string>
+    <string name="tx_dcc25a21" formatted="false">GGUF local sur le téléphone ; ni base_url ni clé</string>
+    <string name="tx_de027789" formatted="false">Commandes rapides</string>
+    <string name="tx_dec42aa1" formatted="false">Serveur local</string>
+    <string name="tx_def9e98b" formatted="false">Replier</string>
+    <string name="tx_e0423a8e" formatted="false">Nouvel émoji</string>
+    <string name="tx_e2c0dc29" formatted="false">(Aucun)</string>
+    <string name="tx_e2df88e7" formatted="false">Échanger le code contre un token</string>
+    <string name="tx_e33ff6aa" formatted="false">Appairer</string>
+    <string name="tx_e4554821" formatted="false">Cette étape a échoué car le service d\'accessibilité est désactivé : l\'IA n\'obtient pas les coordonnées des contrôles et ne peut pas toucher l\'écran.</string>
+    <string name="tx_e4b51d5c" formatted="false">État d\'exécution</string>
+    <string name="tx_e5210db4" formatted="false">Concurrence réglée sur $n</string>
+    <string name="tx_e5f71fc3" formatted="false">Rechercher</string>
+    <string name="tx_e655a410" formatted="false">Installer</string>
+    <string name="tx_e80c310e" formatted="false">Cache</string>
+    <string name="tx_ea0844f0" formatted="false">Port réglé sur $p ; effectif après avoir réactivé l\'interrupteur</string>
+    <string name="tx_ea4a363d" formatted="false">Désactivé</string>
+    <string name="tx_eb76c062" formatted="false">Code SMS</string>
+    <string name="tx_ebfb5648" formatted="false">Dossier trop volumineux ; limite de 64 Mo</string>
+    <string name="tx_ec361222" formatted="false">En cours…</string>
+    <string name="tx_ecb7e8a2" formatted="false">Effet immédiat, sans redémarrage</string>
+    <string name="tx_ed22b17a" formatted="false">Environnement en un geste</string>
+    <string name="tx_ed275d6f" formatted="false">Outils de développement</string>
+    <string name="tx_eea76d6e" formatted="false">Collaboration d\'équipe en pair-à-pair</string>
+    <string name="tx_eeb83a34" formatted="false">32 caractères hexadécimaux</string>
+    <string name="tx_eedbfbcf" formatted="false">Session non PTY : sortie des commandes, interruptions et entrée stdin fiables ; la complétion Tab et les flèches peuvent être de simples caractères dans les programmes nécessitant l\'édition de ligne.</string>
+    <string name="tx_eeeb0354" formatted="false">Activer l\'accessibilité</string>
+    <string name="tx_ef121b59" formatted="false">Relancer le test de débit</string>
+    <string name="tx_ef29d483" formatted="false">Rouvrir le terminal</string>
+    <string name="tx_f02de109" formatted="false">Contrôle de l\'écran</string>
+    <string name="tx_f0bd413c" formatted="false">Ubuntu intégré (proot) · terminal direct · environnement de développement en un geste</string>
+    <string name="tx_f147798d" formatted="false">API A2A 1.0. Deux sens : cet appareil appelle d\'autres nœuds en client et reçoit des tâches en serveur.</string>
+    <string name="tx_f182d08f" formatted="false">Chiffrement des messages</string>
+    <string name="tx_f18fd725" formatted="false">Lecture impossible (appareil hors ligne / token erroné / numéro de propriété incorrect)</string>
+    <string name="tx_f26ef914" formatted="false">Télécharger</string>
+    <string name="tx_f28e75cf" formatted="false"> réussi</string>
+    <string name="tx_f32ae05c" formatted="false">Scanner le réseau local</string>
+    <string name="tx_f45c4e65" formatted="false">Non installé</string>
+    <string name="tx_f4c9c9c5" formatted="false">NetEase Cloud prend en charge la connexion par code SMS ; pour les autres plateformes, collez la ligne de cookie complète du navigateur après connexion. Tout est stocké chiffré, jamais en clair</string>
+    <string name="tx_f4eec2ab" formatted="false">Consultation de l\'index apt…</string>
+    <string name="tx_f6135cae" formatted="false">Les entrées que vous avez ajoutées et les images remplacées seront supprimées ; le jeu intégré est restauré.</string>
+    <string name="tx_f6c58938" formatted="false">Choisit uniquement parmi les tokens dans la probabilité cumulée top-p ; plus bas est plus stable</string>
+    <string name="tx_f729e121" formatted="false">Token du pair (vide si aucun)</string>
+    <string name="tx_f73d0c19" formatted="false"> échoué</string>
+    <string name="tx_f745e83a" formatted="false">Réseau local d\'abord (ordre de 500 ms), repli sur le cloud sinon</string>
+    <string name="tx_f7552158" formatted="false">Ouvrir la page d\'autorisation</string>
+    <string name="tx_f79de08c" formatted="false">ex. : Flemme</string>
+    <string name="tx_f7ba9c52" formatted="false">Une seule plateforme parle à la fois : la première activée prend les tâches ; la faire monter change de plateforme principale</string>
+    <string name="tx_f8f0ec92" formatted="false">Le registre est vide : connectez-vous pour synchroniser ou ajoutez un appareil manuellement</string>
+    <string name="tx_f91d273b" formatted="false">Raison inconnue</string>
+    <string name="tx_f98a8254" formatted="false">Priorité des plateformes</string>
+    <string name="tx_fb085f04" formatted="false">Collez simplement un lien GGUF direct (ModelScope / hf-mirror / votre propre serveur), le nom du fichier est le dernier segment du lien</string>
+    <string name="tx_fb34db95" formatted="false">Pairs (cet appareil en client)</string>
+    <string name="tx_fbb1d2ab" formatted="false">Délai d\'expiration (ms)</string>
+    <string name="tx_fc36d633" formatted="false">Prêt</string>
+    <string name="tx_fc8f9040" formatted="false">(Stockage externe indisponible ; retour au dossier privé)</string>
+    <string name="tx_fc960862" formatted="false">Test de connexion (envoie « test test »)</string>
+    <string name="tx_fd4bef54" formatted="false">Diagnostic</string>
+    <string name="tx_fda7a982" formatted="false">Copier une partie du message</string>
+    <string name="tx_fed34fcc" formatted="false">Nombre maximal de tokens générés par tour dans le chat ; au-delà de 1024, le CPU pur ralentit nettement, augmentez-le pour les textes longs</string>
+    <string name="tx_3aaccc6e" formatted="false">Modèle d\'appareil détecté : %1$s</string>
+    <string name="tx_5cd47992" formatted="false">%1$s jours</string>
+    <string name="tx_6adeb861" formatted="false">Mémoire à long terme · %1$s entrées</string>
+    <string name="tx_8bdbcde3" formatted="false">%1$s niveaux, détermine la longueur du curseur</string>
+    <string name="tx_8cae3683" formatted="false">Niveau %1$s</string>
+    <string name="tx_935695b1" formatted="false">%1$s fichiers de police détectés</string>
+    <string name="tx_9f8beb63" formatted="false">%1$s appliqués</string>
+    <string name="tx_a6f0b1dc" formatted="false">%1$s s</string>
+    <string name="tx_b4d10c2d" formatted="false">%1$s dp/niveau</string>
+    <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
+    <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
+    <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
+    <string name="tx_0d011d38" formatted="false">Chargé : %1$s ($desc · contexte d\'entraînement $nctx)</string>
+    <string name="tx_12a1e1ea" formatted="false">Conserver la langue d\'origine : %1$s\n</string>
+    <string name="tx_136b30f6" formatted="false">Commande interne code=%1$s :</string>
+    <string name="tx_1488e82c" formatted="false">%1$s appareils détectés</string>
+    <string name="tx_19dd9c89" formatted="false">Écoute sur le port %1$s</string>
+    <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
+    <string name="tx_1f6f6b55" formatted="false">%1$s modèles migrés de l\'ancien répertoire vers ${ModelHu%2$s</string>
+    <string name="tx_215a9629" formatted="false">Fichiers : %1$s\n</string>
+    <string name="tx_238b0ba6" formatted="false">Longueur de sortie préférée : %1$s caractères</string>
+    <string name="tx_2408091c" formatted="false">Fournisseur actuel pris en charge = %1$s</string>
+    <string name="tx_2a8058ac" formatted="false">Espace disponible : %1$s Mo\n</string>
+    <string name="tx_2b10449e" formatted="false">Espace réservé : %2$s\nRésultat : %1$s\n</string>
+    <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
+    <string name="tx_2cf379fe" formatted="false">%1$s conversations supprimées</string>
+    <string name="tx_3108ce07" formatted="false"> · Mémoire %1$s (disponible ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" formatted="false">Images conservées : %1$s / validité : ${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" formatted="false">Répertoire de l\'application : %1$s\n</string>
+    <string name="tx_3c1c4b90" formatted="false">Couches GPU définies sur %1$s ; effectif après rechargement du modèle</string>
+    <string name="tx_3ee9b024" formatted="false">%1$s nœuds, mesure de vitesse en cours…</string>
+    <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
+    <string name="tx_430495aa" formatted="false">Paramètres disponibles : %1$s</string>
+    <string name="tx_45b8d0ba" formatted="false">Lisez d\'abord les instructions (%1$s)</string>
+    <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
+    <string name="tx_52280f7d" formatted="false">Échec de l\'optimisation : %1$s</string>
+    <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
+    <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
+    <string name="tx_642e64e8" formatted="false">Supprimé : %1$s</string>
+    <string name="tx_651eb991" formatted="false">Terminé : %2$s token / %1$sms (~$tps tok/s)</string>
+    <string name="tx_66a69bbf" formatted="false">Téléchargement de %1$s :</string>
+    <string name="tx_67957ccd" formatted="false">Supprimer %1$s ? (${hum%2$s</string>
+    <string name="tx_68e55fc5" formatted="false">Peut accepter %1$s</string>
+    <string name="tx_697e775f" formatted="false">Sera enregistré sous : %1$s</string>
+    <string name="tx_69d06c37" formatted="false">Étape %1$s</string>
+    <string name="tx_70bc66d5" formatted="false">%2$s activés · sur %1$s</string>
+    <string name="tx_70e28d57" formatted="false">Système : Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
+    <string name="tx_7a43344e" formatted="false">%2$s → Indisponible (%1$s)</string>
+    <string name="tx_7a776792" formatted="false">Total %1$s · ${s.procs} %2$s processus ; impossible d\'isoler les éléments de plugin au niveau du processus</string>
+    <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
+    <string name="tx_803ae150" formatted="false">Interrupteurs actuels : think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" formatted="false">Test de connectivité réussi : %1$s a reçu $%2$s caractères ($rc token, ~$tps tok/s)\nExtrait de réponse : ${txt.take%3$s</string>
+    <string name="tx_829cb2a2" formatted="false">%1$s sélectionné(s)</string>
+    <string name="tx_82a30a52" formatted="false">Seuil de réussite : TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" formatted="false">API Key non enregistrée dans le stockage chiffré : %1$s</string>
+    <string name="tx_86c68249" formatted="false">Conversation actuelle %5$s : vide=%1$s texte=${cur.text%2$sr.images.size} pièces jointes=${%3$s%4$s</string>
+    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s considéré comme réussi ; le plus rapide est retenu</string>
+    <string name="tx_89e93f24" formatted="false">Test en parallèle (%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" formatted="false">✓ %1$s · le modèle reconnaît le noir pur · ${v%2$s</string>
+    <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
+    <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
+    <string name="tx_957699dd" formatted="false">, ${(ratio * 100)%2$s de %1$s de mémoire totale sur cet appareil</string>
+    <string name="tx_960ae310" formatted="false">Aucun fichier de modèle. Touchez Importer ci-dessus ou placez les .gguf dans %1$s/ via un gestionnaire de fichiers.</string>
+    <string name="tx_983d58f9" formatted="false">Images perdues %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" formatted="false">Point de terminaison : %1$s</string>
+    <string name="tx_9fc79d7a" formatted="false">Stockage insuffisant : %1$s disponible, garder au moins 300 Mo</string>
+    <string name="tx_a33a9bb0" formatted="false">Appareil : %1$s</string>
+    <string name="tx_aab79711" formatted="false">Sélectionné par l\'utilisateur = %1$s</string>
+    <string name="tx_ac635e14" formatted="false">Étapes (%1$s étapes max)</string>
+    <string name="tx_b6e53767" formatted="false">Emplacement : %1$s</string>
+    <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
+    <string name="tx_b82d7fd4" formatted="false">Fichier : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" formatted="false">Supprimer %1$s éléments ?</string>
+    <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
+    <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
+    <string name="tx_c3af4af2" formatted="false">Modèles réussis %1$s / durée ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" formatted="false">Indisponible (%1$s)</string>
+    <string name="tx_c83a29fe" formatted="false">Appareil : %1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" formatted="false">Répertoire des brouillons : %1$s\n</string>
+    <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
+    <string name="tx_cb625f26" formatted="false">providerId actuel = %1$s</string>
+    <string name="tx_cbb1ac45" formatted="false">Fournisseur : %1$s / Modèle : $model\n</string>
+    <string name="tx_cbdacbb2" formatted="false">Importé : %1$s (${hum%2$s</string>
+    <string name="tx_cf954d3a" formatted="false">Longueur de direction personnalisée : %1$s caractères\n</string>
+    <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
+    <string name="tx_d1977545" formatted="false">Paquet : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" formatted="false">Échec : %1$s</string>
+    <string name="tx_d9366fc9" formatted="false">%1$s nœuds de repli intégrés encore disponibles</string>
+    <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
+    <string name="tx_e03b4047" formatted="false">Le répertoire default existe = %1$s</string>
+    <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
+    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" formatted="false">Échec de la suppression : %1$s</string>
+    <string name="tx_f8e3d0b7" formatted="false">Contenu trop long (limite %1$s caractères) ; raccourcissez-le avant d\'optimiser</string>
+    <string name="tx_f934698e" formatted="false">Modèle sélectionné %1$s</string>
+    <string name="tx_fe42d9b6" formatted="false">Couches GPU %1$s ; repli sur CPU si le pilote ne le prend pas en charge</string>
+    <string name="tx_fee8e550" formatted="false">Espace insuffisant : %1$s requis, ${human(fr%2$s disponible</string>
+    <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
+    <string name="tx_13853b5a" formatted="false">Espacement des paragraphes</string>
+    <string name="tx_279a3789" formatted="false">Taille de police du code</string>
+    <string name="tx_3d86509a" formatted="false">Rayon des coins des cartes</string>
+    <string name="tx_48f369a7" formatted="false">Taille de police des réponses</string>
+    <string name="tx_5a3701e9" formatted="false">Taille de police du texte</string>
+    <string name="tx_6ca4489d" formatted="false">Interligne</string>
+    <string name="tx_713fd45a" formatted="false">Intensité de la réfraction</string>
+    <string name="tx_b76fe1f2" formatted="false">Marge intérieure horizontale</string>
+    <string name="tx_c73258a2" formatted="false">Hauteur de la fenêtre flottante</string>
+    <string name="tx_cae01fea" formatted="false">Largeur de la fenêtre flottante</string>
+    <string name="tx_cd758e7e" formatted="false">Retrait des listes</string>
+    <string name="tx_d73f1ed6" formatted="false">Intensité du reflet</string>
+    <string name="tx_e013ea26" formatted="false">Opacité de la fenêtre</string>
+    <string name="tx_fa5d97dd" formatted="false">Opacité des cartes</string>
+    <string name="tx_fd5f796f" formatted="false">Voile laiteux</string>
+    <string name="tx_06e12adc" formatted="false">Rappel de sortie indisponible (obfuscation release) ; mettez à jour l\'APK</string>
+    <string name="tx_0cac8c4c" formatted="false">Le lien doit commencer par http:// ou https://</string>
+    <string name="tx_159a3a80" formatted="false">Mettre à jour le miroir</string>
+    <string name="tx_2111ccbb" formatted="false">Annulé</string>
+    <string name="tx_2acb7b31" formatted="false">Mode espace de travail</string>
+    <string name="tx_2d455ce5" formatted="false">Téléchargement</string>
+    <string name="tx_2dc1a7bf" formatted="false">● Environnement prêt</string>
+    <string name="tx_34b2bda9" formatted="false">● Ubuntu intégré nécessite arm64 (32 bits non pris en charge)</string>
+    <string name="tx_38ce27d8" formatted="false">Suivant</string>
+    <string name="tx_4649c53d" formatted="false">Privilèges élevés disponibles, activation en un geste</string>
+    <string name="tx_4885f20e" formatted="false">[Nom de paquet invalide] Seuls lettres, chiffres et . - + _ sont autorisés</string>
+    <string name="tx_4b72c2b7" formatted="false">0 (CPU seul)</string>
+    <string name="tx_5614002d" formatted="false">Stockage des brouillons</string>
+    <string name="tx_5c362d71" formatted="false">Injection de recherche native</string>
+    <string name="tx_6e081357" formatted="false">Règles de réflexion</string>
+    <string name="tx_73500eb7" formatted="false">Ignorer · </string>
+    <string name="tx_76d88dfc" formatted="false">Le prompt dépasse le contexte</string>
+    <string name="tx_7e50d092" formatted="false">Permissions des outils</string>
+    <string name="tx_9719fec8" formatted="false">Téléchargé</string>
+    <string name="tx_a46ee2bc" formatted="false">[Installez Ubuntu d\'abord] Touchez « Installer l\'environnement » ci-dessus</string>
+    <string name="tx_ac6913a4" formatted="false">Aucune réponse</string>
+    <string name="tx_af0a9b8b" formatted="false">● Environnement installé, terminal non connecté</string>
+    <string name="tx_b52f2284" formatted="false">Test de conversation</string>
+    <string name="tx_b967fdef" formatted="false">Infos appareil</string>
+    <string name="tx_bd5451bc" formatted="false">Liste des miroirs</string>
+    <string name="tx_c4952839" formatted="false">Variables entre accolades</string>
+    <string name="tx_c5d9c84c" formatted="false">Vérification de l\'environnement</string>
+    <string name="tx_cb201444" formatted="false">Désinstaller et réinstaller</string>
+    <string name="tx_e22c257e" formatted="false">Test de vitesse des miroirs</string>
+    <string name="tx_ecfc4318" formatted="false">Montage par commande</string>
+    <string name="tx_efcc3f48" formatted="false">Analyse des @ de compétence</string>
+    <string name="tx_f348d6c3" formatted="false">Recherche dans l\'historique</string>
+    <string name="tx_f47f7cb9" formatted="false">99 (toutes les couches)</string>
+    <string name="tx_f65125e4" formatted="false">Rangement de la mémoire</string>
+    <string name="tx_fc7d3267" formatted="false">Non testé</string>
+    <string name="cs_voice_hold" formatted="false">Maintenir pour parler</string>
+    <string name="cs_voice_end" formatted="false">Relâcher pour envoyer</string>
+    <string name="cs_voice_cancel" formatted="false">Relâcher pour annuler</string>
+    <string name="cs_keyboard" formatted="false">Clavier</string>
+    <string name="cs_typing" formatted="false">En train d\'écrire…</string>
+    <string name="wp_pick_hint" formatted="false">Le dossier choisi n\'est lié qu\'à cette conversation</string>
+    <string name="se_wreal_t" formatted="false">Découpage plus naturel</string>
+    <string name="se_wreal_d" formatted="false">Coupe aussi aux virgules, réduit les bulles à 3/7 de l\'écran et remplace l\'apparition par un fondu qui monte, comme quelqu\'un qui envoie des messages courts</string>
+    <string name="se_wtype_t" formatted="false">Vitesse de frappe par fragment</string>
+    <string name="se_wtype_v" formatted="false">%1$d ms/car.</string>
+    <string name="se_wtyping_t" formatted="false">Afficher « en train d\'écrire »</string>
+    <string name="se_wtyping_d" formatted="false">Affiche « en train d\'écrire… » entre deux fragments ; durée = nombre de caractères du fragment × vitesse de frappe</string>
+    <string name="se_tools_more" formatted="false">Afficher les %1$d outils</string>
+    <string name="se_bk_secrets" formatted="false">Exporter les secrets chiffrés</string>
+    <string name="se_bk_secrets_d" formatted="false">Regroupe les clés API, mots de passe SSH, jetons GitHub et secrets de compétences pour les restaurer sur un autre appareil. Ils restent chiffrés et seule la même version de Baicodex peut les ouvrir</string>
+    <string name="se_bk_fail_x" formatted="false">Échec de l\'export : %1$s</string>
+    <string name="se_bk_bad_x" formatted="false">Échec de l\'import : %1$s</string>
+    <string name="se_366" formatted="false">Injection de position précise</string>
+    <string name="se_367" formatted="false">Relève une position à chaque fois, plus précise que la dernière connue</string>
+    <string name="se_368" formatted="false">Désactivé : utilise seulement la dernière position, sans relève active</string>
+    <string name="se_369" formatted="false">Convertir en nom de lieu</string>
+    <string name="se_370" formatted="false">Transforme les coordonnées en ville et quartier, mis en cache chiffré sur l\'appareil</string>
+    <string name="se_371" formatted="false">Désactivé : coordonnées seules, aucune requête réseau</string>
+    <string name="plg_off_title" formatted="false">Boutique de plugins en maintenance…</string>
+    <string name="plg_off_body" formatted="false">L\'inscription, la connexion et l\'envoi sont désactivés, la boutique est donc indisponible. Les plugins installés continuent de fonctionner</string>
+    <string name="plg_off_back" formatted="false">Retour</string>
+    <string name="se_gd_title" formatted="false">Chiffrement maximal des données</string>
+    <string name="se_gd_state_off" formatted="false">Désactivé</string>
+    <string name="se_gd_state_bad" formatted="false">L\'interrupteur est actif, mais cet appareil ne peut pas déverrouiller les clés</string>
+    <string name="se_gd_state_on" formatted="false">Activé · chiffrement à trois couches</string>
+    <string name="se_gd_note" formatted="false">Une fois activé, les données sensibles (clés API, jetons de compte, mots de passe SSH, secrets de compétences, cache de lieux) sont écrites avec une clé à trois couches liée à cet appareil. Elles ne suivent pas une sauvegarde</string>
+    <string name="se_gd_tip_on" formatted="false">Activé : les nouvelles données utilisent la clé à trois couches</string>
+    <string name="se_gd_fail" formatted="false">Activation impossible : la puce sécurisée est indisponible</string>
+    <string name="se_gd_busy_title" formatted="false">Renforcement en cours</string>
+    <string name="se_gd_busy" formatted="false">Dérivation des clés et réécriture de tous les chiffrés, ne quittez pas</string>
+    <string name="se_gd_cleared_title" formatted="false">Effacé</string>
+    <string name="se_gd_cleared_body" formatted="false">Toutes les données sensibles ont été supprimées. Redémarrez l\'application pour revenir à un état propre</string>
+    <string name="se_gd_warn_title" formatted="false">L\'activation initialise un sel et exécute une dérivation multi-clés, ce qui sollicite brièvement le processeur. Sur cet appareil (%1$s), cela prend environ %2$s et l\'interface peut saccader</string>
+    <string name="se_gd_w1_t" formatted="false">Impossible à désactiver</string>
+    <string name="se_gd_w1_b" formatted="false">Le seul retour possible est un effacement forcé : les clés API, jetons de compte, cookies et jetons GitHub chiffrés sont supprimés sur-le-champ, sans récupération possible</string>
+    <string name="se_gd_w2_t" formatted="false">Les données restent sur l\'appareil</string>
+    <string name="se_gd_w2_b" formatted="false">Liées aux identifiants matériels profonds. Un nouvel appareil, un reflashage ou une réinitialisation rendent les données illisibles. Une migration est techniquement possible mais non proposée, pour raisons de sécurité</string>
+    <string name="se_gd_w3_t" formatted="false">À vos risques</string>
+    <string name="se_gd_w3_b" formatted="false">Vous assumez les conséquences ci-dessus. N\'activez cette couche que si vous en avez réellement besoin</string>
+    <string name="se_gd_layers" formatted="false">En échange, les données sur disque passent par trois couches :</string>
+    <string name="se_gd_l1_t" formatted="false">Clé d\'appareil</string>
+    <string name="se_gd_l1_b" formatted="false">Une demi-clé aléatoire scellée dans la puce sécurisée, non exportable</string>
+    <string name="se_gd_l2_t" formatted="false">Clé combinée</string>
+    <string name="se_gd_l2_b" formatted="false">Une graine et un facteur matériel dérivent l\'autre moitié, combinées en XOR avec la clé de données</string>
+    <string name="se_gd_l3_t" formatted="false">Chiffrement du contenu</string>
+    <string name="se_gd_l3_b" formatted="false">AES-256-GCM sur le fichier entier, en-tête réécrit dans une nouvelle version</string>
+    <string name="se_gd_off_title" formatted="false">Forcer l\'arrêt et effacer</string>
+    <string name="se_gd_off_body" formatted="false">Désactiver la protection supprime immédiatement toutes les données chiffrées. Aucun retour en arrière, aucune corbeille</string>
+    <string name="se_gd_off_i1" formatted="false">Clés API (modèles / voix / recherche)</string>
+    <string name="se_gd_off_i2" formatted="false">Sessions de compte, jeton de retour, jeton GitHub, cookies</string>
+    <string name="se_gd_off_i3" formatted="false">Mots de passe SSH et secrets de packs de compétences</string>
+    <string name="se_gd_off_i4" formatted="false">Cache des noms de lieux</string>
+    <string name="se_gd_off_note" formatted="false">Après l\'effacement, l\'appareil revient à un état non chiffré et les anciennes sauvegardes ne s\'ouvrent plus non plus</string>
+    <string name="se_gd_cancel" formatted="false">Annuler</string>
+    <string name="se_gd_keep" formatted="false">Conserver</string>
+    <string name="se_gd_go" formatted="false">J\'ai compris, activer</string>
+    <string name="se_gd_go_wait" formatted="false">Lire d\'abord (%1$ds)</string>
+    <string name="se_gd_wipe" formatted="false">Je confirme l\'effacement</string>
+    <string name="se_gd_wipe_wait" formatted="false">Confirmer l\'effacement (%1$ds)</string>
+    <string name="se_sec_tab" formatted="false">Confidentialité et sécurité</string>
+    <string name="se_sec_sub" formatted="false">Interrupteurs qui protègent les identifiants et les données privées. Lisez l\'avertissement complet avant de modifier quoi que ce soit</string>
+    <string name="se_pt_tab" formatted="false">Protection supplémentaire</string>
+    <string name="se_pt_sub" formatted="false">Deux lignes de défense contre l\'injection et les fuites, désactivées par défaut et modifiables à tout moment</string>
+    <string name="se_pt_mask_t" formatted="false">Masquer les données sensibles</string>
+    <string name="se_pt_mask_on" formatted="false">Activé · mots de passe et jetons masqués</string>
+    <string name="se_pt_mask_off" formatted="false">Désactivé · les réponses s\'affichent telles quelles</string>
+    <string name="se_pt_mask_note" formatted="false">Lorsque des champs de type mot de passe ou jeton apparaissent dans une réponse, son raisonnement ou la sortie d\'un outil, les valeurs sont masquées. Les règles viennent du serveur et la correspondance est locale. Au mieux, sans garantie absolue</string>
+    <string name="se_pt_mask_stream" formatted="false">Activer ceci coupe aussi le streaming : un texte affiché caractère par caractère ne peut plus être filtré après coup</string>
+    <string name="se_pt_mask_rules" formatted="false">Règles actuelles : %1$d clés, %2$d préfixes</string>
+    <string name="se_pt_mask_ok" formatted="false">Règles mises à jour depuis le serveur</string>
+    <string name="se_pt_mask_fail" formatted="false">Échec de la mise à jour : retour au jeu local</string>
+    <string name="se_pt_shot_t" formatted="false">Bloquer captures et enregistrement</string>
+    <string name="se_pt_shot_on" formatted="false">Activé · le système capture un écran noir</string>
+    <string name="se_pt_shot_off" formatted="false">Désactivé · captures et enregistrement normaux</string>
+    <string name="se_pt_shot_note" formatted="false">Ajoute un indicateur de sécurité système à l\'écran de discussion. Les captures et enregistrements sortent en noir ; désactivez d\'abord si vous en avez besoin</string>
+    <string name="se_pt_warn_title" formatted="false">Activer le masquage des sorties</string>
+    <string name="se_pt_warn_head" formatted="false">Il s\'agit d\'un filtre local. Voici ce qu\'il peut et ne peut pas faire avant de l\'activer</string>
+    <string name="se_pt_w1_t" formatted="false">Ce qu\'il fait</string>
+    <string name="se_pt_w1_b" formatted="false">Le texte des réponses, le raisonnement et la sortie des outils sont analysés avant affichage et avant enregistrement ; les noms de champs et la structure restent, les valeurs deviennent des masques</string>
+    <string name="se_pt_w2_t" formatted="false">Ce qu\'il ne couvre pas</string>
+    <string name="se_pt_w2_b" formatted="false">Les identifiants découpés, encodés ou recomposés sur plusieurs lignes peuvent encore passer, et un modèle peut simplement choisir de ne pas les écrire. Il bloque l\'erreur la plus courante : un vidage complet après une injection</string>
+    <string name="se_pt_w3_t" formatted="false">Ce qui change aussi</string>
+    <string name="se_pt_w3_b" formatted="false">Le streaming se coupe et les réponses arrivent en un bloc ; réactivez-le vous-même pour retrouver l\'affichage caractère par caractère</string>
+    <string name="se_pt_warn_back" formatted="false">Encore une fois : ce n\'est pas totalement sûr</string>
+    <string name="se_pt_go" formatted="false">J\'ai compris, activer</string>
+    <string name="se_pt_go_wait" formatted="false">Lire d\'abord (%1$ds)</string>
+    <string name="se_ns_t" formatted="false">Désactiver le streaming</string>
+    <string name="se_ns_on" formatted="false">Désactivé : la réponse s\'affiche une fois terminée, sans rendu caractère par caractère</string>
+    <string name="se_ns_off" formatted="false">Streaming actif : le texte apparaît au fil de la génération</string>
+    <string name="ag_stream_off" formatted="false">En attente de la réponse complète</string>
+    <string name="se_gd_pg_title" formatted="false">Activation du chiffrement maximal</string>
+    <string name="se_gd_pg_keep" formatted="false">Cette fenêtre ne peut pas être fermée pendant l\'opération ; tuer l\'application laisserait des données à moitié chiffrées</string>
+    <string name="se_gd_pg1_t" formatted="false">Générer les clés</string>
+    <string name="se_gd_pg1_b" formatted="false">La demi-clé R est scellée par Keystore, la clé combinée K2 est dérivée en natif</string>
+    <string name="se_gd_pg2_t" formatted="false">Migrer les anciennes données</string>
+    <string name="se_gd_pg2_b" formatted="false">Les anciennes tables de clés en clair et les chiffrés hérités sont déchiffrés en mémoire puis unifiés sous un même jeu de clés</string>
+    <string name="se_gd_pg3_t" formatted="false">Écrire chiffré</string>
+    <string name="se_gd_pg3_b" formatted="false">Chaque fichier d\'identifiants est rechiffré avec la clé à trois couches puis réécrit</string>
+    <string name="se_gd_pg4_t" formatted="false">Terminé</string>
+    <string name="se_gd_pg4_b" formatted="false">Les clés sont liées à ce matériel ; un nouvel appareil ou un reflashage ne peut pas les ouvrir</string>
+    <string name="se_gd_covers" formatted="false">Inclus : clés modèles / voix / recherche / MCP / A2A, jetons de compte et de retour, mots de passe SSH, secrets de compétences, cache de lieux</string>
+    <string name="cs_max_on" formatted="false">Max · activé</string>
+    <string name="cs_queue_title" formatted="false">File d\'envoi</string>
+    <string name="cs_more_rounds" formatted="false">Afficher %1$d tours plus anciens</string>
+    <string name="cs_queue_tip" formatted="false">Le texte saisi pendant une réponse attend ici et part dans l\'ordre à la fin du tour</string>
+    <string name="ag_queue_next" formatted="false">Placé en tête : envoyé dès la fin de ce tour</string>
+    <string name="ag_queue_other" formatted="false">Ce message appartient à une autre conversation ; revenez-y pour l\'envoyer</string>
+    <string name="ag_par_fmt" formatted="false">Exécution de %1$d outils en parallèle</string>
+    <string name="se_pg_voice" formatted="false">Voix</string>
+    <string name="se_pg_voice_sub" formatted="false">Reconnaissance vocale, synthèse et lecture des réponses</string>
+    <string name="se_pg_mem" formatted="false">Mémoire</string>
+    <string name="se_pg_mem_sub" formatted="false">Mémoire à long terme entre les conversations, lue et écrite par le modèle</string>
+    <string name="se_pg_local" formatted="false">Modèles locaux</string>
+    <string name="se_pg_local_sub" formatted="false">Inférence GGUF hors ligne ; importez et lancez sans réseau</string>
+    <string name="se_pg_perm" formatted="false">Autorisations</string>
+    <string name="se_pg_perm_sub" formatted="false">Mode de fonctionnement, autorisations système, Shizuku, fonctions expérimentales</string>
+    <string name="se_pg_avatar" formatted="false">Avatars</string>
+    <string name="se_pg_avatar_sub" formatted="false">Votre avatar et celui de l\'assistant</string>
+    <string name="se_pg_float" formatted="false">Fenêtre flottante</string>
+    <string name="se_pg_float_sub" formatted="false">Discuter par-dessus les autres applications</string>
+    <string name="se_pg_auto" formatted="false">Automatisation</string>
+    <string name="se_pg_auto_sub" formatted="false">Tâches planifiées, workflows, déclencheurs de notification</string>
+    <string name="se_pg_agent" formatted="false">Compétences et rôles</string>
+    <string name="se_pg_agent_sub" formatted="false">Rôles, invites système, hub et packs de compétences</string>
+    <string name="se_pg_link" formatted="false">Intégrations</string>
+    <string name="se_pg_link_sub" formatted="false">MCP, A2A, plateformes de recherche</string>
+    <string name="se_pg_data" formatted="false">Données et sécurité</string>
+    <string name="se_pg_data_sub" formatted="false">Sauvegarde, chiffrement, réglages de sécurité</string>
+    <string name="se_pg_model_cfg" formatted="false">Configuration des modèles</string>
+    <string name="se_pg_model_cfg_sub" formatted="false">Modèles, profil actif, capacités, réflexion approfondie</string>
+    <string name="se_pg_chat_ctx" formatted="false">Contexte et compaction</string>
+    <string name="se_pg_chat_ctx_sub" formatted="false">Fenêtre, seuil de compaction et consommation</string>
+    <string name="se_pg_chat_inject" formatted="false">Injection</string>
+    <string name="se_pg_chat_inject_sub" formatted="false">Injection de contexte et métadonnées de réponse</string>
+    <string name="se_pg_chat_session" formatted="false">Conversations et export</string>
+    <string name="se_pg_chat_session_sub" formatted="false">Gestion des conversations, favoris, export Markdown</string>
+    <string name="se_pg_chat_tags" formatted="false">Étiquettes d\'invite</string>
+    <string name="se_pg_chat_tags_sub" formatted="false">Fragments réutilisables, insérés ou activés globalement</string>
+    <string name="se_pg_emoji" formatted="false">Émojis personnalisés</string>
+    <string name="se_pg_emoji_sub" formatted="false">Catégories, remplacement d\'images, réinitialisation ; rendus depuis des marqueurs</string>
+    <string name="se_pg_ui_theme" formatted="false">Apparence</string>
+    <string name="se_pg_ui_theme_sub" formatted="false">Langue, couleur d\'accent, taille de police, fond, effet verre, cartes et champ de saisie</string>
+    <string name="se_pg_md" formatted="false">Mise en page Markdown</string>
+    <string name="se_pg_md_sub" formatted="false">Taille du texte, interligne, espacement des paragraphes, retrait des listes, marges, taille du code, avec aperçu en direct</string>
+    <string name="se_pg_ui_nav" formatted="false">Flottant et gestes</string>
+    <string name="se_pg_ui_nav_sub" formatted="false">Autorisations, taille et position de la fenêtre flottante ; geste de retour</string>
+    <string name="se_pg_ui_input" formatted="false">Saisie</string>
+    <string name="se_pg_ui_input_sub" formatted="false">Champ de saisie, invites et avatars</string>
+    <string name="se_pg_ext_auto" formatted="false">Automatisation</string>
+    <string name="se_pg_ext_auto_sub" formatted="false">Tâches planifiées, workflows, déclencheurs de notification</string>
+    <string name="se_pg_ext_link" formatted="false">Intégrations</string>
+    <string name="se_pg_ext_link_sub" formatted="false">Nœuds A2A, plateformes de recherche, services MCP</string>
+    <string name="se_pg_ext_ws" formatted="false">Espace de travail</string>
+    <string name="se_pg_ext_ws_sub" formatted="false">Racine des données, liaison de l\'espace de travail et arborescence</string>
+    <string name="se_pg_linux" formatted="false">Bac à sable Linux</string>
+    <string name="se_pg_linux_sub" formatted="false">Déballage de l\'environnement Ubuntu, installation des dépendances, autotest</string>
+    <string name="se_pg_mi_sub" formatted="false">Connexion par QR code / téléphone, inventaire des appareils et panneau de propriétés</string>
+    <string name="se_pg_mi_login" formatted="false">Connexion et compte</string>
+    <string name="se_pg_mi_login_sub" formatted="false">Obtenir un code sur la page d\'autorisation, l\'échanger contre un jeton, session et déconnexion</string>
+    <string name="se_pg_mi_dev" formatted="false">Appareils</string>
+    <string name="se_pg_mi_dev_sub" formatted="false">Inventaire, analyse du réseau local, lecture et écriture des propriétés</string>
+    <string name="se_pg_mi_ch" formatted="false">Canal</string>
+    <string name="se_pg_mi_ch_sub" formatted="false">Région, priorité au réseau local et diagnostics</string>
+    <string name="se_pg_music_sub" formatted="false">Connexion NetEase / QQ / Kuwo et niveaux de qualité</string>
+    <string name="se_pg_lan_sub" formatted="false">Découverte d\'appareils, code d\'appairage et port de transfert</string>
+    <string name="se_pg_box_sub" formatted="false">Liste blanche de répertoires, niveaux de lecture/écriture et blocage hors limites</string>
+    <string name="se_pg_model_param" formatted="false">Paramètres du modèle</string>
+    <string name="se_pg_model_param_sub" formatted="false">Réflexion approfondie, température et paramètres de requête supplémentaires</string>
+    <string name="se_pg_ui_person" formatted="false">Personnalisation</string>
+    <string name="se_pg_ui_person_sub" formatted="false">Avatars, bulles capsules et mascotte de bureau</string>
+    <string name="island_ch_name" formatted="false">Progression des tâches</string>
+    <string name="island_no_perm" formatted="false">Notifications désactivées : le système ignore les notifications de tâche, touchez pour les activer</string>
+    <string name="island_ch_off" formatted="false">La catégorie « Progression des tâches » est désactivée ; aucune notification n\'apparaîtra, touchez pour l\'activer</string>
+    <string name="island_stop" formatted="false">Arrêter la tâche</string>
+    <string name="island_task_title" formatted="false">Tâche Baicodex</string>
+    <string name="island_running" formatted="false">En cours…</string>
+    <string name="island_bg_keep" formatted="false">La tâche continue en arrière-plan</string>
+    <string name="island_done" formatted="false">Tâche terminée</string>
+    <string name="ag_err_unknown" formatted="false">Échec de l\'envoi pour une raison inconnue</string>
+    <string name="cs_fail_title" formatted="false">Échec de l\'envoi</string>
+    <string name="cs_fail_more" formatted="false">Envoyer quand même</string>
+    <string name="cs_fail_retry" formatted="false">Réessayer</string>
+    <string name="cs_fail_keep" formatted="false">Ce message est déjà dans la conversation ; renvoyez-le depuis le bas</string>
+    <string name="cs_fail_again" formatted="false">Réessayer quand même</string>
+    <string name="cs_err_go_cfg" formatted="false">Ouvrir les réglages</string>
+    <string name="ag_err_kw_perm" formatted="false">autorisations</string>
+    <string name="ag_err_kw_env" formatted="false">non installé</string>
+    <string name="se_kernel_t" formatted="false">Noyau Rust</string>
+    <string name="se_kernel_d" formatted="false">Le stockage et le chiffrement passent par Rust (écritures atomiques + enveloppe AES-256-GCM) ; l\'autotest écrit, lit et supprime dans le compartiment temporaire du noyau</string>
+    <string name="se_kernel_run" formatted="false">Lancer un autotest</string>
+    <string name="se_kernel_busy" formatted="false">Autotest en cours…</string>
+    <string name="se_kernel_ok" formatted="false">Autotest réussi</string>
+    <string name="se_kernel_fail" formatted="false">Autotest échoué</string>
+    <string name="se_kernel_na" formatted="false">Pas de noyau Rust pour cette ABI (arm64-v8a uniquement)</string>
+    <string name="se_pg_prompt" formatted="false">Optimisation d\'invite</string>
+    <string name="se_pg_prompt_sub" formatted="false">Modèle utilisé, conservation de la langue, consignes personnalisées</string>
+    <string name="se_pg_inout" formatted="false">Entrée et sortie</string>
+    <string name="se_pg_inout_sub" formatted="false">Métadonnées de réponse, streaming, brouillons et style de sortie</string>
+    <string name="se_pg_think" formatted="false">Configuration de la réflexion</string>
+    <string name="se_pg_think_sub" formatted="false">Correspond au nom du modèle et décide comment le champ de réflexion entre dans la requête ; ajouter, modifier, supprimer, restaurer</string>
 </resources>

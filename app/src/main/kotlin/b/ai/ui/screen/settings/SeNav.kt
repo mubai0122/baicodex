@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:23
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
 
 import androidx.compose.runtime.mutableStateListOf
@@ -48,11 +62,17 @@ val SePages = listOf(
     //模型
     SePage("model_cfg", R.string.se_pg_model_cfg, R.string.se_pg_model_cfg_sub, 0),
     SePage("model_param", R.string.se_pg_model_param, R.string.se_pg_model_param_sub, 0),
+    //思考配置：规则引擎，按模型名匹配决定思考字段怎么下发
+    SePage("model_think", R.string.se_pg_think, R.string.se_pg_think_sub, 0),
     SePage("model_voice", R.string.se_pg_voice, R.string.se_pg_voice_sub, 0),
     SePage("model_mem", R.string.se_pg_mem, R.string.se_pg_mem_sub, 0),
     SePage("model_local", R.string.se_pg_local, R.string.se_pg_local_sub, 0),
     //对话
     SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 1),
+    //提示词优化：四芒星按钮的连接与写法（只放优化本体）
+    SePage("chat_prompt", R.string.se_pg_prompt, R.string.se_pg_prompt_sub, 1),
+    //输入与输出：回复信息展示 / 流式 / 草稿 / 输出偏好，从提示词优化与注入页拆出来单独一页
+    SePage("chat_inout", R.string.se_pg_inout, R.string.se_pg_inout_sub, 1),
     SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 1),
     SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 1),
     SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 1),

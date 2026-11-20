@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:25
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.widget
 import b.ai.ui.glass.LiquidCard
 import b.ai.ui.glass.LocalCardBackdrop
@@ -147,13 +161,26 @@ fun CardBox(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -
     ) { body(this) }
 } //白卡 / 玻璃卡
 
+/**
+ * 分类标题：设置页里每张卡片上方那一行（h2 级别，加粗、比正文明显大一号）。
+ * 上间距 18dp 给「标题—卡片」之间留出呼吸位，卡片不会顶到标题线上。
+ */
 @Composable
 fun SectionTitle(text: String, sub: String? = null) {
-    Column(Modifier.padding(vertical = 6.dp)) {
-        Text(text, fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-        if (sub != null) Text(sub, fontSize = 11.sp, color = TextSecondary)
+    Column(Modifier.padding(top = 18.dp, bottom = 8.dp)) {
+        Text(
+            text,
+            fontSize = 17.sp,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.2.sp
+        )
+        if (sub != null) {
+            Spacer(Modifier.height(2.dp))
+            Text(sub, fontSize = 11.sp, color = TextSecondary)
+        }
     }
-}
+} //分类标题（h2）
 
 @Composable
 fun PrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {

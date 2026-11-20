@@ -44,7 +44,7 @@ val uniPack: Boolean = project.hasProperty("universal")
 android {
 
     androidResources {
-        ignoreAssetsPattern = "rootfs.tgz"
+        ignoreAssetsPattern = "rootfs.tgz:sherpa"
         localeFilters += listOf("zh", "en", "fr", "ja", "zh-rTW")
     }
     namespace = "b.ai"
@@ -55,8 +55,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 56
-        versionName = "1.18.7"
+        versionCode = 57
+        versionName = "1.19.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -65,11 +65,12 @@ android {
         buildConfigField("String", "MIOT_REDIRECT", "\"$miotRedirect\"")
         buildConfigField("String", "MIOT_REGION", "\"$miotRegion\"")
         SEEDS.forEach { row -> buildConfigField("String", row[0], seedLiteral(row[1], "")) }
-        if (baiAesSeed != null) {
-            externalNativeBuild {
-                cmake { arguments.add("-DBAI_KEY_HEX=$baiAesSeed") }
+        externalNativeBuild {
+            cmake {
+                arguments.add("-DCMAKE_SUPPRESS_REGENERATION=ON")
+                if (baiAesSeed != null) arguments.add("-DBAI_KEY_HEX=$baiAesSeed")
             }
-        }
+        } //cmake 参数
         if (uniPack) {
             ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a")) }
         }

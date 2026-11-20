@@ -1,3 +1,17 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:26
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.widget
 
 import androidx.compose.foundation.Canvas
@@ -12,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -653,3 +669,139 @@ fun ToolIcon(name: String?, color: Color, side: Dp = 13.dp) {
         else -> IcCode(color, side = side)
     }
 } //工具调用图标
+
+/** 自绘垃圾桶：删除按钮统一用它，不再用 emoji（字形随系统中文字体变，粗细与旁边文字对不齐） */
+@Composable
+fun IcTrash(color: Color, side: Dp = 14.dp, stroke: Dp = 1.6.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val l = size.width * 0.26f
+        val r = size.width * 0.74f
+        val top = size.height * 0.28f
+        val bot = size.height * 0.86f
+        //桶盖横线 + 提手
+        drawLine(color, Offset(size.width * 0.16f, top), Offset(size.width * 0.84f, top), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.38f, top), Offset(size.width * 0.38f, size.height * 0.17f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.62f, top), Offset(size.width * 0.62f, size.height * 0.17f), w, StrokeCap.Round)
+        drawLine(color, Offset(size.width * 0.38f, size.height * 0.17f), Offset(size.width * 0.62f, size.height * 0.17f), w, StrokeCap.Round)
+        //桶身：上宽下窄的梯形
+        drawLine(color, Offset(l, top), Offset(l + size.width * 0.05f, bot), w, StrokeCap.Round)
+        drawLine(color, Offset(r, top), Offset(r - size.width * 0.05f, bot), w, StrokeCap.Round)
+        drawLine(color, Offset(l + size.width * 0.05f, bot), Offset(r - size.width * 0.05f, bot), w, StrokeCap.Round)
+    }
+} //矢量垃圾桶
+
+/**
+ * 自绘折叠箭头：down=true 指向下、false 指向上。
+ * 夹角收窄到约 70°（跨度 0.56、高 0.2），之前的 ︿ ﹀ 字符是高瘦三角形，张得太开、跟文字不在一条视觉线上。
+ */
+@Composable
+fun IcChevron(color: Color, down: Boolean, side: Dp = 12.dp, stroke: Dp = 1.7.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2
+        //张角约 80°：之前 0.28/0.18 算出来 114°，是个很钝的钝角，跟旁边的字对不上（用户反馈「角太大」）
+        val half = size.width * 0.20f
+        val h = size.height * 0.24f
+        val cy = size.height * 0.5f
+        val (ya, yb) = if (down) (cy - h) to (cy + h) else (cy + h) to (cy - h)
+        drawLine(color, Offset(cx - half, ya), Offset(cx, yb), w, StrokeCap.Round)
+        drawLine(color, Offset(cx, yb), Offset(cx + half, ya), w, StrokeCap.Round)
+    }
+} //矢量折叠箭头
+
+
+@Composable
+fun IcFourStar(color: Color, side: Dp = 19.dp, stroke: Dp = 2.2.dp) {
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val rad = size.minDimension * 0.44f
+        //长芒上下、短芒左右：四个方向等长会像加号，这样更像星光
+        val tips = listOf(
+            Offset(cx, cy - rad),
+            Offset(cx + rad * 0.86f, cy),
+            Offset(cx, cy + rad),
+            Offset(cx - rad * 0.86f, cy)
+        )
+        tips.forEach { drawLine(color, Offset(cx, cy), it, w, StrokeCap.Round) }
+    }
+} //四芒星
+
+/**
+ * 可优化态图标：四芒星 + 右上角小加号。
+ * 星体是描边轮廓（不填充）：四个尖之间的边用二次贝塞尔向内收，不填充才看得出「线画出来的星」；
+ * 尺寸比三条杠那档小 1dp，视觉上跟文字按钮一伙。
+ */
+@Composable
+fun IcSparklePlus(color: Color, side: Dp = 14.dp, stroke: Dp = 1.5.dp) {
+    Canvas(Modifier.size(side)) {
+        val u = size.minDimension
+        val w = stroke.toPx()
+        //星体中心略偏左下：右上角要给加号腾位；
+        //但 cy+r 不能超过 u（原来 0.58+0.44=1.02 下尖被裁掉，看起来整颗星偏下）
+        val cx = u * 0.42f
+        val cy = u * 0.55f
+        val r = u * 0.37f
+        //凹度：控制点离中心越近四边收得越狠；0.30 看得到弧度又不至于瘦成十字
+        val inn = r * 0.30f
+        val star = Path().apply {
+            moveTo(cx, cy - r)                                              //上尖
+            quadraticBezierTo(cx + inn, cy - inn, cx + r, cy)               //右上边内凹到右尖
+            quadraticBezierTo(cx + inn, cy + inn, cx, cy + r)               //右下边内凹到下尖
+            quadraticBezierTo(cx - inn, cy + inn, cx - r, cy)               //左下边内凹到左尖
+            quadraticBezierTo(cx - inn, cy - inn, cx, cy - r)               //左上边内凹回上尖
+            close()
+        }
+        //只描边不填充：圆角连接，尖角处不会糊出一个个小三角
+        drawPath(star, color, style = Stroke(width = w, join = StrokeJoin.Round))
+        //右上角加号：笔画与星体同宽，臂长压短，避免跟星尖粘在一起
+        val px = u * 0.82f
+        val py = u * 0.20f
+        val arm = u * 0.11f
+        drawLine(color, Offset(px - arm, py), Offset(px + arm, py), w, StrokeCap.Round)
+        drawLine(color, Offset(px, py - arm), Offset(px, py + arm), w, StrokeCap.Round)
+    }
+} //四芒星加号
+
+/**
+ * 提示词优化完成态：四芒星收拢成对号。
+ * 四条线各自插值到对号的两段（后两条长度归零，自然收没），看上去就是「星形变成勾」；
+ * 纯 Canvas 实现，不需要额外 vector 资源，单色、无底、2.6dp 描边，比字体里的 ✓ 粗且干净。
+ */
+@Composable
+fun IcStarToCheck(color: Color, side: Dp = 20.dp, stroke: Dp = 2.6.dp) {
+    val p = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        p.animateTo(
+            1f,
+            androidx.compose.animation.core.tween(460, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+    }
+    Canvas(Modifier.size(side)) {
+        val w = stroke.toPx()
+        val k = p.value
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val rad = size.minDimension * 0.44f
+        //星形四芒的尖端：上 / 右 / 下 / 左
+        val tip = listOf(Offset(cx, cy - rad), Offset(cx + rad, cy), Offset(cx, cy + rad), Offset(cx - rad, cy))
+        //对号的三个折点
+        val a = Offset(size.width * 0.16f, size.height * 0.52f)
+        val b = Offset(size.width * 0.40f, size.height * 0.76f)
+        val c = Offset(size.width * 0.86f, size.height * 0.24f)
+        //每条线的终点最终落点：1->b 2->c 3->b 4->c（后两条长度归零）
+        val ends = listOf(b, c, b, c)
+        val starts = listOf(a, b, b, c)
+        for (i in 0 until 4) {
+            val sx = cx + (starts[i].x - cx) * k
+            val sy = cy + (starts[i].y - cy) * k
+            val ex = tip[i].x + (ends[i].x - tip[i].x) * k
+            val ey = tip[i].y + (ends[i].y - tip[i].y) * k
+            val dx = ex - sx
+            val dy = ey - sy
+            if (dx * dx + dy * dy > 1f) drawLine(color, Offset(sx, sy), Offset(ex, ey), w, StrokeCap.Round)
+        }
+    }
+} //星形变对号

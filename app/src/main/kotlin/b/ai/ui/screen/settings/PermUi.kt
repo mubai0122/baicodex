@@ -1,4 +1,20 @@
+/*
+ * Project:    Baicodex
+ * Author:     by 沐白/Baix
+ * License:    AGPL-3.0 (GNU Affero General Public License v3.0)
+ * Date:       2026-11-20 21:47:23
+ * Repository: https://github.com/mubai0122/Baicodex
+ * Website:    https://agent.ai.baiccb.cn/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 package b.ai.ui.screen.settings
+import androidx.compose.ui.res.stringResource
+import b.ai.R
 import b.ai.ui.widget.GhostButton
 import b.ai.net.api.llm.text
 
@@ -58,7 +74,7 @@ fun SpecialPermCard(keys: List<String>, desc: String? = null) {
                         Text(Perms.specialName(k), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            if (on) "已开启" else "未开启",
+                            if (on) stringResource(R.string.tx_9db7a84f) else stringResource(R.string.tx_ea4a363d),
                             fontSize = 11.sp,
                             color = if (on) OkGreen else WarnAmber
                         )
@@ -70,7 +86,7 @@ fun SpecialPermCard(keys: List<String>, desc: String? = null) {
                 if (on) {
                     Text("✓", fontSize = 14.sp, color = OkGreen)
                 } else {
-                    GhostButton("去开启") {
+                    GhostButton(stringResource(R.string.tx_5e213ddb)) {
                         Perms.openSpecial(ctx, k)
                         tick++
                     }
@@ -78,7 +94,7 @@ fun SpecialPermCard(keys: List<String>, desc: String? = null) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            GhostButton("刷新状态") { tick++ }
+            GhostButton(stringResource(R.string.tx_4f8d48ef)) { tick++ }
         }
     }
 } //特殊权限档位卡片
