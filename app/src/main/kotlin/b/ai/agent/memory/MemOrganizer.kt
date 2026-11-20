@@ -14,6 +14,7 @@
 
 package b.ai.agent.memory
 
+import b.ai.agent.run.PromptStore
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.model.chat.FnModel
 import b.ai.core.plugin.skill.Providers
@@ -66,11 +67,7 @@ object MemOrganizer {
                 .put(
                     JSONObject().put("role", "system").put(
                         "content",
-                        "你是记忆整理器。把用户给的一串长期记忆合并、去重、改写成更准确的一行一条。" +
-                            "硬性要求：1) 只保留事实与偏好，不脑补、不推断、不添加原文没有的信息；" +
-                            "2) 冲突的条目保留时间更新的一条，并在同一条里写清与旧说法的关系；" +
-                            "3) 每条不超过 60 字，总量不超过 40 条；" +
-                            "4) 只输出 JSON 字符串数组，如 [\"…\",\"…\"]，不要解释、不要代码块。"
+                        PromptStore.memOrganizer
                     )
                 )
                 .put(JSONObject().put("role", "user").put("content", list))

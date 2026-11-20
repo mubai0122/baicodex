@@ -16,6 +16,7 @@
 // 只改写文字，不执行任何工具、不改意图，结果直接回填到输入框（可一键回滚）。
 package b.ai.net.api.llm
 
+import b.ai.agent.run.PromptStore
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.model.chat.FnModel
 import b.ai.core.plugin.skill.Providers
@@ -55,10 +56,8 @@ object PromptOptimizer {
         if (src.length > MAX_IN) return OptResult.TooLong
         val m = conn()
         if (m[0].isBlank() || m[3].isBlank()) return OptResult.NoModel
-        //提示词本身：只讲「怎么改」，不塞任何工具定义，避免模型顺手给出多余内容
-        val system = buildString {
-            append("你是提示词改写器，只做一件事：把用户的一句话改写成模型能准确照做的指令。\n")
-            append("硬性要求：\n")
+        //提示词正文来自 PromptStore（种子注入）；这里只拼按设置变化的要求条目与场景段
+        val rules = buildString {
             append("1) 只输出改写后的提示词正文，不要解释、不要加引号、不要加「优化后：」这类前缀；\n")
             append("2) 只优化表达，不新增用户没提的需求，不替他做技术选型或决定性取舍；\n")
             if (Cfg.promptOptKeep) append("3) 保持用户原本的意图和语言（中文就写中文），不要翻译；\n")
@@ -74,7 +73,8 @@ object PromptOptimizer {
             //自定义方向：用户在设置里写死的风格要求，优先级高于上面的默认场景描述
             val style = Cfg.promptOptStyle.trim()
             if (style.isNotEmpty()) append("\n额外的写法要求（必须遵守）：\n").append(style).append('\n')
-        } //系统提示
+        } //要求条目
+        val system = PromptStore.optimizer(rules)
         val user = buildString {
             append("运行模式：").append(modeName.ifBlank { mode.id }).append('\n')
             if (attach.isNotEmpty()) {
