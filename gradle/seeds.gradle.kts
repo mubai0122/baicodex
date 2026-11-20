@@ -41,7 +41,9 @@ val seedIndex: List<List<String>> = listOf(
     listOf("SEED_PROMPT_SUMMARY", "seed.prompt.summary"),
     listOf("SEED_PROMPT_TITLE", "seed.prompt.title"),
     listOf("SEED_PROMPT_OPTIMIZER", "seed.prompt.optimizer"),
-    listOf("SEED_PROMPT_MEM_ORGANIZER", "seed.prompt.mem.organizer")
+    listOf("SEED_PROMPT_MEM_ORGANIZER", "seed.prompt.mem.organizer"),
+    listOf("SEED_PROMPT_ENV_BLOCK", "seed.prompt.env.block"),
+    listOf("SEED_PROMPT_SKILL_LIST", "seed.prompt.skill.list")
 ) //种子表
 
 val seedLiteralFn: (String, String) -> String = { key, def ->

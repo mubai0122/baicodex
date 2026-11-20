@@ -153,4 +153,51 @@ object PromptStore {
             BuildConfig.SEED_PROMPT_MEM_ORGANIZER,
             "你是记忆整理器。把用户给的一串长期记忆合并、去重、改写成更准确的一行一条；只输出 JSON 字符串数组，不要解释。"
         )
+
+    /**
+     * 自检：逐条列出每个系统提示词的来源（构建期种子 / 代码内兜底）与长度。
+     * 判定依据：BuildConfig 里的 SEED_PROMPT_* 非空 = local.properties 已注入正文；
+     * 为空 = 构建机上没有 local.properties，运行时回落下面各 getter 里的简版兜底。
+     */
+    fun diagnose(): String {
+        val seeds: List<Pair<String, String>> = listOf(
+            "mode.plan" to BuildConfig.SEED_PROMPT_MODE_PLAN,
+            "mode.standard" to BuildConfig.SEED_PROMPT_MODE_STANDARD,
+            "mode.code" to BuildConfig.SEED_PROMPT_MODE_CODE,
+            "mode.minimal" to BuildConfig.SEED_PROMPT_MODE_MINIMAL,
+            "mode.creator" to BuildConfig.SEED_PROMPT_MODE_CREATOR,
+            "rules.bound" to BuildConfig.SEED_PROMPT_RULES_BOUND,
+            "rules.abs" to BuildConfig.SEED_PROMPT_RULES_ABS,
+            "rule.mask" to BuildConfig.SEED_PROMPT_RULE_MASK,
+            "care" to BuildConfig.SEED_PROMPT_CARE,
+            "search.on" to BuildConfig.SEED_PROMPT_SEARCH_ON,
+            "search.off" to BuildConfig.SEED_PROMPT_SEARCH_OFF,
+            "no.tool" to BuildConfig.SEED_PROMPT_NO_TOOL,
+            "no.vision" to BuildConfig.SEED_PROMPT_NO_VISION,
+            "ws.none" to BuildConfig.SEED_PROMPT_WS_NONE,
+            "ws.bound" to BuildConfig.SEED_PROMPT_WS_BOUND,
+            "tool.hint" to BuildConfig.SEED_PROMPT_TOOL_HINT,
+            "screen.step" to BuildConfig.SEED_PROMPT_SCREEN_STEP,
+            "summary" to BuildConfig.SEED_PROMPT_SUMMARY,
+            "title" to BuildConfig.SEED_PROMPT_TITLE,
+            "optimizer" to BuildConfig.SEED_PROMPT_OPTIMIZER,
+            "mem.organizer" to BuildConfig.SEED_PROMPT_MEM_ORGANIZER,
+            "env.block" to BuildConfig.SEED_PROMPT_ENV_BLOCK,
+            "skill.list" to BuildConfig.SEED_PROMPT_SKILL_LIST
+        )
+        val injected = seeds.count { it.second.isNotBlank() }
+        val sb = StringBuilder()
+        sb.append("构建期种子：$injected/${seeds.size} 条已注入\n")
+        sb.append("判定：种子非空 = 用 local.properties 的正文；为空 = 回落代码内简版（功能不坏，措辞降级）\n")
+        sb.append("——\n")
+        seeds.forEach { (key, v) ->
+            val body = v.trim()
+            val src = if (body.isBlank()) "兜底" else "种子"
+            //首行摘要：换行压成 ⏎，方便一行看完
+            val head = body.replace("\n", " ⏎ ").replace("\r", "").take(38).ifBlank { "——" }
+            sb.append("%-13s %s len=%-5d %s\n".format(key, src, body.length, head))
+        }
+        if (injected == 0) sb.append("\n全部为空：这份包不是在有 local.properties 的机器上构建的")
+        return sb.toString()
+    } //种子注入诊断
 } //提示词仓库

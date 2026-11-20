@@ -180,8 +180,12 @@ object SkillPacks {
     fun prompt(): String {
         val on = cache.value.filter { it.on && (it.funcs.isNotEmpty() || it.readme.isNotBlank() || it.desc.isNotBlank()) }
         if (on.isEmpty()) return ""
+        //标题行走种子（正文在 local.properties），缺省用代码内兜底
+        val head = b.ai.BuildConfig.SEED_PROMPT_SKILL_LIST.trim().ifBlank {
+            "可用技能（要用法先 skill_read，再直接调它下面的函数；参数不要凭空编）："
+        }
         return buildString {
-            append("可用技能（要用法先 skill_read，再直接调它下面的函数；参数不要凭空编）：\n")
+            append(head).append("\n")
             on.forEach { p ->
                 append("- ").append(p.id).append(" — ").append(p.name.ifBlank { "未命名技能" })
                 if (p.desc.isNotBlank()) append("：").append(p.desc)

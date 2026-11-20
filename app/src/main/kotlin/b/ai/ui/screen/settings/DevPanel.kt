@@ -179,7 +179,9 @@ private fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
         //记忆整理：条数、整理模型、可用性（不真发请求）
         DevItem("memorg", b.ai.App.self.getString(R.string.tx_f65125e4)) { _ -> memOrgDump() },
         //STT 引擎：当前引擎与各引擎的必备配置是否齐（不录音）
-        DevItem("stt", b.ai.App.self.getString(R.string.tx_2604bcce)) { _ -> sttDump() }
+        DevItem("stt", b.ai.App.self.getString(R.string.tx_2604bcce)) { _ -> sttDump() },
+        //提示词种子：21 条系统提示词逐条标出「构建期种子 / 代码兜底」，验证 local.properties 是否真的注入了
+        DevItem("seedprompt", b.ai.App.self.getString(R.string.tx_9f3c1a7e)) { _ -> b.ai.agent.run.PromptStore.diagnose() }
     ),
     "权限与命令" to listOf(
         DevItem("policy", b.ai.App.self.getString(R.string.tx_7e50d092)) { _ -> toolPolicy() },

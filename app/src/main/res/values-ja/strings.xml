@@ -2604,4 +2604,5 @@
     <string name="se_pg_inout_sub" formatted="false">返信情報の表示、ストリーミング、下書き保持、出力の好み</string>
     <string name="se_pg_think" formatted="false">思考設定</string>
     <string name="se_pg_think_sub" formatted="false">モデル名で照合し、思考フィールドのリクエストへの入れ方を決めます。追加・変更・削除・既定値の復元が可能</string>
+    <string name="tx_9f3c1a7e" formatted="false">プロンプト種</string>
 </resources>
