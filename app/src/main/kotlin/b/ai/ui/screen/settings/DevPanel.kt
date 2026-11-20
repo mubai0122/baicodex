@@ -39,6 +39,7 @@ import b.ai.core.cfg.app.Bai
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.io.Layout
 import b.ai.core.plugin.skill.Providers
+import b.ai.device.fs.Workspace
 import b.ai.device.shell.local.Linux
 import b.ai.device.shell.local.LinuxMirror
 import b.ai.device.shell.local.LinuxTerm
@@ -46,6 +47,7 @@ import b.ai.device.shell.local.Shell
 import b.ai.device.shell.root.Root
 import b.ai.device.shell.root.Shiz
 import b.ai.net.api.llm.LlmClient
+import b.ai.net.api.llm.NativeSearch
 import b.ai.net.api.update.UpdateMirror
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.theme.AccentBlue
@@ -141,7 +143,11 @@ private class DevItem(
 /** 测试分类：新增功能时在对应分类里加一条，别再加到设置页上 */
 private fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
     "对话与模型" to listOf(
-        DevItem("chat", "测试对话") { _ -> testChat() }
+        DevItem("chat", "测试对话") { _ -> testChat() },
+        //原生联网搜索：逐厂商打印注入后的请求体片段，排查「勾了没生效 / 勾了报 400」
+        DevItem("nsearch", "原生搜索注入") { _ -> withContext(Dispatchers.IO) { nativeSearchDump() } },
+        //工作区模式：关自动绑定应落在同一个 default 目录，开则每会话一个哈希目录
+        DevItem("wsmode", "工作区模式") { _ -> withContext(Dispatchers.IO) { workspaceDump() } }
     ),
     "权限与命令" to listOf(
         DevItem("policy", "工具权限") { _ -> toolPolicy() },
@@ -380,6 +386,63 @@ private fun resetSandbox(append: (String) -> Unit): String {
     val self = Linux.selfTest().out
     return "重装完成\n$self"
 } //一键卸载重装
+
+/**
+ * 原生联网搜索注入自检：把当前开关与各厂商的注入结果逐条打出来。
+ * 只拼请求体、不发网络请求，所以随时可跑。
+ */
+private fun nativeSearchDump(): String {
+    val sb = StringBuilder()
+    val saved = Cfg.modelNativeSearch
+    try {
+        sb.appendLine("当前开关 model_native_search = $saved")
+        sb.appendLine("当前 providerId = ${Cfg.providerId}")
+        sb.appendLine("当前厂商是否支持 = ${NativeSearch.supported(Cfg.providerId, Cfg.baseUrl)}")
+        sb.appendLine("—— 逐厂商注入结果（已临时打开开关）——")
+        Cfg.modelNativeSearch = true
+        //内置厂商 + 两个典型自定义，看 providerId / base_url 双判定是否都命中
+        val cases = Providers.builtin.filter { it.id != Providers.LOCAL }.map { it.id to it.baseUrl } +
+            listOf("custom" to "https://api.deepseek.com/v1", "custom" to "https://example.com/v1")
+        cases.forEach { (id, url) ->
+            val body = JSONObject()
+            NativeSearch.inject(body, id, url)
+            val kind = NativeSearch.kindOf(id, url)
+            sb.appendLine("$id @ $url")
+            sb.appendLine("  kind=$kind body=${body.toString()}")
+        }
+    } finally {
+        Cfg.modelNativeSearch = saved  //无论成败都还原，避免自检顺手改用户配置
+    }
+    return sb.toString()
+} //原生联网搜索自检
+
+/**
+ * 工作区模式自检：打印开关、默认工作区、当前会话实际落点与判定结果。
+ * 关模式必须所有会话都命中同一个 default 目录；开模式应各自一个哈希目录。
+ */
+private fun workspaceDump(): String {
+    val sb = StringBuilder()
+    sb.appendLine("auto_bind_workspace = ${Cfg.autoBindWorkspace}")
+    sb.appendLine("session_ws_manual = ${Cfg.sessionWsManual}")
+    sb.appendLine("Cfg.defaultWorkspace = ${Cfg.defaultWorkspace.ifBlank { "(空)" }}")
+    val def = Workspace.defaultWs()
+    sb.appendLine("defaultWs() = $def")
+    sb.appendLine("default 目录存在 = ${File(def).isDirectory}")
+    val cur = Workspace.path()
+    sb.appendLine("当前会话 path() = ${cur.ifBlank { "(空)" }}")
+    sb.appendLine("当前是否用户自选 = ${Workspace.custom()}")
+    sb.appendLine("当前目录是否自动目录 = ${if (cur.isBlank()) "—" else Workspace.isAutoDir(cur)}")
+    //关模式下把两个不同会话都算一次，验证确实共用同一目录（只读，不落库）
+    if (!Cfg.autoBindWorkspace) {
+        sb.appendLine("—— 关模式：两次 path() 应完全相同 ——")
+        sb.appendLine("path()#1 = ${Workspace.path()}")
+        sb.appendLine("path()#2 = ${Workspace.path()}")
+    } else {
+        sb.appendLine("—— 开模式：新会话应拿到新的哈希目录 ——")
+        sb.appendLine("newSessionWorkspace() = ${Workspace.newSessionWorkspace()}")
+    }
+    return sb.toString()
+} //工作区模式自检
 
 /** 复制到剪贴板：反馈问题时直接把日志贴出去 */
 private fun copyText(ctx: android.content.Context, text: String) {
