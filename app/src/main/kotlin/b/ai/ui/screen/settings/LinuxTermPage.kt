@@ -108,15 +108,17 @@ fun LinuxTermPage() {
 
     CardBox {
         //第一行：环境状态 + 重开终端
+        val abiOk = remember { Linux.abiOk() }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 when {
+                    !abiOk -> "● 32 位设备不支持内置 Ubuntu（仅 arm64）"
                     envOk && ready -> "● 环境已就绪"
                     envOk -> "● 环境已装，终端待连接"
                     else -> "● 还没装 Ubuntu"
                 },
                 fontSize = 12.sp,
-                color = if (envOk) OkGreen else TextSecondary,
+                color = if (abiOk && envOk) OkGreen else if (abiOk) TextSecondary else DangerRed,
                 modifier = Modifier.weight(1f)
             )
             Text("重开终端", fontSize = 11.sp, color = AccentBlue, modifier = Modifier.tap {
@@ -130,7 +132,9 @@ fun LinuxTermPage() {
         //第二行：环境级操作
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GhostButton(if (envOk) "重装环境" else "安装环境", modifier = Modifier.height(38.dp)) {
-                LinuxTerm.installEnv(force = envOk)
+                //32 位设备装了也跑不起来，点一下直接在终端里说明原因
+                if (!abiOk) LinuxTerm.append("[不支持]当前设备是 32 位（armeabi-v7a），内置 Ubuntu 沙箱只支持 arm64 设备")
+                else LinuxTerm.installEnv(force = envOk)
             }
             GhostButton("一键拓展环境", modifier = Modifier.height(38.dp)) {
                 if (!envOk) {

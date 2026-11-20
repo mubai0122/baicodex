@@ -288,8 +288,8 @@ object Profiles {
 
     /** 自动名：厂商 · 模型，配置没起名时用它 */
     fun autoLabel(providerId: String, model: String): String {
-        val prov = Providers.byId(providerId).name
-        return if (model.isBlank()) prov else "$prov · $model"
+        //只显示模型名：输入区胶囊位置紧张，供应商名冗余（模型名本身已能区分），没有模型名时才退回厂商名
+        return model.trim().ifBlank { Providers.byId(providerId).name }
     } //自动名
 
     /**

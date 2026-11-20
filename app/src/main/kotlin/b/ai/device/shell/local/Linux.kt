@@ -42,14 +42,20 @@ object Linux {
     @Volatile
     private var relabeled = false
 
+    /**
+     * 设备能不能跑内置 Linux：proot 二进制与镜像都只编译了 arm64，
+     * 32 位设备（armeabi-v7a）根本执行不了，这里提前判掉，免得报「重装 APK」这种误导文案
+     */
+    fun abiOk(): Boolean = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
+
     /** 判环境就位：proot + rootfs 里的 apt-get、os-release 都在；apt-get 是普通 ELF，比 etc/os-release 的软链可靠 */
-    fun installed(): Boolean = proot.isFile &&
+    fun installed(): Boolean = abiOk() && proot.isFile &&
         File(rootfs, "usr/bin/apt-get").isFile &&
         (File(rootfs, "usr/lib/os-release").isFile || File(rootfs, "etc/os-release").isFile)
-    fun prootReady(): Boolean = proot.isFile
+    fun prootReady(): Boolean = abiOk() && proot.isFile
 
     /** 不再挑工作方式：proot 在 native 目录里，普通 / Shizuku / Root 都能起 */
-    fun canRun(): Boolean = proot.isFile
+    fun canRun(): Boolean = abiOk() && proot.isFile
 
     /** 内嵌终端用的一次启动描述：宿主环境变量 + 本机直接起进程的参数 + 交给 su -c 的整条命令行 */
     class Launch(val env: Map<String, String>, val argv: List<String>, val cmdline: String)
@@ -87,9 +93,12 @@ object Linux {
 
     private fun shq(s: String) = "'" + s.replace("'", "'\\''") + "'"
 
-    private fun blocked(): ShellResult? = if (!proot.isFile) {
-        ShellResult(-1, "[linux] 缺少 proot：APK 里的 libproot.so 没解压出来，重装一次 APK")
-    } else null //本地起不来时 exec() 自动退回 Root 通道
+    private fun blocked(): ShellResult? = when {
+        //32 位设备：APK 里没有 libproot.so，装多少次都没用，直接说清楚
+        !abiOk() -> ShellResult(-1, "[linux] 当前设备是 32 位（armeabi-v7a），内置 Ubuntu 沙箱只支持 arm64 设备；终端类需求可改用 Shizuku / Root 通道")
+        !proot.isFile -> ShellResult(-1, "[linux] 缺少 proot：APK 里的 libproot.so 没解压出来，重装一次 APK")
+        else -> null //本地起不来时 exec() 自动退回 Root 通道
+    }
 
     /** 装环境：拷 proot → 取镜像 → 解开 → 写 resolv.conf，任何一步失败立刻返回；force=true 先删旧 rootfs */
     fun install(

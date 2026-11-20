@@ -22,16 +22,31 @@ object NativeSearch {
             else -> Kind.NONE
         }
     } //厂商判定
-
     /** 该厂商是否支持原生 search（未知厂商一律 false，宁可不下发也不要打 400） */
     fun supported(providerId: String, baseUrl: String): Boolean = kindOf(providerId, baseUrl) != Kind.NONE
+
+    /**
+     * 本轮是否允许下发原生 search：既要开关开着，也要这条配置在保存时勾了「支持原生联网搜索」。
+     * 没勾的那条配置在 UI 里根本没有这一项，这里再兜一层，防止切换配置后把旧开关带过去。
+     */
+    fun on(providerId: String, baseUrl: String): Boolean {
+        if (!b.ai.core.cfg.app.Cfg.modelNativeSearch) return false
+        if (!supportByProfile()) return false
+        return supported(providerId, baseUrl)
+    } //本轮是否可用
+
+    /** 当前选中配置在保存时是否勾了「支持原生联网搜索」 */
+    private fun supportByProfile(): Boolean =
+        b.ai.core.data.profile.Profiles.list.firstOrNull { it.id == b.ai.core.cfg.app.Cfg.profileId }?.nativeSearch == true
+
 
     /**
      * 把原生搜索声明塞进请求体。
      * 注意顺序：必须在普通 tools 已经 put 完之后调用，这里只做「追加/合并」，不覆盖已有 tools。
      */
     fun inject(body: JSONObject, providerId: String, baseUrl: String) {
-        if (!b.ai.core.cfg.app.Cfg.modelNativeSearch) return
+        //开关 + 配置能力 + 厂商三者都满足才下发
+        if (!on(providerId, baseUrl)) return
         when (kindOf(providerId, baseUrl)) {
             //OpenAI：Chat Completions 用顶层 web_search_options，size 取默认
             Kind.OPENAI -> body.put(

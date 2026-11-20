@@ -102,14 +102,23 @@ class LlmClient(
         //单轮上限：最大模式显式抬到下限 8192（各家服务端默认值普遍偏小，DeepSeek 是 4096），否则按配置的 max_tokens
         val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
         if (maxTok > 0) body.put("max_tokens", maxTok)
+        //思考与原生联网搜索互斥：本轮实际带上了服务端联网工具时，思考一律不发（工具与思考同时下发多数厂商会报错）
+        val searchOn = NativeSearch.on(
+            b.ai.core.cfg.app.Cfg.providerId,
+            b.ai.core.cfg.app.Cfg.baseUrl
+        )
         //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
-        if (think && b.ai.core.cfg.app.Cfg.modelReasoning) {
+        if (think && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn) {
             body.put("reasoning_effort", thinkEffort)
         }
         //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
         val ds = b.ai.core.cfg.app.Cfg.providerId.contains("deepseek", true) ||
             b.ai.core.cfg.app.Cfg.baseUrl.contains("deepseek", true)
-        if (ds && !think) {
+        //DeepSeek 硬约束（实测 400）：client tools 只能和 deepseek_web_search 一起、且必须在思考模式下使用。
+        //所以带了原生联网搜索时不能再显式关思考，否则服务端直接拒绝：
+        //  tools: client tools can only be used together with deepseek_web_search in thinking mode
+        //（这是唯一一处「互斥」失效的厂商，属于服务端强制要求，不改就会被 400 挡死）
+        if (ds && !think && !searchOn) {
             body.put("thinking", JSONObject().put("type", "disabled"))
         }
         //附加参数浅合并，用来补厂商私有字段（如 thinking / enable_thinking）

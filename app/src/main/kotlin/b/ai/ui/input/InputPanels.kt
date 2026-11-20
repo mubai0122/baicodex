@@ -297,49 +297,24 @@ internal fun TagPanel(onClose: () -> Unit, onInsert: (String) -> Unit) {
     }
 } //提示词标签面板
 
-/** 三条横线面板：本轮模型 / 是否思考 / 最大模式 */
+/** 三条横线面板：工具调用 / 原生联网搜索 / 是否思考 / 最大模式（模型选择统一走输入区左侧胶囊，这里不再重复列配置） */
 @Composable
 internal fun CfgPanel(onClose: () -> Unit) {
+    val ctx = LocalContext.current
+    //互斥拦截文案：只提示，不替用户改另一个开关
+    fun denyIfSearchOn(): Boolean {
+        if (!Cfg.modelNativeSearch) return false
+        android.widget.Toast.makeText(ctx, "思考与原生联网搜索互斥，请先关闭原生联网搜索", android.widget.Toast.LENGTH_SHORT).show()
+        return true
+    } //思考被拦
+    fun denyIfThinkOn(): Boolean {
+        if (!Cfg.think) return false
+        android.widget.Toast.makeText(ctx, "思考与原生联网搜索互斥，请先关闭思考", android.widget.Toast.LENGTH_SHORT).show()
+        return true
+    } //搜索被拦
     SheetShell {
         SheetHead(stringResource(R.string.ip_cfg), onClose)
-        Text(stringResource(R.string.ip_model), fontSize = 10.sp, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-        Profiles.list.forEach { p ->
-            val sel = p.id == Cfg.profileId
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 4.dp)
-                    .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
-                    .tap {
-                        //切走前先把当前表单值写回旧配置，改了一半的输入不丢
-                        Profiles.capture()
-                        Profiles.select(p.id)
-                    }
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        p.label,
-                        fontSize = 12.sp,
-                        color = if (sel) AccentBlue else TextPrimary,
-                        maxLines = 1
-                    )
-                    //带上这条配置当前用的模型，点进去前就知道是什么
-                    Text(
-                        p.model.ifBlank { stringResource(R.string.ip_no_model) },
-                        fontSize = 10.sp,
-                        color = TextSecondary,
-                        maxLines = 1
-                    )
-                }
-                if (sel) {
-                    Text("✓", fontSize = 12.sp, color = AccentBlue)
-                }
-            }
-        }
-        Spacer(Modifier.height(6.dp))
+        //思考开关：放最上面，紧跟着强度滑块
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.ip_think), fontSize = 12.sp, color = TextPrimary)
@@ -351,7 +326,16 @@ internal fun CfgPanel(onClose: () -> Unit) {
             }
             Switch(
                 checked = Cfg.think,
-                onCheckedChange = { Cfg.think = it },
+                onCheckedChange = { on ->
+                    when {
+                        //搜索开着时不允许打开思考，只弹提示
+                        on && denyIfSearchOn() -> Unit
+                        else -> {
+                            Cfg.think = on
+                            Profiles.capture()
+                        }
+                    }
+                },
                 colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
             )
         }
@@ -364,6 +348,51 @@ internal fun CfgPanel(onClose: () -> Unit) {
         }
         ChargeSlider(levels = effortLevels, index = li, enabled = Cfg.think) { v ->
             Cfg.thinkEffort = effortLevels[v.coerceIn(0, effortLevels.lastIndex)]
+        }
+        //原生联网搜索：只有保存模型时勾了「支持原生联网搜索」的配置才显示这一项，没勾就等于没有这个配置
+        val curProfile = Profiles.list.firstOrNull { it.id == Cfg.profileId }
+        if (curProfile?.nativeSearch == true) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.se_386), fontSize = 12.sp, color = TextPrimary)
+                    Text(
+                        if (Cfg.modelNativeSearch) stringResource(R.string.se_387) else stringResource(R.string.se_388),
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+                Switch(
+                    checked = Cfg.modelNativeSearch,
+                    onCheckedChange = { on ->
+                        when {
+                            //思考开着时不允许打开搜索，只弹提示
+                            on && denyIfThinkOn() -> Unit
+                            else -> {
+                                Cfg.modelNativeSearch = on
+                                Profiles.capture()
+                            }
+                        }
+                    },
+                    colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        //工具调用开关：与设置页「模型能力」里的同一项，改完立刻写回当前配置
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.se_069), fontSize = 12.sp, color = TextPrimary)
+                Text(
+                    if (Cfg.modelToolCall) stringResource(R.string.se_070) else stringResource(R.string.se_071),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+            }
+            Switch(
+                checked = Cfg.modelToolCall,
+                onCheckedChange = { Cfg.modelToolCall = it; Profiles.capture() },
+                colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+            )
         }
         //工具结果预算：0 = max 不限；右侧胶囊点一下切一档，治理层按它折算字符截止
         val budgetSteps = intArrayOf(0, 2000, 4000, 8000, 16000, 32000)

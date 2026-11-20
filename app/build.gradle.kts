@@ -39,6 +39,8 @@ val miotRedirect: String = seed("miot.redirect", "").takeIf { s -> s.startsWith(
 val miotRegion: String = seed("miot.region", "cn").takeIf { s ->
     s.isNotEmpty() && s.length <= 10 && s.all { it.isLowerCase() || it.isDigit() }
 } ?: "cn"
+//传 -Puniversal 就改成打单包
+val uniPack: Boolean = project.hasProperty("universal")
 android {
 
     androidResources {
@@ -53,8 +55,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 55
-        versionName = "1.18.6"
+        versionCode = 56
+        versionName = "1.18.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -63,21 +65,22 @@ android {
         buildConfigField("String", "MIOT_REDIRECT", "\"$miotRedirect\"")
         buildConfigField("String", "MIOT_REGION", "\"$miotRegion\"")
         SEEDS.forEach { row -> buildConfigField("String", row[0], seedLiteral(row[1], "")) }
-        //ABI 目标由外层 splits.abi.include 决定：两处同时写会报 Conflicting configuration
-
         if (baiAesSeed != null) {
             externalNativeBuild {
                 cmake { arguments.add("-DBAI_KEY_HEX=$baiAesSeed") }
             }
         }
+        if (uniPack) {
+            ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a")) }
+        }
     } //默认配置
 
     splits {
         abi {
-            isEnable = true
+            isEnable = !uniPack
             reset()
             include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = false
+            isUniversalApk = !uniPack
         }
     } //ABI 分包
 

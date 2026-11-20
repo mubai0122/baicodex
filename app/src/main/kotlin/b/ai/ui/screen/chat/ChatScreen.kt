@@ -1199,6 +1199,8 @@ private fun BarChip(
     active: Boolean,
     flatActive: Color,
     accent: Color = AccentBlue,
+    //外层修饰符：用来上报锚点矩形（运行模式胶囊要按它定位面板）
+    modifier: Modifier = Modifier,
     onTap: () -> Unit,
     content: @Composable RowScope.() -> Unit
 ) {
@@ -1209,6 +1211,7 @@ private fun BarChip(
     if (glassOn) {
         Row(
             Modifier
+                .then(modifier)
                 .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted, highlightAlpha = 0.85f, gate = 0.dp)
                 .then(edge)
                 .tap { onTap() }
@@ -1217,10 +1220,11 @@ private fun BarChip(
             content = content
         )
     } else if (Cfg.tactileBtn) {
-        TactileChip(active = active, accent = accent, onClick = onTap, content = content)
+        TactileChip(active = active, accent = accent, modifier = modifier, onClick = onTap, content = content)
     } else {
         Row(
             Modifier
+                .then(modifier)
                 .liquidBg(RoundedCornerShape(9.dp), tint = if (active) flatActive else SurfaceMuted)
                 .then(edge)
                 .tap { onTap() }
@@ -1576,6 +1580,29 @@ private fun InputBar(
         )
     Column(outer) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            //运行模式：五档（计划 / 标准 / 代码 / 极简 / 创造），放在快捷键第一位
+            BarChip(
+                active = Cfg.agentMode != AgentMode.STANDARD,
+                flatActive = AccentBlueSoft,
+                onTap = { onAnchor(rMode); onOpenMode() },
+                modifier = Modifier.onGloballyPositioned { rMode = it.boundsInRoot() }
+            ) {
+                Text(
+                    modeLabel,
+                    fontSize = 10.sp,
+                    fontWeight = if (Cfg.agentMode != AgentMode.STANDARD) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (Cfg.agentMode != AgentMode.STANDARD) AccentBlue else TextSecondary,
+                    maxLines = 1
+                )
+                Spacer(Modifier.width(3.dp))
+                Icon(
+                    Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = if (Cfg.agentMode != AgentMode.STANDARD) AccentBlue else TextSecondary,
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
             //深度思考开关：直接改配置，下一轮请求生效
             BarChip(
                 active = Cfg.think,
@@ -1710,10 +1737,12 @@ private fun InputBar(
                         )
                     }
                     Spacer(Modifier.height(2.dp))
-                    //底部一行：左边模型胶囊，右边配置与附件，两头分开排
+                    //底部一行：左边模型胶囊（超出就省略，不挤压右侧按钮），右边配置与附件
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Row(
                             Modifier
+                                //fill=false：按内容宽取，内容过长时被压到剩余空间内并省略，右侧按钮固定尺寸不受影响
+                                .weight(1f, fill = false)
                                 .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
                                 .onGloballyPositioned { rModel = it.boundsInRoot() }
                                 .tap { onAnchor(rModel); onOpenModel() }
@@ -1726,37 +1755,12 @@ private fun InputBar(
                                 color = TextSecondary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 146.dp)
+                                modifier = Modifier.weight(1f, fill = false)
                             )
                             Spacer(Modifier.width(4.dp))
                             Box(Modifier.size(9.dp).graphicsLayer { rotationZ = -90f }) {
                                 IcBack(TextSecondary, side = 9.dp, stroke = 1.5.dp)
                             }
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        //运行模式胶囊：点开选计划 / 标准 / 代码 / 极简 / 创造
-                        Row(
-                            Modifier
-                                .liquidBg(RoundedCornerShape(8.dp)
-                                , tint = if (Cfg.agentMode == AgentMode.STANDARD) SurfaceMuted else AccentBlueSoft)
-                                .onGloballyPositioned { rMode = it.boundsInRoot() }
-                                .tap { onAnchor(rMode); onOpenMode() }
-                                .padding(start = 7.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                modeLabel,
-                                fontSize = 10.sp,
-                                color = if (Cfg.agentMode == AgentMode.STANDARD) TextSecondary else AccentBlue,
-                                maxLines = 1
-                            )
-                            Spacer(Modifier.width(3.dp))
-                            Icon(
-                                Icons.Filled.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = if (Cfg.agentMode == AgentMode.STANDARD) TextSecondary else AccentBlue,
-                                modifier = Modifier.size(11.dp)
-                            )
                         }
                         Spacer(Modifier.weight(1f))
                         //配置 / 附件两个图标：触点 32dp 等距，图标统一 18dp（全屏入口挪到上面语音右侧）

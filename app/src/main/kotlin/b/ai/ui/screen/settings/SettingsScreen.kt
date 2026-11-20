@@ -795,6 +795,34 @@ private fun LazyListScope.modelParamSec() {
                 Cfg.maxMode
             ) { Cfg.maxMode = it }
             Spacer(Modifier.height(8.dp))
+            //原生联网搜索：与「模型能力」里同一项，参数页也放一份方便调；厂商不支持时恒为关且点不动
+            val ctx = LocalContext.current
+            val nsOk = Profiles.supportsNativeSearch(Cfg.providerId)
+            CapSwitch(
+                stringResource(R.string.se_386),
+                when {
+                    !nsOk -> stringResource(R.string.se_389)
+                    Cfg.modelNativeSearch -> stringResource(R.string.se_387)
+                    else -> stringResource(R.string.se_388)
+                },
+                Cfg.modelNativeSearch && nsOk
+            ) { on ->
+                when {
+                    //厂商不支持：点不动
+                    !nsOk -> Unit
+                    //与思考互斥：思考开着时不允许打开搜索，只提示不改另一个开关
+                    on && Cfg.think -> android.widget.Toast.makeText(
+                        ctx,
+                        "思考与原生联网搜索互斥，请先关闭思考",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    else -> {
+                        Cfg.modelNativeSearch = on
+                        Profiles.capture()
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
             SelectField(
                 stringResource(R.string.se_083),
                 if (Cfg.temperature < 0f) stringResource(R.string.se_084) else Cfg.temperature.toString(),

@@ -25,11 +25,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.core.model.provider.Brands
+import b.ai.core.plugin.skill.Providers
+import b.ai.ui.theme.AccentBlue
+import b.ai.ui.theme.AccentBlueSoft
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
-/** 厂商图标：有 favicon 就用图，抓不到就按名字首字生成一枚稳定淡色徽章 */
+/** 本地推理没有官网、抓不到 favicon：按伪厂商 id 或本机 base_url 判定，画固定图标 */
+private fun localModel(id: String, baseUrl: String): Boolean {
+    if (id.equals(Providers.LOCAL, true)) return true
+    val h = runCatching { java.net.URI(baseUrl.trim()).host }.getOrNull()?.lowercase() ?: return false
+    return h == "localhost" || h == "127.0.0.1" || h == "0.0.0.0" || h == "::1" ||
+        h.startsWith("192.168.") || h.startsWith("10.") || h.startsWith("172.16.")
+} //本地推理判定
+
+/** 厂商图标：有 favicon 就用图，抓不到就按名字首字生成一枚稳定淡色徽章；本地模型固定用立方体图标 */
 @Composable
 internal fun BrandIcon(
     id: String,
@@ -38,6 +49,16 @@ internal fun BrandIcon(
     side: Dp = 18.dp
 ) {
     val ctx = LocalContext.current
+    //本地推理：不联网找图标，直接用固定的立方体标记
+    if (localModel(id, baseUrl)) {
+        Box(
+            Modifier.size(side).clip(CircleShape).background(AccentBlueSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            IcCube(AccentBlue, side = side * 0.66f)
+        }
+        return
+    }
     var img by remember(id) { mutableStateOf<ImageBitmap?>(Brands.cached(id)) }
     //抓图标要走网络，别在主线程干；失败时保持 null 走徽章
     LaunchedEffect(id, baseUrl) {
