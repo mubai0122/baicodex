@@ -46,6 +46,18 @@ object Workspace {
     /** 本会话记着的目录，Cfg.sessionWorkspace 就是它的缓存 */
     private fun stored(): String = Cfg.sessionWorkspace.trim()
 
+    /** 关掉「新会话自动绑定」时全局共用的内置默认工作区：没有就建一次并记住路径 */
+    fun defaultWs(): String {
+        val cur = Cfg.defaultWorkspace.trim().trimEnd('/')
+        if (cur.isNotEmpty() && File(cur).isDirectory) return cur
+        val dir = Paths.defaultWorkspace()
+        Cfg.defaultWorkspace = dir.absolutePath
+        return dir.absolutePath
+    } //内置默认工作区
+
+    /** 当前模式：true = 每会话各自一个目录；false = 所有会话共用一个默认工作区 */
+    fun perSession(): Boolean = Cfg.autoBindWorkspace
+
     /** 目录已在就归一化返回；只给认领旧绑定用，这里绝不造目录 */
     private fun usable(raw: String): String? {
         val p = raw.trim().trimEnd('/')
@@ -65,20 +77,27 @@ object Workspace {
     } //给当前会话新开目录
 
     /**
-     * 当前工作区：只返回本会话已记下的目录，没有就是空。
-     * 这里是纯读——以前末尾兜底 assign()，任何 UI / 提示词顺手读一下就会多建一个空目录，
-     * 冷启动时 Cfg 里还是空的，于是每进一次 App 就多一个；分配一律走 adopt()。
+     * 当前工作区：本会话记着的目录优先，其次认领老全局绑定，最后按模式兜底。
+     * 兜底只为「所有会话共用」模式服务：那边本来就没有会话级目录，读一次就该拿到默认工作区。
+     * 每会话模式下这里绝不建目录——以前末尾兜底 assign()，任何 UI / 提示词顺手读一下就会多建一个空目录。
      */
     fun path(): String {
         val cur = stored()
         if (cur.isNotEmpty()) return cur
+        val claimed = claimOld()
+        if (claimed.isNotEmpty()) return claimed
+        return if (Cfg.autoBindWorkspace) "" else defaultWs()
+    } //当前工作区路径：空 = 没绑
+
+    /** 认领老版本那个全局绑定，只做一次；返回认领到的目录，没有就是空 */
+    private fun claimOld(): String {
         if (Cfg.wsMigrated) return ""
-        //老版本那个全局绑定只认领一次；还没有会话就先别消化掉，等会话挂上来再认领
         val old = Cfg.workspace.trim().trimEnd('/')
         if (old.isEmpty()) {
             Cfg.wsMigrated = true
             return ""
         }
+        //还没挂会话就先别消化掉，等会话挂上来再认领
         val id = sid ?: return ""
         Cfg.wsMigrated = true
         Cfg.workspace = ""
@@ -88,16 +107,16 @@ object Workspace {
         runCatching { Repo.setWorkspace(id, hit) }
         cachedTree = null
         return hit
-    } //当前工作区路径：空 = 没绑
+    } //认领旧全局绑定
 
-    /** 新会话分配工作区：一律各开一个新目录，用户手动绑的目录只作用于原来那个会话 */
+    /** 新会话分配工作区：每会话模式各开一个新目录；共用模式直接给内置默认工作区 */
     fun newSessionWorkspace(): String {
         //上一个会话的缓存必须清掉，否则会把它的目录沿用给新会话
         Cfg.sessionWorkspace = ""
         Cfg.sessionWsManual = false
         cachedTree = null
-        //关掉「新会话自动绑定」= 空工作区，不给默认目录兜底
-        if (!Cfg.autoBindWorkspace) return ""
+        //关掉「新会话自动绑定」= 所有会话共用一个内置默认工作区，不是空工作区
+        if (!Cfg.autoBindWorkspace) return defaultWs()
         return assign()
     } //新会话分配工作区
 
@@ -106,8 +125,11 @@ object Workspace {
         cachedTree = null
     } //清目录树缓存
 
-    /** 目录是不是自动分配的哈希工作区（false = 用户自己挑的） */
-    fun isAutoDir(p: String): Boolean = HASH.matches(File(p.trimEnd('/')).name)
+    /** 目录是不是自动给的（哈希工作区或内置默认工作区，false = 用户自己挑的） */
+    fun isAutoDir(p: String): Boolean {
+        val n = File(p.trimEnd('/')).name
+        return HASH.matches(n) || n == Paths.WSDEF
+    } //自动目录
 
     /** 是不是用户自己绑的目录（false = 自动哈希工作区） */
     fun custom(): Boolean = Cfg.sessionWsManual && stored().isNotEmpty()
@@ -266,14 +288,14 @@ object Workspace {
         return true
     } //绑定并建目录到当前会话
 
-    /** 解绑：这个会话回到自动分配的工作区，目录本身保留不动 */
+    /** 解绑：这个会话回到模式默认的工作区（共用模式 = 内置默认工作区，每会话模式 = 等下次分配） */
     fun unbind() {
         Cfg.workspace = ""
         Cfg.sessionWorkspace = ""
         Cfg.sessionWsManual = false
         sid?.let { s -> runCatching { Repo.setWorkspace(s, "") } }
         cachedTree = null
-    } //解除本会话绑定
+    } //解除本会话绑定，不动内置默认工作区
 
     /** 常用目录候选：设置页与绑定页的快捷胶囊；当前工作区排第一个 */
     fun quickPicks(): List<Pair<String, String>> = listOf(
@@ -397,10 +419,12 @@ object Workspace {
         }.sortedWith(compareByDescending<WsInfo> { it.current }.thenByDescending { it.files })
     } //列出所有工作区
 
-    /** 删除一个工作区目录：当前使用的、被会话绑定的、数据根本身一律拒删 */
+    /** 删除一个工作区目录：当前使用的、被会话绑定的、数据根本身、内置默认工作区一律拒删 */
     fun delete(c: Context, path: String): String? {
         val abs = Router.normalize(path.trim()).trimEnd('/')
         if (abs.isBlank() || abs == Paths.base().absolutePath) return c.getString(R.string.ws_del_root)
+        //共用模式的内置默认工作区不被任何会话绑定，会被当成「未使用」清掉，必须显式拦下
+        if (abs == Paths.defaultWorkspace().absolutePath) return c.getString(R.string.ws_del_default)
         val f = File(abs)
         if (!f.isDirectory) return c.getString(R.string.ws_del_gone)
         if (abs == this.path()) return c.getString(R.string.ws_del_inuse)
@@ -412,9 +436,10 @@ object Workspace {
         return null
     } //安全删除工作区
 
-    /** 一键清理未使用：只扫没被任何会话绑定的，当前使用中的与数据根自动跳过；回调给清理进度 */
+    /** 一键清理未使用：只扫没被任何会话绑定的，当前使用中的、数据根、内置默认工作区一律跳过；回调给清理进度 */
     fun purgeUnused(c: Context, onStep: (Int, Int, String) -> Unit): Triple<Int, Long, Int> {
-        val batch = listAll().filter { it.unbound && !it.current && it.exists }
+        val def = Paths.defaultWorkspace().absolutePath
+        val batch = listAll().filter { it.unbound && !it.current && it.exists && it.path != def }
         var ok = 0
         var bytes = 0L
         var bad = 0

@@ -53,8 +53,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 54
-        versionName = "1.18.5"
+        versionCode = 55
+        versionName = "1.18.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -173,7 +173,6 @@ stringfog {
 
 val copyAbiApks by tasks.registering(Copy::class) {
     dependsOn("assembleRelease")
-    //不写回 AGP 的 outputs/apk/release：Gradle 9 会报「隐式依赖」错误，统一放到 outputs/apk/abi
     from(layout.buildDirectory.dir("outputs/apk/release")) {
         include("app-arm64-v8a-release.apk", "app-armeabi-v7a-release.apk")
         rename { n ->

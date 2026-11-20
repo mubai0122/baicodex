@@ -407,7 +407,7 @@
     <string name="wp_title">ワークスペース</string>
     <string name="wp_title_d">相対パスはワークスペース内に解決され、コマンドもここで実行されます</string>
     <string name="wp_auto">新しい会話にワークスペースを自動割り当て</string>
-    <string name="wp_auto_d">オンにすると新しい会話も既定のワークスペースを共有。オフなら未割り当て（空のワークスペース）</string>
+    <string name="wp_auto_d">オンなら会話ごとに独立したフォルダ、オフならすべての会話が既定のワークスペースを共有します</string>
     <string name="wp_unbound">未割り当て（空のワークスペース）</string>
     <string name="wp_none">現在どのディレクトリにも未割り当て：相対パスは無効で、絶対パスが必要です。下にパスを入れて「バインド」を押してください</string>
     <string name="wp_path">ワークスペースのパス</string>
@@ -433,6 +433,7 @@
     <string name="wp_bound">バインド済み：%1$s</string>
     <string name="wp_cur">この会話のワークスペース：%1$s</string>
     <string name="wp_default">既定のワークスペース：%1$s</string>
+    <string name="wp_shared">共通の既定ワークスペース：%1$s</string>
     <string name="wp_stat">%1$d ファイル / %2$d フォルダ / %3$s</string>
     <string name="wp_reindex_ok">索引を %1$s に書き換えました（%2$d 件）</string>
     <string name="wp_close">閉じる</string>
@@ -546,6 +547,10 @@
     <string name="se_073">思考オン時に reasoning_effort を送信</string>
     <string name="se_074">reasoning_effort を送らず、未対応 API のエラーを回避</string>
     <string name="se_075">オンにするとモデルはまず推論し、その過程が返信の上に折りたたみ表示されます</string>
+    <string name="se_386">ネイティブ Web 検索（サーバー側）</string>
+    <string name="se_387">リクエストにプロバイダー標準の Web ツールを宣言し、検索はサーバー側で実行されて文脈に注入されます</string>
+    <string name="se_388">検索宣言を送信しません。モデルはローカルツールか自身の知識のみで回答します</string>
+    <string name="se_389">このプロバイダーはネイティブ Web 検索に未対応です。オンにしても何も送信されません</string>
     <string name="se_076">思考モード</string>
     <string name="se_077">リクエストに reasoning_effort を送信</string>
     <string name="se_078">直接回答し、思考パラメータは送らない</string>
@@ -1026,6 +1031,7 @@
     <string name="ws_del_inuse">現在使用中のワークスペースです。別のものに切り替えてから削除してください</string>
     <string name="ws_del_bound">まだ会話が紐付いています。解除してから削除してください</string>
     <string name="ws_del_fail">削除に失敗しました。書き込み権限がない可能性があります</string>
+    <string name="ws_del_default">これは共通の既定ワークスペースなので削除できません</string>
     <string name="mcp_title">MCP サーバー</string>
     <string name="mcp_sub">ローカルまたはリモートの MCP サーバーに接続し、その機能をモデルに使わせます</string>
     <string name="mcp_none">MCP サーバーはまだありません</string>

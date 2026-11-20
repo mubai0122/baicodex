@@ -213,10 +213,12 @@ internal fun WorkspaceScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                                     ver++
                                 }
                                 Spacer(Modifier.height(10.dp))
+                                //共用模式（关自动绑定）下所有会话用同一个内置默认工作区，这里必须一直把路径摆出来
                                 Text(
                                     when {
-                                        Workspace.path().isEmpty() -> stringResource(R.string.wp_unbound)
                                         Workspace.custom() -> stringResource(R.string.wp_bound, Workspace.path())
+                                        !Cfg.autoBindWorkspace -> stringResource(R.string.wp_shared, Workspace.path())
+                                        Workspace.path().isEmpty() -> stringResource(R.string.wp_unbound)
                                         else -> stringResource(R.string.wp_cur, Workspace.path())
                                     },
                                     fontSize = 13.sp,
@@ -246,10 +248,10 @@ internal fun WorkspaceScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                                     picking = true
                                 }
                                 Spacer(Modifier.height(6.dp))
-                                //快捷胶囊一行铺开：四条标签加起来不到一行宽，别硬拆两行
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                //快捷胶囊一行铺开：四条等分，单行不换行
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Workspace.quickPicks().forEach { (label, p) ->
-                                        PolicyChip(label, Workspace.path() == p) { draft = p }
+                                        PolicyChip(label, Workspace.path() == p, Modifier.weight(1f)) { draft = p }
                                     }
                                 }
                                 Spacer(Modifier.height(6.dp))

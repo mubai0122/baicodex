@@ -100,9 +100,11 @@ internal fun WorkspaceSection(onBrowse: () -> Unit = {}) {
             reload()
         }
         Spacer(Modifier.height(10.dp))
+        //共用模式（关自动绑定）下所有会话用同一个内置默认工作区，这里必须一直把路径摆出来
         Text(
             when {
                 Workspace.custom() -> stringResource(R.string.wp_bound, Workspace.path())
+                !Cfg.autoBindWorkspace -> stringResource(R.string.wp_shared, Workspace.path())
                 Workspace.path().isEmpty() -> stringResource(R.string.wp_unbound)
                 Cfg.sessionWorkspace.isNotBlank() -> stringResource(R.string.wp_cur, Workspace.path())
                 else -> stringResource(R.string.wp_default, Workspace.path())
@@ -130,13 +132,11 @@ internal fun WorkspaceSection(onBrowse: () -> Unit = {}) {
         Spacer(Modifier.height(6.dp))
         GhostButton(stringResource(R.string.wp_browse), modifier = Modifier.fillMaxWidth()) { onBrowse() }
         Spacer(Modifier.height(6.dp))
-        Workspace.quickPicks().chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { (label, p) ->
-                    PolicyChip(label, Workspace.path() == p) { draft = p }
-                }
+        //快捷胶囊一行铺开（当前工作区 / 数据根 / 下载 / 文档），等分不换行，别拆成两行
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Workspace.quickPicks().forEach { (label, p) ->
+                PolicyChip(label, Workspace.path() == p, Modifier.weight(1f)) { draft = p }
             }
-            Spacer(Modifier.height(6.dp))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PrimaryButton(stringResource(R.string.wp_bind), enabled = !busy, modifier = Modifier.weight(1f)) {

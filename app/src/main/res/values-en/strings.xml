@@ -407,7 +407,7 @@
     <string name="wp_title">Workspace</string>
     <string name="wp_title_d">Relative paths resolve inside the workspace, and shell commands run here by default</string>
     <string name="wp_auto">Auto-bind a workspace for new chats</string>
-    <string name="wp_auto_d">When on, all new chats share the default workspace; off means no binding (empty workspace)</string>
+    <string name="wp_auto_d">On: every chat gets its own folder; off: all chats share one default workspace</string>
     <string name="wp_unbound">Not bound (empty workspace)</string>
     <string name="wp_none">No directory bound: relative paths won\'t work, the model must use absolute paths. Fill in a path below and tap Bind.</string>
     <string name="wp_path">Workspace path</string>
@@ -433,6 +433,7 @@
     <string name="wp_bound">Bound: %1$s</string>
     <string name="wp_cur">This chat\'s workspace: %1$s</string>
     <string name="wp_default">Default workspace: %1$s</string>
+    <string name="wp_shared">Shared default workspace: %1$s</string>
     <string name="wp_stat">%1$d files / %2$d dirs / %3$s</string>
     <string name="wp_reindex_ok">Index rewritten to %1$s (%2$d entries)</string>
     <string name="wp_close">Close</string>
@@ -546,6 +547,10 @@
     <string name="se_073">Sends reasoning_effort when thinking is on</string>
     <string name="se_074">Omits reasoning_effort so APIs that reject the field don\'t error</string>
     <string name="se_075">When on, the model reasons first and the thinking appears collapsed above the reply</string>
+    <string name="se_386">Native web search (server-side)</string>
+    <string name="se_387">Request declares the provider built-in web tool; search runs server-side and is injected into context</string>
+    <string name="se_388">No search declaration is sent; the model answers from local tools or its own knowledge</string>
+    <string name="se_389">This provider has no native web search wired up; enabling it sends nothing</string>
     <string name="se_076">Thinking mode</string>
     <string name="se_077">Requests include reasoning_effort</string>
     <string name="se_078">Answer directly, no reasoning parameters</string>
@@ -1026,6 +1031,7 @@
     <string name="ws_del_inuse">This is the workspace in use — switch to another first</string>
     <string name="ws_del_bound">Sessions are still bound to it — unbind first</string>
     <string name="ws_del_fail">Delete failed — possibly no write permission</string>
+    <string name="ws_del_default">This is the global default workspace and cannot be deleted</string>
     <string name="mcp_title">MCP servers</string>
     <string name="mcp_sub">Connect local or remote MCP servers and let the model call their tools</string>
     <string name="mcp_none">No MCP server yet</string>

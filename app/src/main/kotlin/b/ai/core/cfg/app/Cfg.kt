@@ -669,6 +669,14 @@ object Cfg {
         get() = mem("model_reasoning", true).value
         set(v) { mem("model_reasoning", true).value = v; put("model_reasoning", v) }
 
+    /**
+     * 模型能力：是否支持「原生 search」——由服务端自己联网检索并把结果注入上下文，客户端不执行工具。
+     * 关掉后请求里完全不声明各家搜索工具 / 参数，免得中转站直接 400。
+     */
+    var modelNativeSearch: Boolean
+        get() = mem("model_native_search", false).value
+        set(v) { mem("model_native_search", false).value = v; put("model_native_search", v) }
+
     /** Tavily API Key：联网搜索工具用，和模型 Key 一样只进加密库 */
     var tavilyKey: String
         get() = mem("tavily_key", "").value
@@ -791,7 +799,7 @@ object Cfg {
         get() = mem("workspace", "").value
         set(v) { mem("workspace", "").value = v; put("workspace", v) }
 
-    /** 自动生成的默认工作区（数据根下的 4-4-4-4-4-4 哈希目录），由 Workspace 首次使用时写入 */
+    /** 全局默认工作区绝对路径：关掉自动绑定后所有会话共用这一个目录，首次由 Workspace.defaultWs() 建好并写入 */
     var defaultWorkspace: String
         get() = mem("default_workspace", "").value
         set(v) { mem("default_workspace", "").value = v; put("default_workspace", v) }
@@ -1031,7 +1039,7 @@ object Cfg {
         get() = mem("price_cache", 0f).value
         set(v) { mem("price_cache", 0f).value = v; put("price_cache", v) }
 
-    /** 新会话自动绑新工作区：开 = 每建一个会话配一个新哈希目录；关 = 不绑定，空工作区 */
+    /** 新会话自动绑新工作区：开 = 每建一个会话配一个新哈希目录；关 = 所有会话共用一个内置默认工作区 */
     var autoBindWorkspace: Boolean
         get() = mem("auto_bind_workspace", true).value
         set(v) { mem("auto_bind_workspace", true).value = v; put("auto_bind_workspace", v) }

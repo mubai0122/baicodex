@@ -319,7 +319,7 @@ object Agent {
         //先挂会话 id 再判工作区：自动分配的结果要写回这一行，绝不能落到别的会话上
         Workspace.attachSession(s.id)
         var ws = s.workspace.trim()
-        //这个会话还没有工作区就分配一次并落库：以前靠 path() 兜底新建，结果每次冷启动都多一个空目录
+        //每会话模式才分配并落库：共用模式没有会话级目录，一律走 path() 拿内置默认工作区
         if (ws.isEmpty() && Cfg.autoBindWorkspace) {
             ws = withContext(Dispatchers.IO) { Workspace.newSessionWorkspace() }
             if (ws.isNotEmpty()) withContext(Dispatchers.IO) { Repo.setWorkspace(s.id, ws) }

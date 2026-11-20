@@ -35,6 +35,12 @@ object Paths {
 
     fun workspaceRoot(): File = File(ensure(), WSUB).also { runCatching { it.mkdirs() } }
 
+    /** 关掉「新会话自动绑定」时全局共用的默认工作区目录名：固定名，不用哈希，方便用户自己找 */
+    const val WSDEF = "default"
+
+    /** 全局默认工作区：baicode/workspace/default，不存在就建 */
+    fun defaultWorkspace(): File = File(workspaceRoot(), WSDEF).also { runCatching { it.mkdirs() } }
+
     /** 外部技能包根：baicode/skill，一个文件夹一个技能 */
     const val SSKILL = "skill"
 

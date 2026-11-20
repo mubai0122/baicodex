@@ -22,6 +22,8 @@ data class ModelProfile(
     val vision: Boolean = true,
     val toolCall: Boolean = true,
     val reasoning: Boolean = true,
+    /** 这条模型是否能自己联网检索（原生 search）：勾上才在请求里声明各家搜索工具 / 参数 */
+    val nativeSearch: Boolean = false,
     val maxTokens: Int = 0,
     /** 这条配置自己的上下文窗口（token）；0 表示跟随全局「模型窗口」设置 */
     val ctxTotal: Int = 0,
@@ -138,6 +140,7 @@ object Profiles {
         vision = Cfg.modelVision,
         toolCall = Cfg.modelToolCall,
         reasoning = Cfg.modelReasoning,
+        nativeSearch = Cfg.modelNativeSearch,
         maxTokens = Cfg.maxTokens
     )
 
@@ -166,6 +169,8 @@ object Profiles {
                 vision = o.optBoolean("vision", true),
                 toolCall = o.optBoolean("toolCall", o.optBoolean("tool_call", true)),
                 reasoning = o.optBoolean("reasoning", true),
+                //老文件没有这个字段：按厂商推断，别把 DeepSeek 这类默认关掉
+                nativeSearch = o.optBoolean("nativeSearch", supportsNativeSearch(prov)),
                 maxTokens = o.optInt("maxTokens", o.optInt("max_tokens", 0)),
                 ctxTotal = o.optInt("ctxTotal", 0),
                 //老文件没这个字段：名字正好等于自动名就算自动名，跟着模型走
@@ -198,6 +203,7 @@ object Profiles {
                     .put("vision", p.vision)
                     .put("toolCall", p.toolCall)
                     .put("reasoning", p.reasoning)
+                    .put("nativeSearch", p.nativeSearch)
                     .put("maxTokens", p.maxTokens)
                     .put("ctxTotal", p.ctxTotal)
                     .put("custom", p.custom)
@@ -240,7 +246,8 @@ object Profiles {
             //本地小模型默认关掉视觉 / 工具调用 / 推理链，免得请求带上用不了的能力
             vision = false,
             toolCall = false,
-            reasoning = false
+            reasoning = false,
+            nativeSearch = false
         ).also { upsert(it) }
         select(p.id)
         //文件可能不在公共模型目录（用户从别处导入后加载的）：select 里找不到会清空，这里显式兜住
@@ -271,6 +278,7 @@ object Profiles {
         Cfg.modelVision = p.vision
         Cfg.modelToolCall = p.toolCall
         Cfg.modelReasoning = p.reasoning
+        Cfg.modelNativeSearch = p.nativeSearch
         Cfg.maxTokens = p.maxTokens
         //窗口不写进全局那份设置：全局是用户手填的默认值，这条配置没填（0）时继续用它
         Cfg.profCtxTotal = p.ctxTotal
@@ -283,6 +291,15 @@ object Profiles {
         val prov = Providers.byId(providerId).name
         return if (model.isBlank()) prov else "$prov · $model"
     } //自动名
+
+    /**
+     * 厂商默认是否有「原生 search」：自家 API 已提供内置联网工具的那几家默认勾上，
+     * 中转 / 聚合站（OpenRouter、硅基流动、Groq、Together、MiMo、自定义）默认不勾，避免未知 tools 直接 400。
+     */
+    fun supportsNativeSearch(providerId: String): Boolean = when (providerId) {
+        "openai", "deepseek", "moonshot", "dashscope", "zhipu" -> true
+        else -> false
+    } //原生 search 默认值
 
     /** 把当前 Cfg 的状态写回选中条目：实时跟随，改一个字段就落一次 */
     fun capture() {
@@ -305,6 +322,7 @@ object Profiles {
             vision = Cfg.modelVision,
             toolCall = Cfg.modelToolCall,
             reasoning = Cfg.modelReasoning,
+            nativeSearch = Cfg.modelNativeSearch,
             maxTokens = Cfg.maxTokens,
             ctxTotal = Cfg.profCtxTotal
         )
@@ -343,6 +361,7 @@ object Profiles {
             vision = cur?.vision ?: Cfg.modelVision,
             toolCall = cur?.toolCall ?: Cfg.modelToolCall,
             reasoning = cur?.reasoning ?: Cfg.modelReasoning,
+            nativeSearch = cur?.nativeSearch ?: Cfg.modelNativeSearch,
             maxTokens = cur?.maxTokens ?: Cfg.maxTokens,
             ctxTotal = cur?.ctxTotal ?: 0,
             custom = false
@@ -369,6 +388,7 @@ object Profiles {
                 vision = Cfg.modelVision,
                 toolCall = Cfg.modelToolCall,
                 reasoning = Cfg.modelReasoning,
+                nativeSearch = Cfg.modelNativeSearch,
                 maxTokens = 0,
                 ctxTotal = 0,
                 custom = false

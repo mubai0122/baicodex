@@ -738,6 +738,23 @@ private fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
                 if (Cfg.modelReasoning) stringResource(R.string.se_073) else stringResource(R.string.se_074),
                 Cfg.modelReasoning
             ) { Cfg.modelReasoning = it; Profiles.capture() }
+            Spacer(Modifier.height(8.dp))
+            //原生联网搜索：厂商不支持时开关强制显示为关，点了也不改配置，避免下发不认识字段打 400
+            val nsOk = Profiles.supportsNativeSearch(Cfg.providerId)
+            CapSwitch(
+                stringResource(R.string.se_386),
+                when {
+                    !nsOk -> stringResource(R.string.se_389)
+                    Cfg.modelNativeSearch -> stringResource(R.string.se_387)
+                    else -> stringResource(R.string.se_388)
+                },
+                Cfg.modelNativeSearch && nsOk
+            ) {
+                if (nsOk) {
+                    Cfg.modelNativeSearch = it
+                    Profiles.capture()
+                }
+            }
         }
     }
     } //模型配置子页
@@ -4067,18 +4084,26 @@ private fun PersonaDialog(
 } //角色编辑弹窗
 
 @Composable
-internal fun PolicyChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun PolicyChip(
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Text(
         label,
         fontSize = 11.sp,
         color = if (selected) AccentBlue else TextSecondary,
-        modifier = Modifier
+        maxLines = 1,
+        softWrap = false,
+        textAlign = TextAlign.Center,
+        modifier = modifier
             .liquidBg(RoundedCornerShape(8.dp)
             , tint = if (selected) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
             .tap { onClick() }
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
     )
-} //可选项胶囊
+} //可选项胶囊：单行不换行，宽度由调用方的 weight 决定
 
 @Composable
 internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: (Boolean) -> Unit) {

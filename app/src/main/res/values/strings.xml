@@ -412,7 +412,7 @@
     <string name="wp_title">工作区</string>
     <string name="wp_title_d">相对路径都落在工作区里，命令也默认在这里执行</string>
     <string name="wp_auto">新会话自动绑定工作区</string>
-    <string name="wp_auto_d">开启后每个新会话各自开一个独立目录；关闭则不绑定，变成空工作区</string>
+    <string name="wp_auto_d">开启后每个会话各开一个独立目录；关闭则所有会话共用一个默认工作区</string>
     <string name="wp_unbound">未绑定（空工作区）</string>
     <string name="wp_none">现在不绑任何目录：相对路径不生效，模型只能用绝对路径；想绑定就填下面的路径再点「绑定」</string>
     <string name="wp_path">工作区路径</string>
@@ -438,6 +438,7 @@
     <string name="wp_bound">已绑定：%1$s</string>
     <string name="wp_cur">本会话工作区：%1$s</string>
     <string name="wp_default">默认工作区：%1$s</string>
+    <string name="wp_shared">全局默认工作区：%1$s</string>
     <string name="wp_stat">%1$d 个文件 / %2$d 个目录 / %3$s</string>
     <string name="wp_reindex_ok">索引已重写为 %1$s（%2$d 条）</string>
     <string name="wp_close">关闭</string>
@@ -552,6 +553,10 @@
     <string name="se_073">开思考时下发 reasoning_effort</string>
     <string name="se_074">不下发 reasoning_effort，避免不认该字段的接口报错</string>
     <string name="se_075">开启后模型先推理再回答，思考过程会折叠显示在回复上方</string>
+    <string name="se_386">原生联网搜索（服务端）</string>
+    <string name="se_387">请求体已声明厂商自带联网工具，检索由服务端执行并注入上下文</string>
+    <string name="se_388">不下发联网声明，模型只能靠本地工具或自身知识回答</string>
+    <string name="se_389">当前厂商未接入原生联网，勾选也不会下发</string>
     <string name="se_076">思考模式</string>
     <string name="se_077">请求会下发 reasoning_effort</string>
     <string name="se_078">直接回答，不下发思考参数</string>
@@ -1039,6 +1044,7 @@
     <string name="ws_del_inuse">这是当前使用中的工作区，先换一个再删</string>
     <string name="ws_del_bound">还有会话绑定着它，先解绑再删</string>
     <string name="ws_del_fail">删除失败，可能没有写权限</string>
+    <string name="ws_del_default">这是全局默认工作区，不能删</string>
     <string name="mcp_title">MCP 服务</string>
     <string name="mcp_sub">连上本地或远程的 MCP 服务，把它的能力交给模型调用</string>
     <string name="mcp_none">还没有 MCP 服务</string>

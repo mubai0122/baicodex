@@ -407,7 +407,7 @@
     <string name="wp_title">Espace de travail</string>
     <string name="wp_title_d">Les chemins relatifs pointent dans l\'espace de travail, les commandes s\'y exécutent par défaut</string>
     <string name="wp_auto">Associer un espace de travail aux nouvelles conversations</string>
-    <string name="wp_auto_d">Activé, toutes les nouvelles conversations partagent l\'espace par défaut ; désactivé, aucune association (espace vide)</string>
+    <string name="wp_auto_d">Activé : chaque conversation a son propre dossier ; désactivé : toutes partagent un espace par défaut</string>
     <string name="wp_unbound">Non associé (espace vide)</string>
     <string name="wp_none">Aucun dossier associé : les chemins relatifs ne marchent pas, le modèle doit utiliser des chemins absolus. Saisissez un chemin puis appuyez sur Associer.</string>
     <string name="wp_path">Chemin de l\'espace de travail</string>
@@ -433,6 +433,7 @@
     <string name="wp_bound">Associé : %1$s</string>
     <string name="wp_cur">Espace de cette conversation : %1$s</string>
     <string name="wp_default">Espace par défaut : %1$s</string>
+    <string name="wp_shared">Espace de travail partagé : %1$s</string>
     <string name="wp_stat">%1$d fichiers / %2$d dossiers / %3$s</string>
     <string name="wp_reindex_ok">Index réécrit vers %1$s (%2$d entrées)</string>
     <string name="wp_close">Fermer</string>
@@ -546,6 +547,10 @@
     <string name="se_073">Envoie reasoning_effort quand la réflexion est activée</string>
     <string name="se_074">Omet reasoning_effort pour éviter l\'erreur sur les API qui le refusent</string>
     <string name="se_075">Activé, le modèle raisonne d\'abord et le raisonnement s\'affiche replié au-dessus de la réponse</string>
+    <string name="se_386">Recherche web native (côté serveur)</string>
+    <string name="se_387">La requête déclare l\'outil web natif du fournisseur ; la recherche est exécutée côté serveur puis injectée</string>
+    <string name="se_388">Aucune déclaration de recherche envoyée ; le modèle répond via les outils locaux ou ses connaissances</string>
+    <string name="se_389">Ce fournisseur n\'a pas de recherche web native câblée ; l\'activer n\'envoie rien</string>
     <string name="se_076">Mode réflexion</string>
     <string name="se_077">La requête inclut reasoning_effort</string>
     <string name="se_078">Réponse directe, sans paramètres de raisonnement</string>
@@ -1026,6 +1031,7 @@
     <string name="ws_del_inuse">Espace de travail en cours d\'utilisation — changez-en d\'abord</string>
     <string name="ws_del_bound">Des conversations y sont liées — déliez-les d\'abord</string>
     <string name="ws_del_fail">Échec de la suppression — permissions d\'écriture peut-être absentes</string>
+    <string name="ws_del_default">C\'est l\'espace de travail par défaut global, impossible à supprimer</string>
     <string name="mcp_title">Serveurs MCP</string>
     <string name="mcp_sub">Connectez des serveurs MCP locaux ou distants et laissez le modèle appeler leurs outils</string>
     <string name="mcp_none">Aucun serveur MCP</string>

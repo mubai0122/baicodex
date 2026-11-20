@@ -96,6 +96,8 @@ class LlmClient(
             val defs = tools ?: b.ai.agent.tool.Tools.definitions()
             if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
+        //原生 search：勾了才声明各家自己的联网工具，服务端检索完把结果注入上下文
+        NativeSearch.inject(body, b.ai.core.cfg.app.Cfg.providerId, b.ai.core.cfg.app.Cfg.baseUrl)
         temperature?.let { body.put("temperature", it) }
         //单轮上限：最大模式显式抬到下限 8192（各家服务端默认值普遍偏小，DeepSeek 是 4096），否则按配置的 max_tokens
         val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens

@@ -3,6 +3,7 @@ package b.ai.ui.widget
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Rect
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,12 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -56,8 +60,16 @@ fun ImgViewerDialog(path: String, onClose: () -> Unit) {
     val count = (dispH + tile - 1) / tile
     val srcTile = (tile.toLong() * iw / screenW).toInt().coerceAtLeast(1)
     val density = LocalDensity.current
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.95f))) {
-        LazyColumn(Modifier.fillMaxSize().padding(top = 52.dp)) {
+    //返回键直接关：全屏看图时用户第一反应就是按返回
+    BackHandler { onClose() }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.95f))
+            //关键：状态栏区域不参与本层布局，关闭键才不会顶到电池图标下面被系统吞掉点击
+            .statusBarsPadding()
+    ) {
+        LazyColumn(Modifier.fillMaxSize().padding(top = 64.dp)) {
             items(count) { index ->
                 val hDisp = minOf(tile, dispH - index * tile).coerceAtLeast(1)
                 val hDp = with(density) { hDisp.toDp() }
@@ -75,10 +87,16 @@ fun ImgViewerDialog(path: String, onClose: () -> Unit) {
             }
         }
         Row(
-            Modifier.fillMaxWidth().padding(12.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            CircleIconBox(Icons.Filled.Close, desc = "关闭", size = 32.dp) { onClose() }
+            //视觉还是 32dp 的圆钮，外面套 48dp 命中区，手指歪一点也点得中
+            Box(
+                Modifier.size(48.dp).tap { onClose() },
+                contentAlignment = Alignment.Center
+            ) {
+                CircleIconBox(Icons.Filled.Close, desc = "关闭", size = 32.dp) { onClose() }
+            }
         }
     }
 } //全屏看图
