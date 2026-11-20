@@ -2604,4 +2604,5 @@
     <string name="se_pg_inout_sub" formatted="false">Métadonnées de réponse, streaming, brouillons et style de sortie</string>
     <string name="se_pg_think" formatted="false">Configuration de la réflexion</string>
     <string name="se_pg_think_sub" formatted="false">Correspond au nom du modèle et décide comment le champ de réflexion entre dans la requête ; ajouter, modifier, supprimer, restaurer</string>
+    <string name="tx_9f3c1a7e" formatted="false">Amorces prompt</string>
 </resources>

@@ -2605,4 +2605,5 @@
     <string name="se_pg_inout_sub" formatted="false">Reply metadata, streaming, draft retention and output style</string>
     <string name="se_pg_think" formatted="false">Thinking config</string>
     <string name="se_pg_think_sub" formatted="false">Matches by model name and decides how the thinking field goes into the request; add, edit, remove, restore defaults</string>
+    <string name="tx_9f3c1a7e" formatted="false">Prompt seeds</string>
 </resources>

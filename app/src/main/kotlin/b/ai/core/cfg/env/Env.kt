@@ -39,7 +39,11 @@ object Env {
         if (Cfg.injectPlace) parts.add(place(c))
         if (Cfg.injectUsage) parts.add(used(c))
         if (Cfg.injectNoti) parts.add(Noti.brief(c, Cfg.notiLimit))
-        return "环境：" + parts.joinToString("；") + "（本机实时数据，够用就直接用，别反问用户）\n"
+        //模板走种子（正文在 local.properties），{parts} 由上面各项拼好；缺种子时用代码内兜底
+        val tpl = b.ai.BuildConfig.SEED_PROMPT_ENV_BLOCK.trim().ifBlank {
+            "环境：{parts}（本机实时数据，够用就直接用，别反问用户）"
+        }
+        return tpl.replace("{parts}", parts.joinToString("；")) + "\n"
     } //环境段
 
     /** 今日使用时长：没授权就如实写缺失，不编数字 */
