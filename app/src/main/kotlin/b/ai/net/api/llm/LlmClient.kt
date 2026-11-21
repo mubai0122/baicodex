@@ -160,9 +160,9 @@ class LlmClient(
         val ruleDone = if (!searchOn) {
             ThinkRules.apply(body, model, think, b.ai.core.cfg.app.Cfg.thinkLevel)
         } else false
-        //思考能力兜底：模型不在思考白名单里（且规则表也没命中）时，就算配置里还留着 think=true 也不下发
-        val canThink = b.ai.core.model.chat.Thinking.supported(b.ai.core.cfg.app.Cfg.providerId, model)
-        if (think && canThink && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn && !ruleDone) {
+        //思考下发只看设置里的能力开关（模型能力 →「推理 / 思考参数」），不再拿模型名单当门控：
+        //中转站/自建模型的名单永远列不全，名单一窄就等于替用户把明确打开的思考悄悄吞掉
+        if (think && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn && !ruleDone) {
             body.put("reasoning_effort", thinkEffort)
         }
         //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
@@ -375,9 +375,8 @@ class LlmClient(
         temperature?.let { body.put("temperature", it) }
         val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
         if (maxTok > 0) body.put("max_output_tokens", maxTok)
-        //思考：Responses 只认 reasoning.effort（low / medium / high），由模型自己决定是否支持
-        val canThink = b.ai.core.model.chat.Thinking.supported(b.ai.core.cfg.app.Cfg.providerId, model)
-        if (think && canThink && b.ai.core.cfg.app.Cfg.modelReasoning) {
+        //思考：Responses 只认 reasoning.effort（low / medium / high）；是否下发同样只认能力开关
+        if (think && b.ai.core.cfg.app.Cfg.modelReasoning) {
             body.put("reasoning", JSONObject().put("effort", thinkEffort))
         }
         if (b.ai.core.cfg.app.Cfg.topP >= 0f) body.put("top_p", b.ai.core.cfg.app.Cfg.topP.toDouble())

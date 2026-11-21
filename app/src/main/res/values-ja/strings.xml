@@ -1349,8 +1349,8 @@
     <string name="pet_grant_fail">root も Shizuku も使えないため、手動で許可してください</string>
     <string name="pet_need_perm">オーバーレイ権限がありません。許可してから常時表示をオンにしてください</string>
     <string name="pet_size">サイズ %1$d dp</string>
-    <string name="pet_peak">現在：ピーク時間（通常料金）</string>
-    <string name="pet_offpeak">現在：オフピーク（北京時間 00:30–08:30 は割引）</string>
+    <string name="pet_peak">現在：ピーク時間（平日 9:00–12:00、14:00–18:00）</string>
+    <string name="pet_offpeak">現在：オフピーク（昼休み・夜間・週末・祝日）</string>
     <string name="pet_bal">残高を確認</string>
     <string name="pet_no_key">先に「モデル」で API キーを入力してください</string>
     <string name="pet_lines">セリフ %1$d 件</string>
@@ -1374,7 +1374,7 @@
     <string name="pet_intro_later">あとで</string>
     <string name="pet_intro_on">設定を開く</string>
     <string name="pet_say_peak">今はピーク時間。トークンが高いのでほどほどに</string>
-    <string name="pet_say_offpeak">今はオフピーク（00:30–08:30）で割引中。どんどん使って</string>
+    <string name="pet_say_offpeak">今はオフピーク。トークンが安いので使ってね</string>
     <string name="pet_bal_wait">ちょっと待って、財布を見てくる…</string>
     <string name="pet_bal_fail">残高が取れません。キーかネットワークを確認してください</string>
     <string name="pet_bal_say">残高 %1$s</string>

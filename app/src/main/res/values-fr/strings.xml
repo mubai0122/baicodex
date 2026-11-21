@@ -1349,8 +1349,8 @@
     <string name="pet_grant_fail">Ni root ni Shizuku disponible, accordez-la manuellement</string>
     <string name="pet_need_perm">Pas de permission de superposition. Accordez-la avant d\'activer l\'affichage global</string>
     <string name="pet_size">Taille %1$d dp</string>
-    <string name="pet_peak">Maintenant : heures pleines (tarif normal)</string>
-    <string name="pet_offpeak">Maintenant : heures creuses (remise 00:30–08:30 heure de Pékin)</string>
+    <string name="pet_peak">Maintenant : heures pleines (jours ouvrés 9h-12h, 14h-18h)</string>
+    <string name="pet_offpeak">Maintenant : heures creuses (pause déjeuner, nuit, week-end, jours fériés)</string>
     <string name="pet_bal">Solde</string>
     <string name="pet_no_key">Renseignez d\'abord la clé API dans « Modèle »</string>
     <string name="pet_lines">%1$d répliques</string>
@@ -1374,7 +1374,7 @@
     <string name="pet_intro_later">Plus tard</string>
     <string name="pet_intro_on">Ouvrir les réglages</string>
     <string name="pet_say_peak">Heures pleines : les tokens coûtent plus cher, allez-y doucement</string>
-    <string name="pet_say_offpeak">Heures creuses (00:30–08:30) : tokens moins chers, profitez-en</string>
+    <string name="pet_say_offpeak">Heures creuses : tokens moins chers, profitez-en</string>
     <string name="pet_bal_wait">Attends, je regarde le portefeuille…</string>
     <string name="pet_bal_fail">Solde illisible ; vérifiez la clé ou le réseau</string>
     <string name="pet_bal_say">Solde %1$s</string>

@@ -183,7 +183,15 @@ private fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
         //提示词种子：21 条系统提示词逐条标出「构建期种子 / 代码兜底」，验证 local.properties 是否真的注入了
         DevItem("seedprompt", b.ai.App.self.getString(R.string.tx_9f3c1a7e)) { _ -> b.ai.agent.run.PromptStore.diagnose() },
         //接口协议：当前走 /responses 还是 /chat/completions，并按该协议真发一条（Responses 相关问题的第一手现场）
-        DevItem("protocol", b.ai.App.self.getString(R.string.tx_2b7d4e10)) { _ -> withContext(Dispatchers.IO) { protocolDump() } }
+        DevItem("protocol", b.ai.App.self.getString(R.string.tx_2b7d4e10)) { _ -> withContext(Dispatchers.IO) { protocolDump() } },
+        //桌宠峰谷：当前算高峰还是错峰、今天什么日子、节假日表有没有拉到（口径：工作日 9–12 / 14–18）
+        DevItem("peakhours", "桌宠峰谷时段") { _ -> withContext(Dispatchers.IO) { b.ai.core.pet.peak.PeakHours.describe() } },
+        //节假日表：手动联网刷一份当年数据（断网就继续按周一至周五兜底）
+        DevItem("peakrefresh", "刷新节假日表") { _ ->
+            withContext(Dispatchers.IO) {
+                b.ai.core.pet.peak.PeakHours.refresh(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR))
+            }
+        }
     ),
     "权限与命令" to listOf(
         DevItem("policy", b.ai.App.self.getString(R.string.tx_7e50d092)) { _ -> toolPolicy() },
@@ -283,7 +291,8 @@ private fun thinkDump(): String {
     val hit = b.ai.net.api.llm.ThinkRules.hit(model)
     val sb = StringBuilder()
     sb.append(b.ai.App.self.getString(R.string.tx_cbb1ac45, Cfg.providerId))
-    sb.append("判为支持思考：$ok\n")
+    sb.append("名单参考（不参与门控）：$ok\n")
+    sb.append("实际下发判据：modelReasoning=${Cfg.modelReasoning} think=${Cfg.think}\n")
     sb.append("命中规则：${hit?.let { "${it.id} pattern=${it.pattern} match=${it.match}" } ?: "无（走内置默认）"}\n")
     sb.append("档位表：${b.ai.core.model.chat.Effort.levels(Cfg.providerId, model, Cfg.profThinkLevels).joinToString("/")}\n")
     //模拟一次下发：看规则到底往 body 里写了什么

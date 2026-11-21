@@ -165,7 +165,6 @@ import b.ai.agent.run.Agent
 import b.ai.agent.tool.Tools
 import android.app.Activity
 import b.ai.core.media.img.Avatar
-import b.ai.core.model.chat.Thinking
 import b.ai.core.model.voice.Audio
 import b.ai.core.model.voice.AsrPresets
 import b.ai.core.data.io.Backup
@@ -891,8 +890,8 @@ private fun LazyListScope.modelParamSec() {
         val ctxP = LocalContext.current
         SectionTitle(stringResource(R.string.se_013), stringResource(R.string.se_075))
         CardBox {
-            //非思考模型不给这块：否则会出现「档位调了但根本不下发」的假开关
-            if (Thinking.supported(Cfg.providerId, Cfg.model)) {
+            //思考常显：不再按模型名单门控，发不发只看「模型能力 → 推理 / 思考参数」
+            if (Cfg.modelReasoning || Cfg.think) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.se_076), fontSize = 14.sp, color = TextPrimary)
@@ -3240,8 +3239,18 @@ private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
     }
     item {
         Spacer(Modifier.height(10.dp))
-        //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
-        PetEntryRow(onOpenPet)
+        //桌宠 + 回车发送合成一张卡：两行都走 CardBox，圆角 / 描边 / 玻璃 / 内边距跟设置页其它卡片一致
+        CardBox {
+            //桌宠：一整行独立开关，配置图标就在开关左边，点它进桌宠设置页
+            PetEntryRow(onOpenPet)
+            Spacer(Modifier.height(10.dp))
+            //回车发送：外接键盘/物理键盘才有意义；关掉后回车只换行，发送靠右侧按钮
+            CapSwitch(
+                "回车键发送",
+                if (Cfg.enterSend) "回车直接发送，Shift+回车换行" else "回车只换行，不发送",
+                Cfg.enterSend
+            ) { Cfg.enterSend = it }
+        }
     }
     } //个性化子页
 
@@ -5359,20 +5368,18 @@ private fun BgImagePick() {
 @Composable
 private fun PetEntryRow(onOpenPet: () -> Unit) {
     val ctx = LocalContext.current
+    //不自己画底：统一由外层 CardBox 提供圆角 / 描边 / 玻璃 / 内边距，避免跟设置页其它卡片不一致
     Row(
-        Modifier
-            .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(14.dp), gate = 0.dp)
-            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.pet_sec), fontSize = 13.sp, color = TextPrimary)
+            Text(stringResource(R.string.pet_sec), fontSize = 14.sp, color = TextPrimary)
             Text(
                 if (!Cfg.petOn) stringResource(R.string.pet_route_none)
                 else if (Cfg.petGlobal) stringResource(R.string.pet_global)
                 else stringResource(R.string.pet_in_app),
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 color = TextSecondary
             )
         }

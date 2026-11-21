@@ -92,7 +92,6 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.PromptTags
 import b.ai.net.api.llm.LlmClient
 import b.ai.core.model.chat.Effort
-import b.ai.core.model.chat.Thinking
 import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.plugin.skill.SkillPacks
@@ -347,8 +346,9 @@ internal fun CfgPanel(onClose: () -> Unit) {
     SheetShell {
         SheetHead(stringResource(R.string.ip_cfg), onClose)
         //思考开关：放最上面，紧跟着强度滑块
-        //只有「规则命中」或「内置白名单命中」的模型才显示这一组，非思考模型不再凭空多出思考开关与档位
-        val canThink = Thinking.supported(Cfg.providerId, Cfg.model)
+        //不再按模型名单门控：所有模型都显示这三档（low / medium / high），
+        //发不发只由「模型能力 → 推理 / 思考参数」决定；特殊中转站要别的档位，去模型配置里自填档位
+        val canThink = Cfg.modelReasoning || Cfg.think
         if (canThink) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

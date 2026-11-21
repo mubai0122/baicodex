@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.pet.balance.PetBalance
+import b.ai.core.pet.peak.PeakHours
 import b.ai.core.pet.say.PetLines
 import b.ai.core.pet.sound.PetSound
 import b.ai.device.pet.Pet
@@ -606,7 +607,7 @@ private fun PetActTab(
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
-        val off = PetBalance.offPeak(peakAt)
+        val off = PeakHours.offPeak(peakAt)
         Text(
             stringResource(if (off) R.string.pet_offpeak else R.string.pet_peak),
             fontSize = 12.5.sp,

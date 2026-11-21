@@ -1350,8 +1350,8 @@
     <string name="pet_grant_fail">root 與 Shizuku 都不可用，得手動授權</string>
     <string name="pet_need_perm">還沒有懸浮視窗權限，先授權再開全域顯示</string>
     <string name="pet_size">尺寸 %1$d dp</string>
-    <string name="pet_peak">目前時段：尖峰（標準價）</string>
-    <string name="pet_offpeak">目前時段：離峰（北京時間 00:30–08:30 打折）</string>
+    <string name="pet_peak">目前時段：尖峰（工作日 9:00–12:00、14:00–18:00）</string>
+    <string name="pet_offpeak">目前時段：離峰（工作日尖峰以外、午休、夜間、週末與假日）</string>
     <string name="pet_bal">查餘額</string>
     <string name="pet_no_key">先在「模型」裡填 API Key</string>
     <string name="pet_lines">台詞 %1$d 條</string>
@@ -1375,7 +1375,7 @@
     <string name="pet_intro_later">之後再說</string>
     <string name="pet_intro_on">去設定裡看看</string>
     <string name="pet_say_peak">尖峰時段，Token 貴，省著點用</string>
-    <string name="pet_say_offpeak">離峰了，00:30–08:30 打折，使勁用</string>
+    <string name="pet_say_offpeak">離峰時段，Token 便宜，使勁用</string>
     <string name="pet_bal_wait">等等，我看看錢包…</string>
     <string name="pet_bal_fail">查不到餘額，Key 或網路有問題</string>
     <string name="pet_bal_say">餘額 %1$s</string>

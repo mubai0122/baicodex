@@ -1350,8 +1350,8 @@
     <string name="pet_grant_fail">Neither root nor Shizuku is available; grant it manually</string>
     <string name="pet_need_perm">No overlay permission yet. Grant it before turning on global display</string>
     <string name="pet_size">Size %1$d dp</string>
-    <string name="pet_peak">Now: peak hours (standard price)</string>
-    <string name="pet_offpeak">Now: off-peak (discount 00:30-08:30 Beijing time)</string>
+    <string name="pet_peak">Now: peak hours (workdays 9:00-12:00, 14:00-18:00)</string>
+    <string name="pet_offpeak">Now: off-peak (lunch, night, weekends, holidays)</string>
     <string name="pet_bal">Balance</string>
     <string name="pet_no_key">Fill in the API key under Model first</string>
     <string name="pet_lines">%1$d lines</string>
@@ -1375,7 +1375,7 @@
     <string name="pet_intro_later">Later</string>
     <string name="pet_intro_on">Open settings</string>
     <string name="pet_say_peak">Peak hours now, tokens cost more, go easy</string>
-    <string name="pet_say_offpeak">Off-peak now (00:30-08:30), cheaper tokens, use me</string>
+    <string name="pet_say_offpeak">Off-peak now, cheaper tokens, use me</string>
     <string name="pet_bal_wait">Hang on, checking the wallet...</string>
     <string name="pet_bal_fail">Cannot read the balance; check the key or network</string>
     <string name="pet_bal_say">Balance %1$s</string>
