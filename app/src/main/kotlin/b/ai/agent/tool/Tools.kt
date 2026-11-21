@@ -1483,7 +1483,7 @@ object Tools {
                         "不要解释、不要 Markdown 代码块、不要额外字段。"))
                 .put(JSONObject().put("role", "user").put("content", goal))
             val txt = runCatching {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4])
                     .chat(m[3], pay, temperature = 0.3, tools = JSONArray())
                     .optString("content")
             }.getOrNull().orEmpty()

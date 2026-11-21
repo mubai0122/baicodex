@@ -479,7 +479,7 @@ object Agent {
             withContext(Dispatchers.IO) {
                 //标题生成走「功能模型」里配的那条；没配就跟随当前聊天
                 val m = b.ai.core.model.chat.FnModel.conn(b.ai.core.model.chat.FnModel.TITLE)
-                LlmClient(m[0], m[1], b.ai.core.model.chat.FnModel.auth(b.ai.core.model.chat.FnModel.TITLE))
+                LlmClient(m[0], m[1], b.ai.core.model.chat.FnModel.auth(b.ai.core.model.chat.FnModel.TITLE), protocol = m[4])
                     .chat(m[3], pay, temperature = 0.3)
             }
         }.getOrNull() ?: return
@@ -1047,7 +1047,7 @@ object Agent {
             var attempt = 0
             val resp = run {
                 while (true) {
-                    val client = LlmClient(Cfg.baseUrl, keyOf(keyIdx), Providers.byId(Cfg.providerId).auth)
+                    val client = LlmClient(Cfg.baseUrl, keyOf(keyIdx), Providers.byId(Cfg.providerId).auth, protocol = Cfg.modelProtocol)
                     val got = runCatching {
                         val streamed = withContext(Dispatchers.IO) {
                             //关了流式就整包等：端点不支持 SSE 时也走这条，界面上没有逐字过程
@@ -1804,7 +1804,7 @@ object Agent {
         val m = sumLlm()
         val resp = runCatching {
             withContext(Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth).chat(m[3], pay)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4]).chat(m[3], pay)
             }
         }.getOrNull() ?: return false
         val text = resp.text("content").trim()
@@ -1924,7 +1924,7 @@ object Agent {
         val m = sumLlm()
         val resp = runCatching {
             withContext(Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth).chat(m[3], pay)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4]).chat(m[3], pay)
             }
         }.getOrNull() ?: return false
         val text = resp.text("content").trim()

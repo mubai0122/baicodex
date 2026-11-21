@@ -127,6 +127,8 @@ fun ModelSetupPanel() {
     var fTok by remember { mutableStateOf(0) }
     /** 这条配置自己的上下文窗口；0 = 跟随全局「模型窗口」 */
     var fCtx by remember { mutableStateOf(0) }
+    /** 这条配置的接口协议：chat = Chat Completions；responses = Responses API */
+    var fProto by remember { mutableStateOf("chat") }
     var snap by remember { mutableStateOf("") } //上次载入或保存后的指纹，用来判断有没有改动
     var savedTo by remember { mutableStateOf("") } //保存成功的提示，一改动就失效
     var formErr by remember { mutableStateOf<String?>(null) }
@@ -138,7 +140,7 @@ fun ModelSetupPanel() {
     //表单指纹：任何一项变了就算脏，保存提示随之失效
     fun finger(): String = listOf(
         fId, fName, fCustom.toString(), fProv, fBase, fKey,
-        fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString()
+        fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString(), fProto
     ).joinToString("|")
 
     val isLocal = fProv == Providers.LOCAL //本地模型这条：base_url 与 Key 都不用填
@@ -156,6 +158,7 @@ fun ModelSetupPanel() {
         fModel = p?.model ?: ""
         fTok = p?.maxTokens ?: 0
         fCtx = p?.ctxTotal ?: 0
+        fProto = LlmClient.protocolOf(p?.protocol ?: "chat")
         formErr = null
         savedTo = ""
         snap = finger()
@@ -174,6 +177,8 @@ fun ModelSetupPanel() {
         fModel = ""
         fTok = 0
         fCtx = 0
+        //新建时沿用当前这条的协议：同一家服务商多半都要求同一种协议
+        fProto = LlmClient.protocolOf(Cfg.modelProtocol)
         formErr = null
         savedTo = ""
         snap = finger()
@@ -213,6 +218,7 @@ fun ModelSetupPanel() {
             reasoning = Cfg.modelReasoning,
             maxTokens = fTok,
             ctxTotal = fCtx,
+            protocol = fProto,
             custom = custom
         )
         if (effKey.isNotEmpty() && !Cfg.setProfileKey(id, effKey)) {
@@ -560,6 +566,25 @@ fun ModelSetupPanel() {
             color = TextSecondary
         )
         Spacer(Modifier.height(10.dp))
+        //接口协议：部分服务商已停用 Chat Completions（报 chat_completions_disabled），只能切到 Responses API。
+        //按这条配置独立保存，切配置不会互相影响
+        SelectField(
+            stringResource(R.string.ms_proto),
+            if (fProto == LlmClient.PROTO_RESPONSES) "Responses API" else "Chat Completions",
+            listOf(LlmClient.PROTO_CHAT, LlmClient.PROTO_RESPONSES),
+            optionLabel = {
+                if (it == LlmClient.PROTO_RESPONSES) "Responses API" else "Chat Completions"
+            },
+            isSelected = { fProto == it },
+            onSelect = { fProto = it; formErr = null }
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.ms_proto_sub),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
+        Spacer(Modifier.height(10.dp))
         //保存才落盘：脏的时候按钮实心，存完给一句写回哪条
         val dirty = finger() != snap
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -577,7 +602,7 @@ fun ModelSetupPanel() {
                 val md = fModel.trim()
                 val vis = Cfg.modelVision
                 scope.launch {
-                    val o = withContext(Dispatchers.IO) { ApiProbe.test(prov, base, key, md, vis) }
+                    val o = withContext(Dispatchers.IO) { ApiProbe.test(prov, base, key, md, vis, fProto) }
                     probing = false
                     val t = o.text
                     val v = o.vision
@@ -694,7 +719,8 @@ private fun ProfileRow(p: ModelProfile) {
         p.model.ifBlank { "未选模型" } + " · 本地 GGUF"
     } else {
         p.model.ifBlank { stringResource(R.string.ms_no_model) } + " · " +
-            p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) }
+            p.baseUrl.ifBlank { stringResource(R.string.ms_no_base) } +
+            if (LlmClient.protocolOf(p.protocol) == LlmClient.PROTO_RESPONSES) " · Responses" else ""
     }
     Row(
         Modifier

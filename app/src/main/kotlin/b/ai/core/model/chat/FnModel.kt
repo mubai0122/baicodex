@@ -38,15 +38,16 @@ object FnModel {
         else -> Cfg.summaryProfileId
     }
 
-    /** 返回 baseUrl / apiKey / providerId / model 四元组 */
+    /** 返回 baseUrl / apiKey / providerId / model / protocol 五元组 */
     fun conn(kind: String): Array<String> {
         val pid = profileId(kind)
         if (pid.isNotBlank()) {
             val p = Profiles.list.firstOrNull { it.id == pid && it.model.isNotBlank() }
-            if (p != null) return arrayOf(p.baseUrl, p.apiKey, p.providerId, p.model)
+            if (p != null) return arrayOf(p.baseUrl, p.apiKey, p.providerId, p.model, p.protocol)
         }
-        return arrayOf(Cfg.baseUrl, Cfg.apiKey, Cfg.providerId, Cfg.model)
-    } //取连接参数
+        //跟随当前聊天配置时，协议也跟当前这条走
+        return arrayOf(Cfg.baseUrl, Cfg.apiKey, Cfg.providerId, Cfg.model, Cfg.modelProtocol)
+    } //取连接参数（第 5 项是接口协议）
 
     fun auth(kind: String): AuthStyle = Providers.byId(conn(kind)[2]).auth //鉴权方式
 

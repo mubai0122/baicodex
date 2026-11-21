@@ -2605,4 +2605,7 @@
     <string name="se_pg_think" formatted="false">思考設定</string>
     <string name="se_pg_think_sub" formatted="false">モデル名で照合し、思考フィールドのリクエストへの入れ方を決めます。追加・変更・削除・既定値の復元が可能</string>
     <string name="tx_9f3c1a7e" formatted="false">プロンプト種</string>
+    <string name="ms_proto">API プロトコル</string>
+    <string name="ms_proto_sub">Chat Completions を廃止した事業者あり（chat_completions_disabled）。Responses API に切り替えてください。設定ごとに保存されます</string>
+    <string name="tx_2b7d4e10" formatted="false">API プロトコル</string>
 </resources>
