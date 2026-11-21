@@ -47,7 +47,15 @@ object ApiProbe {
         "data:image/png;base64," + Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
     }
 
-    fun test(providerId: String, baseUrl: String, apiKey: String, model: String, vision: Boolean): Out {
+    fun test(
+        providerId: String,
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        vision: Boolean,
+        /** 这条配置的接口协议：chat / responses，测试必须走同一个端点，否则测通了实际聊还是报错 */
+        protocol: String = b.ai.core.cfg.app.Cfg.modelProtocol
+    ): Out {
         //本地 GGUF 不走这条通道，别让人以为云端配置坏了
         val bad = when {
             providerId == Providers.LOCAL -> "这条是本地模型，测连通性去「本地模型」页"
@@ -57,7 +65,10 @@ object ApiProbe {
         }
         if (bad.isNotEmpty()) return Out(R(false, 0, "", bad), null, "配置不全，两轮都没跑")
         //forceRemote：本机开着本地模型开关时，普通请求会被本地引擎接管，测试必须真发到云端
-        val cli = LlmClient(baseUrl, apiKey, Providers.byId(providerId).auth, forceRemote = true)
+        val cli = LlmClient(
+            baseUrl, apiKey, Providers.byId(providerId).auth,
+            forceRemote = true, protocol = protocol
+        )
         val text = runText(cli, model)
         //视觉输入关着就别发图片：发了有的服务端直接 400，测出来像是配置坏了
         if (!vision) return Out(text, null, "视觉输入开关是关的，跳过图片轮")

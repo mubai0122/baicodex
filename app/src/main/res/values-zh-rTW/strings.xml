@@ -2606,4 +2606,7 @@
     <string name="se_pg_think" formatted="false">思考設定</string>
     <string name="se_pg_think_sub" formatted="false">依模型名稱比對，決定思考欄位如何寫進請求；可新增、刪除、修改、還原內建</string>
     <string name="tx_9f3c1a7e" formatted="false">提示詞種子</string>
+    <string name="ms_proto">介面協定</string>
+    <string name="ms_proto_sub">部分服務商已停用 Chat Completions（報 chat_completions_disabled），需切到 Responses API。按每條設定獨立儲存</string>
+    <string name="tx_2b7d4e10" formatted="false">介面協定</string>
 </resources>

@@ -72,7 +72,7 @@ object MemOrganizer {
                 )
                 .put(JSONObject().put("role", "user").put("content", list))
             val txt = withContext(Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4])
                     .chat(m[3], pay, temperature = 0.2, tools = JSONArray())
                     .optString("content")
             }

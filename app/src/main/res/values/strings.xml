@@ -2607,4 +2607,7 @@
     <string name="tx_f65125e4" formatted="false">记忆整理</string>
     <string name="tx_fc7d3267" formatted="false">未探活</string>
     <string name="tx_9f3c1a7e" formatted="false">提示词种子</string>
+    <string name="ms_proto">接口协议</string>
+    <string name="ms_proto_sub">部分服务商已停用 Chat Completions（报 chat_completions_disabled），需切到 Responses API。按每条配置独立保存</string>
+    <string name="tx_2b7d4e10" formatted="false">接口协议</string>
 </resources>

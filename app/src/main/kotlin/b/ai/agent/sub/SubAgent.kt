@@ -206,7 +206,7 @@ object SubAgents {
     /** 子智能体一律关思考：并行跑要的是快，不是想得深 */
     private suspend fun ask(msgs: JSONArray, defs: JSONArray?): JSONObject {
         val key = Cfg.keyList(Cfg.profileId).filter { it.isNotBlank() }.firstOrNull() ?: Cfg.apiKey
-        val client = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth)
+        val client = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth, protocol = Cfg.modelProtocol)
         return withContext(Dispatchers.IO) {
             client.chat(
                 Cfg.model, msgs, Cfg.temperature.takeIf { it >= 0f }?.toDouble(),

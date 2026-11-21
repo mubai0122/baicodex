@@ -2606,4 +2606,7 @@
     <string name="se_pg_think" formatted="false">Thinking config</string>
     <string name="se_pg_think_sub" formatted="false">Matches by model name and decides how the thinking field goes into the request; add, edit, remove, restore defaults</string>
     <string name="tx_9f3c1a7e" formatted="false">Prompt seeds</string>
+    <string name="ms_proto">API protocol</string>
+    <string name="ms_proto_sub">Some providers disabled Chat Completions (chat_completions_disabled); switch to Responses API. Saved per profile</string>
+    <string name="tx_2b7d4e10" formatted="false">API protocol</string>
 </resources>

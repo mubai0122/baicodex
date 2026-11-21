@@ -2605,4 +2605,7 @@
     <string name="se_pg_think" formatted="false">Configuration de la réflexion</string>
     <string name="se_pg_think_sub" formatted="false">Correspond au nom du modèle et décide comment le champ de réflexion entre dans la requête ; ajouter, modifier, supprimer, restaurer</string>
     <string name="tx_9f3c1a7e" formatted="false">Amorces prompt</string>
+    <string name="ms_proto">Protocole API</string>
+    <string name="ms_proto_sub">Certains fournisseurs ont désactivé Chat Completions (chat_completions_disabled) ; passez à Responses API. Enregistré par profil</string>
+    <string name="tx_2b7d4e10" formatted="false">Protocole API</string>
 </resources>

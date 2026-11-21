@@ -46,7 +46,13 @@ data class ModelProfile(
     /** 这条模型认的思考档位（逗号分隔）；空 = 按厂商/型号自动推断 */
     val thinkLevels: String = "",
     /** 档位明细（JSON：显示名 / 写入路径 / 写入值），与 thinkLevels 一起存 */
-    val thinkLevelsJson: String = ""
+    val thinkLevelsJson: String = "",
+    /**
+     * 接口协议：chat = OpenAI Chat Completions（/chat/completions）；
+     * responses = OpenAI Responses API（/responses）。
+     * 按每条配置独立保存——同一家厂商可能只有部分模型要求新协议。
+     */
+    val protocol: String = "chat"
 ) {
     val autoLabel: String get() = Profiles.autoLabel(providerId, model)
     val label: String get() = if (custom && name.isNotBlank()) name else autoLabel
@@ -159,7 +165,8 @@ object Profiles {
         toolCall = Cfg.modelToolCall,
         reasoning = Cfg.modelReasoning,
         nativeSearch = Cfg.modelNativeSearch,
-        maxTokens = Cfg.maxTokens
+        maxTokens = Cfg.maxTokens,
+        protocol = Cfg.modelProtocol
     )
 
     private fun parse(raw: String): List<ModelProfile> {
@@ -195,7 +202,9 @@ object Profiles {
                 thinkLevels = o.optString("thinkLevels", ""),
                 thinkLevelsJson = o.optString("thinkLevelsJson", ""),
                 //老文件没这个字段：名字正好等于自动名就算自动名，跟着模型走
-                custom = o.optBoolean("custom", name.isNotBlank() && name != autoLabel(prov, modelName))
+                custom = o.optBoolean("custom", name.isNotBlank() && name != autoLabel(prov, modelName)),
+                //老档没这个字段：一律当 Chat Completions，行为与升级前完全一致
+                protocol = o.optString("protocol", "chat").takeIf { it.isNotBlank() } ?: "chat"
             )
         }
     } //从 JSON 还原（Key 从私有 SP 取）
@@ -230,6 +239,7 @@ object Profiles {
                     .put("thinkLevels", p.thinkLevels)
                     .put("thinkLevelsJson", p.thinkLevelsJson)
                     .put("custom", p.custom)
+                    .put("protocol", p.protocol)
             )
         }
         val json = arr.toString(2)
@@ -270,7 +280,8 @@ object Profiles {
             vision = false,
             toolCall = false,
             reasoning = false,
-            nativeSearch = false
+            nativeSearch = false,
+            protocol = "chat"
         ).also { upsert(it) }
         select(p.id)
         //文件可能不在公共模型目录（用户从别处导入后加载的）：select 里找不到会清空，这里显式兜住
@@ -309,6 +320,8 @@ object Profiles {
         Cfg.profThinkLevelsJson = p.thinkLevelsJson
         Cfg.profileName = p.name
         Cfg.profileCustom = p.custom
+        //协议也按配置走：切到哪条就用哪条的协议，别让上一条的 Responses 影响这条
+        Cfg.modelProtocol = b.ai.net.api.llm.LlmClient.protocolOf(p.protocol)
     } //把配置灌进全局
 
     /** 自动名：厂商 · 模型，配置没起名时用它 */
@@ -359,7 +372,8 @@ object Profiles {
             maxTokens = Cfg.maxTokens,
             ctxTotal = Cfg.profCtxTotal,
             thinkLevels = Cfg.profThinkLevels.trim(),
-            thinkLevelsJson = Cfg.profThinkLevelsJson
+            thinkLevelsJson = Cfg.profThinkLevelsJson,
+            protocol = Cfg.modelProtocol
         )
         upsert(p)
     } //当前值写回
@@ -399,7 +413,8 @@ object Profiles {
             nativeSearch = cur?.nativeSearch ?: Cfg.modelNativeSearch,
             maxTokens = cur?.maxTokens ?: Cfg.maxTokens,
             ctxTotal = cur?.ctxTotal ?: 0,
-            custom = false
+            custom = false,
+            protocol = cur?.protocol ?: Cfg.modelProtocol
         )
         upsert(p.copy(name = ""))
         //新条目沿用当前 Key（同样只进私有 SP）
@@ -426,7 +441,8 @@ object Profiles {
                 nativeSearch = Cfg.modelNativeSearch,
                 maxTokens = 0,
                 ctxTotal = 0,
-                custom = false
+                custom = false,
+                protocol = Cfg.modelProtocol
             )
         )
         Cfg.setProfileKey(id, "")

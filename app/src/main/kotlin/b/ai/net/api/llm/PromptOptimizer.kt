@@ -92,7 +92,7 @@ object PromptOptimizer {
         //NetworkOnMainThreadException（用户实测就是这个），所以这里显式切到 IO
         val r = runCatching {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth)
+                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4])
                     .chat(m[3], pay, temperature = 0.4, tools = JSONArray())
             }
         }

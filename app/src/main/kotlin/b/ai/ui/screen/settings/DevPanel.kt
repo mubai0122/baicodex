@@ -181,7 +181,9 @@ private fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
         //STT 引擎：当前引擎与各引擎的必备配置是否齐（不录音）
         DevItem("stt", b.ai.App.self.getString(R.string.tx_2604bcce)) { _ -> sttDump() },
         //提示词种子：21 条系统提示词逐条标出「构建期种子 / 代码兜底」，验证 local.properties 是否真的注入了
-        DevItem("seedprompt", b.ai.App.self.getString(R.string.tx_9f3c1a7e)) { _ -> b.ai.agent.run.PromptStore.diagnose() }
+        DevItem("seedprompt", b.ai.App.self.getString(R.string.tx_9f3c1a7e)) { _ -> b.ai.agent.run.PromptStore.diagnose() },
+        //接口协议：当前走 /responses 还是 /chat/completions，并按该协议真发一条（Responses 相关问题的第一手现场）
+        DevItem("protocol", b.ai.App.self.getString(R.string.tx_2b7d4e10)) { _ -> withContext(Dispatchers.IO) { protocolDump() } }
     ),
     "权限与命令" to listOf(
         DevItem("policy", b.ai.App.self.getString(R.string.tx_7e50d092)) { _ -> toolPolicy() },
@@ -337,7 +339,7 @@ private fun testChat(): String = runCatching {
         if (Cfg.baseUrl.isBlank()) return b.ai.App.self.getString(R.string.tx_695609ba)
         if (key.isBlank()) return b.ai.App.self.getString(R.string.tx_2603ac37)
     }
-    val m = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth)
+    val m = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth, protocol = Cfg.modelProtocol)
     val msgs = JSONArray().put(JSONObject().put("role", "user").put("content", "ping，只回 ok 两个字符"))
     val t0 = SystemClock.elapsedRealtime()
     val msg = m.chat(Cfg.model, msgs, think = Cfg.think, thinkEffort = Cfg.thinkEffort)
@@ -345,6 +347,48 @@ private fun testChat(): String = runCatching {
     val body = msg.optString("content").ifBlank { msg.toString() }
     b.ai.App.self.getString(R.string.tx_c3af4af2, Cfg.model, cost, body.take(200))
 }.getOrElse { b.ai.App.self.getString(R.string.tx_d8f20845, it.message?.take(300) ?: it.javaClass.simpleName) } //测试对话
+
+/**
+ * 接口协议自检：打印当前配置的协议与端点、各功能模型各自走的协议，
+ * 再按该协议真发一条最小请求，验证 /responses 与 /chat/completions 两条通道都能解出正文。
+ */
+private fun protocolDump(): String = runCatching {
+    val proto = LlmClient.protocolOf(Cfg.modelProtocol)
+    val path = if (proto == LlmClient.PROTO_RESPONSES) "/responses" else "/chat/completions"
+    val sb = StringBuilder()
+    sb.append("当前配置：").append(b.ai.core.data.profile.Profiles.selected?.label ?: "?")
+        .append(" / ").append(Cfg.model.ifBlank { "(未填)" }).append("\n")
+    sb.append("协议：").append(proto).append(" → POST {base}").append(path).append("\n")
+    sb.append("base_url：").append(Cfg.baseUrl.ifBlank { "(空)" }).append("\n")
+    //辅助任务（标题/总结/优化/记忆）各自跟着自己那条配置的协议走，这里一并打出来
+    val fn = listOf(
+        b.ai.core.model.chat.FnModel.TITLE,
+        b.ai.core.model.chat.FnModel.SUMMARY,
+        b.ai.core.model.chat.FnModel.PROMPT_OPT,
+        b.ai.core.model.chat.FnModel.MEM
+    ).joinToString(" ") { k ->
+        k + "=" + LlmClient.protocolOf(b.ai.core.model.chat.FnModel.conn(k)[4])
+    }
+    sb.append("功能模型：").append(fn).append("\n")
+    //真发一条：整包不走流式，只看端点通不通、能不能解出正文
+    val msgs = JSONArray().put(JSONObject().put("role", "user").put("content", "ping，只回 ok 两个字符"))
+    val t0 = SystemClock.elapsedRealtime()
+    val msg = LlmClient(
+        Cfg.baseUrl, Cfg.apiKey, Providers.byId(Cfg.providerId).auth,
+        protocol = Cfg.modelProtocol
+    ).chat(Cfg.model, msgs, think = false, tools = JSONArray())
+    val cost = SystemClock.elapsedRealtime() - t0
+    val body = msg.optString("content")
+    sb.append("实测：").append(cost).append("ms ").append(body.take(80).ifBlank { "(空)" })
+    val u = msg.optJSONObject("usage")
+    if (u != null) {
+        sb.append("\n用量：in=").append(u.optInt("prompt_tokens", 0))
+            .append(" out=").append(u.optInt("completion_tokens", 0))
+    }
+    val tc = msg.optJSONArray("tool_calls")
+    if (tc != null && tc.length() > 0) sb.append("\ntool_calls=").append(tc.length())
+    sb.toString()
+}.getOrElse { "协议自检失败：" + (it.message?.take(300) ?: it.javaClass.simpleName) } //接口协议自检
 
 /** 工具权限：按当前策略分三类，模型一旦被判死就是这里配错了 */
 private fun toolPolicy(): String {

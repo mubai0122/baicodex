@@ -690,6 +690,11 @@ object Cfg {
         get() = mem("model_native_search", false).value
         set(v) { mem("model_native_search", false).value = v; put("model_native_search", v) }
 
+    /** 接口协议：chat = OpenAI Chat Completions（/chat/completions）；responses = OpenAI Responses API（/responses） */
+    var modelProtocol: String
+        get() = mem("model_protocol", "chat").value
+        set(v) { mem("model_protocol", "chat").value = v; put("model_protocol", v) }
+
     var tavilyKey: String
         get() = mem("tavily_key", "").value
         set(v) { mem("tavily_key", "").value = v; Vault.put("tavily_key", v.trim()) }
