@@ -14,6 +14,7 @@
 
 package b.ai.core.pet.say
 import b.ai.core.pet.balance.PetBalance
+import b.ai.core.pet.peak.PeakHours
 import b.ai.core.cfg.app.Cfg
 
 import android.content.Context
@@ -23,7 +24,7 @@ import b.ai.R
 object PetSay {
 
     fun next(c: Context): String {
-        val off = PetBalance.offPeak()
+        val off = PeakHours.offPeak()
         val timed = c.getString(if (off) R.string.pet_say_offpeak else R.string.pet_say_peak)
         if ((Math.random() * 100).toInt() < Cfg.petTimedPct) return timed
         val one = PetLines.pick()

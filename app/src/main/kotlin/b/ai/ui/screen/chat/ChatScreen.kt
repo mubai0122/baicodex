@@ -180,6 +180,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -1309,22 +1310,11 @@ private fun SendButton(hasContent: Boolean, onSend: () -> Unit) {
     }
     //忙但输入区有内容：半透明发送，点一下排进队列
     val queued = Agent.busy && hasContent
-    val tint = if (hasContent) AccentBlue else SurfaceMuted
+    //发送键不套毛玻璃：纯色实心，颜色比主题色压深一档（亮色下更沉、暗色下不刺眼）
+    val tint = if (hasContent) lerp(AccentBlue, Color.Black, 0.18f) else SurfaceMuted
     val iconColor = if (hasContent) Color.White else TextSecondary
-    //玻璃开着就走玻璃，质感的 3D 圆钮只在没玻璃时用
-    val glassOn = Cfg.glassCard && (LocalCardBackdrop.current ?: CardBackdropHolder.current) != null
     Box(Modifier.graphicsLayer { alpha = if (queued) 0.5f else 1f }) {
-        if (glassOn) {
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .liquidBg(CircleShape, tint = tint, highlightAlpha = 0.85f, gate = 0.dp)
-                    .tap(enabled = hasContent) { onSend() },
-                contentAlignment = Alignment.Center
-            ) {
-                IcSend(iconColor, side = 15.dp)
-            }
-        } else if (Cfg.tactileBtn) {
+        if (Cfg.tactileBtn) {
             TactileCircle(active = hasContent, enabled = hasContent, onClick = onSend) {
                 IcSend(iconColor, side = 15.dp)
             }
@@ -1332,7 +1322,7 @@ private fun SendButton(hasContent: Boolean, onSend: () -> Unit) {
             Box(
                 Modifier
                     .size(36.dp)
-                    .liquidBg(CircleShape, tint = tint)
+                    .background(tint, CircleShape)
                     .tap(enabled = hasContent) { onSend() },
                 contentAlignment = Alignment.Center
             ) {
@@ -1651,14 +1641,15 @@ private fun InputBar(
         if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         val t = field.text
         when {
-            e.key == Key.Enter -> {
-                if (e.isShiftPressed) {
+            e.key == Key.Enter || e.key == Key.NumPadEnter -> {
+                //回车发送开关（设置 → 个性化）：关掉后回车只换行，Shift+回车始终换行
+                if (Cfg.enterSend && !e.isShiftPressed) {
+                    onSend()
+                } else {
                     val sel = field.selection
                     val nt = t.substring(0, sel.start) + "\n" + t.substring(sel.end)
                     field = TextFieldValue(nt, TextRange(sel.start + 1))
                     onChange(nt)
-                } else {
-                    onSend()
                 }
                 true
             }
@@ -1675,8 +1666,7 @@ private fun InputBar(
             e.key == Key.DirectionDown && !e.isShiftPressed -> {
                 if (layoutRes != null) { caretLine(1); true } else false
             }
-            //小键盘回车也算发送：物理键盘上这两个是不同的键码
-            e.key == Key.NumPadEnter -> { onSend(); true }
+            //小键盘回车已在上面合并处理，这里不再单独分支
             else -> false
         }
     }
@@ -2676,7 +2666,7 @@ private fun splitDiff(content: String): Pair<String, List<String>> {
     return body to raw.trim('\n').lines().filter { it.isNotEmpty() }
 } //按 [[diff]] 标记拆分
 
-/** diff 行列表：+ 绿 / − 红 / @@ 蓝，背景淡色块；scroll=false 交给外层滚动 */
+/** diff 行列表：不铺底色，只靠字体颜色区分（+ 绿 / − 红 / @@ 蓝）；scroll=false 交给外层滚动 */
 @Composable
 private fun DiffView(lines: List<String>, scroll: Boolean = true) {
     val box = if (scroll) {
@@ -2689,8 +2679,8 @@ private fun DiffView(lines: List<String>, scroll: Boolean = true) {
     }
     Column(
         box
-            .liquidBg(RoundedCornerShape(8.dp), tint = SurfaceMuted)
-            .padding(horizontal = 6.dp, vertical = 5.dp)
+            //不再铺 SurfaceMuted 底色：用户要求 diff 只用字体颜色区分，不要色块背景
+            .padding(horizontal = 2.dp, vertical = 2.dp)
     ) {
         lines.forEach { ln ->
             val add = ln.startsWith("+")
@@ -2707,14 +2697,6 @@ private fun DiffView(lines: List<String>, scroll: Boolean = true) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        when {
-                            add -> OkGreen.copy(alpha = 0.10f)
-                            del -> DangerRed.copy(alpha = 0.10f)
-                            else -> Color.Transparent
-                        },
-                        RoundedCornerShape(3.dp)
-                    )
                     .padding(horizontal = 3.dp, vertical = 0.5.dp)
             )
         }

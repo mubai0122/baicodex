@@ -68,3 +68,5 @@ desktop/legacy-kotlin/.kotlin/
 
 #打许可
 app/src/main/许可.sh
+
+/app/src/main/cpp/_third_party/DEPS.md

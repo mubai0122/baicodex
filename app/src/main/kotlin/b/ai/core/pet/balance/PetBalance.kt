@@ -22,26 +22,14 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Calendar
 import java.util.Locale
-
-/** DeepSeek 开放平台余额查询 + 峰谷时段判断 */
+/** DeepSeek 开放平台余额查询（峰谷时段判断已迁到 b.ai.core.pet.peak.PeakHours） */
 object PetBalance {
     private const val URL_BALANCE = "https://api.deepseek.com/user/balance"
     private const val TIMEOUT_MS = 8000
 
     private val main = Handler(Looper.getMainLooper())
 
-    /**
-     * 是不是错峰时段。官方口径：北京时间每天 00:30–08:30 为错峰，API 打折；
-     * 其余时间为标准时段（高峰）。
-     */
-    fun offPeak(now: Long = System.currentTimeMillis()): Boolean {
-        val c = Calendar.getInstance()
-        c.timeInMillis = now
-        val mins = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
-        return mins in 30 until (8 * 60 + 30)
-    } //峰谷判断
 
     /** 后台查余额，结果回主线程；失败也给一句能看的文案 */
     fun fetchAsync(apiKey: String, cb: (String) -> Unit) {
