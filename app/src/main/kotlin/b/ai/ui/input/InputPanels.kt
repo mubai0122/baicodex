@@ -517,6 +517,8 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                             //切走前先把当前表单值写回旧配置，改了一半的输入不丢
                             Profiles.capture()
                             Profiles.select(p.id)
+                            //写回当前会话：换后端只影响这个对话
+                            b.ai.agent.run.Agent.bindProfile(p.id)
                             //一律进二级卡片：没勾模型时那里有「去设置里选模型」的入口，不再直接关掉面板
                             sub = p.id
                         }
@@ -624,6 +626,7 @@ internal fun ModelPanel(onClose: () -> Unit, onOpenSettings: () -> Unit) {
                             .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
                             .tap {
                                 Profiles.select(one.id)
+                                b.ai.agent.run.Agent.bindProfile(one.id)
                                 Cfg.model = m
                                 Profiles.capture()
                                 onClose()

@@ -95,7 +95,7 @@ object Repo {
     fun blankSession(): SessionRow? {
         r().query(
             "session",
-            arrayOf("id", "title", "category", "descr", "persona", "workspace"),
+            arrayOf("id", "title", "category", "descr", "persona", "workspace", "profile"),
             "NOT EXISTS(SELECT 1 FROM message x WHERE x.session_id=session.id AND x.role='user')",
             null, null, null, "updated_at DESC", "1"
         ).use { c ->
@@ -106,7 +106,8 @@ object Repo {
                     c.getString(2),
                     descr = c.getString(3) ?: "",
                     persona = c.getString(4) ?: "",
-                    workspace = c.getString(5) ?: ""
+                    workspace = c.getString(5) ?: "",
+                    profile = c.getString(6) ?: ""
                 )
             }
         }
@@ -116,7 +117,7 @@ object Repo {
     fun latestSession(): SessionRow? {
         r().query(
             "session",
-            arrayOf("id", "title", "category", "descr", "persona", "workspace"),
+            arrayOf("id", "title", "category", "descr", "persona", "workspace", "profile"),
             null, null, null, null, "updated_at DESC", "1"
         ).use { c ->
             if (c.moveToFirst()) {
@@ -126,7 +127,8 @@ object Repo {
                     c.getString(2),
                     descr = c.getString(3) ?: "",
                     persona = c.getString(4) ?: "",
-                    workspace = c.getString(5) ?: ""
+                    workspace = c.getString(5) ?: "",
+                    profile = c.getString(6) ?: ""
                 )
             }
         }
@@ -137,7 +139,7 @@ object Repo {
     fun session(id: String): SessionRow? {
         r().query(
             "session",
-            arrayOf("id", "title", "category", "descr", "persona", "workspace"),
+            arrayOf("id", "title", "category", "descr", "persona", "workspace", "profile"),
             "id=?", arrayOf(id), null, null, null, "1"
         ).use { c ->
             if (c.moveToFirst()) {
@@ -147,7 +149,8 @@ object Repo {
                     c.getString(2),
                     descr = c.getString(3) ?: "",
                     persona = c.getString(4) ?: "",
-                    workspace = c.getString(5) ?: ""
+                    workspace = c.getString(5) ?: "",
+                    profile = c.getString(6) ?: ""
                 )
             }
         }
@@ -171,6 +174,15 @@ object Repo {
             arrayOf(sessionId)
         )
     } //会话工作区
+
+    fun setProfile(sessionId: String, profileId: String) {
+        w().update(
+            "session",
+            ContentValues().apply { put("profile", profileId) },
+            "id=?",
+            arrayOf(sessionId)
+        )
+    } //会话绑定的模型配置
 
     /** 工作区搬家后把会话里记的旧路径换成新路径：返回改了多少行 */
     fun remapWorkspace(old: String, new: String): Int {
@@ -206,7 +218,7 @@ object Repo {
         //新会话（一条用户消息都没有）永远排最上面，其次置顶，其余按最近交互时间
         val sql = "SELECT s.id,s.title,s.category,s.descr,s.updated_at," +
             "IFNULL(m.content,''),IFNULL(g.cnt,0)," +
-            "s.pinned,s.persona,s.workspace," +
+            "s.pinned,s.persona,s.workspace,s.profile," +
             "CASE WHEN EXISTS(SELECT 1 FROM message x WHERE x.session_id=s.id AND x.role='user') THEN 1 ELSE 0 END AS used " +
             "FROM session s " +
             "LEFT JOIN (SELECT session_id,COUNT(1) cnt,MAX(_id) maxid FROM message GROUP BY session_id) g " +
@@ -226,7 +238,8 @@ object Repo {
                         count = c.getInt(6),
                         pinned = c.getInt(7) == 1,
                         persona = c.getString(8) ?: "",
-                        workspace = c.getString(9) ?: ""
+                        workspace = c.getString(9) ?: "",
+                        profile = c.getString(10) ?: ""
                     )
                 )
             }

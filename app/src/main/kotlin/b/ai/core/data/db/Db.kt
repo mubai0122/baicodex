@@ -19,13 +19,13 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 /** 本地库：会话 + 记录 + 独立用量账 */
-class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 15) {
+class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 16) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS session(" +
                 "id TEXT PRIMARY KEY,title TEXT NOT NULL,category TEXT NOT NULL DEFAULT '',descr TEXT," +
                 "pinned INTEGER NOT NULL DEFAULT 0," +
-                "persona TEXT,workspace TEXT,head_id INTEGER," +
+                "persona TEXT,workspace TEXT,profile TEXT,head_id INTEGER," +
                 "created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)"
         )
         db.execSQL(
@@ -173,6 +173,10 @@ class Db(c: Context) : SQLiteOpenHelper(c.applicationContext, "bai.db", null, 15
         //v14→v15：错误回复补类型列（model / perm / env），界面据此决定挂「重发 / 仍然重发 / 去配置」哪几个按钮
         if (oldVersion < 15) {
             runCatching { db.execSQL("ALTER TABLE message ADD COLUMN err_kind TEXT") }
+        }
+        //v15→v16：会话各自绑定一条模型配置（models.json 里的 id），切对话不再互相顶掉后端
+        if (oldVersion < 16) {
+            runCatching { db.execSQL("ALTER TABLE session ADD COLUMN profile TEXT") }
         }
     } //版本迁移
 

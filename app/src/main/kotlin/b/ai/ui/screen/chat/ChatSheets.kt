@@ -181,6 +181,8 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
                             //切走前先存回旧配置，改了一半的 Key / 模型不会丢
                             Profiles.capture()
                             Profiles.select(p.id)
+                            //写回当前会话：换后端只影响这个对话
+                            b.ai.agent.run.Agent.bindProfile(p.id)
                         }
                         .padding(horizontal = 10.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically

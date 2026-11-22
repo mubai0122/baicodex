@@ -69,6 +69,9 @@ object Profiles {
     val selected: ModelProfile?
         get() = cache.value.firstOrNull { it.id == Cfg.profileId } ?: cache.value.firstOrNull()
 
+    /** 按 id 取一条配置：会话级后端绑定要用它，别把整表暴露出去 */
+    fun byId(id: String): ModelProfile? = cache.value.firstOrNull { it.id == id }
+
     fun init() {
         //外部存储没挂上（direct boot / 开机自启 / 后台起进程）：ensure() 会退回私有目录，
         //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，等界面回来再重试

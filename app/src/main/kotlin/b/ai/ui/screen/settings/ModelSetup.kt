@@ -228,6 +228,8 @@ fun ModelSetupPanel() {
         }
         Profiles.upsert(p)
         Profiles.select(id)
+        b.ai.agent.run.Agent.bindProfile(id)
+        b.ai.agent.run.Agent.bindProfile(id)
         loadForm(p)
         //写盘失败必须当场说清楚：以前这里无论落没落盘都提示「已保存」，重启才发现配置没了
         if (Profiles.lastError.isNotEmpty()) {
@@ -729,6 +731,8 @@ private fun ProfileRow(p: ModelProfile) {
             .tap {
                 //切配置就整组换成那条的已保存内容，表单里没保存的改动会丢
                 Profiles.select(p.id)
+                b.ai.agent.run.Agent.bindProfile(p.id)
+                b.ai.agent.run.Agent.bindProfile(p.id)
             }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
