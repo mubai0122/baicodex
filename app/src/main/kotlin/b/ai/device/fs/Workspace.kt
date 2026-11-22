@@ -36,7 +36,7 @@ object Workspace {
     private const val MAX_FILES = 2000
     private const val MAX_DEPTH = 6
     private const val TREE_CHARS = 4000
-    private const val TREE_TTL = 30_000L
+    private const val TREE_TTL = 180_000L
 
     /** 扫目录时直接跳过的重目录：构建产物与缓存，列出来只会撑爆提示词 */
     private val SKIP = setOf(

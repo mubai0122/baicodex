@@ -25,26 +25,41 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** 系统提示里的环境注入：时间 / 电量 / 位置，缺权限时如实写缺失，不编数据 */
+/**
+ * 系统提示里的环境注入：时间 / 电量 / 位置，缺权限时如实写缺失，不编数据。
+ *
+ * 分两段拼，这是 prompt 缓存的关键：
+ * - [stable]：只含日期（yyyy-MM-dd + 星期），一天之内一字不变 → 拼在 system 最末
+ * - [live]：时分 / 电量 / 位置 / 用量 / 通知，每轮都在变 → 拼在请求体最后
+ * 若把分钟级时间塞进 system 中段，每次请求的前缀都会分叉，服务端自动缓存全部失效，
+ * 长会话每一轮都按原价重算输入。动态内容越靠后，能命中的前缀越长。
+ */
 object Env {
-    /** 拼环境段；三个开关全关时返回空串，请求里就一个字都不多 */
-    fun block(c: Context): String {
-        val any = Cfg.injectTime || Cfg.injectBattery || Cfg.injectPlace || Cfg.injectNoti || Cfg.injectUsage
-        if (!any) return ""
+    /** 稳定段：只有日期与星期，同一天内完全相同，放 system 里不会破缓存 */
+    fun stable(): String {
+        if (!Cfg.injectTime) return ""
+        val day = SimpleDateFormat("yyyy-MM-dd EEEE", Locale.CHINA).format(Date())
+        return "环境：日期 $day（要「现在几点」请看消息末尾的实时环境）。\n"
+    } //稳定环境段：进 system
+
+    /** 实时段：分钟级时间与设备状态，全部挂在请求体末尾，变的是尾巴、前缀照样命中 */
+    fun live(c: Context): String {
         val parts = ArrayList<String>(6)
         if (Cfg.injectTime) {
-            parts.add("时间 " + SimpleDateFormat("yyyy-MM-dd HH:mm EEEE", Locale.CHINA).format(Date()))
+            parts.add("时间 " + SimpleDateFormat("HH:mm", Locale.CHINA).format(Date()))
         }
         if (Cfg.injectBattery) parts.add(battery(c))
         if (Cfg.injectPlace) parts.add(place(c))
         if (Cfg.injectUsage) parts.add(used(c))
         if (Cfg.injectNoti) parts.add(Noti.brief(c, Cfg.notiLimit))
+        //全关或一项都没拼出来：请求里一个字都不多
+        if (parts.isEmpty()) return ""
         //模板走种子（正文在 local.properties），{parts} 由上面各项拼好；缺种子时用代码内兜底
         val tpl = b.ai.BuildConfig.SEED_PROMPT_ENV_BLOCK.trim().ifBlank {
             "环境：{parts}（本机实时数据，够用就直接用，别反问用户）"
         }
-        return tpl.replace("{parts}", parts.joinToString("；")) + "\n"
-    } //环境段
+        return tpl.replace("{parts}", parts.joinToString("；"))
+    } //实时环境段：进请求体尾部
 
     /** 今日使用时长：没授权就如实写缺失，不编数字 */
     private fun used(c: Context): String {
