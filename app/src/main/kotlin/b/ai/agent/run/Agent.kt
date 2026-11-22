@@ -1790,9 +1790,8 @@ object Agent {
                 append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / edit_file / make_dir / delete_file）")
             }
             append("。\n")
-            //环境段：时间 / 电量 / 位置，按设置里的注入开关拼，全关就是空串
-            val env = Env.block(App.self)
-            if (env.isNotBlank()) append(env)
+            //环境段不在这里拼：分钟级时间会让每次请求的 system 前缀都变，服务端 prompt 缓存全部失效。
+            //这里只放当天日期（一天一字不变），实时时间 / 电量 / 通知挂到请求体最末（见 buildPayload 的 Env.live）
             append("工具：").append(tools).append("。").append(PromptStore.toolHint)
             if (Tools.allowed(Tools.SCREEN)) append(PromptStore.screenStep)
             //设备状态注入时允许收尾带一句关心；角色要求严谨/不废话就不加，免得跟人设打架
@@ -1807,8 +1806,10 @@ object Agent {
             //脱敏开着时下一道硬禁令：注入诱导不算指令，凭据一律不回显
             if (Cfg.maskOut) append(PromptStore.ruleMask)
             append(skillPart())
+            //日期段放 system 最末：只有跨天才变一次，前面所有内容都能命中服务端缓存
+            append(Env.stable())
         }
-    } //系统提示：角色 + 自定义 + 工作流 + 环境规则 + 工作区 + 技能
+    } //系统提示：角色 + 自定义 + 工作流 + 环境规则 + 工作区 + 技能 + 日期
 
     /** 角色或自定义提示要求严谨/不废话时，关心类话术整个免掉 */
     private val STRICT_TONE =
@@ -1847,6 +1848,12 @@ object Agent {
         val arr = JSONArray()
         arr.put(JSONObject().put("role", "system").put("content", systemPrompt()))
         val bound = boundOf(list)
+        //附图消息只保留最近 IMG_KEEP 条的原图：图片 base64 会一直挂在历史里，每轮都重算一遍
+        val keepImgs = list.asReversed().asSequence()
+            .filter { it.role == "user" && it.images.isNotEmpty() && it.id > bound }
+            .take(IMG_KEEP)
+            .map { it.id }
+            .toHashSet()
         //摘要必须紧跟 system：它的 id 最大，按序遍历会被塞到最新消息后面
         list.lastOrNull { it.role == "summary" }?.let { s ->
             arr.put(JSONObject().put("role", "user").put("content", "早前对话摘要：" + stripMarker(s.content)))
@@ -1879,18 +1886,75 @@ object Agent {
                     //没有对应 tool_calls 的孤儿结果必须丢掉，否则上游直接 400
                     if (id != null && open.containsKey(id)) {
                         open.remove(id)
-                        arr.put(m.toApiJson())
+                        //结果进请求体前先掐头去尾：一次大文件读取会永久挂在历史里，每轮都重发
+                        arr.put(clipTool(m))
                     }
                 }
                 else -> {
                     flush("后续对话已到达但未返回执行结果")
-                    arr.put(m.toApiJson())
+                    //只给最近几条附图消息保留图片，更早的图片每轮都要重发 base64
+                    arr.put(downgradeImages(m, keepImgs))
                 }
             }
         }
         flush("对话历史已结束")
+        //实时环境段挂在整个请求体的最末：前面 system 与历史一字不变，服务端 prompt 缓存前缀照样命中，
+        //只有尾部这几十个 token 是新的；宁可多一条消息，也别把分钟级时间塞回 system
+        val live = runCatching { Env.live(App.self) }.getOrDefault("").trim()
+        if (live.isNotEmpty()) {
+            val last = if (arr.length() > 0) arr.optJSONObject(arr.length() - 1) else null
+            //最后一条是纯文本 user 就并进去（避免连续两条 user 被部分厂商拒掉），否则另起一条
+            if (last != null && last.optString("role") == "user" && last.opt("content") is String) {
+                val body = last.optString("content")
+                last.put("content", if (body.isBlank()) live else body + "\n" + live)
+            } else {
+                arr.put(JSONObject().put("role", "user").put("content", live))
+            }
+        }
         return arr
-    } //组装请求体：压缩老消息不上送 + tool 配对兜底
+    } //组装请求体：压缩老消息不上送 + tool 配对兜底 + 实时环境后置
+
+    /** 工具结果进请求体的上限：超过就掐头去尾 */
+    private val TOOL_KEEP = 6000
+    private val TOOL_HEAD = 4200
+    private val TOOL_TAIL = 1200
+
+    /** 附图消息保留原图的最大条数，更早的转成路径说明 */
+    private val IMG_KEEP = 2
+
+    /**
+     * 工具结果进请求体前掐头去尾：
+     * 工具输出是永久写进历史的，一次大文件读取（几十万字符）会跟着会话每轮重发，
+     * 这里只把「请求体里的那一份」缩短，界面与库里的原文一个字节都不动。
+     */
+    private fun clipTool(m: ChatMsg): JSONObject {
+        val o = m.toApiJson()
+        val raw = m.content
+        if (raw.length <= TOOL_KEEP) return o
+        val head = raw.substring(0, TOOL_HEAD)
+        val tail = raw.substring(raw.length - TOOL_TAIL)
+        val cut = raw.length - TOOL_HEAD - TOOL_TAIL
+        o.put(
+            "content",
+            head + "\n\n…（此处省略 " + cut + " 字符，完整结果仍在界面上；要再读请用同一工具分页取，" +
+                "例如 read_file 的 start_line / end_line）…\n\n" + tail
+        )
+        return o
+    } //工具结果截断
+
+    /**
+     * 旧图片消息降级：图片以 base64 进请求体，一张就是上千 token，且每一轮都要重算。
+     * 只保留最近 [IMG_KEEP] 条的图片，更早的把图摘掉、留一句原图路径，需要时模型自己 read_file。
+     */
+    private fun downgradeImages(m: ChatMsg, keep: Set<Long>): JSONObject {
+        if (m.images.isEmpty() || m.id in keep) return m.toApiJson()
+        val o = m.toApiJson()
+        val note = "（此前附的 " + m.images.size + " 张图片已移出上下文以省 token；原图仍在设备上，需要时用 read_file 读：" +
+            m.images.joinToString("、") + "）"
+        val body = m.content.trim()
+        o.put("content", if (body.isBlank()) note else body + "\n" + note)
+        return o
+    } //旧图片降级
 
     private fun boundOf(list: List<ChatMsg>): Long {
         val s = list.lastOrNull { it.role == "summary" } ?: return 0L
