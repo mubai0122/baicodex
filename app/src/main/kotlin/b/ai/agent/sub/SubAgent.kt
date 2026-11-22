@@ -205,12 +205,21 @@ object SubAgents {
 
     /** 子智能体一律关思考：并行跑要的是快，不是想得深 */
     private suspend fun ask(msgs: JSONArray, defs: JSONArray?): JSONObject {
-        val key = Cfg.keyList(Cfg.profileId).filter { it.isNotBlank() }.firstOrNull() ?: Cfg.apiKey
-        val client = LlmClient(Cfg.baseUrl, key, Providers.byId(Cfg.providerId).auth, protocol = Cfg.modelProtocol)
+        //优先用主通道本轮的冻结后端：主会话换了模型 / 地址，子任务必须跟着走同一个
+        val b = Agent.subBackend()
+        val key = b?.key ?: (Cfg.keyList(Cfg.profileId).filter { it.isNotBlank() }.firstOrNull() ?: Cfg.apiKey)
+        val client = LlmClient(
+            b?.baseUrl ?: Cfg.baseUrl,
+            key,
+            Providers.byId(b?.providerId ?: Cfg.providerId).auth,
+            protocol = b?.protocol ?: Cfg.modelProtocol
+        )
         return withContext(Dispatchers.IO) {
             client.chat(
-                Cfg.model, msgs, Cfg.temperature.takeIf { it >= 0f }?.toDouble(),
-                false, Cfg.thinkEffort, Cfg.extraParams, defs
+                b?.model ?: Cfg.model, msgs,
+                b?.temperature?.takeIf { it >= 0f }?.toDouble()
+                    ?: Cfg.temperature.takeIf { it >= 0f }?.toDouble(),
+                false, b?.thinkEffort ?: Cfg.thinkEffort, b?.extraParams ?: Cfg.extraParams, defs
             )
         }
     } //一次请求

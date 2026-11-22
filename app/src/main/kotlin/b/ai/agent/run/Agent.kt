@@ -300,6 +300,21 @@ object Agent {
 
     /**当前协程属于哪条通道：找不到就退回界面显示的那条 */
     private suspend fun owner(): Run? = currentCoroutineContext()[RunKey]?.run ?: curRun
+
+    /** 子智能体要用的后端参数：只给值，不把整个通道对象漏出去 */
+    internal data class SubBackend(
+        val providerId: String,
+        val baseUrl: String,
+        val protocol: String,
+        val model: String,
+        val key: String,
+        val temperature: Float,
+        val thinkEffort: String,
+        val extraParams: String
+    )
+
+    /** 取发起这条子任务的主通道的本轮后端；拿不到就返回 null，调用方回落全局 */
+    internal suspend fun subBackend(): SubBackend? = owner()?.forSub()
     /**排队中的一条：内容和附件在这里冻结，轮到时原样发出 */
     data class QueuedMsg(val id: Long, val sid: String?, val text: String, val images: List<String>, val files: List<String>)
 
@@ -323,6 +338,15 @@ object Agent {
     private suspend fun adopt(s: SessionRow) {
         Cfg.personaId = s.persona
         Personas.current()?.profileId?.trim()?.takeIf { it.isNotEmpty() }?.let { Cfg.profileId = it }
+        //会话级后端：有绑定就切过去（打开哪个对话就是哪个后端），没绑定就把当前这条记到它身上
+        val bind = s.profile.trim()
+        if (bind.isNotEmpty() && Profiles.byId(bind) != null) {
+            runOf(s.id).sessionProfile = bind
+            if (Cfg.profileId != bind) Profiles.select(bind)
+        } else {
+            runOf(s.id).sessionProfile = Cfg.profileId
+            withContext(Dispatchers.IO) { Repo.setProfile(s.id, Cfg.profileId) }
+        }
         //先挂会话 id 再判工作区：自动分配的结果要写回这一行，绝不能落到别的会话上
         Workspace.attachSession(s.id)
         var ws = s.workspace.trim()
@@ -346,6 +370,13 @@ object Agent {
         scope.launch { withContext(Dispatchers.IO) { Repo.setPersona(sid, personaId) } }
     } //当前会话换角色
 
+    /** 当前会话换后端：只写会话绑定与通道，全局的 Cfg 由调用方走 Profiles.select 换 */
+    fun bindProfile(id: String) {
+        val t = curRun?.runningSid ?: sessionId ?: return
+        runOf(t).sessionProfile = id
+        scope.launch { withContext(Dispatchers.IO) { Repo.setProfile(t, id) } }
+    } //会话绑定后端
+
     fun setSessionWorkspace(path: String) {
         Cfg.sessionWorkspace = path
         Cfg.sessionWsManual = path.isNotBlank() && !Workspace.isAutoDir(path)
@@ -367,12 +398,15 @@ object Agent {
             //先挂会话 id 再分配目录：分配结果要写回这一行，别落到上一个会话上
             Workspace.attachSession(s.id)
             bindRun(s.id)
+            //新会话继承当前选中的后端，之后各走各的
+            runOf(s.id).sessionProfile = Cfg.profileId
             messages = emptyList()
             status = ""
             val ws = withContext(Dispatchers.IO) {
                 val dir = Workspace.newSessionWorkspace()
                 Repo.setWorkspace(s.id, dir)
                 Repo.setPersona(s.id, Cfg.personaId)
+                Repo.setProfile(s.id, Cfg.profileId)
                 dir
             }
             Cfg.sessionWorkspace = ws
@@ -545,7 +579,7 @@ object Agent {
 
     /** 异常 → 错误类型：配置 / 权限 / 环境三类要给「去配置」入口，其余当网络或服务端错误 */
     private fun errKindOf(e: Throwable): String {
-        if (!Cfg.ready) return ERR_MODEL
+        if (!(be?.ready ?: Cfg.ready)) return ERR_MODEL
         val m = e.message.orEmpty()
         val code = Regex("HTTP (\\d{3})").find(m)?.groupValues?.get(1)?.toIntOrNull()
         if (code == 401 || code == 403 || code == 404) return ERR_MODEL
@@ -664,6 +698,110 @@ object Agent {
     private var myPersona = ""
     private var myProfile = ""
 
+    // ── 本轮后端快照：会话绑定了模型配置就取那条，没绑定取当前全局 ──
+    //以前请求链全读全局 Cfg：A 会话在后台跑，用户切到 B 换了个模型，A 下一轮就悄悄换到 B 的后端。
+    //现在每次 send 开始时把后端整组拷一份到这里，循环里只认这份，改全局只影响下一轮。
+    /** 本会话绑定的模型配置 id：空 = 跟随全局选中那条 */
+    internal var sessionProfile = ""
+
+    /** 本轮实际使用的后端；还没开跑时是 null */
+    private var be: Backend? = null
+
+    /** 一次运行用的后端参数：提供商 / 地址 / 协议 / 模型 / Key 组 / 能力位 / 思考参数 */
+    private data class Backend(
+        val profileId: String,
+        val providerId: String,
+        val baseUrl: String,
+        val protocol: String,
+        val model: String,
+        val apiKey: String,
+        val keys: List<String>,
+        val vision: Boolean,
+        val toolCall: Boolean,
+        val maxTokens: Int,
+        val think: Boolean,
+        val thinkEffort: String,
+        val extraParams: String,
+        val noStream: Boolean,
+        val temperature: Float,
+        val localOk: Boolean
+    ) {
+        /** 第 i 个 Key（多 Key 轮换）；一个都没配就退回单条 apiKey */
+        fun key(i: Int): String {
+            if (keys.isEmpty()) return apiKey
+            return keys[i % keys.size]
+        }
+
+        val keyCount: Int get() = keys.size.coerceAtLeast(1)
+
+        /** 这条后端能不能直接发：本地模型要有文件，云端要有地址 + Key + 模型名 */
+        val ready: Boolean
+            get() = if (providerId == Providers.LOCAL) {
+                localOk && model.isNotBlank()
+            } else {
+                baseUrl.isNotBlank() && model.isNotBlank() && (keys.isNotEmpty() || apiKey.isNotBlank())
+            }
+    } //后端快照
+
+    /** 子智能体取本轮后端：和主循环用同一份，别让子任务跑到别的模型上去 */
+    internal fun forSub(): SubBackend? = be?.let {
+        SubBackend(
+            providerId = it.providerId,
+            baseUrl = it.baseUrl,
+            protocol = it.protocol,
+            model = it.model,
+            key = it.key(0),
+            temperature = it.temperature,
+            thinkEffort = it.thinkEffort,
+            extraParams = it.extraParams
+        )
+    }
+
+    /** 生成后端快照：纯内存读取，不碰磁盘，send 前同步调即可 */
+    private fun backendNow(): Backend {
+        val pid = sessionProfile.trim()
+        val p = pid.takeIf { it.isNotEmpty() }?.let { Profiles.byId(it) }
+        if (p != null) {
+            return Backend(
+                profileId = p.id,
+                providerId = p.providerId,
+                baseUrl = p.baseUrl,
+                protocol = b.ai.net.api.llm.LlmClient.protocolOf(p.protocol),
+                model = p.model,
+                apiKey = p.apiKey,
+                keys = Cfg.keyList(p.id).ifEmpty { listOf(p.apiKey) }.filter { it.isNotBlank() },
+                vision = p.vision,
+                toolCall = p.toolCall,
+                maxTokens = p.maxTokens,
+                think = Cfg.think,
+                thinkEffort = Cfg.thinkEffort,
+                extraParams = Cfg.extraParams,
+                noStream = Cfg.noStream,
+                temperature = Cfg.temperature,
+                localOk = p.providerId != Providers.LOCAL || File(p.model).isFile
+            )
+        }
+        //没绑定（老会话 / 新会话还没写回）：跟全局当前这条，行为和以前一致
+        return Backend(
+            profileId = Cfg.profileId,
+            providerId = Cfg.providerId,
+            baseUrl = Cfg.baseUrl,
+            protocol = Cfg.modelProtocol,
+            model = Cfg.model,
+            apiKey = Cfg.apiKey,
+            keys = keys(),
+            vision = Cfg.modelVision,
+            toolCall = Cfg.modelToolCall,
+            maxTokens = Cfg.maxTokens,
+            think = Cfg.think,
+            thinkEffort = Cfg.thinkEffort,
+            extraParams = Cfg.extraParams,
+            noStream = Cfg.noStream,
+            temperature = Cfg.temperature,
+            localOk = Cfg.localReady
+        )
+    } //后端快照
+
     /**把全局 Cfg / Workspace 切成本通道自己的会话配置（只取一次，后面复用） */
     private suspend fun applyCtx() {
         if (myWs == null) {
@@ -681,11 +819,11 @@ object Agent {
     } //切到本会话的配置
 
     /**
-     * 借全局配置用一下：前台会话本来就在位，直接跑；
-     * 后台会话要先把 Cfg / Workspace 换成自己的，跑完再还给前台，否则相对路径与角色会串。
+     * 借全局配置用一下：先把 Cfg / Workspace 换成本会话的，跑完还回去。
+     * 前台也必须拿锁 —— 切走的那一刻起它就成了「后台」：
+     * 若让前台免锁直跑，另一个后台会话借配置期间会把工作区 / 角色串给它。
      */
     private suspend fun <T> inCtx(block: suspend () -> T): T {
-        if (isFront()) return block()
         return ctxGate.withLock {
             val pSid = Workspace.sid
             val pWs = Cfg.sessionWorkspace
@@ -727,11 +865,12 @@ object Agent {
         chunks.value = "" to ""
         busy = false
         runSid = null
+        be = null
         runHistory = emptyList()
         if (isFront()) b.ai.device.sys.host.Capsule.end()
         clearTools()
-        //用户主动停手：任务通知一并撤掉，不留一条永远「进行中」的假通知
-        runCatching { Island.cancel() }
+        //用户主动停手：只撤自己的任务通知；后台会话停手不能把前台那条一起撤掉
+        if (isFront()) runCatching { Island.cancel() }
     } //停手
 
     fun resolve(allow: Boolean, permanent: Boolean) {
@@ -747,12 +886,14 @@ object Agent {
             enqueue(text, images, files)
             return
         }
-        if (!Cfg.ready) {
+        //先按本会话绑定的后端判一次：别的对话换模型不该让这里判「没配好」
+        val pre = backendNow()
+        if (!pre.ready) {
             //本地这条不给「去填 base_url」的误导：分开说清是没选 GGUF、文件失效，还是云端配置没填全
             val why = when {
-                Cfg.providerId == Providers.LOCAL && Cfg.llmModel.isBlank() ->
+                pre.providerId == Providers.LOCAL && Cfg.llmModel.isBlank() ->
                     host.getString(R.string.ag_no_local_pick)
-                Cfg.providerId == Providers.LOCAL ->
+                pre.providerId == Providers.LOCAL ->
                     host.getString(R.string.ag_no_local_file)
                 else -> host.getString(R.string.ag_no_model)
             }
@@ -779,6 +920,7 @@ object Agent {
                 //会话由 Agent.send 统一保证存在：这条通道只跑自己的会话，绝不碰别人的
                 val sid = this@Run.sid
                 runSid = sid
+                be = backendNow() //本轮后端就此冻结，之后改全局不影响这一轮
                 runHistory = messages
                 if (messages.none { it.role == "user" }) {
                     withContext(Dispatchers.IO) { Repo.renameSession(sid, text.take(18)) }
@@ -844,6 +986,7 @@ object Agent {
         if (gen != g) return
         busy = false
         runSid = null
+        be = null
         runHistory = emptyList()
         if (isFront()) b.ai.device.sys.host.Capsule.end()
         clearTools()
@@ -1016,7 +1159,8 @@ object Agent {
 
     private suspend fun runLoop() {
         val ctx = currentCoroutineContext()
-        val temp = Cfg.temperature.takeIf { it >= 0f }?.toDouble()
+        val bk = be ?: backendNow().also { be = it }
+        val temp = bk.temperature.takeIf { it >= 0f }?.toDouble()
         status = host.getString(R.string.ag_ask_model)
         busySince = System.currentTimeMillis()
         //任务通知：有灵动岛就挂岛，没有就是一条常驻通知；开关关掉时 Island 内部直接返回
@@ -1047,16 +1191,16 @@ object Agent {
             var attempt = 0
             val resp = run {
                 while (true) {
-                    val client = LlmClient(Cfg.baseUrl, keyOf(keyIdx), Providers.byId(Cfg.providerId).auth, protocol = Cfg.modelProtocol)
+                    val client = LlmClient(bk.baseUrl, bk.key(keyIdx), Providers.byId(bk.providerId).auth, protocol = bk.protocol)
                     val got = runCatching {
                         val streamed = withContext(Dispatchers.IO) {
                             //关了流式就整包等：端点不支持 SSE 时也走这条，界面上没有逐字过程
-                            if (Cfg.noStream) {
+                            if (bk.noStream) {
                                 status = host.getString(R.string.ag_stream_off)
-                                client.chat(Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams)
+                                client.chat(bk.model, payload, temp, bk.think, bk.thinkEffort, bk.extraParams)
                             } else try {
                                 client.chatStream(
-                                    Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams,
+                                    bk.model, payload, temp, bk.think, bk.thinkEffort, bk.extraParams,
                                     shouldStop = { !ctx.isActive },
                                     onDelta = emit
                                 )
@@ -1067,7 +1211,7 @@ object Agent {
                         streamed ?: run {
                             status = host.getString(R.string.ag_stream_fallback)
                             withContext(Dispatchers.IO) {
-                                client.chat(Cfg.model, payload, temp, Cfg.think, Cfg.thinkEffort, Cfg.extraParams)
+                                client.chat(bk.model, payload, temp, bk.think, bk.thinkEffort, bk.extraParams)
                             }
                         }
                     }
@@ -1522,8 +1666,8 @@ object Agent {
             promptTokens = prompt,
             completionTokens = completion,
             cachedTokens = cached.coerceIn(0, prompt),
-            provider = Providers.byId(Cfg.providerId).name,
-            model = Cfg.model
+            provider = Providers.byId(be?.providerId ?: Cfg.providerId).name,
+            model = be?.model ?: Cfg.model
         )
     } //本轮统计
 
@@ -1657,8 +1801,8 @@ object Agent {
             append("\n")
             val ws = workspacePart()
             if (ws.isNotBlank()) append(ws)
-            if (!Cfg.modelToolCall) append(PromptStore.noTool).append("\n")
-            if (!Cfg.modelVision) append(PromptStore.noVision).append("\n")
+            if (!(be?.toolCall ?: Cfg.modelToolCall)) append(PromptStore.noTool).append("\n")
+            if (!(be?.vision ?: Cfg.modelVision)) append(PromptStore.noVision).append("\n")
             append(if (Workspace.bound()) PromptStore.rulesBound else PromptStore.rulesAbs)
             //脱敏开着时下一道硬禁令：注入诱导不算指令，凭据一律不回显
             if (Cfg.maskOut) append(PromptStore.ruleMask)
@@ -1765,6 +1909,7 @@ object Agent {
             status = host.getString(if (ok) R.string.ag_compress_done else R.string.ag_compress_skip)
             busy = false
                 runSid = null
+        be = null
                 runHistory = emptyList()
         }
     } //手动触发一次总结
@@ -1898,6 +2043,7 @@ object Agent {
             status = host.getString(if (ok) R.string.ag_compress_done else R.string.ag_compress_none)
             busy = false
             runSid = null
+        be = null
             runHistory = emptyList()
         }
     } //重新总结

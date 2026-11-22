@@ -80,7 +80,9 @@ data class SessionRow(
     /** 会话自己的智能体角色 id，空 = 默认助手 */
     val persona: String = "",
     /** 会话自己的工作区目录，空 = 用全局兜底 */
-    val workspace: String = ""
+    val workspace: String = "",
+    /** 会话自己绑定的模型配置 id（models.json 里的条目），空 = 跟随全局当前选中 */
+    val profile: String = ""
 )
 
 /** 工具调用 */
