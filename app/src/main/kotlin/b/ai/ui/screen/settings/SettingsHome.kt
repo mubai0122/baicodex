@@ -51,8 +51,8 @@ import b.ai.ui.widget.tap
  */
 fun LazyListScope.seCatHome(catLabel: Int, sub: String, pages: List<SePage>, onOpen: (SePage) -> Unit) {
     item {
-        //分类名已经在标题栏右侧回显，这里不再重复画一遍大标题
-        if (sub.isNotBlank()) SectionTitle(stringResource(catLabel), sub)
+        //分类名的标题固定画出来：原来只在 sub 非空时画，导致分类页卡片上面光秃秃没有标题
+        SectionTitle(stringResource(catLabel), sub.ifBlank { null })
         CardBox {
             pages.forEachIndexed { i, p ->
                 if (i > 0) Spacer(Modifier.height(2.dp))

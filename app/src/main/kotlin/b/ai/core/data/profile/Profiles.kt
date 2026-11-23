@@ -72,6 +72,21 @@ object Profiles {
     /** 按 id 取一条配置：会话级后端绑定要用它，别把整表暴露出去 */
     fun byId(id: String): ModelProfile? = cache.value.firstOrNull { it.id == id }
 
+    /**
+     * 余额查询来源（DeepSeek 官方 /user/balance 只认官方 Key）：
+     * ① 用户在「余额查询来源」里显式指定过、且该配置还在 → 用它；
+     * ② 否则自动：优先 providerId == deepseek 的那条（列表顺序 = 添加顺序，越早越靠前）；
+     * ③ 再否则退列表第一条（= 最先添加 / 社区列表最上面）；
+     * ④ 一条配置都没有 → null，调用方直接跳过查询。
+     */
+    fun balanceSource(): ModelProfile? {
+        val list = cache.value
+        if (list.isEmpty()) return null
+        val picked = Cfg.balProfileId
+        if (picked.isNotBlank()) list.firstOrNull { it.id == picked }?.let { return it }
+        return list.firstOrNull { it.providerId == Providers.DEEPSEEK } ?: list.first()
+    } //余额来源
+
     fun init() {
         //外部存储没挂上（direct boot / 开机自启 / 后台起进程）：ensure() 会退回私有目录，
         //这时"读不到文件"不等于用户没配过，一律不读盘也不落盘，等界面回来再重试

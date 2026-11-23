@@ -24,6 +24,14 @@ import b.ai.core.cfg.io.Paths
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * 工作区绑定：模型给的相对路径一律落到绑定目录，命令默认在该目录里执行。
@@ -37,6 +45,14 @@ object Workspace {
     private const val MAX_DEPTH = 6
     private const val TREE_CHARS = 4000
     private const val TREE_TTL = 180_000L
+    /** 工作区清单缓存：进设置页就会扫一次，2 分钟内复用；点「重新扫一遍」走 force 绕过 */
+    private const val SCAN_TTL = 120_000L
+    /** 并发宽度：/sdcard 是 FUSE，listFiles 串行最慢，4 路同时铺开能把大目录扫盘时间砍到 1/3 左右 */
+    private const val SCAN_PAR = 4
+    /** 工作区列表缓存：每个工作区都要递归统计文件数与体积，60 秒内复用 */
+    private const val ALL_TTL = 60_000L
+    /** 单个工作区统计上限：超过就截断（大目录如内置存储根不该把设置页拖住） */
+    private const val STAT_MAX_FILES = 20_000
 
     /** 扫目录时直接跳过的重目录：构建产物与缓存，列出来只会撑爆提示词 */
     private val SKIP = setOf(
@@ -55,6 +71,8 @@ object Workspace {
     fun attachSession(id: String?) {
         sid = id
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
     } //挂当前会话
 
     /** 本会话记着的目录，Cfg.sessionWorkspace 就是它的缓存 */
@@ -87,6 +105,8 @@ object Workspace {
         Cfg.sessionWsManual = false
         runCatching { Repo.setWorkspace(id, dir.absolutePath) }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return dir.absolutePath
     } //给当前会话新开目录
 
@@ -120,6 +140,8 @@ object Workspace {
         Cfg.sessionWsManual = true
         runCatching { Repo.setWorkspace(id, hit) }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return hit
     } //认领旧全局绑定
 
@@ -129,6 +151,8 @@ object Workspace {
         Cfg.sessionWorkspace = ""
         Cfg.sessionWsManual = false
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         //关掉「新会话自动绑定」= 所有会话共用一个内置默认工作区，不是空工作区
         if (!Cfg.autoBindWorkspace) return defaultWs()
         return assign()
@@ -137,6 +161,8 @@ object Workspace {
     /** 设置项切换后清缓存，避免还拿旧目录的树 */
     fun invalidate() {
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
     } //清目录树缓存
 
     /** 目录是不是自动给的（哈希工作区或内置默认工作区，false = 用户自己挑的） */
@@ -180,29 +206,57 @@ object Workspace {
 
     data class Entry(val rel: String, val size: Long, val dir: Boolean, val mtime: Long)
 
-    /** 扫一遍：文件与目录清单，跳过构建产物目录 */
-    fun scan(): List<Entry> {
+    /** 扫一遍：文件与目录清单，跳过构建产物目录；force = 无视缓存重扫 */
+    fun scan(force: Boolean = false): List<Entry> {
         if (!ensure()) return emptyList()
+        val key = root().absolutePath
+        val now = System.currentTimeMillis()
+        //短缓存：设置页进一次扫一次，切分类/返回时不必再遍历整棵目录
+        if (!force) cachedScan?.let { if (it.first == key && now - it.second < SCAN_TTL) return it.third }
         val out = ArrayList<Entry>()
-        walk(root(), 1, "", out)
-        return out
+        val budget = AtomicInteger(MAX_FILES)
+        //每个目录的 listFiles 单独吃许可，父子之间不占着等，避免自锁
+        runBlocking(Dispatchers.IO) { walkPar(root(), "", 1, out, budget, Semaphore(SCAN_PAR)) }
+        //并发回来的顺序是乱的，按相对路径排一次，索引与 UI 的展示顺序才稳定
+        val list = out.sortedBy { it.rel }
+        cachedScan = Triple(key, now, list)
+        return list
     } //扫描清单
 
-    private fun walk(dir: File, depth: Int, prefix: String, out: MutableList<Entry>) {
-        if (depth > MAX_DEPTH || out.size >= MAX_FILES) return
-        val kids = runCatching { dir.listFiles()?.sortedBy { it.name.lowercase() } }.getOrNull() ?: return
+    /** 并发遍历：父子目录各起协程，只把 listFiles 这一步卡在许可里 */
+    private suspend fun walkPar(
+        dir: File,
+        prefix: String,
+        depth: Int,
+        out: MutableList<Entry>,
+        budget: AtomicInteger,
+        sem: Semaphore
+    ) {
+        if (depth > MAX_DEPTH || budget.get() <= 0) return
+        //只锁住取子项这一步：递归时不持许可，父子同时等着也不会自锁
+        val kids = sem.withPermit {
+            runCatching { dir.listFiles()?.sortedBy { it.name.lowercase() } }.getOrNull()
+        } ?: return
+        val subs = ArrayList<Triple<File, String, Int>>()
         for (f in kids) {
-            if (out.size >= MAX_FILES) return
+            if (budget.get() <= 0) break
             val rel = if (prefix.isEmpty()) f.name else "$prefix/${f.name}"
             if (f.isDirectory) {
                 if (f.name in SKIP) continue
-                out.add(Entry(rel, 0L, true, f.lastModified()))
-                walk(f, depth + 1, rel, out)
+                budget.decrementAndGet()
+                synchronized(out) { out.add(Entry(rel, 0L, true, f.lastModified())) }
+                subs.add(Triple(f, rel, depth + 1))
             } else {
-                out.add(Entry(rel, f.length(), false, f.lastModified()))
+                budget.decrementAndGet()
+                synchronized(out) { out.add(Entry(rel, f.length(), false, f.lastModified())) }
             }
         }
-    } //深度受限遍历
+        if (subs.isEmpty()) return
+        //子目录并发铺开：out 是共享 List，写入处已加锁
+        coroutineScope {
+            subs.forEach { (d, p, dp) -> launch { walkPar(d, p, dp, out, budget, sem) } }
+        }
+    } //并发深度受限遍历
 
     /** 重写 workspace.json，返回写入的条目数 */
     fun index(): Int {
@@ -231,6 +285,8 @@ object Workspace {
             .put("dir_list", dirs)
         runCatching { File(path(), INDEX).writeText(o.toString(2)) }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return list.size
     } //写索引文件
 
@@ -246,6 +302,17 @@ object Workspace {
 
     @Volatile
     private var cachedTree: Pair<Long, String>? = null
+
+    /** 工作区清单缓存：(目录绝对路径, 时间戳, 清单) */
+    @Volatile
+    private var cachedScan: Triple<String, Long, List<Entry>>? = null
+
+    /** 工作区列表缓存：(时间戳, 列表)：统计每个工作区的文件数是重活，60 秒内复用 */
+    @Volatile
+    private var cachedAll: Pair<Long, List<WsInfo>>? = null
+
+    /** 单目录统计缓存：路径 → (目录 mtime, 文件数, 体积)；目录 mtime 变了才重算 */
+    private val statCache = ConcurrentHashMap<String, Triple<Long, Int, Long>>()
 
     /** 目录树摘录，给系统提示用；30 秒内复用，避免每轮都扫盘 */
     fun tree(): String {
@@ -298,6 +365,8 @@ object Workspace {
         Cfg.sessionWsManual = true
         sid?.let { s -> runCatching { Repo.setWorkspace(s, abs) } }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         index()
         return true
     } //绑定并建目录到当前会话
@@ -309,6 +378,8 @@ object Workspace {
         Cfg.sessionWsManual = false
         sid?.let { s -> runCatching { Repo.setWorkspace(s, "") } }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
     } //解除本会话绑定，不动内置默认工作区
 
     /** 常用目录候选：设置页与绑定页的快捷胶囊；当前工作区排第一个 */
@@ -337,6 +408,10 @@ object Workspace {
         val exists: Boolean
     ) {
         val unbound: Boolean get() = sessions.isEmpty()
+
+        /** 是否是内置默认工作区：不允许删除，列表里永远置顶 */
+        val isDefault: Boolean
+            get() = path == runCatching { Paths.defaultWorkspace().absolutePath }.getOrDefault("")
     }
 
     /** 老版遗留的哈希工作区：挂在数据根下、还没搬进 workspace/ 的那些 */
@@ -347,15 +422,24 @@ object Workspace {
             .orEmpty()
     }.getOrDefault(emptyList()) //老目录清单
 
-    /** 目录里普通文件的个数与总体积，跳过 SKIP 重目录 */
+    /** 目录里普通文件的个数与总体积：先吃缓存，再看工作区索引头，最后才真扫 */
     private fun stat(f: File): Pair<Int, Long> {
+        val key = f.absolutePath
+        val m = runCatching { f.lastModified() }.getOrDefault(0L)
+        //目录 mtime 一变就重算：增删子项都会动它，够用来判失效
+        statCache[key]?.let { c -> if (c.first == m) return c.second to c.third }
+        indexStat(f)?.let { (n, b) ->
+            statCache[key] = Triple(m, n, b)
+            return n to b
+        }
         var files = 0
         var bytes = 0L
         runCatching {
             val stack = ArrayDeque<File>()
             stack.add(f)
             var guard = 0
-            while (stack.isNotEmpty() && guard++ < 4000) {
+            //guard 限目录数、STAT_MAX_FILES 限文件数：绑了内置存储根之类的大目录也不会把设置页拖住
+            while (stack.isNotEmpty() && guard++ < 4000 && files < STAT_MAX_FILES) {
                 val d = stack.removeFirst()
                 d.listFiles()?.forEach { k ->
                     if (k.isDirectory) {
@@ -367,8 +451,27 @@ object Workspace {
                 }
             }
         }
+        statCache[key] = Triple(m, files, bytes)
         return files to bytes
     } //统计目录内容
+
+    /** 从工作区索引头部抠出文件数与体积：不解析整张 file_list，大目录能省掉一次递归 */
+    private fun indexStat(f: File): Pair<Int, Long>? = runCatching {
+        val idx = File(f, INDEX)
+        if (!idx.isFile) {
+            null
+        } else {
+            //索引是 toString(2) 写出来的，root/name/scanned_at/files/dirs/bytes 都在头部 1KB 内
+            val head = idx.inputStream().use { ins ->
+                val buf = ByteArray(1024)
+                val n = ins.read(buf)
+                if (n <= 0) "" else String(buf, 0, n, Charsets.UTF_8)
+            }
+            val files = Regex("\"files\"\\s*:\\s*(\\d+)").find(head)?.groupValues?.get(1)?.toIntOrNull()
+            val bytes = Regex("\"bytes\"\\s*:\\s*(\\d+)").find(head)?.groupValues?.get(1)?.toLongOrNull()
+            if (files == null || bytes == null) null else files to bytes
+        }
+    }.getOrNull() //索引里的统计
 
     /**
      * 一键迁移：把老版挂在数据根下的哈希工作区搬进 workspace/，同步 Cfg 里记的路径与所有会话语录。
@@ -400,11 +503,16 @@ object Workspace {
             if (Cfg.sessionWorkspace.trim().trimEnd('/') == ob) Cfg.sessionWorkspace = nb
         }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return null
     } //迁移旧工作区
 
     /** 枚举所有工作区：workspace/ 下的新目录 + 老版本哈希目录 + 会话绑定的目录 + 全局显式绑定 */
-    fun listAll(): List<WsInfo> {
+    fun listAll(force: Boolean = false): List<WsInfo> {
+        val now = System.currentTimeMillis()
+        //单目录统计按 mtime 缓存在 statCache，这里只是整表缓存；force = 强制重算
+        if (!force) cachedAll?.let { if (now - it.first < ALL_TTL) return it.second }
         val bind = runCatching { Repo.workspaceBindings() }.getOrDefault(emptyMap())
         val paths = LinkedHashSet<String>()
         //新老两处都扫：迁移没跑过的老目录也要能看见、能删
@@ -418,7 +526,7 @@ object Workspace {
         val fixed = Cfg.workspace.trim().trimEnd('/')
         if (fixed.isNotEmpty()) paths.add(fixed)
         val cur = path()
-        return paths.map { p ->
+        val list = paths.map { p ->
             val f = File(p)
             val (files, bytes) = if (f.isDirectory) stat(f) else 0 to 0L
             WsInfo(
@@ -430,7 +538,14 @@ object Workspace {
                 current = p == cur,
                 exists = f.isDirectory
             )
-        }.sortedWith(compareByDescending<WsInfo> { it.current }.thenByDescending { it.files })
+        }.sortedWith(
+            //默认工作区永远置顶，其次当前使用中，最后按文件数排
+            compareByDescending<WsInfo> { it.isDefault }
+                .thenByDescending { it.current }
+                .thenByDescending { it.files }
+        )
+        cachedAll = now to list
+        return list
     } //列出所有工作区
 
     /** 删除一个工作区目录：当前使用的、被会话绑定的、数据根本身、内置默认工作区一律拒删 */
@@ -446,27 +561,48 @@ object Workspace {
         if (bind.containsKey(abs)) return c.getString(R.string.ws_del_bound)
         val ok = runCatching { f.deleteRecursively() }.getOrDefault(false)
         if (!ok) return c.getString(R.string.ws_del_fail)
+        statCache.remove(abs)
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return null
     } //安全删除工作区
 
     /** 一键清理未使用：只扫没被任何会话绑定的，当前使用中的、数据根、内置默认工作区一律跳过；回调给清理进度 */
     fun purgeUnused(c: Context, onStep: (Int, Int, String) -> Unit): Triple<Int, Long, Int> {
         val def = Paths.defaultWorkspace().absolutePath
-        val batch = listAll().filter { it.unbound && !it.current && it.exists && it.path != def }
+        val base = Paths.base().absolutePath
+        val cur = runCatching { path() }.getOrDefault("")
+        //绑定表一次取全：以前每个目录删之前都回表查一遍，几十个目录就是几十次 SQLite
+        val bindAll = runCatching { Repo.workspaceBindings() }.getOrDefault(emptyMap())
+        val batch = listAll(true).filter { it.unbound && !it.current && it.exists && it.path != def }
         var ok = 0
         var bytes = 0L
         var bad = 0
         batch.forEachIndexed { i, w ->
             onStep(i + 1, batch.size, w.name)
-            if (delete(c, w.path) == null) {
+            val abs = Router.normalize(w.path.trim()).trimEnd('/')
+            //就地判定，不再调 delete()：省掉它每次都重查绑定表与清全局缓存
+            val err = when {
+                abs.isBlank() || abs == base -> c.getString(R.string.ws_del_root)
+                abs == def -> c.getString(R.string.ws_del_default)
+                abs == cur -> c.getString(R.string.ws_del_inuse)
+                bindAll.containsKey(abs) -> c.getString(R.string.ws_del_bound)
+                !File(abs).isDirectory -> c.getString(R.string.ws_del_gone)
+                !runCatching { File(abs).deleteRecursively() }.getOrDefault(false) -> c.getString(R.string.ws_del_fail)
+                else -> null
+            }
+            if (err == null) {
                 ok++
                 bytes += w.bytes
+                statCache.remove(abs)
             } else {
                 bad++
             }
         }
         cachedTree = null
+        cachedScan = null
+        cachedAll = null
         return Triple(ok, bytes, bad)
     } //批量清理未使用工作区
 } //工作区绑定

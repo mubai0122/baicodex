@@ -43,6 +43,7 @@ import b.ai.ui.glass.pageBg
 import b.ai.ui.screen.stat.StatUi
 import b.ai.ui.screen.stat.statTab
 import b.ai.ui.widget.AvatarPick
+import b.ai.core.data.db.Repo
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.ChoiceRow
 import b.ai.ui.widget.Field
@@ -247,8 +248,8 @@ import b.ai.ui.theme.LocalUserFont
 import kotlin.math.roundToInt
 
 private val SettingsTabs = listOf(
-    FloatTab(R.string.se_001) { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_002) { c -> Icon(Icons.Filled.Email, null, tint = c, modifier = Modifier.size(18.dp)) },
+    FloatTab(R.string.se_001) { c -> Icon(Icons.Filled.Settings, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_003) { c -> Icon(Icons.Filled.Create, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_005) { c -> Icon(Icons.Filled.MoreVert, null, tint = c, modifier = Modifier.size(18.dp)) },
     FloatTab(R.string.se_004) { c -> Icon(Icons.Filled.List, null, tint = c, modifier = Modifier.size(18.dp)) },
@@ -276,6 +277,8 @@ private data class SettingEntry(val labelRes: Int, val tabRes: Int, val hintRes:
 private val PageHints = mapOf(
     "model_cfg" to "提供商 APIKey 模型 能力 深度思考 切换",
     "model_param" to "温度 top_p token 参数 思考强度",
+    //思考配置页此前漏了关键词，搜索「思考规则」找不到，补上
+    "model_think" to "思考 思考规则 深度思考 reasoning 模型名匹配 下发字段 强度 预算 规则引擎",
     "model_voice" to "TTS 朗读 音色 语速 语音识别 STT 麦克风",
     "model_mem" to "记忆 长期记忆 偏好 自动整理",
     "model_local" to "GGUF 本地模型 离线 量化 推理",
@@ -286,6 +289,8 @@ private val PageHints = mapOf(
     "chat_session" to "会话 历史 导出 收藏夹 工作区",
     "chat_tags" to "提示词 标签 片段 全局启用",
     "chat_perm" to "权限 工作方式 Shizuku Root 无障碍 悬浮窗 实验性",
+    //收藏夹页此前漏了关键词
+    "chat_star" to "收藏夹 收藏 星标 置顶 重要会话 归档",
     "ui_look" to "语言 主题色 字号 背景 玻璃质感 卡片 圆角 输入框 字体 深色",
     "ui_md" to "Markdown 行距 段间距 代码字号 留白 排版",
     "ui_person" to "头像 气泡 胶囊 桌宠",
@@ -352,6 +357,11 @@ private val SettingIndex = pageEntries + listOf(
     SettingEntry(R.string.se_pg_md, R.string.se_003, hintRaw = "Markdown 行距 段间距 缩进 留白 代码字号 排版 预览", pageId = "ui_md"),
     //外观新增的字体与控件外观：字体文件 / 各气泡字体 / 全局缩进 / 弹窗圆角 / miuix 滑块
     SettingEntry(R.string.se_032, R.string.se_003, hintRaw = "字体 字体文件 气泡字体 导入 全局缩进 弹窗圆角 滑块 miuix 轨道 主题色", pageId = "ui_look"),
+    //余额通知：个性化页最下方的开关与阈值滑块
+    SettingEntry(R.string.se_bal, R.string.se_003, hintRaw = "余额 余额通知 低余额提醒 阈值 DeepSeek 充值", pageId = "ui_person"),
+    //会话列表：置顶 / 重命名 / 删除确认、C 端后缀、从 DeepSeek 导入历史
+    SettingEntry(R.string.se_pg_chat_session, R.string.se_002, hintRaw = "会话列表 重命名 删除 置顶 从 DeepSeek 导入历史 C 端 后缀 工作区", pageId = "chat_session"),
+    SettingEntry(R.string.tx_star_page, R.string.se_002, hintRaw = "收藏夹 收藏 星标", pageId = "chat_star"),
     SettingEntry(R.string.se_038, R.string.se_004, R.string.se_039, pageId = "stat"),
     SettingEntry(R.string.se_040, R.string.se_004, R.string.se_041, pageId = "stat"),
     SettingEntry(R.string.se_042, R.string.se_004, R.string.se_043, pageId = "stat"),
@@ -393,6 +403,9 @@ fun SettingsScreen(
     var mcpDraft by remember { mutableStateOf<McpServer?>(null) }
     //技能包详情：就地改 README / skill.json / 模板，填它声明出来的密钥
     var packDraft by remember { mutableStateOf<SkillPack?>(null) }
+    //赞赏码与 DeepSeek 导入：两个独立弹窗，与其它弹窗共用一个根挂载点
+    var rewardOpen by remember { mutableStateOf(false) }
+    var dsImportOpen by remember { mutableStateOf(false) }
     var taskDraft by remember { mutableStateOf(false) }
     var flowDraft by remember { mutableStateOf(false) }
     var a2aDraft by remember { mutableStateOf(false) }
@@ -636,7 +649,8 @@ fun SettingsScreen(
                         "chat_inject" -> chatInjectSec()
                         "chat_prompt" -> chatPromptSec()
                         "chat_inout" -> chatInOutSec()
-                        "chat_session" -> chatSessionSec(stats, onOpenStars)
+                        "chat_session" -> chatSessionSec(stats) { dsImportOpen = true }
+                        "chat_star" -> chatStarSec()
                         "chat_tags" -> promptTagSec()
                         "chat_perm" -> chatPermSec()
                         "ui_look" -> uiLookSec()
@@ -678,7 +692,7 @@ fun SettingsScreen(
                         "ext_lan" -> lanSec()
                         "ext_box" -> extPlanSec(R.string.se_hub_box, R.string.se_pg_box_sub, EX_BOX_PLAN)
                         "stat" -> statTab(statUi)
-                        "about" -> aboutTab(onOpenFeedback)
+                        "about" -> aboutTab(onOpenFeedback) { rewardOpen = true }
                         else -> seCatHome(SettingsTabs[tab].labelRes, "", sePagesOf(tab)) { p -> SeNav.push(p) }
                     }
                     }
@@ -697,7 +711,7 @@ fun SettingsScreen(
     }
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open || ThinkEdit.rule != null) {
+    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open || ThinkEdit.rule != null || rewardOpen || dsImportOpen || SessionDialogs.open) {
         //思考规则编辑：新建追加到末尾，编辑替换同 id
         ThinkEdit.rule?.let { r ->
             ThinkRuleDialog(
@@ -780,6 +794,11 @@ fun SettingsScreen(
         if (WsPurge.open) WsPurgeDialog { WsPurge.open = false }
         //工作区「浏览」：目录选择器与绑定卡是同一个弹窗，在它内部切换
         if (WorkspacePick.open) WorkspaceDialog { WorkspacePick.open = false }
+        //赞赏码 / DeepSeek 历史导入：都是独立整页弹窗，关掉即回到设置页
+        if (rewardOpen) RewardDialog { rewardOpen = false }
+        if (dsImportOpen) DeepSeekImportDialog { dsImportOpen = false }
+        //会话重命名 / 删除确认：必须在根弹窗层渲染，挂在列表 item 里会被 LazyColumn 裁剪到列表下方
+        if (SessionDialogs.open) SessionDialogsHost()
     }
 } //设置界面
 
@@ -2268,7 +2287,10 @@ private fun LazyListScope.chatInjectSec() {
 
 } //注入子页
 
-private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () -> Unit) {
+private fun LazyListScope.chatSessionSec(
+    stats: Pair<Int, Int>,
+    onOpenImport: () -> Unit
+) {
     item {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_021), stringResource(R.string.se_129))
@@ -2288,27 +2310,10 @@ private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () 
 
     }
 
-    item {
-    val appCtx = LocalContext.current
-    val appScope = rememberCoroutineScope()
-    //会话与导出：原来在抽屉底部，收进「对话」页
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.tx_70b562da), stringResource(R.string.tx_041b5d0d))
-    CardBox {
-        LinkRow("收藏夹", "查看收藏的会话", onClick = onOpenStars)
-        Spacer(Modifier.height(8.dp))
-        GhostButton(stringResource(R.string.dw_export), modifier = Modifier.height(38.dp)) {
-            appScope.launch {
-                val p = withContext(Dispatchers.IO) { Agent.exportCurrent() }
-                android.widget.Toast.makeText(
-                    appCtx,
-                    if (p == null) appCtx.getString(R.string.dw_none) else appCtx.getString(R.string.dw_exported, p),
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
-    }
+    //会话列表：默认展开 5 条，「展开更多」每次多 5 条；每行右侧是操作菜单
+    sessionListSec()
+
+    dsImportEntry(onOpenImport)
 
     item {
     Spacer(Modifier.height(14.dp))
@@ -2316,6 +2321,52 @@ private fun LazyListScope.chatSessionSec(stats: Pair<Int, Int>, onOpenStars: () 
     WsSection()
     }
 } //会话与导出子页
+
+/** 收藏夹子页：按会话聚合消息级收藏，点一下直接切到那个会话 */
+private fun LazyListScope.chatStarSec() {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle("收藏夹", "按会话归组；点一行切到那个会话")
+        CardBox {
+            val hits = remember { Repo.starred() }
+            if (hits.isEmpty()) {
+                Text("还没有收藏任何消息。聊天里长按消息可以收藏。", fontSize = 12.sp, color = TextSecondary)
+            }
+            //同一会话的收藏折成一行，按最近收藏时间倒序
+            val groups = hits.groupBy { it.sessionId }.entries
+                .sortedByDescending { e -> e.value.maxOf { it.at } }
+            groups.forEachIndexed { i, e ->
+                if (i > 0) {
+                    Spacer(Modifier.height(8.dp))
+                }
+                val sid = e.key
+                val list = e.value
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            list.firstOrNull()?.title?.ifBlank { "未命名会话" } ?: "未命名会话",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary,
+                            maxLines = 1
+                        )
+                        Text(
+                            "收藏 " + list.size + " 条 · " + list.first().msg.content.replace("\n", " ").take(40),
+                            fontSize = 10.sp,
+                            color = TextSecondary,
+                            maxLines = 1
+                        )
+                    }
+                    GhostButton("打开", modifier = Modifier.height(34.dp)) {
+                        Agent.openSession(sid)
+                        Agent.refreshSessions()
+                    }
+                }
+            }
+        }
+    }
+} //收藏夹子页
+
 
 /** 输入与输出：回复怎么展示/怎么流式、草稿怎么存、输出偏好常驻文案；与提示词优化分开 */
 private fun LazyListScope.chatInOutSec() {
@@ -2491,10 +2542,10 @@ private fun WsSection() {
     var prog by remember { mutableStateOf("") }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    suspend fun reload() {
+    suspend fun reload(force: Boolean = false) {
         loading = true
         list = withContext(Dispatchers.IO) {
-            runCatching { Workspace.listAll() }.getOrDefault(emptyList())
+            runCatching { Workspace.listAll(force) }.getOrDefault(emptyList())
         }
         legacy = withContext(Dispatchers.IO) {
             runCatching { Workspace.legacyDirs().size }.getOrDefault(0)
@@ -2564,16 +2615,19 @@ private fun WsSection() {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        w.name + if (w.current) stringResource(R.string.se_135) else "",
+                        //显式加括号：Kotlin 里 "+ if/else" 的 else 分支会把后续 + 表达式一起吞掉
+                        w.name +
+                            (if (w.isDefault) stringResource(R.string.ws_badge_def) else "") +
+                            (if (w.current) stringResource(R.string.se_135) else ""),
                         fontSize = 13.sp,
                         color = if (w.current) AccentBlue else TextPrimary,
                         maxLines = 1
                     )
                     Text(
                         stringResource(R.string.se2_ws_files, w.files, Workspace.human(w.bytes)) +
-                            if (w.unbound) stringResource(R.string.se_137) else stringResource(R.string.se2_ws_bound) +
+                            (if (w.unbound) stringResource(R.string.se_137) else stringResource(R.string.se2_ws_bound)) +
                             w.sessions.take(2).joinToString("、") +
-                            if (w.sessions.size > 2) stringResource(R.string.se2_ws_more, w.sessions.size) else "",
+                            (if (w.sessions.size > 2) stringResource(R.string.se2_ws_more, w.sessions.size) else ""),
                         fontSize = 10.sp,
                         color = TextSecondary,
                         maxLines = 1
@@ -2607,7 +2661,7 @@ private fun WsSection() {
                             .tap { confirm = null }
                             .padding(horizontal = 9.dp, vertical = 5.dp)
                     )
-                } else if (w.unbound && !w.current && w.exists) {
+                } else if (w.unbound && !w.current && w.exists && !w.isDefault) {
                     Text(
                         stringResource(R.string.se_143),
                         fontSize = 11.sp,
@@ -2626,7 +2680,7 @@ private fun WsSection() {
         }
         Spacer(Modifier.height(8.dp))
         //还有没被任何会话绑定的目录才给清理入口，全都绑上了就整块不出现
-        val idle = list.count { it.unbound && !it.current && it.exists }
+        val idle = list.count { it.unbound && !it.current && it.exists && !it.isDefault }
         if (idle > 0) {
             GhostButton(
                 stringResource(R.string.wsq_btn, idle),
@@ -2635,7 +2689,8 @@ private fun WsSection() {
             Spacer(Modifier.height(8.dp))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.se_144), modifier = Modifier.height(38.dp)) { scope.launch { reload() } }
+            //重新扫一遍：绕过多级缓存，真去盘上数一遍
+            GhostButton(stringResource(R.string.se_144), modifier = Modifier.height(38.dp)) { scope.launch { reload(true) } }
             Spacer(Modifier.width(8.dp))
             Text(
                 stringResource(R.string.se_145),
@@ -3250,6 +3305,45 @@ private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
                 if (Cfg.enterSend) "回车直接发送，Shift+回车换行" else "回车只换行，不发送",
                 Cfg.enterSend
             ) { Cfg.enterSend = it }
+        }
+    }
+    //余额通知：进 App 自动查一次 DeepSeek 余额，低于阈值发一条系统通知（个性化页最下方）
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_bal), stringResource(R.string.se_bal_sub))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_bal_on),
+                stringResource(R.string.se_bal_on_d),
+                Cfg.balNotify
+            ) { Cfg.balNotify = it }
+            FollowBlock(Cfg.balNotify) {
+                Spacer(Modifier.height(6.dp))
+                GlassSlider(
+                    stringResource(R.string.se_bal_th),
+                    stringResource(R.string.se_bal_th_v, Cfg.balThreshold),
+                    Cfg.balThreshold.toFloat(),
+                    1f..100f,
+                    step = 1f
+                ) { Cfg.balThreshold = it.toInt() }
+                Text(stringResource(R.string.se_bal_th_d), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(10.dp))
+                //余额查询来源：多 Key 用户必须能指定查哪个（/user/balance 只认 DeepSeek 官方 Key）
+                val balProfiles = Profiles.list
+                val balSrc = balProfiles.firstOrNull { it.id == Cfg.balProfileId }
+                SelectField(
+                    stringResource(R.string.se_bal_src),
+                    balSrc?.label?.ifBlank { balSrc.model } ?: stringResource(R.string.se_bal_src_auto),
+                    listOf("") + balProfiles.map { it.id },
+                    optionLabel = { id ->
+                        if (id.isBlank()) stringResource(R.string.se_bal_src_auto)
+                        else balProfiles.firstOrNull { it.id == id }?.label?.ifBlank { id } ?: id
+                    },
+                    isSelected = { Cfg.balProfileId == it },
+                    onSelect = { Cfg.balProfileId = it }
+                )
+                Text(stringResource(R.string.se_bal_src_d), fontSize = 10.sp, color = TextSecondary)
+            }
         }
     }
     } //个性化子页
@@ -4122,7 +4216,7 @@ internal val SITE_URL: String get() = b.ai.core.cfg.app.Bai.host
 internal const val GITHUB_URL = "https://github.com/mubai0122/baicodex"
 
 /** 关于：应用名 + 一句话描述 + 版本号 / 最新版本 + 检查更新 + 更新历史 + 官网 / GitHub 链接 */
-private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
+private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit, onOpenReward: () -> Unit) {
     //应用信息 +检查更新 +更新历史：状态只活在这一块里，滚出屏幕随 item 一起释放
     item {
     var latest by remember { mutableStateOf("") }
@@ -4266,6 +4360,9 @@ private fun LazyListScope.aboutTab(onOpenFeedback: () -> Unit) {
         }
     }
     }
+
+    //赞赏作者：紧跟在「意见反馈」卡片下面，单独一张卡
+    rewardEntry(onOpenReward)
 
     item {
     Spacer(Modifier.height(14.dp))

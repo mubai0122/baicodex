@@ -62,10 +62,32 @@ object Linux {
      */
     fun abiOk(): Boolean = android.os.Build.SUPPORTED_ABIS.any { it == "arm64-v8a" }
 
+    /**
+     * 把 guest 里的相对/绝对路径解析成宿主上的真实文件。
+     * rootfs 里大量「绝对软链」（如 /usr/bin/python3 -> /etc/alternatives/python3）在宿主上直接 isFile
+     * 会按宿主根目录去解，必然不存在，于是「装好了却报未安装」。这里手动逐跳解析：
+     * 绝对目标重新拼回 rootfs 下，相对目标相对自身目录，最多 16 跳。
+     */
+    fun inside(rel: String): File {
+        val root = rootfs.absoluteFile
+        var cur = File(root, rel.removePrefix("/"))
+        var hops = 0
+        while (hops++ < 16) {
+            val link = runCatching { java.nio.file.Files.readSymbolicLink(cur.toPath()).toString() }.getOrNull()
+                ?: break //不是软链：到此为止
+            cur = if (link.startsWith("/")) File(root, link.removePrefix("/"))
+            else File(cur.parentFile ?: root, link)
+        }
+        return cur
+    } //解析 rootfs 内路径
+
+    /** rootfs 里某个路径是否存在（软链按 guest 语义解析） */
+    fun existsIn(rel: String): Boolean = runCatching { inside(rel).exists() }.getOrDefault(false)
+
     /** 判环境就位：proot + rootfs 里的 apt-get、os-release 都在；apt-get 是普通 ELF，比 etc/os-release 的软链可靠 */
     fun installed(): Boolean = abiOk() && proot.isFile &&
-        File(rootfs, "usr/bin/apt-get").isFile &&
-        (File(rootfs, "usr/lib/os-release").isFile || File(rootfs, "etc/os-release").isFile)
+        existsIn("usr/bin/apt-get") &&
+        (existsIn("usr/lib/os-release") || existsIn("etc/os-release"))
     fun prootReady(): Boolean = abiOk() && proot.isFile
 
     /** 不再挑工作方式：proot 在 native 目录里，普通 / Shizuku / Root 都能起 */
@@ -75,7 +97,7 @@ object Linux {
     class Launch(val env: Map<String, String>, val argv: List<String>, val cmdline: String)
 
     /** guest 里的 shell：优先 bash（解包镜像自带），没有就退回 sh */
-    fun guestShell(): String = if (File(rootfs, "bin/bash").isFile) "/bin/bash" else "/bin/sh"
+    fun guestShell(): String = if (existsIn("bin/bash")) "/bin/bash" else "/bin/sh"
 
     /**
      * 组装「在 proot 里起常驻 shell」的启动方式；内嵌终端与一次性执行共用同一套环境。
@@ -335,7 +357,7 @@ object Linux {
 
     /** SSH 依赖：openssh-client 不是镜像自带，只在「装依赖」时才装，没装过的机器要单独补 */
     fun hasSsh(): Boolean = installed() &&
-        File(rootfs, "usr/bin/ssh").isFile && File(rootfs, "usr/bin/scp").isFile
+        existsIn("usr/bin/ssh") && existsIn("usr/bin/scp")
     /** 补装 openssh-client：不用重装环境，apt 里加一个包；update 失败也继续试，装不装得上最后看 hasSsh */
     fun installSsh(onLog: (String) -> Unit): Boolean {
         if (!installed()) {
@@ -362,21 +384,21 @@ object Linux {
     } //补装 ssh
     /** 依赖就位判断：挑两个最能代表用途的二进制，比 apt 查询快也稳 */
     fun depsInstalled(): Boolean = installed() &&
-        File(rootfs, "usr/bin/python3").isFile &&
-        File(rootfs, "usr/bin/git").isFile
+        existsIn("usr/bin/python3") &&
+        existsIn("usr/bin/git")
 
-    /** 依赖清单状态：直接看 rootfs 里有没有对应二进制 */
+    /** 依赖清单状态：直接看 rootfs 里有没有对应二进制（软链按 guest 语义解） */
     fun depReport(): List<Pair<String, Boolean>> = listOf(
-        "python3" to File(rootfs, "usr/bin/python3").isFile,
-        "pip3" to File(rootfs, "usr/bin/pip3").isFile,
-        "git" to File(rootfs, "usr/bin/git").isFile,
-        "curl" to File(rootfs, "usr/bin/curl").isFile,
-        "gcc" to File(rootfs, "usr/bin/gcc").isFile,
-        "make" to File(rootfs, "usr/bin/make").isFile,
-        "node" to File(rootfs, "usr/bin/node").isFile,
-        "java" to File(rootfs, "usr/lib/jvm").isDirectory,
-        "gradle" to File(rootfs, "usr/bin/gradle").isFile,
-        "ssh" to File(rootfs, "usr/bin/ssh").isFile
+        "python3" to existsIn("usr/bin/python3"),
+        "pip3" to existsIn("usr/bin/pip3"),
+        "git" to existsIn("usr/bin/git"),
+        "curl" to existsIn("usr/bin/curl"),
+        "gcc" to existsIn("usr/bin/gcc"),
+        "make" to existsIn("usr/bin/make"),
+        "node" to existsIn("usr/bin/node"),
+        "java" to existsIn("usr/lib/jvm"),
+        "gradle" to existsIn("usr/bin/gradle"),
+        "ssh" to existsIn("usr/bin/ssh")
     )
 
     /** 一键装依赖：apt update + install 一整套，日志边跑边回 */

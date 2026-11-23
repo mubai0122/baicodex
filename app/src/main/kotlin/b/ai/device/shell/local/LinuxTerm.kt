@@ -386,8 +386,8 @@ object LinuxTerm {
         val probes: List<String>,
         val cmd: String
     ) {
-        /** 产物是否已落盘：每次现查，装完立刻能反映出来 */
-        fun present(): Boolean = probes.any { File(Linux.rootfs, it).exists() }
+        /** 产物是否已落盘：每次现查，装完立刻能反映出来；走 Linux.existsIn，绝对软链按 guest 语义解 */
+        fun present(): Boolean = probes.any { Linux.existsIn(it) }
     } //开发环境描述
 
     /**

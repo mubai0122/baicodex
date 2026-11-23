@@ -20,6 +20,9 @@ object Providers {
     /** 本地推理的伪厂商 id：选中后 base_url / Key 都不用填，模型选手机上已导入的 GGUF */
     const val LOCAL = "local"
 
+    /** DeepSeek 官方厂商 id：余额查询（/user/balance）只对官方 Key 有效 */
+    const val DEEPSEEK = "deepseek"
+
     val builtin: List<Provider> = listOf(
         Provider(LOCAL, "本地模型", "", AuthStyle.NONE),
         Provider("openai", "OpenAI", "https://api.openai.com/v1"),

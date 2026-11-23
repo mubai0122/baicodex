@@ -75,8 +75,9 @@ fun WsPurgeDialog(onClose: () -> Unit) {
 
     LaunchedEffect(Unit) {
         val r = withContext(Dispatchers.IO) {
-            runCatching { Workspace.listAll() }.getOrDefault(emptyList())
-                .filter { it.unbound && !it.current && it.exists }
+            //清单要准：这里强制重算，别拿设置页那份可能过期的缓存
+            runCatching { Workspace.listAll(true) }.getOrDefault(emptyList())
+                .filter { it.unbound && !it.current && it.exists && !it.isDefault }
         }
         batch = r
         total = r.size

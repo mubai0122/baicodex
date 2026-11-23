@@ -187,6 +187,8 @@ class App : Application() {
             runCatching { if (b.ai.net.lan.LanCfg.load().on) b.ai.net.lan.Lan.start() }
             //日志仓自检：建 baicode/logs 并清掉七天前的文件（当前没有埋点，只为以后 debug 备着）
             runCatching { b.ai.core.data.log.Logs.start() }
+            //进 App 自动查一次余额：低于阈值就发通知（开关关着直接跳过）
+            runCatching { b.ai.core.pet.balance.BalWatch.boot() }
         }, "boot-init").apply { isDaemon = true }.start()
         //掉帧探针：只记 ≥80ms 的长帧并带上玻璃档位，页面静止时不触发
         b.ai.ui.overlay.PerfProbe.install()

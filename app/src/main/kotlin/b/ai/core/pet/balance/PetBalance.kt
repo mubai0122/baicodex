@@ -23,6 +23,13 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
+
+/** 余额结果：num 有值才表示成功拿到数字；cny 表示币种是不是人民币（非人民币不做阈值判断） */
+data class Bal(val num: Double?, val text: String, val cny: Boolean) {
+    /** 低于阈值（只对人民币生效） */
+    fun below(cnyThreshold: Double) = cny && num != null && num < cnyThreshold
+} //余额结果
+
 /** DeepSeek 开放平台余额查询（峰谷时段判断已迁到 b.ai.core.pet.peak.PeakHours） */
 object PetBalance {
     private const val URL_BALANCE = "https://api.deepseek.com/user/balance"
@@ -31,19 +38,24 @@ object PetBalance {
     private val main = Handler(Looper.getMainLooper())
 
 
-    /** 后台查余额，结果回主线程；失败也给一句能看的文案 */
+    /** 后台查余额，结果回主线程；失败也给一句能看的文案（老接口，只要字符串） */
     fun fetchAsync(apiKey: String, cb: (String) -> Unit) {
+        fetchNumAsync(apiKey) { cb(it.text) }
+    } //异步查（字符串）
+
+    /** 后台查余额，回调带数值 Bal，方便做阈值判断；失败 num 为 null */
+    fun fetchNumAsync(apiKey: String, cb: (Bal) -> Unit) {
         if (apiKey.isBlank()) {
-            main.post { cb("") }
+            main.post { cb(Bal(null, "", true)) }
             return
         }
         Thread {
-            val text = runCatching { fetch(apiKey) }.getOrDefault("")
-            main.post { cb(text) }
+            val r = runCatching { fetch(apiKey) }.getOrDefault(Bal(null, "", true))
+            main.post { cb(r) }
         }.apply { isDaemon = true }.start()
-    } //异步查
+    } //异步查（数值）
 
-    private fun fetch(apiKey: String): String {
+    private fun fetch(apiKey: String): Bal {
         val conn = URL(URL_BALANCE).openConnection() as HttpURLConnection
         conn.requestMethod = "GET"
         conn.setRequestProperty("Authorization", "Bearer $apiKey")
@@ -52,15 +64,17 @@ object PetBalance {
         conn.readTimeout = TIMEOUT_MS
         try {
             val code = conn.responseCode
-            if (code != 200) return "HTTP $code"
+            if (code != 200) return Bal(null, "HTTP $code", true)
             val body = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
-            val info = JSONObject(body).optJSONArray("balance_infos")?.optJSONObject(0) ?: return "无数据"
+            val info = JSONObject(body).optJSONArray("balance_infos")?.optJSONObject(0)
+                ?: return Bal(null, "无数据", true)
             val raw = info.optString("total_balance")
             val cur = info.optString("currency", "CNY")
-            val num = raw.toDoubleOrNull() ?: return raw
+            val cny = cur.equals("CNY", true)
+            val num = raw.toDoubleOrNull() ?: return Bal(null, raw, cny)
             val text = String.format(Locale.ROOT, "%.2f", num)
-            val unit = if (cur.equals("CNY", true)) "元" else " $cur"
-            return text + unit
+            val unit = if (cny) "元" else " $cur"
+            return Bal(num, text + unit, cny)
         } finally {
             conn.disconnect()
         }

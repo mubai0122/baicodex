@@ -1428,6 +1428,38 @@
     <string name="ctx_tip_used">已用 %1$s，預算 %2$s token</string>
     <string name="ctx_tip_total">本對話累計 %1$s token</string>
     <string name="ctx_tip_fresh">未壓縮部分 %1$s token（%2$d 則）</string>
+    <!-- 預算卡餘額區塊 -->
+    <string name="ctx_bal">餘額</string>
+    <string name="ctx_bal_loading">查詢中…</string>
+    <string name="ctx_bal_cool">%1$d 秒後可查</string>
+    <string name="ctx_bal_cd">冷卻時間</string>
+    <string name="ctx_bal_cd_v">%1$d 秒</string>
+    <string name="ctx_bal_cd_ok">已就緒</string>
+    <string name="ctx_bal_tap">點擊查詢</string>
+    <!-- 餘額通知 -->
+    <string name="se_bal">餘額通知</string>
+    <string name="se_bal_sub">進 App 查一次餘額，低於閾值提醒</string>
+    <string name="se_bal_on">啟用餘額通知</string>
+    <string name="se_bal_on_d">每次進入 App 自動查一次 DeepSeek 餘額</string>
+    <string name="se_bal_th">餘額閾值</string>
+    <string name="se_bal_th_v">%1$d 元</string>
+    <string name="se_bal_th_d">餘額低於閾值時發一條系統通知；僅對人民幣餘額生效</string>
+    <string name="se_bal_src">餘額查詢來源</string>
+    <string name="se_bal_src_auto">自動（DeepSeek 優先）</string>
+    <string name="se_bal_src_d">餘額介面只認 DeepSeek 官方 Key；自動 = 優先使用 DeepSeek 那條設定，沒有就用清單第一條</string>
+    <string name="bal_ch_name">餘額提醒</string>
+    <string name="bal_ch_desc">餘額低於閾值時的系統通知</string>
+    <string name="bal_note_title">餘額不足</string>
+    <string name="bal_note_text">目前餘額 %1$s，已低於閾值 %2$d 元，記得儲值</string>
+    <!-- 贊賞入口與彈窗 -->
+    <string name="rw_entry_t">贊賞作者</string>
+    <string name="rw_entry_d">免費開源，你的支持是最大的動力</string>
+    <string name="rw_body">這個專案一直免費開源地維護著，模型呼叫、打包建置、更新服務都是我自己在掏錢撐著，沒有廣告也沒有付費牆。\n\n如果你覺得它幫到過你，願意請我喝杯咖啡，我會很感激——但這完全是自願的，不給也不影響任何功能。你的使用本身，就已經是對這個專案最大的支持了。</string>
+    <string name="rw_qr_cd">微信贊賞碼</string>
+    <string name="rw_qr_scan">微信掃碼 · 金額隨意</string>
+    <string name="rw_qr_fail">贊賞碼載入失敗，請重新安裝應用程式後再試</string>
+    <string name="rw_close">關閉</string>
+    <string name="ws_badge_def"> · 預設</string>
     <string name="http_warn_title">HTTP 明文連線</string>
     <string name="http_warn_body">%1$s 不走加密傳輸，同一網路下的 API Key 和對話內容都可能被截獲。</string>
     <string name="http_warn_risk">中轉站必須填 HTTP 時才選「仍然使用」；能走 HTTPS 就直接點左邊。</string>

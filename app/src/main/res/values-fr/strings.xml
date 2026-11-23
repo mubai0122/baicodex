@@ -1427,6 +1427,38 @@
     <string name="ctx_tip_used">%1$s sur %2$s jetons utilisés</string>
     <string name="ctx_tip_total">Cette conversation : %1$s jetons</string>
     <string name="ctx_tip_fresh">Non compressé : %1$s jetons (%2$d msg)</string>
+    <!-- Bloc solde de la carte de contexte -->
+    <string name="ctx_bal">Solde</string>
+    <string name="ctx_bal_loading">Interrogation…</string>
+    <string name="ctx_bal_cool">Nouvel essai dans %1$d s</string>
+    <string name="ctx_bal_cd">Refroidissement</string>
+    <string name="ctx_bal_cd_v">%1$d s</string>
+    <string name="ctx_bal_cd_ok">Prêt</string>
+    <string name="ctx_bal_tap">Toucher pour vérifier</string>
+    <!-- Notifications de solde -->
+    <string name="se_bal">Notifications de solde</string>
+    <string name="se_bal_sub">Vérifier le solde au lancement, alerter si bas</string>
+    <string name="se_bal_on">Activer les notifications de solde</string>
+    <string name="se_bal_on_d">Vérifier le solde DeepSeek une fois à chaque ouverture</string>
+    <string name="se_bal_th">Seuil de solde</string>
+    <string name="se_bal_th_v">%1$d CNY</string>
+    <string name="se_bal_th_d">Envoyer une notification système quand le solde passe sous le seuil (CNY uniquement)</string>
+    <string name="se_bal_src">Source du solde</string>
+    <string name="se_bal_src_auto">Auto (DeepSeek en priorité)</string>
+    <string name="se_bal_src_d">L\'API de solde n\'accepte que les clés officielles DeepSeek ; Auto = privilégier le profil DeepSeek, sinon le premier de la liste</string>
+    <string name="bal_ch_name">Alertes de solde</string>
+    <string name="bal_ch_desc">Notification système en cas de solde faible</string>
+    <string name="bal_note_title">Solde insuffisant</string>
+    <string name="bal_note_text">Solde %1$s, sous votre seuil de %2$d CNY — pensez à recharger</string>
+    <!-- Entrée et fenêtre de soutien -->
+    <string name="rw_entry_t">Soutenir l’auteur</string>
+    <string name="rw_entry_d">Libre et open source — votre soutien fait vivre le projet</string>
+    <string name="rw_body">Ce projet est maintenu gratuitement et en open source. Les appels aux modèles, les builds et le serveur de mises à jour sortent de ma poche — sans publicité ni paywall.\n\nS’il vous a été utile et que vous voulez m’offrir un café, j’en serai très touché — mais c’est totalement facultatif et ne change rien aux fonctionnalités. L’utiliser est déjà le meilleur soutien possible.</string>
+    <string name="rw_qr_cd">QR code de soutien WeChat</string>
+    <string name="rw_qr_scan">Scanner avec WeChat · montant libre</string>
+    <string name="rw_qr_fail">Échec du chargement du QR code, réinstallez l’application puis réessayez</string>
+    <string name="rw_close">Fermer</string>
+    <string name="ws_badge_def"> · défaut</string>
     <string name="http_warn_title">Connexion HTTP en clair</string>
     <string name="http_warn_body">%1$s n\x27est pas chiffré. La clé API et vos messages peuvent être interceptés sur le même réseau.</string>
     <string name="http_warn_risk">Ne choisissez l\x27option HTTP que si le relais l\x27exige.</string>

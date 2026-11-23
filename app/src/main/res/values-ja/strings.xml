@@ -1427,6 +1427,38 @@
     <string name="ctx_tip_used">%1$s / %2$s トークン使用中</string>
     <string name="ctx_tip_total">この会話の合計 %1$s トークン</string>
     <string name="ctx_tip_fresh">未圧縮 %1$s トークン（%2$d 件）</string>
+    <!-- コンテキストカードの残高ブロック -->
+    <string name="ctx_bal">残高</string>
+    <string name="ctx_bal_loading">取得中…</string>
+    <string name="ctx_bal_cool">%1$d 秒後に再取得</string>
+    <string name="ctx_bal_cd">クールダウン</string>
+    <string name="ctx_bal_cd_v">%1$d 秒</string>
+    <string name="ctx_bal_cd_ok">準備完了</string>
+    <string name="ctx_bal_tap">タップして取得</string>
+    <!-- 残高通知 -->
+    <string name="se_bal">残高通知</string>
+    <string name="se_bal_sub">起動時に残高を確認し、少なければ通知</string>
+    <string name="se_bal_on">残高通知を有効化</string>
+    <string name="se_bal_on_d">アプリ起動時に DeepSeek の残高を一度取得します</string>
+    <string name="se_bal_th">残高のしきい値</string>
+    <string name="se_bal_th_v">%1$d 元</string>
+    <string name="se_bal_th_d">残高がしきい値を下回ったらシステム通知を送信（人民元のみ）</string>
+    <string name="se_bal_src">残高の取得元</string>
+    <string name="se_bal_src_auto">自動（DeepSeek 優先）</string>
+    <string name="se_bal_src_d">残高 API は DeepSeek 公式キーのみ対応；自動 = DeepSeek の設定を優先し、なければ一覧の先頭を使用</string>
+    <string name="bal_ch_name">残高アラート</string>
+    <string name="bal_ch_desc">残高不足時のシステム通知</string>
+    <string name="bal_note_title">残高不足</string>
+    <string name="bal_note_text">現在の残高は %1$s、しきい値 %2$d 元を下回っています</string>
+    <!-- 支援の入口とダイアログ -->
+    <string name="rw_entry_t">作者を支援</string>
+    <string name="rw_entry_d">無料・オープンソース。支援が開発の支えです</string>
+    <string name="rw_body">このプロジェクトはずっと無料・オープンソースで維持しています。モデル呼び出し、ビルド、更新サーバーはすべて自腹で、広告もペイウォールもありません。\n\n役に立ったと感じてコーヒーをご馳走してくださるなら、とても嬉しいです。ただし完全に任意で、支援の有無で機能が変わることはありません。使っていただくこと自体が最大の支援です。</string>
+    <string name="rw_qr_cd">WeChat の支援用 QR コード</string>
+    <string name="rw_qr_scan">WeChat でスキャン · 金額は自由</string>
+    <string name="rw_qr_fail">QR コードの読み込みに失敗しました。アプリを再インストールしてからお試しください</string>
+    <string name="rw_close">閉じる</string>
+    <string name="ws_badge_def"> · 既定</string>
     <string name="http_warn_title">HTTP（平文）で接続します</string>
     <string name="http_warn_body">%1$s は暗号化されません。同じネットワーク上で API キーと会話が傍受される可能性があります。</string>
     <string name="http_warn_risk">中継サイトが HTTP 必須の場合のみ「そのまま使用」を選んでください。</string>

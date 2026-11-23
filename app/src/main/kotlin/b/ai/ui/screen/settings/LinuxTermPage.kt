@@ -113,7 +113,18 @@ fun LinuxTermPage() {
     }
 
     val text = remember(ver) { LinuxTerm.lines().takeLast(400).joinToString("\n") }
-    val present = remember(stateVer) { LinuxTerm.TOOLS.associate { it.id to it.present() } }
+    //工具状态每 2 秒重算一次：在终端里手动 bai_apt 装的东西不会触发 onState，
+    //只靠 stateVer 会一直显示「安装」，用户得退出页面再进来才刷新
+    var probeTick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(2000L)
+            probeTick++
+            //环境就位与否也顺手复核：装/删环境后不依赖 onState 也能自己纠回来
+            envOk = Linux.installed()
+        }
+    }
+    val present = remember(stateVer, probeTick) { LinuxTerm.TOOLS.associate { it.id to it.present() } }
 
     /** 把所有重活丢到 IO 线程：开进程、写 stdin 都可能短暂阻塞 */
     fun io(block: () -> Unit) {
@@ -216,7 +227,7 @@ fun LinuxTermPage() {
             }.getOrNull().orEmpty().ifBlank { "Ubuntu (proot)" }
         } //发行版名
         val arch = remember { android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64" }
-        val idxReady = remember(stateVer) { File(Linux.rootfs, "var/lib/apt/.bai_stamp").isFile }
+        val idxReady = remember(stateVer, probeTick) { Linux.existsIn("var/lib/apt/.bai_stamp") }
         val doneCount = present.count { it.value }
         Text(
             osName + " · " + arch +
