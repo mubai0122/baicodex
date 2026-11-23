@@ -304,7 +304,8 @@ object Tools {
         val tok = Cfg.toolBudgetTokens
         if (tok <= 0) return this
         val cap = if (tok >= Int.MAX_VALUE / 18) Int.MAX_VALUE else tok * 18 / 10
-        val r = Dsl.nativeGovern(text, cap)
+        //govern 自身已做异常兜底，任何失败都原样放行，绝不让工具结果治理打断工具执行
+        val r = Dsl.govern(text, cap)
         if (!r.startsWith("OK\n")) return this
         return ToolOutcome(ok, r.substring(3), route)
     } //工具结果治理：超预算直接截止，只保留头部
