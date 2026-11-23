@@ -204,6 +204,9 @@ import b.ai.core.media.img.Avatar
 import b.ai.core.data.io.Attach
 import b.ai.core.data.card.Cards
 import b.ai.core.cfg.app.Cfg
+import b.ai.core.pet.balance.BalWatch
+import b.ai.core.pet.balance.PetBalance
+import androidx.compose.ui.draw.clip
 import b.ai.core.model.chat.ChatMsg
 import b.ai.core.media.img.Images
 import b.ai.core.model.chat.MsgMeta
@@ -1560,8 +1563,81 @@ private fun CtxCard(tokens: Int, budget: Int, freshCount: Int, freshTok: Int, an
             fontSize = 10.sp,
             color = TextSecondary
         )
+        //余额板块：点击拉一次，成功后冷却 60 秒，冷却中显示倒计时
+        //时钟只用来驱动倒计时重算，不参与业务状态
+        var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
+        var busy by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(500L)
+                nowMs = System.currentTimeMillis()
+            }
+        }
+        //剩余冷却毫秒：从上次查询完成时刻算起
+        val leftMs = (BAL_COOL_MS - (nowMs - BalWatch.lastMs)).coerceIn(0L, BAL_COOL_MS)
+        val leftSec = ((leftMs + 999L) / 1000L).toInt()
+        Spacer(Modifier.height(6.dp))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(TextSecondary.copy(alpha = 0.18f)))
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .tap {
+                    if (busy || leftSec > 0) return@tap
+                    //Key 从「余额查询来源」解析：没配任何可用配置就直接不查
+                    val src = Profiles.balanceSource() ?: return@tap
+                    if (src.apiKey.isBlank()) return@tap
+                    busy = true
+                    PetBalance.fetchNumAsync(src.apiKey) { b ->
+                        BalWatch.put(b)
+                        busy = false
+                    }
+                }
+                .padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(R.string.ctx_bal),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.weight(1f))
+            //这一行永远是余额值：查不到才退回「点击查询」
+            Text(
+                when {
+                    busy -> stringResource(R.string.ctx_bal_loading)
+                    else -> BalWatch.last?.text?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.ctx_bal_tap)
+                },
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (busy) TextSecondary else TextPrimary
+            )
+        }
+        //冷却单独一行：余额值不挪位，剩余秒数在这里倒数
+        Row(
+            Modifier.fillMaxWidth().padding(top = 1.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(R.string.ctx_bal_cd),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (leftSec > 0) stringResource(R.string.ctx_bal_cd_v, leftSec)
+                else stringResource(R.string.ctx_bal_cd_ok),
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        }
     }
 } //上下文小卡片
+
+/** 余额查询冷却时长：1 分钟 */
+private const val BAL_COOL_MS = 60_000L
 
 @Composable
 private fun InputBar(

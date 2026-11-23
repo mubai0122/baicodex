@@ -1,9 +1,20 @@
+# local.properties模板
+# 用法：复制成 local.properties
+
 sdk.dir=
 cmake.dir=
+
 stringfog.key=
+
 baicodex.aes.key=
-baicodex.host=
 baicodex.backup.key=
+
+baicodex.host=
+
+bai.sign.store=
+bai.sign.storePass=
+bai.sign.alias=
+bai.sign.keyPass=
 
 miot.client.id=
 miot.redirect=
@@ -13,9 +24,33 @@ seed.netease.preset=
 seed.netease.iv=
 seed.netease.rsa.e=
 seed.netease.rsa.n=
+seed.netease.sys.vb=
 
-#自用构建要免手输就加 -PallowSeedCred=1，这两个值才会进包
 seed.a2a.token=
 seed.lan.code=
 seed.lan.port=
 seed.team.port=
+
+seed.prompt.mode.plan=
+seed.prompt.mode.standard=
+seed.prompt.mode.code=
+seed.prompt.mode.minimal=
+seed.prompt.mode.creator=
+seed.prompt.rules.bound=
+seed.prompt.rules.abs=
+seed.prompt.rule.mask=
+seed.prompt.care=
+seed.prompt.search.on=
+seed.prompt.search.off=
+seed.prompt.no.tool=
+seed.prompt.no.vision=
+seed.prompt.ws.none=
+seed.prompt.ws.bound=
+seed.prompt.tool.hint=
+seed.prompt.screen.step=
+seed.prompt.summary=
+seed.prompt.title=
+seed.prompt.optimizer=
+seed.prompt.mem.organizer=
+seed.prompt.env.block=
+seed.prompt.skill.list=

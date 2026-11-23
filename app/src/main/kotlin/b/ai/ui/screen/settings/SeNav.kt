@@ -60,23 +60,24 @@ object SeNav {
 /** 分类页上每一行对应的子页。一个分类只有一页时不给它建子页，SettingsScreen 直接渲染内容。 */
 val SePages = listOf(
     //模型
-    SePage("model_cfg", R.string.se_pg_model_cfg, R.string.se_pg_model_cfg_sub, 0),
-    SePage("model_param", R.string.se_pg_model_param, R.string.se_pg_model_param_sub, 0),
+    SePage("model_cfg", R.string.se_pg_model_cfg, R.string.se_pg_model_cfg_sub, 1),
+    SePage("model_param", R.string.se_pg_model_param, R.string.se_pg_model_param_sub, 1),
     //思考配置：规则引擎，按模型名匹配决定思考字段怎么下发
-    SePage("model_think", R.string.se_pg_think, R.string.se_pg_think_sub, 0),
-    SePage("model_voice", R.string.se_pg_voice, R.string.se_pg_voice_sub, 0),
-    SePage("model_mem", R.string.se_pg_mem, R.string.se_pg_mem_sub, 0),
-    SePage("model_local", R.string.se_pg_local, R.string.se_pg_local_sub, 0),
+    SePage("model_think", R.string.se_pg_think, R.string.se_pg_think_sub, 1),
+    SePage("model_voice", R.string.se_pg_voice, R.string.se_pg_voice_sub, 1),
+    SePage("model_mem", R.string.se_pg_mem, R.string.se_pg_mem_sub, 1),
+    SePage("model_local", R.string.se_pg_local, R.string.se_pg_local_sub, 1),
     //对话
-    SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 1),
+    SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 0),
     //提示词优化：四芒星按钮的连接与写法（只放优化本体）
-    SePage("chat_prompt", R.string.se_pg_prompt, R.string.se_pg_prompt_sub, 1),
+    SePage("chat_prompt", R.string.se_pg_prompt, R.string.se_pg_prompt_sub, 0),
     //输入与输出：回复信息展示 / 流式 / 草稿 / 输出偏好，从提示词优化与注入页拆出来单独一页
-    SePage("chat_inout", R.string.se_pg_inout, R.string.se_pg_inout_sub, 1),
-    SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 1),
-    SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 1),
-    SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 1),
-    SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 1),
+    SePage("chat_inout", R.string.se_pg_inout, R.string.se_pg_inout_sub, 0),
+    SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 0),
+    SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 0),
+    SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 0),
+    SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 0),
+    SePage("chat_star", R.string.tx_star_page, R.string.tx_star_page_sub, 0),
     //外观
     //外观总页：原来「主题」「输入与质感」两页合并成一页——语言 / 主题色 / 字号 / 背景 / 玻璃质感 /
     //卡片外观（不透明度、圆角）/ 输入框 / Markdown 排版全在这里，一个子页改完所有观感
@@ -126,4 +127,4 @@ fun seCatOf(id: String): Int = sePage(id)?.cat ?: 0
  * modelTab / chatTab / uiTab / extTab 函数渲染，只是按 key 过滤出对应分区。
  * 底栏分类 → 该分类「默认分区」的 key（点底栏直达时用）。
  */
-val seDefaultKeyByCat = mapOf(0 to "model_cfg", 1 to "chat_ctx", 2 to "ui_look", 3 to "ext_auto")
+val seDefaultKeyByCat = mapOf(0 to "chat_ctx", 1 to "model_cfg", 2 to "ui_look", 3 to "ext_auto")

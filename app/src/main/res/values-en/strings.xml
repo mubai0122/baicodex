@@ -1428,6 +1428,38 @@
     <string name="ctx_tip_used">Used %1$s of %2$s tokens</string>
     <string name="ctx_tip_total">This chat: %1$s tokens total</string>
     <string name="ctx_tip_fresh">Uncompressed: %1$s tokens (%2$d msgs)</string>
+    <!-- Balance block in the context card -->
+    <string name="ctx_bal">Balance</string>
+    <string name="ctx_bal_loading">Checking…</string>
+    <string name="ctx_bal_cool">Retry in %1$d s</string>
+    <string name="ctx_bal_cd">Cooldown</string>
+    <string name="ctx_bal_cd_v">%1$d s</string>
+    <string name="ctx_bal_cd_ok">Ready</string>
+    <string name="ctx_bal_tap">Tap to check</string>
+    <!-- Balance notifications -->
+    <string name="se_bal">Balance notifications</string>
+    <string name="se_bal_sub">Check balance on launch, warn when low</string>
+    <string name="se_bal_on">Enable balance notifications</string>
+    <string name="se_bal_on_d">Check the DeepSeek balance once on every app launch</string>
+    <string name="se_bal_th">Balance threshold</string>
+    <string name="se_bal_th_v">%1$d CNY</string>
+    <string name="se_bal_th_d">Send a system notification when the balance is below the threshold (CNY only)</string>
+    <string name="se_bal_src">Balance source</string>
+    <string name="se_bal_src_auto">Auto (DeepSeek first)</string>
+    <string name="se_bal_src_d">The balance API only accepts official DeepSeek keys; Auto = prefer the DeepSeek profile, otherwise the first one in the list</string>
+    <string name="bal_ch_name">Balance alerts</string>
+    <string name="bal_ch_desc">System notification when the balance is low</string>
+    <string name="bal_note_title">Low balance</string>
+    <string name="bal_note_text">Balance %1$s is below your %2$d CNY threshold — remember to top up</string>
+    <!-- Reward entry and dialog -->
+    <string name="rw_entry_t">Support the author</string>
+    <string name="rw_entry_d">Free and open source — your support keeps it going</string>
+    <string name="rw_body">This project has always been free and open source. Model calls, builds and update servers all come out of my own pocket — no ads, no paywall.\n\nIf it has helped you and you feel like buying me a coffee, I would be truly grateful — but it is entirely optional and changes nothing about the features you get. Simply using it is already the biggest support you can give.</string>
+    <string name="rw_qr_cd">WeChat reward QR code</string>
+    <string name="rw_qr_scan">Scan with WeChat · any amount</string>
+    <string name="rw_qr_fail">Failed to load the QR code, please reinstall the app and try again</string>
+    <string name="rw_close">Close</string>
+    <string name="ws_badge_def"> · default</string>
     <string name="http_warn_title">Plaintext HTTP connection</string>
     <string name="http_warn_body">%1$s is not encrypted. Your API key and messages can be intercepted on the same network.</string>
     <string name="http_warn_risk">Pick use anyway only when the relay requires HTTP. Use HTTPS whenever you can.</string>

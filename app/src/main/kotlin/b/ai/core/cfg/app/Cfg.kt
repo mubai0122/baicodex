@@ -292,6 +292,11 @@ object Cfg {
         mem("pl_email", "").value = p.getString("pl_email", "")!!
         mem("paste_to_file", true).value = p.getBoolean("paste_to_file", true)
         mem("paste_limit", 3000).value = p.getInt("paste_limit", 3000)
+        // 少了这几行，改完重启就回默认（C 端后缀 / 余额通知开关 / 余额阈值 / 余额查询来源）
+        mem("import_suffix", true).value = p.getBoolean("import_suffix", true)
+        mem("bal_notify", true).value = p.getBoolean("bal_notify", true)
+        mem("bal_threshold", 2).value = p.getInt("bal_threshold", 2)
+        mem("bal_profile_id", "").value = p.getString("bal_profile_id", "")!!
         mem("full_input_new", true).value = p.getBoolean("full_input_new", true)
         mem("island_on", true).value = p.getBoolean("island_on", true)
         mem("island_done", true).value = p.getBoolean("island_done", true)
@@ -560,6 +565,29 @@ object Cfg {
     var ctxAuto: Boolean
         get() = mem("ctx_auto", true).value
         set(v) { mem("ctx_auto", true).value = v; put("ctx_auto", v) }
+
+    /** C 端后缀开关（开关本体在「从 DeepSeek 导入历史」弹窗里）：开 = 导入的会话标题带「（DeepSeek）/（导入）」，关 = 按原标题 */
+    var importSuffix: Boolean
+        get() = mem("import_suffix", true).value
+        set(v) { mem("import_suffix", true).value = v; put("import_suffix", v) }
+
+    /** 余额通知：每次进 App 自动查一次余额，低于阈值就发通知 */
+    var balNotify: Boolean
+        get() = mem("bal_notify", true).value
+        set(v) { mem("bal_notify", true).value = v; put("bal_notify", v) }
+
+    /** 余额阈值（元）：低于这个数才提醒，1~100 */
+    var balThreshold: Int
+        get() = mem("bal_threshold", 2).value
+        set(v) { mem("bal_threshold", 2).value = v; put("bal_threshold", v) }
+
+    /**
+     * 余额查询来源：空 = 自动（DeepSeek 官方优先 → 列表第一条）；
+     * 非空 = 指定某条模型配置的 id（Profiles.list 里的 id），余额只查这条的 Key
+     */
+    var balProfileId: String
+        get() = mem("bal_profile_id", "").value
+        set(v) { mem("bal_profile_id", "").value = v; put("bal_profile_id", v) }
 
     var ctxBudget: Int
         get() = mem("ctx_budget", 12000).value

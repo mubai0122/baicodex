@@ -1451,6 +1451,38 @@
     <string name="ctx_tip_used">已用 %1$s，预算 %2$s token</string>
     <string name="ctx_tip_total">本对话累计 %1$s token</string>
     <string name="ctx_tip_fresh">未压缩部分 %1$s token（%2$d 条）</string>
+    <!-- 预算卡余额板块 -->
+    <string name="ctx_bal">余额</string>
+    <string name="ctx_bal_loading">查询中…</string>
+    <string name="ctx_bal_cool">%1$d 秒后可查</string>
+    <string name="ctx_bal_cd">冷却时间</string>
+    <string name="ctx_bal_cd_v">%1$d s</string>
+    <string name="ctx_bal_cd_ok">已就绪</string>
+    <string name="ctx_bal_tap">点击查询</string>
+    <!-- 余额通知 -->
+    <string name="se_bal">余额通知</string>
+    <string name="se_bal_sub">进 App 查一次余额，低于阈值提醒</string>
+    <string name="se_bal_on">启用余额通知</string>
+    <string name="se_bal_on_d">每次进入 App 自动查一次 DeepSeek 余额</string>
+    <string name="se_bal_th">余额阈值</string>
+    <string name="se_bal_th_v">%1$d 元</string>
+    <string name="se_bal_th_d">余额低于阈值时发一条系统通知；只对人民币余额生效</string>
+    <string name="se_bal_src">余额查询来源</string>
+    <string name="se_bal_src_auto">自动（DeepSeek 优先）</string>
+    <string name="se_bal_src_d">余额接口只认 DeepSeek 官方 Key；自动 = 优先用 DeepSeek 那条配置，没有就用列表第一条</string>
+    <string name="bal_ch_name">余额提醒</string>
+    <string name="bal_ch_desc">余额低于阈值时的系统通知</string>
+    <string name="bal_note_title">余额不足</string>
+    <string name="bal_note_text">当前余额 %1$s，已低于阈值 %2$d 元，记得充值</string>
+    <!-- 赞赏入口与弹窗 -->
+    <string name="rw_entry_t">赞赏作者</string>
+    <string name="rw_entry_d">免费开源，你的支持是最大的动力</string>
+    <string name="rw_body">这个项目一直免费开源地维护着，模型调用、打包构建、更新服务都是我自己在掏钱撑着，没有广告也没有付费墙。\n\n如果你觉得它帮到过你，愿意请我喝杯咖啡，我会很感激——但这完全是自愿的，不给也不影响任何功能。你的使用本身，就已经是对这个项目最大的支持了。</string>
+    <string name="rw_qr_cd">微信赞赏码</string>
+    <string name="rw_qr_scan">微信扫码 · 金额随意</string>
+    <string name="rw_qr_fail">赞赏码加载失败，请重装应用后再试</string>
+    <string name="rw_close">关闭</string>
+    <string name="ws_badge_def"> · 默认</string>
     <string name="http_warn_title">HTTP 明文连接</string>
     <string name="http_warn_body">%1$s 不走加密传输，同一网络下的 API Key 和对话内容都可能被截获。</string>
     <string name="http_warn_risk">中转站必须填 HTTP 时才选「仍然使用」；能走 HTTPS 就直接点左边。</string>
@@ -2610,4 +2642,6 @@
     <string name="ms_proto">接口协议</string>
     <string name="ms_proto_sub">部分服务商已停用 Chat Completions（报 chat_completions_disabled），需切到 Responses API。按每条配置独立保存</string>
     <string name="tx_2b7d4e10" formatted="false">接口协议</string>
+    <string name="tx_star_page">收藏夹</string>
+    <string name="tx_star_page_sub">收藏的会话与消息</string>
 </resources>
