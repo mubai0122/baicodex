@@ -64,5 +64,16 @@ object Dsl {
         tpl: String, kind: String, params: String, secrets: String, args: String
     ): String
 
-    internal external fun nativeGovern(text: String, maxChars: Int): String
+    /**
+     * 工具结果治理：public 包装。
+     * 注意：native 方法必须是 private —— Kotlin 会给 internal 成员拼上 `$模块名_变体名` 后缀，
+     * JNI 符号随之变成 Java_..._nativeGovern_00024BaiAgent_1app_1release，C++ 侧找不到实现会抛
+     * UnsatisfiedLinkError（v1.20.3 就因为这里写成 internal 炸过）。
+     */
+    fun govern(text: String, maxChars: Int): String {
+        if (!loaded) return "ERR\nDSL 引擎未加载"
+        return runCatching { nativeGovern(text, maxChars) }.getOrElse { "ERR\n${it.message ?: "native 调用失败"}" }
+    } //工具结果治理（安全包装）
+
+    private external fun nativeGovern(text: String, maxChars: Int): String
 } //DSL 引擎门面
