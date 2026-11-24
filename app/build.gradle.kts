@@ -39,8 +39,9 @@ val miotRedirect: String = seed("miot.redirect", "").takeIf { s -> s.startsWith(
 val miotRegion: String = seed("miot.region", "cn").takeIf { s ->
     s.isNotEmpty() && s.length <= 10 && s.all { it.isLowerCase() || it.isDigit() }
 } ?: "cn"
-//传 -Puniversal 就改成打单包
+
 val uniPack: Boolean = project.hasProperty("universal")
+
 android {
 
     androidResources {
@@ -55,8 +56,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 64
-        versionName = "1.21.0"
+        versionCode = 65
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")
@@ -70,11 +71,11 @@ android {
                 arguments.add("-DCMAKE_SUPPRESS_REGENERATION=ON")
                 if (baiAesSeed != null) arguments.add("-DBAI_KEY_HEX=$baiAesSeed")
             }
-        } //cmake 参数
+        } //cmake
         if (uniPack) {
             ndk { abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a")) }
         }
-    } //默认配置
+    }
 
     splits {
         abi {
@@ -83,13 +84,13 @@ android {
             include("arm64-v8a", "armeabi-v7a")
             isUniversalApk = !uniPack
         }
-    } //ABI 分包
+    }
 
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
         }
-    } //native 构建
+    }
 
     buildFeatures {
         compose = true
@@ -98,14 +99,14 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = false
-    } //关掉 lintVital 检查
+    } //关 lintVital
 
     val signProps: Properties = Properties().also { p ->
         val f = rootProject.file("local.properties")
         if (f.exists()) f.inputStream().use { p.load(it) }
-    } //签名参数
+    } //签名
     val signStore: File? = signProps.getProperty("bai.sign.store")?.trim()
-        ?.takeIf { it.isNotEmpty() }?.let { file(it) }?.takeIf { it.isFile } //keystore 文件
+        ?.takeIf { it.isNotEmpty() }?.let { file(it) }?.takeIf { it.isFile } //keystore
     signingConfigs {
         if (signStore != null) {
             create("release") {

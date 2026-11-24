@@ -205,7 +205,10 @@ private fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
         DevItem("upmirror", b.ai.App.self.getString(R.string.tx_159a3a80)) { _ -> withContext(Dispatchers.IO) { testUpdateMirror() } },
         DevItem("selftest", b.ai.App.self.getString(R.string.tx_c5d9c84c)) { _ -> withContext(Dispatchers.IO) { Linux.selfTest().out } },
         //一键卸载重装：走的就是设置里「重装环境」那条 install(force=true)，日志边跑边贴
-        DevItem("reset", b.ai.App.self.getString(R.string.tx_cb201444)) { append -> withContext(Dispatchers.IO) { resetSandbox(append) } }
+        DevItem("reset", b.ai.App.self.getString(R.string.tx_cb201444)) { append -> withContext(Dispatchers.IO) { resetSandbox(append) } },
+        DevItem("dsh", b.ai.App.self.getString(R.string.dh_dev_selftest)) { append -> withContext(Dispatchers.IO) { dshSelfTest(append) } },
+        // SDK 直连自检：无 Web UI 的 dsh 运行时 + 一条真实提问，验证插件/工具链路
+        DevItem("dsksdk", b.ai.App.self.getString(R.string.dh_dev_sdk_selftest)) { append -> withContext(Dispatchers.IO) { dshSdkSelfTest(append) } }
     )
 )
 
@@ -216,6 +219,7 @@ private fun DevToolsPage(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var log by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf("") }
+    var showDsh by remember { mutableStateOf(false) } //dsh 测试页开关（内嵌 WebView）
 
     /** 日志追加：跑在后台线程的回调也能安全刷新 UI */
     fun append(s: String) {
@@ -229,8 +233,17 @@ private fun DevToolsPage(onBack: () -> Unit) {
             if (busy.isBlank()) stringResource(R.string.tx_ed275d6f) else "执行中：$busy",
             fontSize = 12.sp,
             color = TextSecondary,
-            modifier = Modifier.padding(start = 10.dp)
+            modifier = Modifier.padding(start = 10.dp).weight(1f)
         )
+        GhostButton(if (showDsh) stringResource(R.string.dh_dev_back_to_items) else stringResource(R.string.dh_dev_page), modifier = Modifier.height(32.dp)) {
+            showDsh = !showDsh
+        }
+    }
+
+    //dsh 测试页：内嵌官方 Web UI，只在这一层出现，不进生产路径
+    if (showDsh) {
+        DshPage()
+        return
     }
 
     devGroups().forEach { (group, items) ->
@@ -585,7 +598,140 @@ private fun workspaceDump(): String {
     return sb.toString()
 } //工作区模式自检
 
-/** 复制到剪贴板：反馈问题时直接把日志贴出去 */
+/** dsh 自检：自举 Node → 安装/启动 dsh → 打印状态与日志尾部（阶段日志边跑边贴） */
+private fun dshSelfTest(append: (String) -> Unit): String = runCatching {
+    kotlinx.coroutines.runBlocking {
+        val sb = StringBuilder()
+        sb.appendLine("=== dsh 自检 ===")
+
+        //1. 启动（含 Node 自举 / dsh 安装 / 端口探测），阶段日志实时回贴
+        val ok = b.ai.core.dsh.DshCore.start { append("[dsh] $it") }
+        sb.appendLine("启动结果: $ok")
+
+        //2. 状态
+        sb.appendLine("状态: ${b.ai.core.dsh.DshCore.status()}")
+        sb.appendLine("入口 URL: ${b.ai.core.dsh.DshCore.webUrl()}")
+
+        //3. 日志尾部
+        sb.appendLine("日志（最后 50 行）:")
+        sb.appendLine(b.ai.core.dsh.DshCore.logs().takeLast(2000))
+
+        //4. 提示：UI 需在 DshPage 的 WebView 里手动验证
+        sb.appendLine("下一步: 点顶部「dsh 测试页」，在 WebView 里发一条消息验证流式")
+        sb.toString()
+    }
+}.getOrElse { "dsh 自检失败: ${it.message}" }
+
+/**
+ * dsh SDK 直连自检（P0 验收）：起无界面的 dsh 运行时，发一条真实提问，
+ * 把事件流拼出来，验证「我们的 App 能直接驱动 dsh 的插件/工具能力」。
+ */
+private fun dshSdkSelfTest(append: (String) -> Unit): String = runCatching {
+    kotlinx.coroutines.runBlocking {
+        val sb = StringBuilder()
+        //log：同时写结果缓冲与 UI 日志区，跑的过程中就能看到
+        fun log(s: String) { sb.appendLine(s); append(s) }
+
+        log("=== dsh SDK 自检 ===")
+        //模型 id 用 dsh 内置 catalog（deepseek-flash / deepseek-v4-pro），配置里的 id 不在 catalog 会被拒
+        val modelId = b.ai.core.dsh.DshSdk.MODEL_FALLBACK
+        val key = b.ai.core.cfg.app.Cfg.apiKey
+        log("provider=${b.ai.core.dsh.DshSdk.PROVIDER}")
+        log("baseUrl=${b.ai.core.cfg.app.Cfg.baseUrl}")
+        log("model=$modelId（dsh catalog：deepseek-flash / deepseek-v4-pro；App 配置里的是 ${b.ai.core.cfg.app.Cfg.model}）")
+        log("apiKey=${if (key.isBlank()) "缺失（去设置里填）" else "已配置 ${key.length} 位"}")
+
+        //1. 起运行时 + initialize（显式传 catalog 模型，避免配置里的 id 在官方端点 404）
+        val ok = b.ai.core.dsh.DshSdk.start(modelId) { log("[sdk] $it") }
+        log("initialize=$ok err=${b.ai.core.dsh.DshSdk.error()}")
+        if (!ok) {
+            log("提示：initialize 失败多半是 key 未生效，或模型名不被该路由接受")
+            return@runBlocking sb.toString()
+        }
+
+        //2. 挂事件：只累积助手正文；普通提示词没有 query.completed，收工看 running→idle
+        val text = StringBuilder()
+        val done = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var sawRunning = false
+        b.ai.core.dsh.DshSdk.onNotify = { m, p ->
+            when (m) {
+                "session.event" -> {
+                    val ev = p.optJSONObject("event")
+                    val type = ev?.optString("type").orEmpty()
+                    val data = ev?.optJSONObject("data") ?: org.json.JSONObject()
+                    when (type) {
+                        //正文只在 step 收尾时落在 assistant/message：形状是 message.content 的 block 数组
+                        //（attempt.stream 的增量 chunk 收尾时被 settle 收走，所以只回贴它做诊断）
+                        "assistant/message" -> {
+                            val msg = data.optJSONObject("message")
+                            val content = msg?.optJSONArray("content") ?: org.json.JSONArray()
+                            val one = StringBuilder()
+                            for (i in 0 until content.length()) {
+                                val b = content.optJSONObject(i) ?: continue
+                                when (b.optString("type")) {
+                                    //助手正文
+                                    "text" -> one.append(b.optString("text"))
+                                    //工具调用：字段名未取证，整包回贴一次拿真实形状（P1 渲染卡片按这个来）
+                                    "tool-call" -> one.append("\n[工具块] ").append(b.toString().take(300))
+                                }
+                            }
+                            val out = one.toString().trim()
+                            text.append(if (text.isEmpty()) out else "\n$out")
+                            append("[消息] ${out.take(400)}")
+                            val usage = data.optJSONObject("usage")
+                            if (usage != null) append("[用量] ${usage.toString().take(160)}")
+                        }
+                        "assistant/attempt" -> {
+                            //增量 chunk 只做诊断：失败原因（如 HTTP_404 / 无 key）在这里能直接看到
+                            val stream = data.optJSONArray("stream") ?: org.json.JSONArray()
+                            for (i in 0 until stream.length()) {
+                                val ch = stream.optJSONObject(i)?.optJSONObject("chunk") ?: continue
+                                if (ch.optString("type") == "finish") {
+                                    val reason = ch.optJSONObject("reason")
+                                    if (reason?.optString("kind") == "error") {
+                                        log("[错误] " + reason.optJSONObject("failure")?.optString("message").orEmpty())
+                                    }
+                                }
+                            }
+                        }
+                        "step/start", "step/end", "turn/start", "turn/end" -> append("[turn] $type")
+                        //工具调用（bash/read/write…）：P1 渲染成「工具卡片」
+                        "tool/call", "tool/call/end", "tool/result" -> append("[tool] $type ${data.toString().take(260)}")
+                        //其余事件名原样回贴，别自己编字段
+                        else -> append("[event] $type")
+                    }
+                }
+                "session.query.completed" -> {
+                    append("[completed] reason=${p.optString("finishReason")} text=${p.optString("finalResponse").take(300)}")
+                    if (!done.isCompleted) done.complete(Unit)
+                }
+                "session.status" -> {
+                    val st = p.optString("status")
+                    append("[status] $st")
+                    if (st == "running") sawRunning = true
+                    if (st == "idle" && sawRunning && !done.isCompleted) done.complete(Unit)
+                }
+                "approval/request" -> append("[approval] ${p.toString().take(200)}")
+            }
+        }
+
+        //3. 发一条真实 query，等完成信号（带工具的一轮不止 90s，给 120s）
+        //刻意要求走工具：只有真触发 tool-call，才能拿到该 block 的真实字段名（P1 画工具卡片靠它）
+        b.ai.core.dsh.DshSdk.query("请用 bash 工具执行 echo baicodex-tool-ok，把命令的原始输出原样告诉我，不要自己推断结果") { log("[sdk] $it") }
+        kotlinx.coroutines.withTimeoutOrNull(120_000L) { done.await() }
+            ?: log("（120s 未收到完成信号，可能仍在跑或已失败）")
+
+        log("—— 助手输出 ——")
+        log(if (text.isBlank()) "（空）" else text.toString().take(1200))
+        //stdout 的 dsh 人类日志单独一行，别再和真错误混在一起
+        log("stdout 噪音: ${b.ai.core.dsh.DshSdk.noise().ifBlank { "无" }}")
+        log("最终错误: ${b.ai.core.dsh.DshSdk.error().ifBlank { "无" }}")
+        //4. 停掉测试内核（App 正常使用时会由 chat 复用）
+        b.ai.core.dsh.DshSdk.stop()
+        sb.toString()
+    }
+}.getOrElse { "dsh SDK 自检失败: ${it.message}" } //SDK自检
+
 private fun copyText(ctx: android.content.Context, text: String) {
     val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
         ?: return

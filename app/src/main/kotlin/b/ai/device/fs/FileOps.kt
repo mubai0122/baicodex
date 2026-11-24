@@ -65,17 +65,33 @@ object FileOps {
         else -> Shell.run(cmd, input)
     }
 
-    /** 读文件：按行分页返回（带行号与总行数），路径是目录时照样返回目录列表 */
-    fun read(rawPath: String, page: Int = 1, lines: Int = 400): Out {
+    /**
+     * 读文件：按行分页返回（带行号与总行数），路径是目录时照样返回目录列表。
+     * 三种取法：①page+lines 分页；②rangeFrom/rangeTo 绝对行区间（给了就忽略 page）；
+     * ③width 限制单行返回多少字符（0=不限），超长单行会被截断并注明原长度。
+     */
+    fun read(
+        rawPath: String, page: Int = 1, lines: Int = 400,
+        rangeFrom: Int = 0, rangeTo: Int = 0, width: Int = 0
+    ): Out {
         val path = Workspace.resolve(rawPath)
         val route = Router.route(path)
         val pg = page.coerceIn(1, 100_000)
         val cap = lines.coerceIn(10, 2000)
-        val from = (pg - 1) * cap + 1
-        val to = from + cap - 1
+        //行区间优先：rangeFrom>0 就按绝对行号取，rangeTo 不填则取 rangeFrom+cap-1
+        val from: Int
+        val to: Int
+        if (rangeFrom > 0) {
+            from = rangeFrom.coerceAtLeast(1)
+            to = if (rangeTo >= from) rangeTo else from + cap - 1
+        } else {
+            from = (pg - 1) * cap + 1
+            to = from + cap - 1
+        }
+        val w = width.coerceIn(0, 20_000) //单行最多返回多少字符，0=不限
         return when (route) {
-            Route.SANDBOX, Route.ALL_FILES -> readJava(path, File(path), route, from, to)
-            Route.ZERO_WIDTH -> readJava(path, File(Router.map(path)), route, from, to)
+            Route.SANDBOX, Route.ALL_FILES -> readJava(path, File(path), route, from, to, w)
+            Route.ZERO_WIDTH -> readJava(path, File(Router.map(path)), route, from, to, w)
             Route.ROOT, Route.SHIZUKU -> {
                 //目录 / 普通文件 / 不存在一条命令处理；文件只取这一页，不再整篇拉回来
                 val cmd = "if [ -d ${q(path)} ]; then ls -la ${q(path)} | head -n 200; " +
@@ -89,38 +105,68 @@ object FileOps {
                 val nl = raw.indexOf('\n')
                 val total = raw.substring(3, if (nl < 0) raw.length else nl).trim().toLongOrNull() ?: 0L
                 val body = if (nl < 0) "" else raw.substring(nl + 1)
-                Out(true, pageText(route.label, path, body, from, to, total, cap), route)
+                Out(true, pageText(route.label, path, body, from, to, total, cap, w), route)
             }
         }
-    } //读取文件（分页）
+    } //读取文件（分页 / 行区间 / 单行截断）
 
     /** 分页结果的抬头 + 带行号的正文：总行数、页数、越界提示都写在一行里，模型一眼能决定下一页取哪 */
-    private fun pageText(label: String, path: String, body: String, from: Int, to: Int, total: Long, cap: Int): String {
-        val pages = if (total <= 0) 0 else ((total + cap - 1) / cap).toInt()
+    private fun pageText(
+        label: String, path: String, body: String, from: Int, to: Int,
+        total: Long, cap: Int, width: Int = 0
+    ): String {
         val cnt = if (total < 0) "行数未知（文件较大）" else "共 $total 行"
-        val pgTxt = if (pages <= 0) "" else "，第 ${from / cap + 1}/$pages 页"
-        val head = "[$label] $path（第 $from-$to 行，$cnt$pgTxt，每页 $cap 行）"
+        val head = "[$label] $path（第 $from-$to 行，$cnt）"
         if (total > 0 && from > total) return "$head\n（起始行超出文件末尾，共 $total 行）"
         val rows = body.split("\n").let { if (it.isNotEmpty() && it.last().isEmpty()) it.dropLast(1) else it }
         if (rows.isEmpty()) return "$head\n（这一页没有内容）"
         val sb = StringBuilder(head).append('\n')
         rows.forEachIndexed { i, line ->
-            sb.append((from + i).toString().padStart(6)).append("| ").append(line).append('\n')
+            //width>0 时单行超长就截断，但把原长度写出来，模型才知道该不该再来一次要全文
+            val shown = if (width > 0 && line.length > width) {
+                line.take(width) + " …（本行共 ${line.length} 字符）"
+            } else line
+            sb.append((from + i).toString().padStart(6)).append("| ").append(shown).append('\n')
         }
         val tail = if (total > 0 && to >= total) "\n（已到文件末尾）"
-        else "\n（还有后续，下一页 page=${from / cap + 2}）"
+        else "\n（还有后续，下一页 page=${from / cap + 2}，或 from=${to + 1} 继续）"
         return sb.toString().trimEnd('\n') + tail
     } //分页抬头与行号正文
 
 
-    fun write(rawPath: String, content: String): Out {
+    /**
+     * 写文件：默认只用于**新建**（目标已存在直接拒绝，避免模型悄悄毁掉旧内容）。
+     * append=true 时改成「追加」：目标存在就把内容接到末尾，不存在等于新建。
+     */
+    fun write(rawPath: String, content: String, append: Boolean = false): Out {
         val path = Workspace.resolve(rawPath)
         val route = Router.route(path)
+        val exists = existsOn(path, route)
+        if (!append) {
+            //覆盖写会让模型悄悄毁掉旧内容：目标已存在就拒绝，逼它先 delete_file 或改用 edit_file
+            if (exists) {
+                return Out(
+                    false,
+                    "[${route.label}] 目标文件已存在：$path\n" +
+                        "write_file 只用于新建文件。改几行请用 edit_file（保留原内容）；确实要整篇覆盖，先 delete_file 再 write_file。",
+                    route
+                )
+            }
+        } else if (exists) {
+            //追加模式：目录不能追加，文件可以
+            val isDir = when (route) {
+                Route.SANDBOX, Route.ALL_FILES -> File(path).isDirectory
+                Route.ZERO_WIDTH -> File(Router.map(path)).isDirectory
+                else -> exec(route, "if [ -d ${q(path)} ]; then echo Y; else echo N; fi").out.contains("Y")
+            }
+            if (isDir) return Out(false, "[${route.label}] 目标是目录，不能追加：$path", route)
+        }
         //写之前先留一份旧内容给界面算 diff；读不到（没权限/太大）就返回 null，跳过 diff
         val before = readTextForDiff(path, route)
+        val redir = if (append) ">>" else ">"
         val out = when (route) {
-            Route.SANDBOX, Route.ALL_FILES -> writeJava(path, File(path), content, route)
-            Route.ZERO_WIDTH -> writeJava(path, File(Router.map(path)), content, route)
+            Route.SANDBOX, Route.ALL_FILES -> writeJava(path, File(path), content, route, append)
+            Route.ZERO_WIDTH -> writeJava(path, File(Router.map(path)), content, route, append)
             Route.ROOT -> {
                 val dir = path.substringBeforeLast('/', "/")
                 val mk = exec(route, "mkdir -p ${q(dir)}")
@@ -131,8 +177,10 @@ object FileOps {
                 val tmp = File(App.self.cacheDir, "bai-w-${System.currentTimeMillis()}-${(0..999).random()}.tmp")
                 val wrote = runCatching { tmp.writeText(content) }.isSuccess
                 if (!wrote) return Out(false, "[root] 临时文件写入失败: ${tmp.absolutePath}", route)
-                val r = exec(route, "cp -f ${q(tmp.absolutePath)} ${q(path)}; rm -f ${q(tmp.absolutePath)}")
-                if (r.ok) Out(true, "[root] 已写入 $path（${content.length} 字符）", route)
+                //追加时用 cat >> 接在旧内容后面；覆盖仍走 cp -f
+                val mv = if (append) "cat ${q(tmp.absolutePath)} >> ${q(path)}" else "cp -f ${q(tmp.absolutePath)} ${q(path)}"
+                val r = exec(route, "$mv; rm -f ${q(tmp.absolutePath)}")
+                if (r.ok) Out(true, "[root] 已${if (append) "追加" else "写入"} $path（${content.length} 字符）", route)
                 else Out(false, "[root] 写入失败(${r.code}): ${r.out}", route)
             }
             Route.SHIZUKU -> {
@@ -144,17 +192,63 @@ object FileOps {
                 if (b64.length > 700_000) {
                     return Out(false, "[Shizuku] 内容太大（${content.length} 字符）：Binder 单次事务放不下，请改 Root 或写小一点", route)
                 }
-                val r = exec(route, "base64 -d > ${q(path)}", b64)
-                if (r.ok) Out(true, "[Shizuku] 已写入 $path（${content.length} 字符）", route)
+                val r = exec(route, "base64 -d $redir ${q(path)}", b64)
+                if (r.ok) Out(true, "[Shizuku] 已${if (append) "追加" else "写入"} $path（${content.length} 字符）", route)
                 else Out(false, "[Shizuku] 写入失败(${r.code}): ${r.out}", route)
             }
         } //四通道各自失败点都会提前 return
         //写成功了才谈 diff：拼在结果尾部，UI 按标记拆开上色
         if (!out.ok || before == null) return out
-        val d = Diff.unified(before, content)
+        //追加时的新全文 = 旧内容 + 本次内容，diff 才是真实的追加行
+        val after = if (append) before + content else content
+        val d = Diff.unified(before, after)
         if (d.isBlank()) return out
         return out.copy(text = out.text + "\n" + Diff.MARK + "\n" + d + "\n" + Diff.MARK_END)
-    } //写入文件（带 diff）
+    } //写入文件（带 diff，可追加）
+
+    /** 声明行：各语言的函数 / 类 / 结构体签名，用于 mode=outline 只看骨架 */
+    private val OUTLINE = Regex(
+        """^\s*(public |private |internal |protected |static |export |final |abstract |open |data |sealed |inline |external |suspend |override |async |pub )*""" +
+            """(class|object|interface|enum|struct|trait|record|fun|function|func|fn|def|sub|module|impl|type)\b"""
+    )
+
+    /**
+     * 文件骨架：只回函数与类的声明行（带行号），压缩后的实现细节不进上下文。
+     * 读不到整文件（超大 / 无权限）时提示改用 read_file 分页或 grep_files。
+     */
+    fun outline(rawPath: String): Out {
+        val path = Workspace.resolve(rawPath)
+        val route = Router.route(path)
+        val text = readTextForDiff(path, route)
+            ?: return Out(false, "[${route.label}] 读不到整个文件（体积过大或无权限）：$path\n改用 read_file 分页，或 grep_files 按名字搜", route)
+        if (text.isEmpty()) return Out(false, "[${route.label}] 文件为空：$path", route)
+        val sb = StringBuilder()
+        var n = 0
+        text.lineSequence().forEachIndexed { i, line ->
+            val t = line.trimStart()
+            //注释行与注解不算声明，避免把 @Composable 当成函数
+            if (t.isEmpty() || t.startsWith("*") || t.startsWith("/*") || t.startsWith("//") || t.startsWith("@")) return@forEachIndexed
+            if (OUTLINE.containsMatchIn(line)) {
+                if (n < 1200) {
+                    sb.append((i + 1).toString().padStart(6)).append("| ").append(line.trimEnd().take(220)).append('\n')
+                    n++
+                }
+            }
+        }
+        if (n == 0) return Out(true, "[${route.label}] $path（没有识别到函数或类声明，可能不是源码文件）", route)
+        val more = if (n >= 1200) "\n…声明过多，已截断到 1200 条" else ""
+        return Out(true, "[${route.label}] $path 骨架（$n 条声明）\n$sb$more", route)
+    } //文件骨架
+
+    /** 目标是否存在（跨通道）：沙箱与零宽看 File.exists()，root / Shizuku 走 test -e */
+    private fun existsOn(path: String, route: Route): Boolean = when (route) {
+        Route.SANDBOX, Route.ALL_FILES -> File(path).exists()
+        Route.ZERO_WIDTH -> File(Router.map(path)).exists()
+        else -> {
+            val r = exec(route, "if [ -e ${q(path)} ]; then echo Y; else echo N; fi")
+            r.ok && r.out.contains("Y")
+        }
+    } //判断文件是否已存在
 
     /** 给 diff 用的旧内容：文件不存在返回空串（=整个文件都是新增），读不到返回 null（不加 diff） */
     private fun readTextForDiff(path: String, route: Route): String? = runCatching {
@@ -280,25 +374,33 @@ object FileOps {
     } //删除文件
 
     /** 列目录：recurse 递归、match 按文件名过滤（支持 *.kt 通配或关键字）、summarize 让总结模型归纳 */
-    fun list(rawPath: String, recursive: Boolean, limit: Int, match: String = "", summarize: Boolean = false): Out {
+    /**
+     * 列目录：depth 控制往下几层（0 或 1 = 只看当前层，>1 = 指定层数，上限 8；
+     * 不填时沿用旧行为：recurse=true 就钻 6 层，否则只看一层）。
+     */
+    fun list(
+        rawPath: String, recursive: Boolean, limit: Int, match: String = "",
+        summarize: Boolean = false, depth: Int = -1
+    ): Out {
         val path = Workspace.resolve(rawPath)
         val route = Router.route(path)
         val cap = limit.coerceIn(1, 1500)
-        val out = listRaw(path, route, recursive, cap, match)
+        val maxDepth = if (depth >= 0) depth.coerceIn(1, 8) else if (recursive) 6 else 1
+        val out = listRaw(path, route, recursive, cap, match, maxDepth)
         if (!out.ok || !summarize) return out
-        val summed = Sum.run(LIST_SUM_SYS, "目录：$path\n过滤条件：${match.ifBlank { "无" }}，递归=${recursive}\n${out.text}")
+        val summed = Sum.run(LIST_SUM_SYS, "目录：$path\n过滤条件：${match.ifBlank { "无" }}，递归=${recursive}，层数=$maxDepth\n${out.text}")
         if (summed == null) return out.copy(text = out.text + "\n\n（总结失败：总结模型未配置或调用出错）")
         return out.copy(text = out.text + "\n\n—— 总结（${Sum.label()}）——\n" + summed)
-    } //列目录（可总结）
+    } //列目录（可总结，可按层数）
 
     /** 真正的列目录：root / Shizuku 只有 shell，其它通道用 java.io 直接走 */
-    private fun listRaw(path: String, route: Route, recursive: Boolean, cap: Int, match: String): Out {
+    private fun listRaw(path: String, route: Route, recursive: Boolean, cap: Int, match: String, maxDepth: Int): Out {
         if (route == Route.ROOT || route == Route.SHIZUKU) {
             val glob = match.trim().let { it.contains('*') || it.contains('?') }
             val nameArg = if (glob) " -name ${q(match.trim())}" else ""
             val filter = if (match.isBlank() || glob) "" else " | grep -i -- ${q(match.trim())}"
             val cmd = if (recursive) {
-                "find ${q(path)} -maxdepth 6$nameArg -exec ls -ld {} \\; 2>/dev/null$filter | head -n $cap"
+                "find ${q(path)} -maxdepth $maxDepth$nameArg -exec ls -ld {} \\; 2>/dev/null$filter | head -n $cap"
             } else {
                 "find ${q(path)} -maxdepth 1 -mindepth 1$nameArg -exec ls -ld {} \\; 2>/dev/null$filter | head -n $cap"
             }
@@ -320,7 +422,7 @@ object FileOps {
                 //过滤只落在文件名上：命中就列，没命中的目录仍然要往下走，否则整棵子树被漏掉
                 val hit = matchBlob(k.name, match)
                 if (!hit) {
-                    if (recursive && k.isDirectory && depth < 6) walk(k, depth + 1)
+                    if (recursive && k.isDirectory && depth + 1 < maxDepth) walk(k, depth + 1)
                     continue
                 }
                 val rel = k.absolutePath.removePrefix(f.absolutePath).trimStart('/')
@@ -328,7 +430,7 @@ object FileOps {
                     .append("  ").append(if (k.isDirectory) "-" else human(k.length()))
                     .append("  ").append(fmt.format(Date(k.lastModified()))).append('\n')
                 n++
-                if (recursive && k.isDirectory && depth < 6) walk(k, depth + 1)
+                if (recursive && k.isDirectory && depth + 1 < maxDepth) walk(k, depth + 1)
             }
         }
         walk(f, 0)
@@ -502,16 +604,21 @@ object FileOps {
         return Out(true, "[${route.label}] 已解压到 ${dst.absolutePath}\n" + names.joinToString("\n"), route)
     } //解压 zip
 
-    /** 按内容找文件：跳过二进制与超大文件，输出 路径:行号: 内容；recurse=false 只搜该目录直属文件，summarize=true 让总结模型归纳 */
+    /**
+     * 按内容搜索：context=命中行前后各带几行（0-10），offset=跳过前多少条命中继续往后看。
+     * 两个参数都是为「命中太多、一次看不过来」准备的：先看前 60 条，再 offset=60 接着往下翻。
+     */
     fun grep(
         rawPath: String, pattern: String, ext: String, maxHits: Int, ignoreCase: Boolean,
-        recurse: Boolean = true, summarize: Boolean = false
+        recurse: Boolean = true, summarize: Boolean = false, context: Int = 0, offset: Int = 0
     ): Out {
         if (pattern.isEmpty()) return Out(false, "pattern 不能为空", Route.SANDBOX)
         val path = Workspace.resolve(rawPath)
         val route = Router.route(path)
         val cap = maxHits.coerceIn(1, 400)
-        val out = grepRaw(path, route, pattern, ext, cap, ignoreCase, recurse)
+        val ctx = context.coerceIn(0, 10)
+        val skip = offset.coerceAtLeast(0)
+        val out = grepRaw(path, route, pattern, ext, cap, ignoreCase, recurse, ctx, skip)
         if (!out.ok || !summarize) return out
         val summed = Sum.run(
             GREP_SUM_SYS,
@@ -523,18 +630,22 @@ object FileOps {
 
     /** 搜索本体：shell 通道交给 grep / find，其它通道在 Kotlin 里逐文件逐行匹配 */
     private fun grepRaw(
-        path: String, route: Route, pattern: String, ext: String, cap: Int, ignoreCase: Boolean, recurse: Boolean
+        path: String, route: Route, pattern: String, ext: String, cap: Int,
+        ignoreCase: Boolean, recurse: Boolean, ctx: Int = 0, skip: Int = 0
     ): Out {
         if (route == Route.ROOT || route == Route.SHIZUKU) {
             val flag = if (ignoreCase) "-i" else ""
+            val ctxArg = if (ctx > 0) "-C $ctx" else ""
+            //offset 要跳过的命中条数：用 tail 从第 skip+1 行开始截，之后再 head 限 cap
+            val pipe = " | tail -n +${skip + 1} | head -n $cap"
             val cmd = if (recurse) {
-                "grep -rn $flag --binary-files=without-match -e ${q(pattern)} ${q(path)} 2>/dev/null | head -n $cap"
+                "grep -rn $flag $ctxArg --binary-files=without-match -e ${q(pattern)} ${q(path)} 2>/dev/null$pipe"
             } else {
-                "find ${q(path)} -maxdepth 1 -type f -exec grep -n $flag --binary-files=without-match -e ${q(pattern)} {} + " +
-                    "2>/dev/null | head -n $cap"
+                "find ${q(path)} -maxdepth 1 -type f -exec grep -n $flag $ctxArg --binary-files=without-match -e ${q(pattern)} {} + " +
+                    "2>/dev/null$pipe"
             }
             val r = exec(route, cmd)
-            return if (r.ok) Out(true, "[${route.label}] $path\n${r.out}", route)
+            return if (r.out.isNotBlank()) Out(true, "[${route.label}] $path\n${r.out}", route)
             else Out(false, "[${route.label}] 没找到匹配（或目录不可读）: $pattern", route)
         }
         val f = real(route, path)
@@ -545,6 +656,7 @@ object FileOps {
         }.getOrNull() ?: return Out(false, "正则不合法：$pattern", route)
         val sb = StringBuilder()
         var hits = 0
+        var skipped = 0
         var scanned = 0
         val files = when {
             !f.isDirectory -> sequenceOf(f)
@@ -561,15 +673,34 @@ object FileOps {
             val lines = text.lineSequence().toList()
             for (i in lines.indices) {
                 if (hits >= cap) break
-                if (regex.containsMatchIn(lines[i])) {
+                if (!regex.containsMatchIn(lines[i])) continue
+                //offset：前面的命中直接跳过，只计数不输出
+                if (skipped < skip) {
+                    skipped++
+                    continue
+                }
+                if (ctx > 0) {
+                    //带上下文：命中行用 > 标，前后行用行号标，模型能直接照行号去 read_file
+                    val a = (i - ctx).coerceAtLeast(0)
+                    val b = (i + ctx).coerceAtMost(lines.size - 1)
+                    sb.append(f2.absolutePath).append(':').append(i + 1).append(":\n")
+                    for (k in a..b) {
+                        sb.append(if (k == i) "> " else "  ").append(k + 1).append("| ")
+                            .append(lines[k].trim().take(300)).append('\n')
+                    }
+                } else {
                     sb.append(f2.absolutePath).append(':').append(i + 1).append(": ")
                         .append(lines[i].trim().take(300)).append('\n')
-                    hits++
                 }
+                hits++
             }
         }
-        if (hits == 0) return Out(true, "[${route.label}] 扫描 $scanned 个文件，没有匹配: $pattern", route)
-        return Out(true, "[${route.label}] $path 命中 $hits 条（扫了 $scanned 个文件）\n$sb", route)
+        if (hits == 0) {
+            val tail = if (skipped >= skip && skip > 0) "（已跳过前 $skip 条命中，后面没有了）" else ""
+            return Out(true, "[${route.label}] 扫描 $scanned 个文件，没有匹配: $pattern$tail", route)
+        }
+        val more = if (hits >= cap) "\n（还有后续，offset=${skip + hits} 继续）" else ""
+        return Out(true, "[${route.label}] $path 命中 $hits 条（扫了 $scanned 个文件）\n$sb$more", route)
     } //按内容搜索本体
 
     private fun real(route: Route, path: String): File =
@@ -596,7 +727,7 @@ object FileOps {
     }
 
     /** 沙箱 / 零宽读取：按行分页，只留这一页进内存；文件不太大时顺手数出总行数 */
-    private fun readJava(showPath: String, f: File, route: Route, from: Int, to: Int): Out {
+    private fun readJava(showPath: String, f: File, route: Route, from: Int, to: Int, width: Int = 0): Out {
         if (!f.exists()) return Out(false, "[${route.label}] 文件不存在: $showPath", route)
         if (f.isDirectory) {
             val names = f.list() ?: return Out(false, "[${route.label}] 目录不可读: $showPath", route)
@@ -640,16 +771,18 @@ object FileOps {
             body = body.substring(0, MAX_READ)
             cut = "\n…这一页内容过长，只返回前 $MAX_READ 字符，请减小 lines 再读"
         }
-        val pt = pageText(route.label, showPath, body, from, to, if (countAll) n else -1L, to - from + 1)
+        val pt = pageText(route.label, showPath, body, from, to, if (countAll) n else -1L, to - from + 1, width)
         return Out(true, pt + cut, route)
     } //沙箱/零宽读取（分页）
 
-    private fun writeJava(showPath: String, f: File, content: String, route: Route): Out {
+    private fun writeJava(showPath: String, f: File, content: String, route: Route, append: Boolean = false): Out {
         val ok = runCatching {
             f.parentFile?.mkdirs()
-            f.writeText(content)
+            //追加走 appendText，否则整篇覆盖
+            if (append) f.appendText(content) else f.writeText(content)
         }.isSuccess
-        return if (ok) Out(true, "[${route.label}] 已写入 $showPath（${content.length} 字符）", route)
+        val verb = if (append) "追加" else "写入"
+        return if (ok) Out(true, "[${route.label}] 已$verb $showPath（${content.length} 字符）", route)
         else Out(false, "[${route.label}] 写入失败（权限不足）: $showPath", route)
     } //沙箱/零宽写入
 

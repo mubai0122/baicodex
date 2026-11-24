@@ -124,6 +124,13 @@ object Tools {
     const val REF_DEPS = "refactor_deps"
     const val REF_PLAN = "refactor_plan"
 
+    /** 补位工具：git 版本控制 / todo 跨轮任务清单 / time 时间换算 / cron 定时任务 / diff 文本对比 */
+    const val GIT = "git"
+    const val TODO = "todo"
+    const val TIME = "time"
+    const val CRON = "cron"
+    const val DIFF = "diff"
+
     /** 剪贴板 / 打开链接 / 分享 / 本地通知与今日通知 / 直发 HTTP */
     const val CLIP = "clipboard"
     const val OPEN = "open_link"
@@ -180,7 +187,9 @@ object Tools {
                     BROWSE, SUB, JS,
                     FLOW_RUN, FLOW_SAVE, FLOW_LIST, FLOW_AUTO, CHAT_SEARCH, A2A, LAN,
                     MI_DEVICES, MI_SCAN, MI_READ, MI_WRITE, MI_ACTION,
-                    MUSIC_PLATS, MUSIC_LOGIN, MUSIC_CACHE
+                    MUSIC_PLATS, MUSIC_LOGIN, MUSIC_CACHE,
+                    REF_SCAN, REF_REFS, REF_DEPS, REF_PLAN,
+                    GIT, TODO, TIME, CRON, DIFF
                 )
             )
             if (Linux.installed()) {
@@ -201,7 +210,9 @@ object Tools {
         TERM_SEND,
         FLOW_RUN, FLOW_SAVE, FLOW_AUTO, A2A, LAN,
         SSH_CONNECT, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_PUT,
-        MI_WRITE, MI_ACTION, MUSIC_LOGIN, MUSIC_CACHE
+        MI_WRITE, MI_ACTION, MUSIC_LOGIN, MUSIC_CACHE,
+        //git 会真提交到仓库、cron 会建常驻定时、todo 会改落盘清单，计划模式一律禁掉
+        GIT, TODO, CRON
     )
 
     /** 极简模式只留这五个：文件四件套 + exec_shell */
@@ -271,6 +282,15 @@ object Tools {
         SSH_GET -> "SSH 下载"
         SSH_PUT -> "SSH 上传"
         JS -> "JS 脚本"
+        REF_SCAN -> "重构·建索引"
+        REF_REFS -> "重构·查引用"
+        REF_DEPS -> "重构·查依赖"
+        REF_PLAN -> "重构·出计划"
+        GIT -> "git 版本控制"
+        TODO -> "任务清单"
+        TIME -> "时间换算"
+        CRON -> "定时任务"
+        DIFF -> "文本对比"
         else -> SkillPacks.find(name)?.let { "${it.skill}·${it.name}" }
             ?: if (Js.has(name)) "JS·$name" else mcpLabel(name)
     }
@@ -289,6 +309,8 @@ object Tools {
         if (name == SSH_SUDO || name == SSH_EXEC || name == SSH_WRITE || name == SSH_PUT) return true
         //米家写属性 / 调动作会真动设备，清缓存会删文件，都按高危算
         if (name == MI_WRITE || name == MI_ACTION || name == MUSIC_CACHE) return true
+        //git 会把改动真写进仓库、cron 会建常驻定时、todo 会改落盘清单，都按高危算
+        if (name == GIT || name == CRON || name == TODO) return true
         if (Js.has(name)) return true
         if (!name.startsWith(MCP)) return false
         val t = Mcp.findTool(name) ?: return true
@@ -343,20 +365,40 @@ object Tools {
             fn(
                 READ,
                 "读取文件内容，按行分页并带行号与总行数；路径是目录时返回目录列表。" +
-                    "行号可直接喂给 edit_file 的 line 参数；文件很大就一页页翻，别一次要几千行。",
+                    "行号可直接喂给 edit_file 的 line 参数；文件很大就一页页翻，别一次要几千行。" +
+                    "想直接取某一段用 from/to（绝对行号，优先于 page）；行特别长（压缩后的 js、单行 json）" +
+                    "用 width 限制单行字符数，免得一行就吃掉整个窗口。mode=outline 只列结构" +
+                    "（类 / 函数 / 接口 / 结构体声明行，带行号），不返回正文，摸大文件骨架时用它。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
                         .put("path", str("绝对路径"))
                         .put("page", JSONObject().put("type", "integer").put("description", "第几页，从 1 开始，默认 1"))
                         .put("lines", JSONObject().put("type", "integer").put("description", "每页多少行，默认 400，上限 2000"))
+                        .put("from", JSONObject().put("type", "integer").put("description", "从第几行开始读（绝对行号）；给了它 page 就失效"))
+                        .put("to", JSONObject().put("type", "integer").put("description", "读到第几行（含）；不给则取 from+lines-1"))
+                        .put("width", JSONObject().put("type", "integer").put("description", "单行最多返回多少字符，0=不限，默认 0；超长行会截断并注明原长度"))
+                        .put("mode", str("留空=读正文；outline=只列结构声明（类 / 函数 / 接口），大文件先看骨架"))
                 ).put("required", JSONArray().put("path"))
             )
         )
         arr.put(
             fn(
-                WRITE, "写入文本文件（覆盖写，父目录自动创建）。",
-                params("path" to str("绝对路径"), "content" to str("完整文本内容"))
+                WRITE,
+                "新建文本文件并写入内容（父目录自动创建）。默认只新建：目标已存在会直接报错、不会覆盖——" +
+                    "只改几行用 edit_file 保留原内容；确实要整篇重写就带 append=true（目录会被拒）。" +
+                    "append=true 且目标已存在时，内容追加到文件末尾，原内容不动。",
+                JSONObject().put("type", "object").put(
+                    "properties",
+                    JSONObject()
+                        .put("path", str("绝对路径"))
+                        .put("content", str("要写入的文本"))
+                        .put(
+                            "append",
+                            JSONObject().put("type", "boolean")
+                                .put("description", "false（默认）=只新建，已存在则报错；true=追加到已存在文件末尾")
+                        )
+                ).put("required", JSONArray().put("path").put("content"))
             )
         )
         //局部改：模型最爱大段重写整个文件，这里给它一条只改几行的路
@@ -391,17 +433,26 @@ object Tools {
         arr.put(
             fn(
                 SHELL, "执行 shell 命令，返回 stdout 与 stderr 合并后的输出。解压、安装、逆向等都用它拼命令完成。",
-                params(
-                    "command" to str("要执行的完整 shell 命令"),
-                    "session" to str(
-                        "会话名。不填 = 一次性执行，跑完进程就退。填了就在常驻会话里跑：" +
-                            "同名会话共用 cwd 与环境变量（cd、export 跨调用保持），不同名各自独立，最多 6 个"
-                    ),
-                    "path" to str("本次命令的工作目录，如 /sdcard/Download。填了会先 cd 过去；不填用当前工作区"),
-                    "keys" to str(
-                        "功能键，配合 session 用，传了就不执行 command：" +
-                            "ctrl-c 打断会话里正在跑的命令、ctrl-d 写 EOF、enter 回车"
-                    )
+                toolIn(
+                    JSONObject()
+                        .put("command", str("要执行的完整 shell 命令"))
+                        .put(
+                            "session", str(
+                                "会话名。不填 = 一次性执行，跑完进程就退。填了就在常驻会话里跑：" +
+                                    "同名会话共用 cwd 与环境变量（cd、export 跨调用保持），不同名各自独立，最多 6 个"
+                            )
+                        )
+                        .put("path", str("本次命令的工作目录，如 /sdcard/Download。填了会先 cd 过去；不填用当前工作区"))
+                        .put(
+                            "keys", str(
+                                "功能键，配合 session 用，传了就不执行 command：" +
+                                    "ctrl-c 打断会话里正在跑的命令、ctrl-d 写 EOF、enter 回车"
+                            )
+                        )
+                        .put("timeout", num("超时秒数，默认 120，范围 5-1800；跑构建、apt install 这类慢命令要给足"))
+                        .put("env", str("额外环境变量，每行一个 K=V，拼成 export 前缀只对本次命令生效"))
+                        .put("stdin", str("喂给命令的标准输入（回答 read / 交互脚本用），会先落临时文件再重定向进去")),
+                    "command"
                 )
             )
         )
@@ -469,17 +520,28 @@ object Tools {
         if (provider != null) {
             //参数做成可选：query 必填，其余走默认值，省得模型每次都堆一堆字段
             val webProps = JSONObject()
-                .put("query", str("搜索词，越具体越好"))
-                .put("max_results", JSONObject().put("type", "integer").put("description", "返回条数，1-10，默认 5"))
-                .put("topic", str("general 或 news，默认 general"))
-                .put("days", JSONObject().put("type", "integer").put("description", "news 时限定最近多少天"))
+                .put(
+                    "action",
+                    str("search（默认）搜网页 / extract 抓指定网址正文 / crawl 顺链接爬站 / download 把文件下到本机")
+                )
+                .put("query", str("action=search：搜索词，越具体越好"))
+                .put("max_results", JSONObject().put("type", "integer").put("description", "action=search：返回条数，1-10，默认 5；action=crawl：最多抓几页，默认 10"))
+                .put("topic", str("action=search：general 或 news，默认 general"))
+                .put("days", JSONObject().put("type", "integer").put("description", "action=search：news 时限定最近多少天"))
                 .put("search_depth", str("basic 或 advanced，默认 basic"))
+                .put("urls", str("action=extract：要正文的网址，多个用换行或逗号分隔，最多 20 个"))
+                .put("url", str("action=crawl 的起始网址；action=download 的文件地址"))
+                .put("max_depth", JSONObject().put("type", "integer").put("description", "action=crawl：往下爬几层，1-5，默认 1"))
+                .put("max_chars", JSONObject().put("type", "integer").put("description", "action=extract/crawl：每页正文最多返回多少字，默认 4000"))
+                .put("out", str("action=download：保存到本机的绝对路径；留空则存到工作区 downloads/ 下"))
             arr.put(
                 fn(
                     WEB_SEARCH,
-                    "联网搜索（${provider.label}）。需要最新信息、查资料、确认事实时用它，返回标题、链接与摘要。",
+                    "联网搜索与抓取（${provider.label}）。action：search 查最新信息，返回标题/链接/摘要；" +
+                        "extract 抓一组网址的正文（只读文章/文档用它，最快）；crawl 从起始网址顺链接爬整站；" +
+                        "download 把文件（zip/apk/pdf/图片）下载到本机。需要最新信息、查资料、确认事实时用它，车次时刻之类不要凭记忆编。",
                     JSONObject().put("type", "object").put("properties", webProps)
-                        .put("required", JSONArray().put("query"))
+                        .put("required", JSONArray())
                 )
             )
         }
@@ -546,9 +608,11 @@ object Tools {
                 "删除永久记忆。传 id 删指定一条（id 从 memory_search 结果里拿）；只传 query 时，" +
                     "命中唯一一条才直接删，命中多条会把候选列出来，需要你再按 id 逐条删。" +
                     "动手前先跟用户确认要删哪条，删完把删掉的内容告诉用户。",
-                params(
-                    "id" to JSONObject().put("type", "integer").put("description", "要删的记忆 id"),
-                    "query" to str("按关键词找要删的记忆，只在能唯一定位时才删")
+                //id 与 query 至少给一个，所以这里不用 params（它会两个都标必填）
+                toolIn(
+                    JSONObject()
+                        .put("id", num("要删的记忆 id"))
+                        .put("query", str("按关键词找要删的记忆，只在能唯一定位时才删"))
                 )
             )
         )
@@ -711,13 +775,15 @@ object Tools {
         arr.put(
             fn(
                 LIST,
-                "列目录（比 read_file 读目录更清楚）：带类型、体积、修改时间。recurse=true 递归到 6 层；" +
-                    "match 按文件名过滤（*.kt 通配或关键字）；summarize=true 让总结模型归纳这批文件是什么、先看哪几个。",
+                "列目录（比 read_file 读目录更清楚）：带类型、体积、修改时间。recurse=true 递归到 6 层，" +
+                    "depth 可直接指定层数（1-8）；match 按文件名过滤（*.kt 通配或关键字）；" +
+                    "summarize=true 让总结模型归纳这批文件是什么、先看哪几个。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
                         .put("path", str("目录绝对路径"))
                         .put("recurse", JSONObject().put("type", "boolean").put("description", "是否递归，默认 false"))
+                        .put("depth", JSONObject().put("type", "integer").put("description", "递归层数 1-8；给了它 recurse 就不起作用，默认 -1=按 recurse 走"))
                         .put("limit", JSONObject().put("type", "integer").put("description", "最多列多少项，默认 200"))
                         .put("match", str("按文件名过滤：*.kt 这类通配，或普通关键字（忽略大小写），留空=全部"))
                         .put(
@@ -763,7 +829,8 @@ object Tools {
         arr.put(
             fn(
                 GREP, "在文件或整个目录里按内容搜（正则），输出 路径:行号: 内容；跳过二进制与超 2MB 的文件。" +
-                    "recurse=false 只搜该目录直属文件；summarize=true 让总结模型归纳命中集中在哪、下一步看哪几行。",
+                    "recurse=false 只搜该目录直属文件；context=N 每条命中带 N 行上下文；offset 跳过前 N 条用于翻页；" +
+                    "summarize=true 让总结模型归纳命中集中在哪、下一步看哪几行。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
@@ -773,6 +840,8 @@ object Tools {
                         .put("max", JSONObject().put("type", "integer").put("description", "最多命中多少条，默认 60"))
                         .put("ignore_case", JSONObject().put("type", "boolean").put("description", "是否忽略大小写，默认 true"))
                         .put("recurse", JSONObject().put("type", "boolean").put("description", "目录是否往下递归，默认 true"))
+                        .put("context", JSONObject().put("type", "integer").put("description", "每条命中带几行上下文，0-10，默认 0（只给命中行）"))
+                        .put("offset", JSONObject().put("type", "integer").put("description", "跳过前多少条命中再返回（翻页用）；结果尾部提示还有后续时带上它"))
                         .put(
                             "summarize",
                             JSONObject().put("type", "boolean")
@@ -828,6 +897,7 @@ object Tools {
                         .put("url", str("完整 URL，带 https://"))
                         .put("headers", str("可选：每行一个「名: 值」"))
                         .put("body", str("可选：请求体，JSON 或纯文本"))
+                        .put("save_to", str("把响应体存到本机这个绝对路径（二进制安全，仅 GET）；给了就只回路径与大小"))
                 ).put("required", JSONArray().put("url"))
             )
         )
@@ -860,6 +930,7 @@ object Tools {
                         .put("body", str("可选：请求体，JSON 或纯文本"))
                         .put("timeout", JSONObject().put("type", "integer").put("description", "超时毫秒，默认 15000"))
                         .put("max", JSONObject().put("type", "integer").put("description", "正文最多返多少字，默认 20000"))
+                        .put("save_to", str("把响应体存到本机这个绝对路径（二进制安全，仅 GET）；给了就只回路径与大小"))
                 ).put("required", JSONArray().put("url"))
             )
         )
@@ -882,14 +953,20 @@ object Tools {
                 APKTOOL,
                 "看 APK 安装包（纯本地解析，不用装 apktool）：action=info 概览（包名/版本/SDK/签名指纹/权限/组件）；" +
                     "sign 签名证书详情；permissions 权限清单；components 组件清单；" +
-                    "dex 搜 dex 里的字符串（keyword 可给正则）；files 包内文件。",
+                    "dex 搜 dex 里的字符串（keyword 可给正则）；files 包内文件；" +
+                    "so 扫 lib/**/*.so 里的可打印字符串（找加密密钥、上报地址、native 特征串）；" +
+                    "jadx 用内置 Ubuntu 的 jadx 反编译成 java 源码（要点开看实现、追逻辑时用它，产物落 out 目录）。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
-                        .put("action", str("info（默认）/ sign / permissions / components / dex / files"))
+                        .put(
+                            "action",
+                            str("info（默认）/ sign / permissions / components / dex / files / so / jadx")
+                        )
                         .put("path", str("apk 文件的绝对路径"))
-                        .put("keyword", str("仅 dex：字符串过滤，支持正则，留空=按体积列前几条"))
+                        .put("keyword", str("仅 dex / so：字符串过滤，支持正则或普通关键字，留空=按上限列前几条"))
                         .put("limit", JSONObject().put("type", "integer").put("description", "最多多少条/项，默认 60"))
+                        .put("out", str("仅 jadx：反编译产物输出目录；留空则建在 apk 同级的「包名-jadx」目录"))
                 ).put("required", JSONArray().put("path"))
             )
         )
@@ -899,11 +976,12 @@ object Tools {
                 "内置浏览器（不弹外置 App，直接在应用里抓页面）：action=open 打开网址并返回正文；" +
                     "text 重读正文；links 列链接；find 找页面里的文字；click 按文字点链接或按钮；" +
                     "input 往输入框填内容（target 指定框的提示文字）；scroll 往下翻；back / forward / reload / url；" +
+                    "shot/screenshot 截当前页面存成 png（target 给保存路径，留空存 Download）；" +
                     "eval 跑一段 JS 取结果。要查网页里才有的内容、要点开链接、要登录后的页面，用它而不是 web_search。",
                 JSONObject().put("type", "object").put(
                     "properties",
                     JSONObject()
-                        .put("action", str("open（默认）/ text / links / find / click / input / scroll / back / forward / reload / url / eval"))
+                        .put("action", str("open（默认）/ text / links / find / click / input / scroll / back / forward / reload / url / shot / eval"))
                         .put("url", str("仅 open：完整网址，可省略 https://"))
                         .put("text", str("find / click 要匹配的文字；input 要填的内容；scroll 翻多少像素"))
                         .put("target", str("仅 input：输入框的提示文字或 name，留空=第一个能填的框"))
@@ -1031,6 +1109,8 @@ object Tools {
                                 .put("description", "是否把上下文压缩摘要（role=summary）也算进结果，默认 false")
                         )
                         .put("limit", JSONObject().put("type", "integer").put("description", "最多返回多少条，默认 20，上限 50"))
+                        .put("at_from", str("只看这个时间之后的消息：yyyy-MM-dd HH:mm 或 10/13 位时间戳，留空不限"))
+                        .put("at_to", str("只看这个时间之前的消息，格式同上，留空不限"))
                 ).put("required", JSONArray().put("query"))
             )
         )
@@ -1131,7 +1211,14 @@ object Tools {
             fn(
                 MI_READ,
                 "读米家设备的一个属性（siid 服务 + piid 属性）。局域网连不上会自动回落云端，两边都不通才返回失败。",
-                params("did" to str("设备 did"), "siid" to num("服务 id"), "piid" to num("属性 id"))
+                toolIn(
+                    JSONObject()
+                        .put("did", str("设备 did（台账里的 id）"))
+                        .put("name", str("设备名，记不住 did 时直接写名字，工具会去台账里找"))
+                        .put("siid", num("服务 id"))
+                        .put("piid", num("属性 id")),
+                    "siid", "piid"
+                )
             )
         )
         arr.put(
@@ -1139,9 +1226,14 @@ object Tools {
                 MI_WRITE,
                 "写米家设备的一个属性。value 会按内容自动转类型：true/false 转布尔、纯数字转整数、带小数点转小数，其余按字符串。" +
                     "这是会改变设备状态的写操作。",
-                params(
-                    "did" to str("设备 did"), "siid" to num("服务 id"), "piid" to num("属性 id"),
-                    "value" to str("要写入的值")
+                toolIn(
+                    JSONObject()
+                        .put("did", str("设备 did（台账里的 id）"))
+                        .put("name", str("设备名，记不住 did 时直接写名字"))
+                        .put("siid", num("服务 id"))
+                        .put("piid", num("属性 id"))
+                        .put("value", str("要写入的值")),
+                    "siid", "piid", "value"
                 )
             )
         )
@@ -1151,11 +1243,12 @@ object Tools {
                 "调米家设备的一个动作（siid 服务 + aiid 动作）。args 可选：写 JSON 数组或用逗号分隔。",
                 toolIn(
                     JSONObject()
-                        .put("did", str("设备 did"))
+                        .put("did", str("设备 did（台账里的 id）"))
+                        .put("name", str("设备名，记不住 did 时直接写名字"))
                         .put("siid", num("服务 id"))
                         .put("aiid", num("动作 id"))
                         .put("args", str("动作参数，JSON 数组或逗号分隔，可空")),
-                    "did", "siid", "aiid"
+                    "siid", "aiid"
                 )
             )
         )
@@ -1208,6 +1301,134 @@ object Tools {
                 toolIn(JSONObject().put("action", str("size / clear，默认 clear")))
             )
         )
+        //重构四件套：建索引 / 查谁引用我 / 查我依赖谁 / 出重构计划，落 .docs/ 里给后续轮次直接读
+        arr.put(
+            fn(
+                REF_SCAN,
+                "扫工作区建重构索引：在 .docs/ 下生成 function.txt（每个文件干什么）、imports.txt（依赖关系）、" +
+                    "index.txt（规模与入口）。改完一批代码要重跑一次，后面查引用 / 查依赖都靠它。",
+                toolIn(JSONObject().put("ws", str("工作区根目录，留空=当前绑定的工作区")))
+            )
+        )
+        arr.put(
+            fn(
+                REF_REFS,
+                "查谁 import / 引用了目标文件：给文件名（可只给类名）就扫全工作区，返回 文件:行号: import。",
+                toolIn(
+                    JSONObject()
+                        .put("ws", str("工作区根目录，留空=当前绑定工作区"))
+                        .put("target", str("目标文件相对路径或文件名，如 Tools.kt")),
+                    "target"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                REF_DEPS,
+                "查目标文件自己依赖了谁：列它的 import，凡是工作区里能找到的标出对应文件，顺着摸依赖链。",
+                toolIn(
+                    JSONObject()
+                        .put("ws", str("工作区根目录，留空=当前绑定工作区"))
+                        .put("file", str("目标文件相对路径或文件名")),
+                    "file"
+                )
+            )
+        )
+        arr.put(
+            fn(
+                REF_PLAN,
+                "生成重构计划骨架：mode=lang 换语言、mode=arch 换架构，落 .docs/refactor.txt，步骤可一步步勾掉。",
+                toolIn(
+                    JSONObject()
+                        .put("ws", str("工作区根目录，留空=当前绑定工作区"))
+                        .put("mode", str("lang=换语言，arch=换架构"))
+                        .put("note", str("补充说明，例如「Kotlin 迁 Rust 核心层」")),
+                    "mode"
+                )
+            )
+        )
+        //git：版本控制，先试宿主 sh，没装 git 再退到内置 Ubuntu
+        arr.put(
+            fn(
+                GIT,
+                "对工作区做 git 操作：status（默认，看改了哪些）/ diff（看具体改动，含 stat）/ log / branch / " +
+                    "add（全部暂存）/ commit（需要 message，会自动先 add -A）。path 留空=当前工作区。" +
+                    "提交前先把 diff 看一遍，别把临时文件、密钥一起提交。",
+                toolIn(
+                    JSONObject()
+                        .put("path", str("仓库目录，留空=当前工作区"))
+                        .put("action", str("status / diff / log / branch / add / commit，默认 status"))
+                        .put("message", str("仅 commit：提交说明，写清这次改了什么"))
+                        .put("limit", num("仅 log：最多几条，默认 20")),
+                    "action"
+                )
+            )
+        )
+        //todo：跨轮持久任务清单，避免每轮重新问「还剩哪些没做」
+        arr.put(
+            fn(
+                TODO,
+                "跨轮持久任务清单（存在应用私有目录）。action=list（默认）看全部 / add 加一条（要 text）/ " +
+                    "done、undone 改状态（要 id）/ del 删一条（要 id）/ clear 清空。多轮长任务用它记进度。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("list / add / done / undone / del / clear，默认 list"))
+                        .put("text", str("仅 add：要记的事，一句话说清"))
+                        .put("id", str("done / undone / del：条目 id，先从 list 里拿")),
+                    "action"
+                )
+            )
+        )
+        //time：时间换算，模型最常犯的错就是自己算时间
+        arr.put(
+            fn(
+                TIME,
+                "时间换算，比模型自己算可靠。action=now（默认）给本地/UTC 时间、秒与毫秒时间戳、时区；" +
+                    "action=parse 把日期或时间戳解释成完整时间（value）；action=diff 算 value 到 to 差多少。" +
+                    "凡是要报「现在几点」「距今多久」「两个时间差几天」，先调它。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("now / parse / diff，默认 now"))
+                        .put("value", str("parse / diff：日期（2026-01-01 08:30）或 10/13 位时间戳"))
+                        .put("to", str("仅 diff：另一个时间")),
+                    "action"
+                )
+            )
+        )
+        //cron：定时任务，到点让 Agent 跑一段 prompt
+        arr.put(
+            fn(
+                CRON,
+                "应用内定时任务：action=list（默认）/ add（要 prompt 与 at）/ del / on / off（要 id）。" +
+                    "at 支持 HH:mm（今天这个点）与 yyyy-MM-dd HH:mm；daily=true 每天同一时间跑；" +
+                    "auto=true 到点自动执行，false 只发通知提醒。到点要真干活就用它，别用 exec_shell 挂 sleep。",
+                toolIn(
+                    JSONObject()
+                        .put("action", str("list / add / del / on / off，默认 list"))
+                        .put("prompt", str("仅 add：到点要执行什么"))
+                        .put("at", str("仅 add：HH:mm 或 yyyy-MM-dd HH:mm"))
+                        .put("daily", JSONObject().put("type", "boolean").put("description", "true=每天同一时间，默认 false"))
+                        .put("auto", JSONObject().put("type", "boolean").put("description", "true=自动执行，false=只提醒，默认 true"))
+                        .put("id", str("del / on / off：任务 id，先从 list 里拿")),
+                    "action"
+                )
+            )
+        )
+        //diff：改前改后比对，给用户看改动时不用自己拼 diff
+        arr.put(
+            fn(
+                DIFF,
+                "文本比对：给 a / b 两段文本，或 file_a / file_b 两个文件路径，返回 unified diff。" +
+                    "改完文件想确认「只改了这几行」就调它，不要靠肉眼对全文。",
+                toolIn(
+                    JSONObject()
+                        .put("a", str("左文本"))
+                        .put("b", str("右文本"))
+                        .put("file_a", str("左文件路径（优先于 a）"))
+                        .put("file_b", str("右文件路径（优先于 b）"))
+                )
+            )
+        )
         //技能包：清单在系统提示里，每个函数直接注册成独立工具，不搞两级跳
         arr.put(
             fn(
@@ -1255,10 +1476,20 @@ object Tools {
     } //OpenAI tools 定义
 
     fun execute(name: String, args: JSONObject): ToolOutcome = when (name) {
-        READ -> FileOps.read(
-            args.optString("path"), args.optInt("page", 1), args.optInt("lines", 400)
+        READ -> {
+            //mode=outline：只回声明行，大文件先看骨架
+            if (args.optString("mode").trim().lowercase() == "outline") {
+                FileOps.outline(args.optString("path")).toOutcome().governed()
+            } else {
+                FileOps.read(
+                    args.optString("path"), args.optInt("page", 1), args.optInt("lines", 400),
+                    args.optInt("from", 0), args.optInt("to", 0), args.optInt("width", 0)
+                ).toOutcome().governed()
+            }
+        }
+        WRITE -> FileOps.write(
+            args.optString("path"), args.optString("content"), args.optBoolean("append", false)
         ).toOutcome().governed()
-        WRITE -> FileOps.write(args.optString("path"), args.optString("content")).toOutcome().governed()
         EDIT -> {
             //mode=insert / delete 走按行号那套，其余仍是 old→new 的整段替换
             val mode = args.optString("mode").trim().lowercase()
@@ -1277,7 +1508,10 @@ object Tools {
             args.optString("command"),
             args.optString("path"),
             args.optString("session"),
-            args.optString("keys")
+            args.optString("keys"),
+            args.optInt("timeout", 120),
+            args.optString("env"),
+            args.optString("stdin")
         ).governed()
         //终端排障：先看画面（term_view），再决定发什么键（term_send / exec_shell 的 keys）
         TERM_VIEW -> termView(args).governed()
@@ -1293,7 +1527,7 @@ object Tools {
         SCREEN -> screen(args).governed()
         LIST -> FileOps.list(
             args.optString("path"), args.optBoolean("recurse", false), args.optInt("limit", 200),
-            args.optString("match"), args.optBoolean("summarize", false)
+            args.optString("match"), args.optBoolean("summarize", false), args.optInt("depth", -1)
         ).toOutcome().governed()
         INFO -> FileOps.info(args.optString("path")).toOutcome().governed()
         MOVE -> FileOps.move(
@@ -1303,7 +1537,8 @@ object Tools {
         GREP -> FileOps.grep(
             args.optString("path"), args.optString("pattern"), args.optString("ext"),
             args.optInt("max", 60), args.optBoolean("ignore_case", true),
-            args.optBoolean("recurse", true), args.optBoolean("summarize", false)
+            args.optBoolean("recurse", true), args.optBoolean("summarize", false),
+            args.optInt("context", 0), args.optInt("offset", 0)
         ).toOutcome().governed()
         CLIP -> clip(args).governed()
         OPEN -> openLink(args).governed()
@@ -1336,10 +1571,44 @@ object Tools {
         SSH_CONNECT, SSH_LS, SSH_READ, SSH_WRITE, SSH_SUDO, SSH_EXEC, SSH_GET, SSH_PUT ->
             sshTool(name, args).governed()
         JS -> jsRun(args).governed()
+        REF_SCAN, REF_REFS, REF_DEPS, REF_PLAN -> refactorTool(name, args).governed()
+        GIT, TODO, TIME, CRON, DIFF -> extra(name, args).governed()
         else -> SkillPacks.find(name)?.let { skillExec(it, args) }?.governed()
             ?: jsTool(name, args)
             ?: mcpCall(name, args).governed()
     } //执行单个工具
+    /** 重构四件套分发：ws 留空就用当前工作区，结果里带着 .docs 落地文件说明 */
+    private fun refactorTool(name: String, args: JSONObject): ToolOutcome {
+        val ws = args.optString("ws").trim()
+        val r = when (name) {
+            REF_SCAN -> b.ai.core.misc.refactor.Refactor.scan(ws)
+            REF_REFS -> b.ai.core.misc.refactor.Refactor.refs(ws, args.optString("target"))
+            REF_DEPS -> b.ai.core.misc.refactor.Refactor.deps(ws, args.optString("file"))
+            else -> b.ai.core.misc.refactor.Refactor.plan(ws, args.optString("mode"), args.optString("note"))
+        }
+        return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+    } //重构四件套
+
+    /** 补位工具分发：git / todo / time / cron / diff 全在 Extra 里实现，这里只做参数搬运 */
+    private fun extra(name: String, a: JSONObject): ToolOutcome {
+        val r = when (name) {
+            GIT -> Extra.git(
+                a.optString("path"), a.optString("action", "status"),
+                a.optString("message"), a.optInt("limit", 20)
+            )
+            TODO -> Extra.todo(a.optString("action", "list"), a.optString("text"), a.optString("id"))
+            TIME -> Extra.time(a.optString("action", "now"), a.optString("value"), a.optString("to"))
+            CRON -> Extra.cron(
+                a.optString("action", "list"), a.optString("prompt"), a.optString("at"),
+                a.optBoolean("daily", false), a.optBoolean("auto", true), a.optString("id")
+            )
+            else -> Extra.diff(
+                a.optString("a"), a.optString("b"), a.optString("file_a"), a.optString("file_b")
+            )
+        }
+        return ToolOutcome(r.ok, r.text, Route.SANDBOX)
+    } //补位工具
+
     /** JS 脚本：跑在 cpp/js/qjs.cpp 的 QuickJS 里，脚本里的 bai.call 回到这里调别的工具 */
     private fun jsRun(args: JSONObject): ToolOutcome {
         val code = args.optString("script")
@@ -1397,7 +1666,10 @@ object Tools {
         val sid = args.optString("session_id").trim()
         val role = args.optString("role", "all").trim().lowercase()
         val incSum = args.optBoolean("include_compressed", false)
-        val hits = Repo.searchMessages(q, args.optInt("limit", 20), sid, role, incSum)
+        //时间窗：模型给日期或 10/13 位时间戳都能认，解析不出来就当没给（不限）
+        val atFrom = stampOf(args.optString("at_from"))
+        val atTo = stampOf(args.optString("at_to"))
+        val hits = Repo.searchMessages(q, args.optInt("limit", 20), sid, role, incSum, atFrom, atTo)
         if (hits.isEmpty()) {
             return ToolOutcome(
                 true,
@@ -1719,6 +1991,23 @@ object Tools {
         if (at > now) return at
         return if (daily) Schedules.rollForward(at, true, now) else 0L
     } //定时时间解析
+
+    /** 过滤用时间戳：支持日期与 10/13 位数字，解析不出来返回 0（表示不限） */
+    private fun stampOf(raw: String): Long {
+        val s = raw.trim()
+        if (s.isEmpty()) return 0L
+        if (s.all { it.isDigit() }) {
+            val n = s.toLongOrNull() ?: return 0L
+            return if (s.length <= 10) n * 1000 else n
+        }
+        for (pat in listOf("yyyy-MM-dd HH:mm", "yyyy-MM-dd", "yyyy/MM/dd HH:mm", "yyyy/MM/dd")) {
+            val f = SimpleDateFormat(pat, Locale.CHINA)
+            f.isLenient = false
+            val d = runCatching { f.parse(s) }.getOrNull() ?: continue
+            return d.time
+        }
+        return 0L
+    } //过滤时间戳
     /** skill_read：返回技能用法，正文按需给，不进系统提示 */
     private fun skillRead(key: String): ToolOutcome {
         val p = SkillPacks.pack(key) ?: return ToolOutcome(false, "没有这个技能：$key", Route.SANDBOX)
@@ -1916,7 +2205,7 @@ object Tools {
         return ToolOutcome(true, text, Route.SANDBOX)
     } //调用 MCP 能力
 
-    /** 搜索技能：按用户选的平台分发；平台表以后往里加分支即可 */
+    /** 搜索技能：action 分发到 搜索 / 提取正文 / 爬站 / 下载文件；平台表以后往里加分支即可 */
     private fun search(args: JSONObject): ToolOutcome {
         val provider = Search.selected
             ?: return ToolOutcome(
@@ -1924,8 +2213,41 @@ object Tools {
                 "未启用联网搜索：请到 设置 → 扩展 → 搜索平台 里选一个平台并填好 Key。",
                 Route.SANDBOX
             )
+        val action = args.optString("action", "search").trim().lowercase().ifEmpty { "search" }
+        //下载纯本地网络行为，不吃搜索平台的额度，也不要求平台支持
+        if (action == "download") return downloadTo(args)
+        if (action == "extract" || action == "crawl") {
+            //正文提取与爬站目前只有 Tavily 提供
+            if (provider.id != "tavily") {
+                return ToolOutcome(
+                    false,
+                    "提取正文/爬站只支持 Tavily 平台（当前是 ${provider.label}）：" +
+                        "请到 设置 → 扩展 → 搜索平台 切到 Tavily 后再试。",
+                    Route.SANDBOX
+                )
+            }
+            val key = Cfg.searchCfg("tavily", "key")
+            val depth = args.optString("search_depth", "basic")
+            val cap = args.optInt("max_chars", 0).let { if (it > 0) it else 4000 }
+            val text = if (action == "extract") {
+                val urls = args.optString("urls").split(Regex("[\\s,，]+"))
+                    .map { it.trim() }.filter { it.startsWith("http") }
+                if (urls.isEmpty()) {
+                    return ToolOutcome(false, "extract 需要 urls：给一个或多个 http(s) 网址", Route.SANDBOX)
+                }
+                Tavily.extract(key, urls, depth, cap)
+            } else {
+                val url = args.optString("url").trim()
+                if (url.isEmpty()) {
+                    return ToolOutcome(false, "crawl 需要 url：给起始网址", Route.SANDBOX)
+                }
+                Tavily.crawl(key, url, args.optInt("max_depth", 1), args.optInt("max_results", 10), depth, cap)
+            }
+            val ok = !text.startsWith("未配置") && !text.startsWith("提取失败") && !text.startsWith("爬取失败")
+            return ToolOutcome(ok, text, Route.SANDBOX)
+        }
         val query = args.optString("query").trim()
-        if (query.isEmpty()) return ToolOutcome(false, "搜索词为空", Route.SANDBOX)
+        if (query.isEmpty()) return ToolOutcome(false, "搜索词为空（action=search 需要 query）", Route.SANDBOX)
         val n = args.optInt("max_results", 5).coerceIn(1, 10)
         val r = when (provider.id) {
             "tavily" -> Tavily.search(
@@ -1947,7 +2269,33 @@ object Tools {
             else -> "搜索失败：平台 ${provider.id} 还没接入"
         }
         return ToolOutcome(!r.startsWith("未配置") && !r.startsWith("搜索失败"), r, Route.SANDBOX)
-    } //联网搜索
+    } //联网搜索 / 抓取 / 下载
+
+    /** 把 URL 指向的文件下载到本机：out 留空就落到工作区 downloads/ 下 */
+    private fun downloadTo(args: JSONObject): ToolOutcome {
+        val url = args.optString("url").trim()
+        if (!url.startsWith("http")) return ToolOutcome(false, "download 需要 url：http(s) 地址", Route.SANDBOX)
+        val name = url.substringAfterLast('/').substringBefore('?').substringBefore('#')
+            .ifBlank { "download-${System.currentTimeMillis()}" }
+        val raw = args.optString("out").trim().ifBlank {
+            val base = runCatching { Workspace.path() }.getOrDefault("").ifBlank { "/sdcard/Download" }
+            "$base/downloads/$name"
+        }
+        val f = java.io.File(Workspace.resolve(raw))
+        val msg = runCatching {
+            f.parentFile?.mkdirs()
+            val c = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 15_000
+            c.readTimeout = 60_000
+            c.instanceFollowRedirects = true
+            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) Baicodex")
+            val code = c.responseCode
+            if (code !in 200..299) return@runCatching "下载失败：HTTP $code $url"
+            c.inputStream.use { ins -> f.outputStream().use { outs -> ins.copyTo(outs) } }
+            "已下载：$url\n保存到：${f.absolutePath}\n体积：${f.length()} 字节"
+        }.getOrElse { "下载失败：${it.message}" }
+        return ToolOutcome(!msg.startsWith("下载失败"), msg, routeNow())
+    } //下载文件到本机
 
     /** 12306 查询：只读网络请求，走应用身份，不需要 root / Shizuku */
     private fun rail(a: JSONObject): ToolOutcome {
@@ -2134,10 +2482,38 @@ object Tools {
         val method = a.optString("method", "GET").trim().uppercase().ifEmpty { "GET" }
         val ms = a.optInt("timeout", 15_000).coerceIn(1_000, 120_000)
         val max = a.optInt("max", 20_000).coerceIn(200, 1_000_000)
+        //save_to：要存二进制（apk / zip / 图片）就走原生流拷贝，不能先转文本
+        val save = a.optString("save_to").trim()
+        if (save.isNotEmpty() && method == "GET") return saveUrl(url, a.optString("headers"), save)
         val r = Net.curl(method, url, a.optString("headers"), a.optString("body"), ms, max)
         val code = r.removePrefix("HTTP ").substringBefore('\n').trim().toIntOrNull()
         return ToolOutcome(code != null && code < 400, r, Route.SANDBOX)
     } //发 curl
+    /** 把 URL 的内容原样存到本机文件（二进制安全，跟 30x 跳转）；返回路径与大小 */
+    private fun saveUrl(url: String, headers: String, out: String): ToolOutcome = runCatching {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.instanceFollowRedirects = true
+        conn.connectTimeout = 20_000
+        conn.readTimeout = 120_000
+        headers.lines().forEach { line ->
+            val i = line.indexOf(':')
+            if (i > 0) conn.setRequestProperty(line.substring(0, i).trim(), line.substring(i + 1).trim())
+        }
+        val f = java.io.File(Workspace.resolve(out))
+        f.parentFile?.mkdirs()
+        val code = conn.responseCode
+        val stream = if (code in 200..399) conn.inputStream else conn.errorStream
+        if (code !in 200..299) {
+            conn.disconnect()
+            return ToolOutcome(false, "HTTP $code，没有保存", Route.SANDBOX)
+        }
+        val n = stream?.use { ins -> java.io.FileOutputStream(f).use { outs -> ins.copyTo(outs) } } ?: 0L
+        conn.disconnect()
+        ToolOutcome(true, "已保存 $code → ${f.absolutePath}（$n 字节）", Route.SANDBOX)
+    }.getOrElse {
+        ToolOutcome(false, "下载失败：" + (it.message ?: it.javaClass.simpleName), Route.SANDBOX)
+    } //保存到本机
+
     /** net_page：native 抓 HTML 后转纯文本 */
     private fun netPage(a: JSONObject): ToolOutcome {
         val url = a.optString("url").trim()
@@ -2157,6 +2533,11 @@ object Tools {
         a.optString("headers").lines().forEach { line ->
             val i = line.indexOf(':')
             if (i > 0) heads.add(line.substring(0, i).trim() to line.substring(i + 1).trim())
+        }
+        //save_to：GET 直接流式落盘，保证二进制不被当文本糟蹋
+        val save = a.optString("save_to").trim()
+        if (save.isNotEmpty() && method == "GET") {
+            return saveUrl(url, a.optString("headers"), save)
         }
         return runCatching {
             val conn = URL(url).openConnection() as java.net.HttpURLConnection
@@ -2205,7 +2586,8 @@ object Tools {
     private fun apk(a: JSONObject): ToolOutcome {
         val r = Apk.run(
             a.optString("action", "info"), a.optString("path"),
-            a.optString("keyword"), a.optInt("limit", 60)
+            a.optString("keyword"), a.optInt("limit", 60),
+            a.optString("out")   //jadx 反编译产物目录，留空则用 apk 同级「包名-jadx」
         )
         return ToolOutcome(r.ok, r.text, Route.SANDBOX)
     } //看安装包
@@ -2218,7 +2600,10 @@ object Tools {
         return ToolOutcome(!t.startsWith("失败"), t, Route.SANDBOX)
     } //浏览网页
 
-    private fun execShell(command: String, path: String = "", session: String = "", keys: String = ""): ToolOutcome {
+    private fun execShell(
+        command: String, path: String = "", session: String = "", keys: String = "",
+        timeoutSec: Int = 120, env: String = "", stdin: String = ""
+    ): ToolOutcome {
         //功能键：只往会话里打信号，不执行新命令
         if (keys.isNotBlank()) {
             val r = Term.keys(keys, session)
@@ -2241,37 +2626,55 @@ object Tools {
                 )
             }
         }
+        //env：每行一个 K=V，拼成 export 前缀；只影响本次命令（常驻会话里同样能看见）
+        var cmd0 = command
+        if (env.isNotBlank()) {
+            val pre = env.lines().map { it.trim() }
+                .filter { it.contains('=') && !it.startsWith("#") && it.substringBefore('=').isNotBlank() }
+                .joinToString("; ") { "export " + it }
+            if (pre.isNotEmpty()) cmd0 = pre + "; " + cmd0
+        }
+        //stdin：先落到缓存文件再重定向进去，绕开各通道的引号地狱
+        if (stdin.isNotEmpty()) {
+            val tmp = java.io.File(App.self.cacheDir, "stdin-" + System.currentTimeMillis() + ".txt")
+            runCatching { tmp.writeText(stdin) }.onFailure {
+                return ToolOutcome(false, "stdin 落临时文件失败：" + (it.message ?: "未知错误"), Route.SANDBOX)
+            }
+            cmd0 = cmd0 + " < '" + tmp.absolutePath + "'"
+        }
+        //超时：默认 120 秒，钳 5-1800 秒，跳过大文件构建、apt install 时给足
+        val ms = timeoutSec.coerceIn(5, 1800) * 1000L
         //绑了工作区就先把 cwd 切进去：模型只写相对路径也能跑对
         //显式要会话或指定目录 → 走常驻会话：cd / export 跨调用保持，还能被 keys 打断
         if (session.isNotBlank() || path.isNotBlank()) {
             val name = session.ifBlank { "main" }
-            val r = Term.exec(command, path, name, 120_000L)
+            val r = Term.exec(cmd0, path, name, ms)
             val dir = Term.cwdOf(name).ifBlank { path }
             val head = "[" + Cfg.workMode.label + " · 会话 " + name + "] exit=" + r.code +
-                " · cwd=" + dir.ifBlank { "未绑工作区" } + "\n\$ " + echoCmd(command) + "\n"
+                " · cwd=" + dir.ifBlank { "未绑工作区" } + "\n\$ " + echoCmd(cmd0) + "\n"
             return ToolOutcome(r.ok, head + r.out, routeNow())
         }
-        val cmd = Workspace.wrap(command)
+        val cmd = Workspace.wrap(cmd0)
         return when (Cfg.workMode) {
             WorkMode.ROOT -> {
-                val r = Root.run(cmd, timeoutMs = 120_000L)
-                ToolOutcome(r.ok, shellHead("root", r.code, command) + r.out, Route.ROOT)
+                val r = Root.run(cmd, timeoutMs = ms)
+                ToolOutcome(r.ok, shellHead("root", r.code, cmd0) + r.out, Route.ROOT)
             } //root 身份：一次 su -c
             WorkMode.SHIZUKU -> {
-                val r = Shiz.run(cmd, timeoutMs = 120_000L)
-                ToolOutcome(r.ok, shellHead("Shizuku", r.code, command) + r.out, Route.SHIZUKU)
+                val r = Shiz.run(cmd, timeoutMs = ms)
+                ToolOutcome(r.ok, shellHead("Shizuku", r.code, cmd0) + r.out, Route.SHIZUKU)
             } //shell 身份：Shizuku 用户服务
             WorkMode.NORMAL -> {
-                val r = Shell.run(cmd, timeoutMs = 120_000L)
+                val r = Shell.run(cmd, timeoutMs = ms)
                 //exec_shell 是应用身份的 sh，命令里的路径原样交给内核：零宽只作用于文件四件套，
                 //命令直连 Android/data 或 obb 时失败必须说清原因，别让模型以为是零宽没开
                 val lack = !r.ok && !Router.allFiles() &&
-                    (command.contains("/Android/data") || command.contains("/Android/obb"))
+                    (cmd0.contains("/Android/data") || cmd0.contains("/Android/obb"))
                 val extra = if (lack) {
                     "\n（exec_shell 走原路径，零宽变换只对 read_file / write_file / make_dir / delete_file 生效；" +
                         "这个目录请改用那几个工具，或在设置 → 权限 里打开「所有文件访问」）"
                 } else ""
-                ToolOutcome(r.ok, shellHead("沙箱", r.code, command) + r.out + extra, Route.SANDBOX)
+                ToolOutcome(r.ok, shellHead("沙箱", r.code, cmd0) + r.out + extra, Route.SANDBOX)
             } //应用身份：sh
         }
     } //exec_shell：不自动降级，权限不足直接把错误回给模型
@@ -2356,9 +2759,22 @@ object Tools {
     } //局域网扫描
 
     /** 读属性：局域网优先、云端兜底都是 MiHome 内部的事，这里只报结果 */
+    /** 米家设备标识：优先 did；没给就用 name 去台账里找（模型常只记得设备名） */
+    private fun miDidOf(a: JSONObject): String {
+        val raw = a.optString("did").trim().ifEmpty { a.optString("name").trim() }
+        if (raw.isEmpty()) return ""
+        //长得像 did（纯数字 / 长十六进制）就直接用，不必查台账
+        if (raw.matches(Regex("^-?[0-9]+$")) || raw.matches(Regex("^[0-9a-fA-F]{8,}$"))) return raw
+        val rows = runCatching { MiStore.load() }.getOrElse { emptyList() }
+        return rows.firstOrNull { it.did == raw }?.did
+            ?: rows.firstOrNull { it.name.equals(raw, true) }?.did
+            ?: rows.firstOrNull { it.name.isNotEmpty() && (it.name.contains(raw) || raw.contains(it.name)) }?.did
+            ?: raw
+    } //设备标识
+
     private fun miRead(a: JSONObject): ToolOutcome {
-        val did = a.optString("did").trim()
-        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val did = miDidOf(a)
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did（或 name），先调 mijia_devices 拿", Route.SANDBOX)
         val siid = a.optInt("siid", -1)
         val piid = a.optInt("piid", -1)
         if (siid < 0 || piid < 0) return ToolOutcome(false, "siid / piid 必须是非负整数", Route.SANDBOX)
@@ -2369,8 +2785,8 @@ object Tools {
 
     /** 写属性：会真改设备状态，计划模式下已被 PLAN_OFF 拦掉 */
     private fun miWrite(a: JSONObject): ToolOutcome {
-        val did = a.optString("did").trim()
-        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val did = miDidOf(a)
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did（或 name），先调 mijia_devices 拿", Route.SANDBOX)
         val siid = a.optInt("siid", -1)
         val piid = a.optInt("piid", -1)
         if (siid < 0 || piid < 0) return ToolOutcome(false, "siid / piid 必须是非负整数", Route.SANDBOX)
@@ -2381,8 +2797,8 @@ object Tools {
 
     /** 调动作：args 支持 JSON 数组与逗号分隔两种写法 */
     private fun miAction(a: JSONObject): ToolOutcome {
-        val did = a.optString("did").trim()
-        if (did.isEmpty()) return ToolOutcome(false, "缺少 did，先调 mijia_devices 拿", Route.SANDBOX)
+        val did = miDidOf(a)
+        if (did.isEmpty()) return ToolOutcome(false, "缺少 did（或 name），先调 mijia_devices 拿", Route.SANDBOX)
         val siid = a.optInt("siid", -1)
         val aiid = a.optInt("aiid", -1)
         if (siid < 0 || aiid < 0) return ToolOutcome(false, "siid / aiid 必须是非负整数", Route.SANDBOX)

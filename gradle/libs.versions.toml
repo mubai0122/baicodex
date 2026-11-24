@@ -30,7 +30,6 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMp" }
-#StringFog 只发在 JitPack，settings.gradle.kts 里另有一段 useModule 重定向到插件成品坐标
 stringfog = { id = "com.va.stringfog", version.ref = "stringfog" }
 
 [libraries]

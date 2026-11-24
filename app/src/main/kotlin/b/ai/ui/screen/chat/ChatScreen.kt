@@ -629,6 +629,25 @@ fun ChatScreen(
             }
         }
 
+        //dsh 引擎标记：开着就常驻一条，点一下当场关掉（关掉后下一轮走自家循环）
+        if (Cfg.dshEngine) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.dh_chat_badge),
+                    fontSize = 11.sp,
+                    color = AccentBlue,
+                    modifier = Modifier
+                        .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                        .tap { Cfg.dshEngine = false }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
         //阶段文案 + 秒表：请求模型时一直有东西在动，不会看起来卡死
         var tick by remember { mutableStateOf(0L) }
         LaunchedEffect(Agent.busy, Agent.busySince) {

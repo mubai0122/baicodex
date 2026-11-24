@@ -57,6 +57,7 @@ import b.ai.ui.widget.MdText
 import b.ai.ui.widget.PickItem
 import b.ai.ui.widget.PickSheet
 import b.ai.ui.widget.SectionTitle
+import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SelectField
 import b.ai.ui.widget.WsPurge
 import b.ai.ui.widget.WsPurgeDialog
@@ -302,6 +303,8 @@ private val PageHints = mapOf(
     "ext_tool" to "工具 权限 开关 能力 路由 工具链",
     "ext_ws" to "工作区 目录 根目录 绑定 目录树",
     "ext_linux" to "Linux Ubuntu 沙箱 终端 proot 镜像源 依赖 自检 测速",
+    "ext_dsh" to "DeepSeek Harness 引擎 打开 DeepSeek Harness 界面",
+    "ext_dsh_plug" to "DeepSeek Harness 插件 广场 工具 技能 联网 MCP 开关 装载 cordis",
     "ext_hub" to "生态 专区 插件 广场 市场",
     "ext_mi" to "小米 米家 IoT 智能家居 设备",
     "ext_mi_login" to "小米 登录 账号 授权 扫码",
@@ -391,6 +394,7 @@ fun SettingsScreen(
     onOpenPet: () -> Unit = {},
     onOpenStars: () -> Unit = {},
     onOpenMemory: () -> Unit = {},
+    onOpenDsh: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -675,6 +679,10 @@ fun SettingsScreen(
                         "ext_tool" -> extToolSec()
                         "ext_ws" -> extWsSec()
                         "ext_linux" -> extLinuxSec()
+                        //dsh 引擎：点进去是全屏 dsh 界面（内核由页面自己拉起）
+                        "ext_dsh" -> extDshEngineSec(onOpenDsh)
+                        //dsh 插件广场：本机真实装载行（读 profile 的 bundle patch）
+                        "ext_dsh_plug" -> extDshPlugSec()
                         //生态与专区：返回条已经带标题，这里只列四个专区入口，不重复写标题
                         "ext_hub" -> item {
                             CardBox {
@@ -4132,6 +4140,52 @@ private fun LazyListScope.extLinuxSec() {
         LinuxTermPage()
     }
 } //Linux 沙箱子页
+
+/** dsh 插件广场单独一页：列出本机真实装载行，可开关（改动后需重启内核生效） */
+private fun LazyListScope.extDshPlugSec() {
+    item {
+        DshPluginsPage()
+    }
+} //dsh 插件广场子页
+
+/**
+ * dsh 引擎入口：这里只给一行「打开」，真正的 dsh 界面是全屏页（MainActivity 的 screen="dsh"）。
+ * 嵌入 LazyColumn 会把 WebView 塞进滚动区，滚动与输入法都会打架。
+ */
+private fun LazyListScope.extDshEngineSec(onOpen: () -> Unit) {
+    item {
+        SectionTitle(stringResource(R.string.dh_engine_title), stringResource(R.string.dh_engine_sub))
+        CardBox {
+            Text(
+                stringResource(R.string.dh_engine_desc),
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton(stringResource(R.string.dh_engine_open), modifier = Modifier.fillMaxWidth()) { onOpen() }
+        }
+    }
+    item {
+        Spacer(Modifier.height(10.dp))
+        CardBox {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.dh_engine_toggle), fontSize = 14.sp, color = TextPrimary)
+                    Text(
+                        if (Cfg.dshEngine) stringResource(R.string.dh_engine_on) else stringResource(R.string.dh_engine_off),
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+                Switch(
+                    checked = Cfg.dshEngine,
+                    onCheckedChange = { Cfg.dshEngine = it },
+                    colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+                )
+            }
+        }
+    }
+} //dsh 引擎子页
 
 //还剩文件沙箱一个专区的计划清单：页面上先讲清会有什么，别点进去一片空白
 /** 文件沙箱专区的计划清单：存资源 id，交给 extPlanSec 在 Composable 里解析 */

@@ -47,7 +47,7 @@ object Cfg {
             }
         }
         val legacyUser = LinkedHashMap<String, String>()
-        listOf("acc_token", "fb_token", "ssh_pass").forEach { k ->
+        listOf("fb_token", "ssh_pass").forEach { k ->
             p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacyUser[k] = v }
         }
         if (legacy.isNotEmpty() || legacyUser.isNotEmpty()) {
@@ -71,12 +71,12 @@ object Cfg {
             p.edit().remove("ssh_host").remove("ssh_port").remove("ssh_user").apply()
         }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
-        mem("acc_token", "").value = Vault.get("acc_token", Vault.USER)
-        mem("acc_uid", 0).value = p.getInt("acc_uid", 0)
-        mem("acc_uname", "").value = p.getString("acc_uname", "") ?: ""
-        mem("acc_nick", "").value = p.getString("acc_nick", "") ?: ""
-        mem("acc_avatar", "").value = p.getString("acc_avatar", "") ?: ""
-        mem("acc_onboarded", false).value = p.getBoolean("acc_onboarded", false)
+        //旧自有服务器账号体系已删除：清掉残留的 acc_* 与加密库里的 token
+        runCatching {
+            Vault.put("acc_token", "", Vault.USER)
+            p.edit().remove("acc_token").remove("acc_uid").remove("acc_uname")
+                .remove("acc_nick").remove("acc_avatar").remove("acc_onboarded").apply()
+        }
         mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
         mem("join_dismissed", false).value = p.getBoolean("join_dismissed", false)
         mem("join_seen", 0).value = p.getInt("join_seen", 0)
@@ -448,30 +448,6 @@ object Cfg {
         get() = mem("plg_installed", "").value
         set(v) { mem("plg_installed", "").value = v; put("plg_installed", v) }
 
-    var accToken: String
-        get() = mem("acc_token", "").value
-        set(v) { mem("acc_token", "").value = v; Vault.put("acc_token", v, Vault.USER) }
-
-    var accUid: Int
-        get() = mem("acc_uid", 0).value
-        set(v) { mem("acc_uid", 0).value = v; put("acc_uid", v) }
-
-    var accUname: String
-        get() = mem("acc_uname", "").value
-        set(v) { mem("acc_uname", "").value = v; put("acc_uname", v) }
-
-    var accNick: String
-        get() = mem("acc_nick", "").value
-        set(v) { mem("acc_nick", "").value = v; put("acc_nick", v) }
-
-    var accAvatar: String
-        get() = mem("acc_avatar", "").value
-        set(v) { mem("acc_avatar", "").value = v; put("acc_avatar", v) }
-
-    var accOnboarded: Boolean
-        get() = mem("acc_onboarded", false).value
-        set(v) { mem("acc_onboarded", false).value = v; put("acc_onboarded", v) }
-
     var tosAgreed: Int
         get() = mem("tos_agreed", 0).value
         set(v) { mem("tos_agreed", 0).value = v; put("tos_agreed", v) }
@@ -615,8 +591,11 @@ object Cfg {
 
     val summaryWords: Int
         get() = when (summaryLevel.coerceIn(0, 2)) {
-            0 -> 1000
-            1 -> 2000
+            //简洁：只是应急档，长对话一定会丢细节，默认不选
+            0 -> 1500
+            //详细（默认）：够放下一个中大型任务的全部现场，别为了短而删
+            1 -> 12000
+            //全面：不设字数上限，由提示词里的 50000 token 硬上限兜住
             else -> 0
         }
 
@@ -1280,6 +1259,11 @@ object Cfg {
     var noStream: Boolean
         get() = mem("no_stream", false).value
         set(v) { mem("no_stream", false).value = v; put("no_stream", v) }
+
+    /** chat 引擎：true = 整轮对话交给 dsh 的 agent 循环（插件工具全部可用），false = 用自家循环 */
+    var dshEngine: Boolean
+        get() = mem("dsh_engine", false).value
+        set(v) { mem("dsh_engine", false).value = v; put("dsh_engine", v) }
 
     var maskOut: Boolean
         get() = mem("mask_out", false).value

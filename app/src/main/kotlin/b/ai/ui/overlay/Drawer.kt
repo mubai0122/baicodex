@@ -14,7 +14,7 @@
 
 package b.ai.ui.overlay
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.user.AccFace
+import b.ai.ui.screen.user.GhFace
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.tap
@@ -79,7 +79,7 @@ import b.ai.agent.run.Agent
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.data.db.Repo
 import b.ai.core.model.chat.SessionRow
-import b.ai.net.api.account.Auth
+import b.ai.net.api.github.GitHubLogin
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray
@@ -162,14 +162,14 @@ fun DrawerPanel(
             ) {
                 Text("Baicodex", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
-                //账号入口：登录后直接显示头像，没登录是个胶囊；卡片由根弹窗层统一渲染
-                if (Auth.logged) {
+                //账号入口：已登录显示 GitHub 头像，未登录是「登录」胶囊；卡片由根弹窗层统一渲染
+                if (GitHubLogin.logged) {
                     Box(Modifier.size(30.dp).tap { onOpenAccount() }) {
-                        AccFace(Cfg.accUid, Cfg.accAvatar, 30.dp)
+                        GhFace(30.dp)
                     }
                 } else {
                     Text(
-                        stringResource(R.string.acc_login),
+                        "登录",
                         fontSize = 11.sp,
                         color = AccentBlue,
                         modifier = Modifier
@@ -306,7 +306,7 @@ fun DrawerPanel(
                         toast = ""
                         onNewChat()
                     }
-                    //插件广场在这：装插件、传插件都从抽屉进
+                    //插件入口：我们自己的插件页（已装 / 广场 / 创建）；dsh 本体挪到 设置 → 扩展 → dsh 引擎
                     DrawerAction(stringResource(R.string.dw_plugins), Modifier.weight(1f)) {
                         toast = ""
                         onOpenPlugins()

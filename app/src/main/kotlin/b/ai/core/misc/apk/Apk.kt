@@ -13,6 +13,7 @@
  */
 
 package b.ai.core.misc.apk
+import b.ai.device.shell.local.Linux
 import b.ai.net.api.llm.text
 
 import java.io.ByteArrayInputStream
@@ -38,7 +39,7 @@ object Apk {
     /** dex 字符串上限：一个 dex 常有十几万条，全吐给模型没意义 */
     private const val MAX_STR = 40_000
 
-    fun run(action: String, path: String, keyword: String, limit: Int): Res {
+    fun run(action: String, path: String, keyword: String, limit: Int, out: String = ""): Res {
         val p = path.trim()
         if (p.isEmpty()) return Res(false, "缺少 path")
         val f = File(p)
@@ -53,6 +54,8 @@ object Apk {
                     "components", "comp", "组件" -> Res(true, components(zip))
                     "dex", "strings", "字符串" -> Res(true, dex(zip, keyword, limit))
                     "files", "list", "文件" -> Res(true, files(zip, limit))
+                    "so", "native", "so字符串" -> Res(true, soStrings(zip, keyword, limit))
+                    "jadx", "decompile", "反编译" -> Res(true, jadx(f, out))
                     else -> Res(true, info(zip, f))
                 }
             }.getOrElse { Res(false, "解析失败：" + (it.message ?: it.javaClass.simpleName)) }
@@ -402,6 +405,90 @@ object Apk {
     } //dex 字符串表
 
     //---------------------------------------------------------- 文件列表
+
+    /** lib/**/*.so 里的可打印字符串：关键字过滤 + 去重，等价于 strings 命令但纯 Java 实现 */
+    private fun soStrings(z: ZipFile, keyword: String, limit: Int): String {
+        val cap = limit.coerceIn(10, 500)
+        val ents = Collections.list(z.entries()).filter {
+            !it.isDirectory && it.name.startsWith("lib/") && it.name.endsWith(".so")
+        }
+        if (ents.isEmpty()) return "包内没有 lib/**/*.so：这个 APK 可能没带 native 代码"
+        val sb = StringBuilder("native 库共 ${ents.size} 个")
+        if (keyword.isNotBlank()) sb.append("，按「$keyword」过滤")
+        sb.append('\n')
+        for (e in ents) {
+            if (e.size > 20_000_000) {
+                sb.append("\n").append(e.name).append("：超过 20MB，已跳过\n")
+                continue
+            }
+            val bytes = runCatching { z.getInputStream(e).use { it.readBytes() } }.getOrNull()
+            if (bytes == null) {
+                sb.append("\n").append(e.name).append("：读取失败\n")
+                continue
+            }
+            val hits = nativeStrings(bytes, keyword, cap)
+            sb.append("\n").append(e.name).append("（").append(human(e.size)).append("）：")
+                .append(hits.size).append(" 条\n")
+            hits.forEach { sb.append("  · ").append(it).append('\n') }
+            if (hits.size >= cap) sb.append("  …（已到上限 $cap 条，用 keyword 缩小范围）\n")
+        }
+        return sb.toString().trim()
+    } //so 字符串
+
+    /** 扫一段字节里的可打印 ASCII 串（≥5 字符），按出现顺序去重，到达上限就停 */
+    private fun nativeStrings(b: ByteArray, keyword: String, cap: Int): List<String> {
+        val out = LinkedHashSet<String>()
+        val cur = StringBuilder()
+        for (raw in b) {
+            val c = raw.toInt() and 0xFF
+            if (c in 32..126) {
+                cur.append(c.toChar())
+                continue
+            }
+            if (cur.length >= 5) {
+                val s = cur.toString()
+                if (keyword.isBlank() || s.contains(keyword, ignoreCase = true)) {
+                    out.add(s)
+                    if (out.size >= cap) return out.toList()
+                }
+            }
+            cur.setLength(0)
+        }
+        if (cur.length >= 5) {
+            val s = cur.toString()
+            if (keyword.isBlank() || s.contains(keyword, ignoreCase = true)) out.add(s)
+        }
+        return out.toList()
+    } //扫可打印串
+
+    /** jadx 反编译：走内置 Ubuntu 的 jadx（需 Java），产物落本地目录供 read_file / grep_files 翻 */
+    private fun jadx(f: File, out: String): String {
+        if (!Linux.installed()) {
+            return "jadx 反编译需要内置 Ubuntu：设置 → 扩展 → Linux 环境 先安装，再装依赖（jadx 依赖 Java 17）"
+        }
+        val dst = out.trim().ifBlank { (f.parent ?: "") + "/" + f.nameWithoutExtension + "-jadx" }
+        val cmd = "command -v jadx >/dev/null 2>&1 || { echo '@NOJADX@'; exit 7; }; " +
+            "mkdir -p '$dst'; jadx -d '$dst' --no-res '${f.absolutePath}' 2>&1 | tail -20; " +
+            "echo '@FILES@'; find '$dst' -name '*.java' 2>/dev/null | wc -l; " +
+            "echo '@DIRS@'; find '$dst' -maxdepth 3 -type d 2>/dev/null | head -20"
+        val r = Linux.run(cmd, 2_400_000L)
+        val text = r.out
+        if (text.contains("@NOJADX@") || r.code == 7) {
+            return "Ubuntu 里没有 jadx。先装一次：apt-get update && apt-get install -y jadx" +
+                "（或下载官方 zip 解到 /usr/local/bin）。装好后再调 action=jadx。"
+        }
+        val files = text.substringAfter("@FILES@", "").lineSequence().firstOrNull()?.trim().orEmpty()
+        val dirs = text.substringAfter("@DIRS@", "").trim()
+        return buildString {
+            append("jadx 反编译完成（退出码 ").append(r.code).append("）\n")
+            append("产物目录：").append(dst).append('\n')
+            if (files.isNotEmpty()) append("java 文件：").append(files).append(" 个\n")
+            if (dirs.isNotEmpty()) append("目录结构：\n").append(dirs).append('\n')
+            val tail = text.substringBefore("@FILES@").trim()
+            if (tail.isNotEmpty()) append("\njadx 输出：\n").append(tail.take(1500))
+            append("\n下一步：list_dir / grep_files 进这个目录翻，或 read_file 打开具体 java 文件。")
+        }.trim()
+    } //jadx 反编译
 
     private fun files(z: ZipFile, limit: Int): String {
         val all = Collections.list(z.entries()).filter { !it.isDirectory }

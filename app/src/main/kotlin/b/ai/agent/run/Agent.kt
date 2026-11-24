@@ -45,6 +45,8 @@ import b.ai.core.data.profile.Profiles
 import b.ai.core.plugin.skill.Providers
 import b.ai.core.data.db.Repo
 import b.ai.core.data.db.Sums
+import b.ai.core.dsh.DshChat
+import b.ai.core.dsh.DshEv
 import b.ai.core.model.chat.Route
 import b.ai.net.search.Search
 import b.ai.core.model.chat.SessionRow
@@ -120,6 +122,11 @@ object Agent {
 
     //轮次不再设上限：循环只靠 ctx.isActive（用户停止）与「本轮没有工具调用」两条收敛
     //上下文压缩器与会话命名的提示词正文已移到 PromptStore（由 local.properties 种子注入）
+
+    /** 压缩器单趟输入上限（字符）：一段历史超过它就切块分趟压，绝不 take(n) 切断后半段 */
+    private const val COMPACT_CHUNK_CHARS = 24_000
+    /** 分趟上限：块数再多就合并成大块（每块变大但总趟数可控，避免为一次压缩打十几炮） */
+    private const val COMPACT_MAX_PASS = 6
 
     var messages by mutableStateOf<List<ChatMsg>>(emptyList())
         private set
@@ -395,6 +402,8 @@ object Agent {
             }
             val s = withContext(Dispatchers.IO) { Repo.newSession() }
             sessionId = s.id
+            //新会话在 dsh 侧也换一条：插件上下文（会话历史）不该继承上一个会话
+            DshChat.reset(s.id)
             //先挂会话 id 再分配目录：分配结果要写回这一行，别落到上一个会话上
             Workspace.attachSession(s.id)
             bindRun(s.id)
@@ -1157,7 +1166,118 @@ object Agent {
         return msg.startsWith("网络错误")
     } //是否值得换 Key
 
+    /**
+     * dsh 引擎跑一轮：把用户这条消息交给 dsh 的 agent 循环，事件回流成我们自己的消息气泡与工具卡。
+     *
+     * 为什么是这个形状（见 DshChat 文件头）：SDK 协议没有 tools/list、tool/execute，
+     * 插件工具只能由 dsh 自己调，所以 chat 只负责「下发一轮 + 渲染事件」。
+     * 这一轮里 dsh 装的所有插件工具（bash / fs / 第三方插件）都可用；
+     * Baicodex 自家的记忆 / 工作流 / 米家 / 屏幕等工具不参与（那是自家循环的能力）。
+     */
+    private suspend fun runDshTurn() {
+        val msg = messages.lastOrNull { it.role == "user" }
+        val text = msg?.content.orEmpty().trim()
+        if (text.isEmpty()) {
+            status = host.getString(R.string.ag_no_user_msg)
+            return
+        }
+        status = host.getString(R.string.ag_ask_model)
+        busySince = System.currentTimeMillis()
+        if (isFront()) runCatching { Island.taskStart(curTitle(), host.getString(R.string.island_running)) }
+
+        //附件与图片：dsh 的 contentBlocks 只发文本，把本地路径写进正文，让它的 bash/fs 工具自己去读
+        val prompt = buildString {
+            append(text)
+            val files = msg?.files.orEmpty()
+            if (files.isNotEmpty()) {
+                append("\n\n[附件文件]\n")
+                files.forEach { append("- ").append(it).append('\n') }
+            }
+            val images = msg?.images.orEmpty()
+            if (images.isNotEmpty()) {
+                append("\n[图片文件]\n")
+                images.forEach { append("- ").append(it).append('\n') }
+            }
+        }
+
+        val acc = StringBuilder()                 //流式预览缓冲
+        val seqs = HashMap<String, Long>()        //callId → 工具卡 seq
+        val names = HashMap<String, String>()     //callId → 工具名（结果消息补名用）
+        var errText = ""
+        val cwd = Cfg.sessionWorkspace.trim()
+
+        try {
+            val err = DshChat.run(sid, prompt, cwd) { ev ->
+                when (ev) {
+                    //流式预览：先铺在输入框上方，最终以 assistant/message 为准
+                    is DshEv.Delta -> {
+                        acc.append(ev.text)
+                        chunks.value = acc.toString() to ""
+                    } //预览
+
+                    //一步的最终助手消息：正文 + 这一步发起的工具卡调用清单
+                    is DshEv.Msg -> {
+                        acc.setLength(0)
+                        chunks.value = "" to ""
+                        val calls = ev.calls.map { b.ai.core.model.chat.ToolCall(it.id, it.name, it.args) }
+                        if (ev.text.isNotBlank() || calls.isNotEmpty()) {
+                            append(
+                                ChatMsg(
+                                    role = "assistant",
+                                    content = Mask.text(ev.text),
+                                    toolCalls = calls
+                                )
+                            )
+                        }
+                    } //助手消息
+
+                    //工具开始：卡片立刻转圈（同一次调用重复上报时只建一张卡）
+                    is DshEv.ToolBegin -> {
+                        if (!seqs.containsKey(ev.callId)) {
+                            seqs[ev.callId] = beginTool(ev.name, ev.args)
+                            names[ev.callId] = ev.name
+                        }
+                    } //工具开始
+
+                    //工具结果：落一条 tool 消息，界面按 toolCallId 对到卡片上
+                    is DshEv.ToolDone -> {
+                        append(
+                            ChatMsg(
+                                role = "tool",
+                                content = Mask.text(ev.text),
+                                toolCallId = ev.callId,
+                                toolName = ev.name.ifBlank { names[ev.callId].orEmpty() },
+                                isError = !ev.ok,
+                                toolMs = 0
+                            )
+                        )
+                        seqs.remove(ev.callId)?.let { endTool(it) }
+                        names.remove(ev.callId)
+                    } //工具结果
+
+                    is DshEv.State -> status = ev.text
+                    is DshEv.Fail -> errText = ev.text
+                    DshEv.Done -> Unit
+                }
+            }
+            //收工：内核侧报错 / 本侧超时，都落一条错误回复（用户消息已留在会话里）
+            val fail = err ?: errText.takeIf { it.isNotBlank() }
+            if (fail != null) replyErr(fail, if (fail.contains("未安装") || fail.contains("Node")) ERR_ENV else "")
+        } finally {
+            chunks.value = "" to ""
+            acc.setLength(0)
+            //兜底：异常退出时还挂着的工具卡一并收掉，不让转圈永远停在那
+            seqs.values.forEach { runCatching { endTool(it) } }
+            seqs.clear()
+        }
+    } //dsh 引擎一轮
+
     private suspend fun runLoop() {
+        //dsh 引擎：整轮交给 dsh 的 agent 循环（发送 / 编辑重发 / 重新生成都走这里，一处就够）
+        if (Cfg.dshEngine) {
+            runDshTurn()
+            return
+        }
         val ctx = currentCoroutineContext()
         val bk = be ?: backendNow().also { be = it }
         val temp = bk.temperature.takeIf { it >= 0f }?.toDouble()
@@ -2000,24 +2120,9 @@ object Agent {
         val old = fresh.subList(0, cut)
         val prev = list.lastOrNull { it.role == "summary" }?.let { stripMarker(it.content) }
         //二次压缩要把上一次的摘要带进去，否则最早那段历史直接被忘掉
-        val render = renderPart(old, prev)
-        if (render.isBlank()) return false
-        //用量那一行由程序数好摆在最后，让模型照抄进【用量】段
-        val stat = statPart(old)
-        val input = if (stat.isBlank()) render else render + "\n\n" + stat
-        status = host.getString(R.string.ag_compress_run)
-        val pay = JSONArray().apply {
-            put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
-            put(JSONObject().put("role", "user").put("content", input))
-        }
-        val m = sumLlm()
-        val resp = runCatching {
-            withContext(Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4]).chat(m[3], pay)
-            }
-        }.getOrNull() ?: return false
-        val text = resp.text("content").trim()
-        if (text.isBlank()) return false
+        //历史特别长时由 summarize() 按块分趟合并，不再 take(n) 一刀切断后半段
+        //用量那一行由程序数好摆在最后，让模型照抄进【用量】段（只喂最后一趟）
+        val text = summarize(old, prev, note, statPart(old)) ?: return false
         //正文进加密桶，库里只留覆盖范围标记；桶不可用时 Sums 自己降级成明文入库
         val marker = "[[upto:${old.last().id}]]"
         val saved = withContext(Dispatchers.IO) { Sums.put(sid, marker, text) }
@@ -2061,15 +2166,79 @@ object Agent {
         else -> "用户: ${m.content.take(cap)}"
     } //单条一行
 
-    /** 把一段历史渲染成压缩器的输入：超长就逐级压低单条上限，别一刀切断后半段 */
-    private fun renderPart(list: List<ChatMsg>, prev: String?): String {
-        val head = if (prev.isNullOrBlank()) "" else "此前摘要：$prev\n"
-        for (cap in intArrayOf(600, 300, 120)) {
-            val s = head + list.joinToString("\n") { oneLine(it, cap) }
-            if (s.length <= 12_000) return s
+    /**
+     * 把一段历史切成若干块，每块约 [COMPACT_CHUNK_CHARS] 字符。
+     * 关键：一块都不丢（旧实现是渲染成一整段再 take(12_000)，后半段历史直接消失）。
+     * 单条消息的截断上限按总量逐级从 600 → 300 → 120 压，优先保住"每条都在"，而不是"后半段没了"。
+     */
+    private fun renderParts(list: List<ChatMsg>): List<String> {
+        if (list.isEmpty()) return emptyList()
+        //整段历史的总预算：块数 × 单块上限
+        val softMax = COMPACT_CHUNK_CHARS * COMPACT_MAX_PASS
+        var lines = list.map { oneLine(it, 600) }
+        if (lines.sumOf { it.length + 1 } > softMax) lines = list.map { oneLine(it, 300) }
+        if (lines.sumOf { it.length + 1 } > softMax) lines = list.map { oneLine(it, 120) }
+        val total = lines.sumOf { it.length + 1 }
+        //块数按体量算，但最多 COMPACT_MAX_PASS 块（块数再多就把每块撑大，避免一次压缩打十几炮）
+        val n = ((total + COMPACT_CHUNK_CHARS - 1) / COMPACT_CHUNK_CHARS).coerceIn(1, COMPACT_MAX_PASS)
+        val per = (total + n - 1) / n
+        val out = ArrayList<String>(n)
+        val sb = StringBuilder()
+        lines.forEach { l ->
+            //只按消息边界切，不会把一条消息劈成两半
+            if (sb.length >= per && out.size < n - 1) {
+                out.add(sb.toString())
+                sb.clear()
+            }
+            sb.append(l).append('\n')
         }
-        return (head + list.joinToString("\n") { oneLine(it, 120) }).take(12_000)
-    } //渲染待压缩历史
+        if (sb.isNotBlank()) out.add(sb.toString())
+        return out
+    } //按块渲染待压缩历史
+
+    /** 分趟合并时给中间趟的补充说明（最后一趟不给，避免和最终格式打架） */
+    private fun mergeNote(i: Int, n: Int): String =
+        "本轮是多段压缩的第 $i/$n 段（不是最后一段）。把这段内容与「此前摘要」合并成一份新的摘要，" +
+            "段落标题与写作要求照旧；不许写「同上」「见前文」这类省略，也不许因为段落多就缩短任何一条硬信息。"
+
+    /**
+     * 跑一次（可能是多趟的）摘要，返回最终摘要正文；任何一趟失败都返回 null（不存半份）。
+     * @param body 待压缩的历史
+     * @param prev 上一次的摘要，作为第一趟的「此前摘要」起点
+     * @param note 用户附加要求，只作用于最后一趟
+     * @param stat 程序算好的用量行，只喂最后一趟，避免模型自己编数字
+     */
+    private suspend fun summarize(body: List<ChatMsg>, prev: String?, note: String?, stat: String): String? {
+        val parts = renderParts(body)
+        if (parts.isEmpty()) return null
+        val sysBase = summaryText()
+        val m = sumLlm()
+        var roll: String? = prev   //滚动摘要：上一趟的产出喂给下一趟
+        var text = ""
+        for ((i, part) in parts.withIndex()) {
+            val isLast = i == parts.lastIndex
+            //多趟时把「第几趟」写进状态，界面上能看出还在压而不是卡死
+            status = if (parts.size <= 1) host.getString(R.string.ag_compress_run)
+            else host.getString(R.string.ag_compress_run) + "（${i + 1}/${parts.size}）"
+            val head = roll?.takeIf { it.isNotBlank() }?.let { "此前摘要：$it\n" }.orEmpty()
+            val input = if (isLast && stat.isNotBlank()) head + part + "\n\n" + stat else head + part
+            val sys = if (isLast) sysBase + extraBlock(note) else sysBase + "\n\n" + mergeNote(i + 1, parts.size)
+            val pay = JSONArray().apply {
+                put(JSONObject().put("role", "system").put("content", sys))
+                put(JSONObject().put("role", "user").put("content", input))
+            }
+            val resp = runCatching {
+                withContext(Dispatchers.IO) {
+                    LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4]).chat(m[3], pay)
+                }
+            }.getOrNull() ?: return null
+            val t = resp.text("content").trim()
+            if (t.isBlank()) return null
+            roll = t
+            text = t
+        }
+        return text.ifBlank { null }
+    } //分趟压缩
 
     /** 总结用的 system 提示词：内置四段结构固定当基底，设置里填的只作补充要求追加，最后替换 {words}/{limit}/{level}/{keep}/{budget} */
     private fun summaryText(): String {
@@ -2122,23 +2291,8 @@ object Agent {
         if (part.isEmpty()) return false
         val prev = list.lastOrNull { it.role == "summary" && it.id < last.id }
             ?.let { stripMarker(it.content) }
-        val render = renderPart(part, prev)
-        if (render.isBlank()) return false
-        //重总结同样把用量摆进输入，否则【用量】段会被模型编出数字
-        val stat = statPart(part)
-        val input = if (stat.isBlank()) render else render + "\n\n" + stat
-        val pay = JSONArray().apply {
-            put(JSONObject().put("role", "system").put("content", summaryText() + extraBlock(note)))
-            put(JSONObject().put("role", "user").put("content", input))
-        }
-        val m = sumLlm()
-        val resp = runCatching {
-            withContext(Dispatchers.IO) {
-                LlmClient(m[0], m[1], Providers.byId(m[2]).auth, protocol = m[4]).chat(m[3], pay)
-            }
-        }.getOrNull() ?: return false
-        val text = resp.text("content").trim()
-        if (text.isBlank()) return false
+        //重总结同样分趟（历史可能很长），用量行只喂最后一趟，否则【用量】段会被模型编出数字
+        val text = summarize(part, prev, note, statPart(part)) ?: return false
         //覆盖范围沿用旧摘要的：重总结只换文字，不动它负责的那一段历史
         val marker = "[[upto:$upto]]"
         val saved = withContext(Dispatchers.IO) { Sums.put(sid, marker, text) }
@@ -2161,6 +2315,8 @@ object Agent {
                 Repo.clearMessages(sid)
                 Repo.renameSession(sid, host.getString(R.string.ag_new_session))
             }
+            //清空会话 = 换一份全新的上下文，dsh 侧同样重开
+            DshChat.reset(sid)
             messages = emptyList()
             status = ""
             reloadSessions()

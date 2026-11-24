@@ -94,6 +94,10 @@ val SePages = listOf(
     SePage("ext_tool", R.string.se_050, R.string.se_235, 3),
     SePage("ext_ws", R.string.se_pg_ext_ws, R.string.se_pg_ext_ws_sub, 3),
     SePage("ext_linux", R.string.se_pg_linux, R.string.se_pg_linux_sub, 3),
+    //dsh 引擎：点进去是全屏 dsh 界面（用 dsh 本体）
+    SePage("ext_dsh", R.string.se_pg_dsh_engine, R.string.se_pg_dsh_engine_sub, 3),
+    //dsh 插件：列出本机 dsh profile 里真实装载的插件行，可开关（写 cordis.patch.yml）
+    SePage("ext_dsh_plug", R.string.se_pg_dsh_plug, R.string.se_pg_dsh_plug_sub, 3),
     SePage("ext_hub", R.string.se_hub, R.string.se_hub_sub, 3),
     //生态与专区下的各专区：不列在扩展分类页上，只在 ext_hub 里列
     SePage("ext_mi", R.string.se_hub_mi, R.string.se_pg_mi_sub, 3, parent = "ext_hub"),

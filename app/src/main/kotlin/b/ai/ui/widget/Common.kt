@@ -260,7 +260,8 @@ fun Field(
     placeholder: String = "",
     secret: Boolean = false,
     singleLine: Boolean = true,
-    minLines: Int = 1
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE
 ) {
     Column(Modifier.padding(top = 10.dp)) {
         //label 为空时省掉标题行，给「只有一个输入框」的场景用
@@ -280,6 +281,8 @@ fun Field(
             textStyle = TextStyle(fontSize = 13.sp, color = TextPrimary),
             singleLine = singleLine,
             minLines = minLines,
+            //maxLines 封顶：超出的行在框内滚动，长文本（cookie / token）不会把卡片按钮顶出屏幕
+            maxLines = maxLines,
             cursorBrush = SolidColor(AccentBlue),
             visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
             decorationBox = { inner ->
