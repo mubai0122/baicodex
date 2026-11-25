@@ -14,7 +14,7 @@
 
 package b.ai.ui.widget
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.settings.PolicyChip
+import b.ai.ui.screen.settings.kit.PolicyChip
 import b.ai.net.api.llm.text
 
 import androidx.compose.foundation.background

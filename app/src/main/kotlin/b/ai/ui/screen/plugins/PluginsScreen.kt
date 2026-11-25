@@ -64,7 +64,7 @@ import b.ai.ui.glass.backdropPageInset
 import b.ai.ui.glass.drawPageBg
 import b.ai.ui.glass.glassPageLayer
 import b.ai.ui.glass.pageBg
-import b.ai.ui.screen.settings.DshInstalledContent
+import b.ai.ui.screen.settings.agent.DshInstalledContent
 import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BgGray

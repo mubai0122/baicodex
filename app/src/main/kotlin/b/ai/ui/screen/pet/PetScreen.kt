@@ -20,8 +20,8 @@ import b.ai.ui.glass.glassPageLayer
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.glass.pageBg
-import b.ai.ui.screen.settings.CapSwitch
-import b.ai.ui.screen.settings.PolicyChip
+import b.ai.ui.screen.settings.kit.CapSwitch
+import b.ai.ui.screen.settings.kit.PolicyChip
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.FloatTab

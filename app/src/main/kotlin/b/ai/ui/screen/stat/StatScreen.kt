@@ -14,7 +14,7 @@
 
 package b.ai.ui.screen.stat
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.settings.PolicyChip
+import b.ai.ui.screen.settings.kit.PolicyChip
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton

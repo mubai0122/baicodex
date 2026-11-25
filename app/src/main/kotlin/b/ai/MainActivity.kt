@@ -19,7 +19,7 @@ import b.ai.device.pet.Pet
 import b.ai.device.sys.host.PetGrant
 import b.ai.device.pet.PetSvc
 import b.ai.net.api.site.Announce
-import b.ai.ui.screen.settings.AnnounceUi
+import b.ai.ui.screen.settings.about.AnnounceUi
 import b.ai.ui.overlay.Ime
 
 import android.content.Context
@@ -73,34 +73,34 @@ import b.ai.ui.screen.user.GhDialogs
 import b.ai.ui.screen.user.GhUi
 import b.ai.ui.screen.user.GhWeb
 import b.ai.ui.screen.user.GhWebPage
-import b.ai.ui.screen.settings.AnnounceDialog
-import b.ai.ui.screen.settings.SeNav
+import b.ai.ui.screen.settings.about.AnnounceDialog
+import b.ai.ui.screen.settings.core.SeNav
 import b.ai.ui.dialog.AskSheet
-import b.ai.ui.screen.settings.A11yAuto
-import b.ai.ui.screen.settings.A11yAutoDialog
-import b.ai.ui.screen.settings.A11ySetup
-import b.ai.ui.screen.settings.A11ySetupDialog
+import b.ai.ui.screen.settings.perm.A11yAuto
+import b.ai.ui.screen.settings.perm.A11yAutoDialog
+import b.ai.ui.screen.settings.perm.A11ySetup
+import b.ai.ui.screen.settings.perm.A11ySetupDialog
 import b.ai.ui.glass.BackdropHost
-import b.ai.ui.screen.chat.ChatScreen
+import b.ai.ui.screen.chat.main.ChatScreen
 import b.ai.ui.overlay.DrawerCtl
 import b.ai.ui.overlay.DrawerHost
 import b.ai.ui.overlay.DrawerPanel
 import b.ai.ui.screen.misc.FeedbackDetailScreen
 import b.ai.ui.screen.misc.FeedbackScreen
 import b.ai.ui.dialog.HaltDialog
-import b.ai.ui.screen.settings.IntentInbox
+import b.ai.ui.screen.settings.agent.IntentInbox
 import b.ai.ui.screen.user.JoinGroupDialog
 import b.ai.ui.screen.misc.OnboardingScreen
 import b.ai.ui.dialog.Overlay
 import b.ai.ui.dialog.PermNoticeDialog
 import b.ai.ui.screen.pet.PetPermAsk
 import b.ai.ui.screen.pet.PetScreen
-import b.ai.ui.screen.settings.SettingsScreen
-import b.ai.ui.screen.settings.WorkspaceScreen
-import b.ai.ui.screen.settings.MemorySheet
+import b.ai.ui.screen.settings.core.SettingsScreen
+import b.ai.ui.screen.settings.ia.WorkspaceScreen
+import b.ai.ui.screen.settings.ui.MemorySheet
 import b.ai.ui.screen.misc.MigrateGate
-import b.ai.ui.screen.chat.PlanSheet
-import b.ai.ui.screen.settings.DshScreen
+import b.ai.ui.screen.chat.sheet.PlanSheet
+import b.ai.ui.screen.settings.agent.DshScreen
 import b.ai.ui.screen.plugins.PluginsScreen
 import b.ai.ui.screen.user.StarSheet
 import b.ai.ui.screen.user.Rate
@@ -108,10 +108,10 @@ import b.ai.ui.screen.user.StarDialog
 import b.ai.ui.dialog.ToolConfirmDialog
 import b.ai.ui.screen.misc.Tos
 import b.ai.ui.screen.misc.TosScreen
-import b.ai.ui.screen.settings.UpdateDialog
-import b.ai.ui.screen.settings.UpdateHistoryDialog
-import b.ai.ui.screen.settings.UpdateTipDialog
-import b.ai.ui.screen.settings.UpdateUi
+import b.ai.ui.screen.settings.about.UpdateDialog
+import b.ai.ui.screen.settings.about.UpdateHistoryDialog
+import b.ai.ui.screen.settings.about.UpdateTipDialog
+import b.ai.ui.screen.settings.about.UpdateUi
 import b.ai.ui.theme.BaiTheme
 import b.ai.core.model.voice.Speak
 import b.ai.ui.theme.BgGray
@@ -278,13 +278,13 @@ private fun Root() {
         updChecked = true
         //公告：always=true 的每次都弹，否则同一 id 只弹一次；拉不到就当没有
         val annItem = withContext(Dispatchers.IO) { runCatching { b.ai.net.api.site.Announce.check() }.getOrNull() }
-        if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.screen.settings.AnnounceUi.cur = annItem
+        if (annItem != null && (annItem.always || Cfg.annSeen != annItem.id)) b.ai.ui.screen.settings.about.AnnounceUi.cur = annItem
     }
 
     val upd = UpdateUi.prompt
     val updHis = UpdateUi.history
     val updTip = UpdateUi.tip
-    val ann = b.ai.ui.screen.settings.AnnounceUi.cur
+    val ann = b.ai.ui.screen.settings.about.AnnounceUi.cur
     //群卡片要等更新卡片关掉：先看完版本更新再邀请进群，避免两张卡片抢同一个槽
     LaunchedEffect(updChecked, upd, updHis) {
         if (!updChecked || halted || upd != null || updHis != null) return@LaunchedEffect
@@ -506,7 +506,7 @@ private fun Root() {
                         ann != null -> AnnounceDialog(ann) {
                             //always=true 的公告不记已读，下次进应用还弹
                             if (!ann.always) Cfg.annSeen = ann.id
-                            b.ai.ui.screen.settings.AnnounceUi.close()
+                            b.ai.ui.screen.settings.about.AnnounceUi.close()
                         }
                         memOpen -> MemorySheet { memOpen = false }
                         //独立激活流程优先于聊天页的失败弹窗，避免两个弹窗抢同一个 Overlay 槽

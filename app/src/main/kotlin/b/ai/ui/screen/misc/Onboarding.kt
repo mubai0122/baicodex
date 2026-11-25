@@ -18,10 +18,10 @@ import b.ai.ui.dialog.Overlay
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.settings.A11yPermCard
-import b.ai.ui.screen.settings.ModelSetupPanel
-import b.ai.ui.screen.settings.MirrorPickerDialog
-import b.ai.ui.screen.settings.SpecialPermCard
+import b.ai.ui.screen.settings.perm.A11yPermCard
+import b.ai.ui.screen.settings.model.ModelSetupPanel
+import b.ai.ui.screen.settings.model.MirrorPickerDialog
+import b.ai.ui.screen.settings.perm.SpecialPermCard
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.ChoiceRow
 import b.ai.ui.widget.CircleArrowButton
