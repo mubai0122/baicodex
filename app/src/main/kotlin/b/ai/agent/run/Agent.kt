@@ -1900,6 +1900,8 @@ object Agent {
             if (emoji.isNotBlank()) append(emoji).append("\n")
             append(flow).append("\n\n")
             append(modePrompt()).append("\n\n")
+            //编排：任务分解与规划（设置 →模型 →编排），按用户选的拆解形式换文案；关着时一个字都不多
+            if (Cfg.planFirst) append(planPrompt()).append("\n\n")
             //长期记忆整段下发：用户没删就一直带着
             val memo = Memory.prompt()
             if (memo.isNotBlank()) append(memo).append("\n")
@@ -1931,7 +1933,21 @@ object Agent {
         }
     } //系统提示：角色 + 自定义 + 工作流 + 环境规则 + 工作区 + 技能 + 日期
 
-    /** 角色或自定义提示要求严谨/不废话时，关心类话术整个免掉 */
+    /**编排段：拆解基础要求 +用户在这页开的几个附加项 +额外要求，全空时也不剩多余空行 */
+    private fun planPrompt(): String = buildString {
+        //拆解形式是骨架，先铺
+        append(if (Cfg.planDag) PromptStore.planDag else PromptStore.planChain)
+        //「只在复杂目标时拆解」默认开：防的就是模型对一句话需求也拆三段
+        if (Cfg.planComplexOnly) append(PromptStore.planComplex)
+        if (!Cfg.planShow) append(PromptStore.planSilent)
+        if (!Cfg.planRetry) append(PromptStore.planStop)
+        append(PromptStore.planLimit(Cfg.planMaxSteps))
+        //用户手写的要求放最后，权重最高，出问题优先改这里
+        val extra = Cfg.planExtra.trim()
+        if (extra.isNotBlank()) append(PromptStore.planExtraLabel).append(extra).append("。")
+    } //编排段
+
+    /**角色或自定义提示要求严谨/不废话时，关心类话术整个免掉 */
     private val STRICT_TONE =
         listOf("严谨", "不废话", "简洁", "直接", "专业", "严肃", "公事公办", "少寒暄", "不要寒暄", "只回答")
 

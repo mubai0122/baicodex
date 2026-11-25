@@ -320,9 +320,11 @@ fun Modifier.liquidBg(
     val scope = rememberCoroutineScope()
     //用普通数组当一次性开关，别用 mutableState：那只会在首帧后再触发一次重组
     val once = remember { booleanArrayOf(gate <= 0.dp || (GlassPerf.ready && !GlassPerf.warming)) }
-    //没有模糊也没有折射时，真玻璃采到的就是背景本身，画出来跟半透白一模一样：这种情形根本不进离屏
-    //消息气泡一屏五六条，每条一次离屏就是每帧五六次合成，8.3ms 的预算全花在这儿
-    val fx = Cfg.glassBlur > 0 || refract
+    //玻璃的成立条件不能只看模糊：用户把模糊拉到 0 时，输入框 / 按钮这类 gate=0 的小控件
+    //在原来这一行就整片退回 glassLite 平涂，液态的折射与高光全没了，看着就是一块死白底。
+    //边缘折射开着就说明用户要液态质感，模糊只是「要不要糊」，不决定「是不是玻璃」
+    val lensOn = Cfg.glassLens > 0
+    val fx = Cfg.glassBlur > 0 || refract || lensOn
     if (!fx) return glassLite(shape, tint, veil)
     //小节点在这里就返回，全程不读 GlassPerf：否则全站几百个胶囊都会订阅全局降档开关，
     //一滑动、一点击就让整棵树重组一遍，那才是"点一下卡一秒"
@@ -364,10 +366,15 @@ fun Modifier.liquidBg(
                 vibrancy()
                 blur(Cfg.glassBlur.dp.toPx())
             }
-            //气泡、输入框这类小元素默认不折射，边缘变形会显得脏；矮控件也不值得开 shader
-            if (refract && size.minDimension >= 160.dp.toPx() && Cfg.glassLens > 0) {
+            //气泡、输入框这类小元素默认不折射，边缘变形会显得脏；矮控件也不值得开 shader。
+            //但模糊关掉时（玻璃Blur=0）必须由折射顶上，否则小控件只剩一块白底：
+            //gate=0 的强制玻璃控件也放行，半径按短边收，圆角小的时候不会被折射糊掉
+            val lensBig = size.minDimension >= 160.dp.toPx()
+            if (lensOn && (refract || Cfg.glassBlur <= 0) && (lensBig || gate <= 0.dp)) {
                 padding = maxOf(padding, 40.dp.toPx())
-                lens(Cfg.glassLens.dp.toPx(), 10.dp.toPx())
+                val r = if (lensBig) Cfg.glassLens.dp.toPx()
+                else minOf(Cfg.glassLens.dp.toPx(), size.minDimension * 0.25f)
+                lens(r, 10.dp.toPx())
             }
         },
         highlight = { Highlight.Default.copy(alpha = (highlightAlpha * (Cfg.glassHi / 50f)).coerceIn(0f, 1f)) },

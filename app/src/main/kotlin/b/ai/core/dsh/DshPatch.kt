@@ -13,7 +13,8 @@
  */
 package b.ai.core.dsh
 
-import b.ai.device.shell.root.Root
+import b.ai.device.shell.local.Linux
+import b.ai.device.shell.local.ShellResult
 import java.io.File
 
 /** cordis.patch.yml 的可维护状态 */
@@ -104,19 +105,12 @@ object DshPatch {
             }
         }
 
-        val abs = file.absolutePath
-        val tmp = "$abs.bxl.tmp"
         val body = sb.toString()
-        val cmd = buildString {
-            append("mkdir -p '").append(file.parentFile?.absolutePath).append("' && ")
-            append("cat > '").append(tmp).append("' <<'BXL_PATCH_EOF'\n")
-            append(body)
-            append("BXL_PATCH_EOF\n")
-            append("chown root:root '").append(tmp).append("' 2>/dev/null; ")
-            append("chmod 644 '").append(tmp).append("' 2>/dev/null; ")
-            append("mv -f '").append(tmp).append("' '").append(abs).append("'")
-        }
-        val r = Root.run(cmd, 20_000L)
+        //走 Linux 通道：普通模式 App 直写、Shizuku 模式由 shell 写；不再 chown root（免 root 做不到也不需要）
+        val root = Linux.rootfs.absolutePath
+        val rel = file.absolutePath.removePrefix(root).removePrefix("/")
+        val r = if (rel.isNotEmpty() && rel != file.absolutePath) Linux.writeGuest(rel, body)
+        else ShellResult(-1, "路径不在 rootfs 内：${file.absolutePath}")
         if (!r.ok) throw IllegalStateException("写 cordis.patch.yml 失败：${r.out.take(200)}")
     } //写状态
 

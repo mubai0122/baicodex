@@ -14,6 +14,7 @@
 
 package b.ai.ui.widget
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -24,7 +25,9 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -805,3 +808,147 @@ fun IcStarToCheck(color: Color, side: Dp = 20.dp, stroke: Dp = 2.6.dp) {
         }
     }
 } //星形变对号
+
+/**
+ * 魔法棒图标（提示词优化的可点态）：细线斜棒 + 方形棒头 + 三颗沿棒头外侧散开的星。
+ *
+ * 造型按设计稿 64 视口归一到 0..1：棒身 (0.19,0.81)→(0.53,0.47)，方形棒头中心 (0.57,0.38)，
+ * 星星由近到远分别在 (0.72,0.23) / (0.55,0.19) / (0.81,0.40)，统一线性描边、无填充。
+ * 闪烁：一条无限相位 + 三颗星按 1/3 周期错开取正弦（等效设计稿的 0.5s 递进 delay，
+ * 但不会像 CSS 那样每轮末尾停顿一下），透明度 0.30~1.00、臂长 0.75~1.10 同节拍呼吸。
+ */
+@Composable
+fun IcWand(color: Color, side: Dp = 21.dp, stroke: Dp = 2.0.dp) {
+    val tr = androidx.compose.animation.core.rememberInfiniteTransition(label = "wand")
+    val phase = tr.animateFloat(
+        0f, 1f,
+        androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(1600, easing = androidx.compose.animation.core.LinearEasing),
+            androidx.compose.animation.core.RepeatMode.Restart
+        ),
+        label = "wandPhase"
+    )
+    Canvas(Modifier.size(side)) {
+        val u = size.minDimension
+        val w = stroke.toPx()
+        //在 draw 里读 phase.value：状态变化才会让 Canvas 重绘这一帧
+        val p = phase.value
+        val tw = FloatArray(3) { i ->
+            val s = kotlin.math.sin(((p + i / 3f) % 1f) * 2f * Math.PI.toFloat())
+            0.65f + 0.35f * s   //0.30~1.00
+        }
+        drawWandStick(color, u, w)
+        drawWandHead(color, u, w, alpha = 1f, scale = 1f)
+        drawWandStars(color, u, w, tw, alpha = 1f, scale = 1f)
+    }
+} //魔法棒
+
+/** 棒身：一条圆头细线，与设计稿同一条对角线 */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWandStick(
+    color: Color,
+    u: Float,
+    w: Float
+) {
+    drawLine(color, Offset(u * 0.19f, u * 0.81f), Offset(u * 0.53f, u * 0.47f), w, StrokeCap.Round)
+} //棒身
+
+/** 方形棒头：只描边，scale 用来形变时缩没（scale=0 直接不画） */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWandHead(
+    color: Color,
+    u: Float,
+    w: Float,
+    alpha: Float,
+    scale: Float
+) {
+    val h = u * 0.0725f * scale
+    if (h < 0.35f) return
+    val cx = u * 0.57f
+    val cy = u * 0.38f
+    drawRoundRect(
+        color = color.copy(alpha = color.alpha * alpha),
+        topLeft = Offset(cx - h, cy - h),
+        size = Size(h * 2f, h * 2f),
+        cornerRadius = CornerRadius(h * 0.4f),
+        style = Stroke(width = w, join = StrokeJoin.Round)
+    )
+} //方形棒头
+
+/** 三颗闪星：tw 是各自的亮度 0..1，臂长跟亮度联动（亮的时候略大，暗的时候收一点） */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWandStars(
+    color: Color,
+    u: Float,
+    w: Float,
+    tw: FloatArray,
+    alpha: Float,
+    scale: Float
+) {
+    val spots = listOf(
+        Triple(u * 0.72f, u * 0.23f, u * 0.042f),   //大星，贴着棒头
+        Triple(u * 0.55f, u * 0.19f, u * 0.032f),   //中星
+        Triple(u * 0.81f, u * 0.40f, u * 0.024f)    //小星，最远
+    )
+    spots.forEachIndexed { i, spot ->
+        val a = tw.getOrElse(i) { 1f } * alpha
+        if (a <= 0.02f) return@forEachIndexed
+        val x = spot.first
+        val y = spot.second
+        val r = spot.third * (0.75f + 0.35f * a) * scale
+        if (r < 0.35f) return@forEachIndexed
+        val c = color.copy(alpha = color.alpha * a)
+        val sw = w * 0.85f
+        drawLine(c, Offset(x - r, y), Offset(x + r, y), sw, StrokeCap.Round)
+        drawLine(c, Offset(x, y - r), Offset(x, y + r), sw, StrokeCap.Round)
+    }
+} //三颗闪星
+
+/**
+ * 提示词优化完成态：魔法棒**直接**形变成对号。
+ *
+ * 不做「先变加号、再变对号」的中转：方框棒头与三颗星在进度前 40% 内缩没淡出，
+ * 棒身两端插值到勾的第一段，勾的第二段从折点 b 按同一进度生长（g=0 时长度为零），
+ * 全程只有「棒 → 勾」两笔，任何中间帧都不会冒出一个加号。
+ */
+@Composable
+fun IcWandToCheck(color: Color, side: Dp = 21.dp, stroke: Dp = 2.6.dp) {
+    val p = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        p.animateTo(
+            1f,
+            androidx.compose.animation.core.tween(
+                420,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            )
+        )
+    }
+    Canvas(Modifier.size(side)) {
+        val u = size.minDimension
+        val w = stroke.toPx()
+        val k = p.value.coerceIn(0f, 1f)
+        //先给配件收拢留 15% 的起手，再让笔画走位；smoothstep 让起手不抖、收尾不硬
+        val raw = ((k - 0.15f) / 0.85f).coerceIn(0f, 1f)
+        val g = raw * raw * (3f - 2f * raw)
+        //勾的三个折点
+        val a = Offset(u * 0.16f, u * 0.54f)
+        val b = Offset(u * 0.41f, u * 0.78f)
+        val c = Offset(u * 0.86f, u * 0.24f)
+        //第一笔：棒身两端一起插值到勾的第一段
+        val s0 = Offset(u * 0.19f, u * 0.81f)
+        val e0 = Offset(u * 0.53f, u * 0.47f)
+        drawLine(
+            color,
+            Offset(s0.x + (a.x - s0.x) * g, s0.y + (a.y - s0.y) * g),
+            Offset(e0.x + (b.x - e0.x) * g, e0.y + (b.y - e0.y) * g),
+            w, StrokeCap.Round
+        )
+        //第二笔：从 b 往 c 长出来，g=0 时长度为零
+        if (g > 0.02f) {
+            drawLine(color, b, Offset(b.x + (c.x - b.x) * g, b.y + (c.y - b.y) * g), w, StrokeCap.Round)
+        }
+        //配件：棒头方框 + 三颗星在前 40% 内缩没，避免和勾的笔画打架
+        val fade = (1f - k / 0.4f).coerceIn(0f, 1f)
+        if (fade > 0.01f) {
+            drawWandHead(color, u, w, alpha = fade, scale = fade)
+            drawWandStars(color, u, w, floatArrayOf(fade, fade, fade), alpha = fade, scale = fade)
+        }
+    }
+} //魔法棒直接变对号

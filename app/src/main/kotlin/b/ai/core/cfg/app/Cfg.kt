@@ -165,6 +165,14 @@ object Cfg {
         mem("persona_seed", 0).value = p.getInt("persona_seed", 0)
         mem("dark_theme", 0).value = p.getInt("dark_theme", 0)
         mem("inject_time", true).value = p.getBoolean("inject_time", true)
+        //编排：这几项不回读就会「改完重启回默认」，必须逐个对齐同名 key
+        mem("plan_first", false).value = p.getBoolean("plan_first", false)
+        mem("plan_dag", false).value = p.getBoolean("plan_dag", false)
+        mem("plan_complex_only", true).value = p.getBoolean("plan_complex_only", true)
+        mem("plan_show", true).value = p.getBoolean("plan_show", true)
+        mem("plan_retry", true).value = p.getBoolean("plan_retry", true)
+        mem("plan_max_steps", 0).value = p.getInt("plan_max_steps", 0)
+        mem("plan_extra", "").value = p.getString("plan_extra", "").orEmpty()
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
         mem("inject_place", false).value = p.getBoolean("inject_place", false)
         mem("inject_precise", false).value = p.getBoolean("inject_precise", false)
@@ -189,6 +197,7 @@ object Cfg {
         mem("avatar_ai_mode", "persona").value = p.getString("avatar_ai_mode", "persona")!!
         mem("avatar_ai", "").value = p.getString("avatar_ai", "")!!
         mem("bubble_capsule", false).value = p.getBoolean("bubble_capsule", false)
+        mem("chat_card_style", 0).value = p.getInt("chat_card_style", 0)
         mem("glass_card", false).value = p.getBoolean("glass_card", false)
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
@@ -647,6 +656,41 @@ object Cfg {
             put("prompt_order", n)
         }
 
+    /**编排：接到模糊目标先拆子任务再执行，并按执行反馈调整后续计划（设置 →模型 →编排）*/
+    var planFirst: Boolean
+        get() = mem("plan_first", false).value
+        set(v) { mem("plan_first", false).value = v; put("plan_first", v) }
+
+    /**拆解形式：false =步骤链， true = DAG（带依赖边与并行分支）*/
+    var planDag: Boolean
+        get() = mem("plan_dag", false).value
+        set(v) { mem("plan_dag", false).value = v; put("plan_dag", v) }
+
+    /**只在复杂目标时拆解：一句话能做完的直接做，避免为拆解而拆解 */
+    var planComplexOnly: Boolean
+        get() = mem("plan_complex_only", true).value
+        set(v) { mem("plan_complex_only", true).value = v; put("plan_complex_only", v) }
+
+    /**是否把计划展示给用户：关掉时计划只在模型内部用，回复里不贴清单 */
+    var planShow: Boolean
+        get() = mem("plan_show", true).value
+        set(v) { mem("plan_show", true).value = v; put("plan_show", v) }
+
+    /**失败时自动调整后续计划：关掉时要求停下手说明，不自行重排 */
+    var planRetry: Boolean
+        get() = mem("plan_retry", true).value
+        set(v) { mem("plan_retry", true).value = v; put("plan_retry", v) }
+
+    /**子任务上限：0 =不限，其余值要求先在内部合并同类项 */
+    var planMaxSteps: Int
+        get() = mem("plan_max_steps", 0).value
+        set(v) { mem("plan_max_steps", v.coerceIn(0, 50)).value = v.coerceIn(0, 50); put("plan_max_steps", v.coerceIn(0, 50)) }
+
+    /**额外规划要求：原样拼进编排段，留给用户写自己的约束 */
+    var planExtra: String
+        get() = mem("plan_extra", "").value
+        set(v) { mem("plan_extra", "").value = v; put("plan_extra", v) }
+
     var replyStyle: String
         get() = mem("reply_style", "").value
         set(v) { mem("reply_style", "").value = v; put("reply_style", v) }
@@ -735,6 +779,14 @@ object Cfg {
     var bubbleCapsule: Boolean
         get() = mem("bubble_capsule", false).value
         set(v) { mem("bubble_capsule", false).value = v; put("bubble_capsule", v) }
+
+    /**
+     * 聊天卡片样式：0 = 分式（每条消息一个气泡，默认，旧行为）；
+     * 1 = 整体式（一轮的用户消息 + 该轮所有回复/工具/附件/统计都收进同一张卡，头部可折叠）。
+     */
+    var chatCardStyle: Int
+        get() = mem("chat_card_style", 0).value
+        set(v) { mem("chat_card_style", 0).value = v; put("chat_card_style", v) }
 
     var avatarAi: String
         get() = mem("avatar_ai", "").value

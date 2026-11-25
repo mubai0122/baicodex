@@ -15,7 +15,7 @@
 package b.ai.device.sys.probe
 import b.ai.agent.run.Agent
 import b.ai.net.api.llm.text
-import b.ai.ui.screen.settings.openUrl
+import b.ai.ui.screen.settings.about.openUrl
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

@@ -13,10 +13,10 @@
  */
 
 package b.ai.ui.screen.user
-import b.ai.ui.screen.settings.GITHUB_URL
+import b.ai.ui.screen.settings.about.GITHUB_URL
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.settings.openUrl
+import b.ai.ui.screen.settings.about.openUrl
 import b.ai.ui.widget.IcTick
 import b.ai.ui.widget.tap
 import b.ai.net.api.llm.text

@@ -11,6 +11,7 @@ import java.io.OutputStreamWriter
 import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import b.ai.device.shell.root.Shiz
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -250,7 +251,7 @@ object DshSdk {
 
     //region 内部：进程 / 协议
 
-    /** 起 proot 进程：Root 通道直接用 su（untrusted_app 域里 proot 常起不来） */
+    /** 起 proot 进程：Root 走 su、Shizuku 走 shell 身份，其它按 App 身份直起 */
     private fun spawn(launch: Linux.Launch): Process? {
         if (Cfg.workMode == b.ai.core.model.chat.WorkMode.ROOT) {
             Root.suPath()?.let { su ->
@@ -258,6 +259,14 @@ object DshSdk {
                     return ProcessBuilder(su, "-c", launch.cmdline).redirectErrorStream(true).start()
                 }
             }
+        }
+        //Shizuku 模式：rootfs 在公共目录，只有 shell 身份进得去
+        if (Linux.sharedMode()) {
+            Shiz.openProcess(launch.cmdline)?.let {
+                Logs.i(TAG, "内核以 Shizuku(shell) 身份启动")
+                return it
+            }
+            Logs.e(TAG, "Shizuku 身份起不来 proot，改走本地 / Root")
         }
         val local = runCatching {
             ProcessBuilder(launch.argv).redirectErrorStream(true).apply {

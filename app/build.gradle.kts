@@ -56,8 +56,8 @@ android {
         applicationId = "b.ai"
         minSdk = 24
         targetSdk = 34
-        versionCode = 65
-        versionName = "2.0.0"
+        versionCode = 66
+        versionName = "2.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BAI_HOST", "\"$baiHost\"")

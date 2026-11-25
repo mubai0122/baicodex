@@ -54,9 +54,13 @@ object DshInstall {
     private const val PATH_PREFIX =
         "PATH=/opt/node24/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; export PATH; "
 
-    /** pnpm 装/查一次就够，装过之后每次只花一次 command -v */
+    /** pnpm 装/查一次就够，装过之后每次只花一次探测 */
     @Volatile
     private var pnpmReady = false
+
+    /** pnpm 的绝对路径：定位到之后记下来，后续命令不再依赖 PATH 是否命中 */
+    @Volatile
+    private var pnpmBin = ""
 
     /** add 的进度总步数（准备 pnpm / 安装依赖 / 回滚 / 收尾），UI 侧算百分比用 */
     private const val ADD_STEPS = 3
@@ -64,24 +68,46 @@ object DshInstall {
     private const val CREATE_STEPS = 4
 
     /**
+     * 逐个候选位置找 pnpm：PATH 命中 → /opt/node24/bin → npm 全局 prefix。
+     * 只靠 `command -v` 会在「npm 装到 prefix/bin 而 PATH 没带」时误判成没装，
+     * 日志里就会出现「changed 1 package in 5s + pnpm 安装失败」这种自相矛盾的输出。
+     */
+    private fun findPnpm(): String {
+        val probe = Linux.run(
+            PATH_PREFIX +
+                "P=\$(command -v pnpm 2>/dev/null); " +
+                "[ -n \"\$P\" ] || { [ -x /opt/node24/bin/pnpm ] && P=/opt/node24/bin/pnpm; }; " +
+                "[ -n \"\$P\" ] || { G=\$(npm prefix -g 2>/dev/null); [ -n \"\$G\" ] && [ -x \"\$G/bin/pnpm\" ] && P=\"\$G/bin/pnpm\"; }; " +
+                "echo \"PNPMBIN=\$P\"",
+            30_000L
+        )
+        val line = probe.out.lineSequence().firstOrNull { it.trim().startsWith("PNPMBIN=") } ?: return ""
+        return line.trim().removePrefix("PNPMBIN=").trim()
+    } //定位 pnpm
+
+    /**
      * 确保 pnpm 可用。
      * rootfs 里没有独立 pnpm，只有 corepack 垫片；corepack 首次使用要联网下载，
      * 实测直接用 npm 全局装 pnpm@9 最快也最可控。
      */
     fun ensurePnpm(): Result<Unit> = runCatching {
-        if (pnpmReady) return@runCatching
-        //必须在 PATH_PREFIX 下判：pnpm 在 /opt/node24/bin，默认 PATH 里没有
-        val has = Linux.run(PATH_PREFIX + "command -v pnpm || echo NOPNPM", 20_000L)
-        if (!has.out.contains("NOPNPM")) {
+        if (pnpmReady && pnpmBin.isNotBlank()) return@runCatching
+        if (pnpmBin.isBlank()) pnpmBin = findPnpm()
+        if (pnpmBin.isNotBlank()) {
             pnpmReady = true
             return@runCatching
         }
+        //装完把 prefix 与 bin 目录一起打出来，真失败时日志能自证原因
         val r = Linux.run(
-            PATH_PREFIX + "npm install -g pnpm@9 --no-fund --no-audit 2>&1 | tail -3; command -v pnpm || echo NOPNPM",
+            PATH_PREFIX + "npm install -g pnpm@9 --no-fund --no-audit 2>&1 | tail -5; " +
+                "echo '--- npm prefix:'; npm prefix -g 2>/dev/null; " +
+                "echo '--- prefix/bin:'; ls -1 \$(npm prefix -g 2>/dev/null)/bin 2>/dev/null | head -20",
             300_000L
         )
-        if (r.out.contains("NOPNPM")) {
-            throw IllegalStateException("pnpm 安装失败：${r.out.take(300)}")
+        pnpmBin = findPnpm()
+        if (pnpmBin.isBlank()) {
+            pnpmReady = false
+            throw IllegalStateException("pnpm 仍不可用（npm exit=${r.code}）：${r.out.takeLast(400)}")
         }
         pnpmReady = true
     } //确保 pnpm
@@ -170,7 +196,8 @@ object DshInstall {
             throw IllegalArgumentException("包名不合法（要小写 npm 名）：$pkg")
         }
         val dirAbs = Linux.inside("$LOCAL_ROOT/$pid")
-        if (File(dirAbs, "package.json").isFile) throw IllegalStateException("已存在同名插件：$LOCAL_ROOT/$pid")
+        //Shizuku 模式下 rootfs 在 /data/local/tmp，App 的 isFile 会假阴性，统一走通道判定
+        if (DshFile.isFile(File(dirAbs, "package.json"))) throw IllegalStateException("已存在同名插件：$LOCAL_ROOT/$pid")
         onStep(0, CREATE_STEPS, "写入骨架文件")
 
         val desc = title.trim().ifBlank { pid }
@@ -219,8 +246,9 @@ object DshInstall {
         writeFile(File(dirAbs, "index.js"), index)
         onLog("已写入骨架：$LOCAL_ROOT/$pid")
 
-        //把这批文件交给 root（proot -0 里是 root 身份读，属主不是 root 也能读，但保持与其他 profile 文件一致）
-        Root.run("chown -R root:root '${dirAbs.absolutePath}'", 20_000L)
+        //把这批文件交给 root（proot -0 里是 root 身份读，属主不是 root 也能读）：
+        //免 root 下没有 chown 权限，失败就跳过，不影响装载
+        runCatching { Root.run("chown -R root:root '${dirAbs.absolutePath}'", 20_000L) }
 
         //安装用 guest 内的绝对路径（pnpm 在 proot 里跑，看不到宿主路径）
         //add 的步数（0..3）折算成 create 的 1..4 段，进度条从「写文件」无缝接到「装依赖」
@@ -249,18 +277,13 @@ object DshInstall {
         "chmod 755 /root /root/.dsh /root/.dsh/profiles $PROFILE_DIR 2>/dev/null; " +
             "chmod 644 $PROFILE_DIR/package.json $PROFILE_DIR/pnpm-lock.yaml $PROFILE_DIR/cordis.patch.yml 2>/dev/null; true"
 
-    /** 写文件（走 Root：/root 属主是 root，App 身份写不进去） */
+    /** 写文件：走 Linux 通道（普通模式 App 直写、Shizuku 模式由 shell 写），不再依赖 Root */
     private fun writeFile(f: File, body: String) {
+        val root = Linux.rootfs.absolutePath
         val abs = f.absolutePath
-        val tmp = "$abs.bxl.tmp"
-        val cmd = buildString {
-            append("mkdir -p '").append(f.parentFile?.absolutePath).append("' && ")
-            append("cat > '").append(tmp).append("' <<'BXL_PLUGIN_EOF'\n")
-            append(body).append('\n')
-            append("BXL_PLUGIN_EOF\n")
-            append("mv -f '").append(tmp).append("' '").append(abs).append("'")
-        }
-        val r = Root.run(cmd, 20_000L)
+        val rel = abs.removePrefix(root).removePrefix("/")
+        val r = if (rel.isNotEmpty() && rel != abs) Linux.writeGuest(rel, body)
+        else ShellResult(-1, "路径不在 rootfs 内：$abs")
         if (!r.ok) throw IllegalStateException("写 ${f.name} 失败：${r.out.take(200)}")
     } //写文件
 

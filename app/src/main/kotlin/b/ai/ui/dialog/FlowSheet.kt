@@ -17,7 +17,7 @@ import androidx.compose.ui.res.stringResource
 import b.ai.R
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
-import b.ai.ui.screen.settings.PolicyChip
+import b.ai.ui.screen.settings.kit.PolicyChip
 import b.ai.ui.widget.Field
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.tap

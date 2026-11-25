@@ -17,6 +17,9 @@ package b.ai.device.shell.local
 import b.ai.core.cfg.app.Cfg
 import b.ai.core.model.chat.WorkMode
 import b.ai.device.shell.root.Root
+import b.ai.device.shell.root.Shiz
+import android.os.Handler
+import android.os.Looper
 import java.io.File
 import java.io.OutputStreamWriter
 import java.io.Writer
@@ -48,6 +51,29 @@ object LinuxTerm {
     @Volatile
     var onState: (() -> Unit)? = null
 
+    /**
+     * 脏通知节流：解包时 tar -v 每秒吐上千行，逐行 onDirty 会把 UI 重组打爆（点安装环境卡死的主因）。
+     * 合并成「最多每 100ms 一次」，并且统一投递到主线程——Compose state 只该在主线程写。
+     */
+    private const val FLUSH_MS = 100L
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var pendingDirty = false
+    @Volatile private var dirtyPosted = false
+
+    /** 标脏（合并 + 主线程投递），供 add / clear / 各处输出统一调用 */
+    private fun notifyDirty() {
+        pendingDirty = true
+        if (dirtyPosted) return
+        dirtyPosted = true
+        main.postDelayed({
+            dirtyPosted = false
+            if (pendingDirty) {
+                pendingDirty = false
+                onDirty?.invoke()
+            }
+        }, FLUSH_MS)
+    } //节流标脏
+
     /** 会话是否活着（proot 里的 bash 还在） */
     @Volatile
     var ready = false
@@ -69,6 +95,9 @@ object LinuxTerm {
     /** 会话是不是 su 起的：打断时得用同一个身份去 kill */
     private var viaSu = false
 
+    /** 会话是不是 Shizuku(shell) 起的：rootfs 在公共目录时走这条 */
+    private var viaShiz = false
+
     /** 换行符与 ANSI 转义：apt / curl 的进度条会刷一堆控制字符，UI 里得洗掉 */
     private val ansi = Regex("\u001B\\[[0-9;?]*[ -/]*[@-~]")
 
@@ -84,7 +113,7 @@ object LinuxTerm {
 
     fun clear() {
         synchronized(lock) { buf.clear() }
-        onDirty?.invoke()
+        notifyDirty()
     } //清屏
 
     private fun add(raw: String) {
@@ -93,7 +122,7 @@ object LinuxTerm {
             if (buf.size >= MAX) buf.removeAt(0)
             buf.add(line)
         }
-        onDirty?.invoke()
+        notifyDirty()
     } //入缓冲 + 标脏
 
     //endregion
@@ -119,7 +148,12 @@ object LinuxTerm {
             return false
         }
         val p = spawn(launch) ?: run {
-            add("[起不来]proot 进程启动失败：检查 Root / Shizuku 通路，或先点「安装环境」")
+            add(
+                "[起不来]proot 进程启动失败。" +
+                    "普通模式（无 root / 无 Shizuku）在 Android 10 以上跑不了内置 Ubuntu：" +
+                    "系统禁止执行应用私有目录里的文件（execve Permission denied）。" +
+                    "请先在 Shizuku 或 Root 模式下安装并使用环境"
+            )
             return false
         }
         proc = p
@@ -149,6 +183,15 @@ object LinuxTerm {
                 }
             }
         }
+        //Shizuku 模式：rootfs 在公共目录，只有 shell 身份进得去，proot 直接以 shell 起
+        if (Linux.sharedMode()) {
+            Shiz.openProcess(launch.cmdline)?.let {
+                viaShiz = true
+                viaSu = false
+                return it
+            }
+            add("[Shizuku 身份起不来 proot]改走其它通道")
+        }
         val local = runCatching {
             ProcessBuilder(launch.argv).redirectErrorStream(true).apply {
                 environment().putAll(launch.env)
@@ -161,7 +204,13 @@ object LinuxTerm {
                 viaSu = false
                 return local
             }
-            add("[App 身份起不来 proot]改走 Root 通道：" + localError(local))
+            val err = localError(local)
+            //targetSdk 34 + Android 10 以上：应用私有目录里的文件被禁止 execve，
+            //proot 起得来、但 guest 程序一 execve 就 EACCES（典型报错 execve("/usr/bin/env"): Permission denied）
+            if (err.contains("Permission denied") && err.contains("execve")) {
+                return null
+            }
+            add("[App 身份起不来 proot]改走其他通道：" + err)
         }
         if (Cfg.workMode == WorkMode.ROOT) return null
         val su = Root.suPath() ?: return null
@@ -181,6 +230,8 @@ object LinuxTerm {
     fun stop() {
         ready = false
         running = false
+        viaShiz = false
+        viaSu = false
         runCatching { sink?.close() }
         runCatching { proc?.destroy() }
         proc = null
@@ -311,6 +362,7 @@ object LinuxTerm {
     private fun killGroup(sig: String, pid: Int) = runCatching {
         val cmd = "kill -$sig -$pid 2>/dev/null || kill -$sig $pid 2>/dev/null"
         if (viaSu) Root.run(cmd, 15_000L)
+        else if (viaShiz) Shiz.run(cmd, null, 15_000L)
         else ProcessBuilder("/system/bin/sh", "-c", cmd).redirectErrorStream(true).start()
             .also { it.waitFor(15, TimeUnit.SECONDS) }
         Unit

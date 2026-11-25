@@ -542,6 +542,7 @@
     <string name="se_058">搜索设置</string>
     <string name="se_059">返回</string>
     <string name="se_060">搜设置项，如 主题 / Linux / 工具链</string>
+    <string name="se_061">清空搜索</string>
     <string name="se_063">输入关键词搜索设置项，例如「主题」「Linux」「工具链」</string>
     <string name="se_064">一条一套提供商 + Key + 模型，点一下整组切换</string>
     <string name="se_065">勾上模型真支持的能力；没勾的能力请求体里会自动去掉，不会把请求打成 400</string>
@@ -1789,8 +1790,31 @@
     <string name="se_kernel_na">这个 ABI 没带 Rust 内核（只编 arm64-v8a）</string>
     <string name="se_pg_prompt">提示词优化</string>
     <string name="se_pg_prompt_sub">优化用模型、保留原语言、自定义优化方向</string>
-    <string name="se_pg_inout">输入与输出</string>
-    <string name="se_pg_inout_sub">回复信息展示、流式输出、草稿保留与输出偏好文案</string>
+    <string name="se_pg_inout">注入输入与输出</string>
+    <string name="se_pg_inout_sub">本机实时信息注入、回复信息展示、流式输出、草稿保留与输出偏好文案</string>
+    <string name="se_pg_orch">编排</string>
+    <string name="se_pg_orch_sub">任务分解与规划、多步执行与按反馈调整</string>
+    <string name="se_orch_plan_t">任务分解与规划</string>
+    <string name="se_orch_plan_on">已开启：模糊目标先拆成子任务，再分步执行</string>
+    <string name="se_orch_plan_off">已关闭：按当前提示直接执行</string>
+    <string name="se_orch_shape">拆解形式</string>
+    <string name="se_orch_chain">步骤链</string>
+    <string name="se_orch_dag">DAG</string>
+    <string name="se_orch_shape_d">步骤链 = 一条有序清单；DAG = 允许并行分支与依赖边</string>
+    <string name="se_orch_note">开启后把「拆解、执行、按反馈调整」写进系统提示；只改变模型的规划方式，不放宽工具权限</string>
+    <string name="se_orch_complex_t">只在复杂目标时拆解</string>
+    <string name="se_orch_complex_d">一句话能做完的直接做，不为了拆解而拆解</string>
+    <string name="se_orch_show_t">把计划展示给用户</string>
+    <string name="se_orch_show_d">开：先列出子任务清单再执行；关：计划只在模型内部用</string>
+    <string name="se_orch_retry_t">失败时自动调整后续计划</string>
+    <string name="se_orch_retry_d">开：撞到失败先改计划再继续；关：停下来说明情况等你决定</string>
+    <string name="se_orch_steps">子任务上限</string>
+    <string name="se_orch_steps_d">超出上限时先在内部合并同类项，不靠缩小粒度凑数</string>
+    <string name="se_orch_steps_none">不限</string>
+    <string name="se_orch_steps_n">最多 %1$d 个</string>
+    <string name="se_orch_extra">额外规划要求</string>
+    <string name="se_orch_extra_ph">例如：先列出风险点；每步附一条自检命令；拆解不超过两层</string>
+    <string name="se_orch_extra_d">原样拼在编排段末尾，权重最高；留空表示不加额外要求</string>
     <string name="se_pg_think">思考配置</string>
     <string name="se_pg_think_sub">按模型名匹配，决定思考字段怎么写进请求；可增删改、可恢复内置</string>
     <string name="pm_top_p">核采样</string>
@@ -2673,4 +2697,14 @@
     <string name="dh_dev_back_to_items">返回测试项</string>
     <string name="dh_create_title_ph">我的工具</string>
     <string name="dh_cap_hint">这一行默认是否启用由 DeepSeek Harness 按平台判断，手动开关会覆盖它。</string>
+    <string name="se_card_style">聊天卡片样式</string>
+    <string name="se_card_style_split">分式</string>
+    <string name="se_card_style_split_d">每条消息一个气泡，用户靠右、AI 靠左</string>
+    <string name="se_card_style_whole">整体式</string>
+    <string name="se_card_style_whole_d">一轮对话（你的话 + 本轮所有回复、工具、附件、统计）收进同一张卡，点头部折叠收起</string>
+    <string name="se_card_style_note">整体式下统计行、分支切换、附件与错误按钮都排在卡片内部底部</string>
+    <string name="cs_card_round">这一轮</string>
+    <string name="cs_card_img">[图片]</string>
+    <string name="cs_card_file">[附件]</string>
+    <string name="cs_card_n">%1$d 条</string>
 </resources>
