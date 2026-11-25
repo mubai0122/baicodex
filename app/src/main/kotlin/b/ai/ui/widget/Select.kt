@@ -72,6 +72,19 @@ import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.draw.rotate
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 
 //一个可选项：label 是显示文案，selected 决定打勾，onPick 在点中时执行
 internal class PickItem(val label: String, val selected: Boolean, val onPick: () -> Unit)
@@ -79,13 +92,17 @@ internal class PickItem(val label: String, val selected: Boolean, val onPick: ()
 //把「打开选择面板」的入口往下传，四个 tab 不用各自多带一个回调参数
 internal val LocalPicker = staticCompositionLocalOf<(String, List<PickItem>) -> Unit> { { _, _ -> } }
 
-/** 下拉选择行：左边标题（可带副标题），右边当前值胶囊 + 下箭头，整行可点；menu 的锚点就是这颗胶囊 */
+/**
+ * 下拉选择行：左边标题（可带副标题），右边当前值胶囊 + 下箭头，整行可点；menu 的锚点就是这颗胶囊。
+ * open 决定箭头朝向（点开时转 180°），由 SelectField 传进来，其它调用方用默认值即是收起态。
+ */
 @Composable
 internal fun SelectRow(
     label: String,
     value: String,
     desc: String? = null,
     onClick: () -> Unit,
+    open: Boolean = false,
     menu: @Composable BoxScope.(DpSize) -> Unit = {}
 ) {
     Row(
@@ -103,6 +120,12 @@ internal fun SelectRow(
         Spacer(Modifier.width(10.dp))
         val den = LocalDensity.current
         var pill by remember { mutableStateOf(DpSize.Zero) }
+        //箭头跟随开合转 180°：跟面板的缩放同步，读的是同一个 open
+        val arrow by animateFloatAsState(
+            targetValue = if (open) 180f else 0f,
+            animationSpec = tween(durationMillis = 180),
+            label = "selectArrow"
+        )
         Box(Modifier.onSizeChanged { pill = with(den) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
             Row(
                 Modifier
@@ -116,7 +139,9 @@ internal fun SelectRow(
                     Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
                     tint = AccentBlue,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier
+                        .size(15.dp)
+                        .rotate(arrow)
                 )
             }
             menu(pill)
@@ -136,6 +161,9 @@ internal fun <T> SelectField(
     onSelect: (T) -> Unit
 ) {
     var open by remember { mutableStateOf(false) }
+    //shown 是 Popup 内部的进场开关：先组合出来再置 true，进场动画才有起点
+    var shown by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val labels = ArrayList<String>(options.size)
     for (o in options) labels.add(optionLabel(o))
     //菜单宽度固定，右边缘跟胶囊右边缘对齐；用原生 Popup 自绘，材质和位置都自己拿，
@@ -145,49 +173,81 @@ internal fun <T> SelectField(
     val gapPx = with(den) { 4.dp.roundToPx() }
     val padPx = with(den) { 8.dp.roundToPx() }
     val pos = remember(gapPx, padPx) { MenuPos(gapPx, padPx) }
-    SelectRow(label, value, desc, onClick = { open = !open }) { _ ->
+    //先播退场再销毁 Popup：直接把 open 置 false 会让面板瞬间消失，动画等于没有
+    val close: (() -> Unit) -> Unit = { after ->
+        shown = false
+        scope.launch {
+            delay(110)
+            open = false
+            after()
+        }
+    }
+    SelectRow(label, value, desc, onClick = {
+        if (open) close {}
+        else {
+            shown = false
+            open = true
+        }
+    }, open = open) { _ ->
         if (open) {
             Popup(
                 popupPositionProvider = pos,
-                onDismissRequest = { open = false },
+                onDismissRequest = { close {} },
                 properties = PopupProperties(focusable = true)
             ) {
-                Column(
-                    Modifier
-                        .width(menuW)
-                        .heightIn(max = 320.dp)
-                        //Popup 是独立窗口，拿不到宿主页面的 backdrop：liquidBg 在这里采样不到背景，
-                        //模糊出来是一层灰（用户看到的「灰色阴影」）。下拉改用不透明表面色 + 细边框，
-                        //既没有灰影，也不会在半透明下透出下层文字。
-                        .background(
-                            if (DarkColors) BgGray else SurfaceWhite,
-                            RoundedCornerShape(12.dp)
-                        )
-                        .border(0.8.dp, BorderGray, RoundedCornerShape(12.dp))
-                        .verticalScroll(glassScrollState())
-                        .padding(vertical = 4.dp)
+                LaunchedEffect(Unit) { shown = true }
+                AnimatedVisibility(
+                    visible = shown,
+                    //右上方为锚点缩放 + 淡入：面板是从胶囊位置「长出来」的，不是凭空闪出
+                    enter = fadeIn(tween(140)) + scaleIn(
+                        animationSpec = tween(160),
+                        initialScale = 0.92f,
+                        transformOrigin = TransformOrigin(1f, 0f)
+                    ),
+                    exit = fadeOut(tween(100)) + scaleOut(
+                        animationSpec = tween(120),
+                        targetScale = 0.96f,
+                        transformOrigin = TransformOrigin(1f, 0f)
+                    )
                 ) {
-                    options.forEachIndexed { i, o ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .tap { open = false; onSelect(o) }
-                                .padding(horizontal = 12.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                labels[i],
-                                fontSize = 12.5.sp,
-                                color = if (isSelected(o)) AccentBlue else TextPrimary,
-                                modifier = Modifier.weight(1f)
+                    Column(
+                        Modifier
+                            .width(menuW)
+                            .heightIn(max = 320.dp)
+                            //Popup 是独立窗口，拿不到宿主页面的 backdrop：liquidBg 在这里采样不到背景，
+                            //模糊出来是一层灰（用户看到的「灰色阴影」）。下拉改用不透明表面色 + 细边框，
+                            //既没有灰影，也不会在半透明下透出下层文字。
+                            .background(
+                                if (DarkColors) BgGray else SurfaceWhite,
+                                RoundedCornerShape(12.dp)
                             )
-                            if (isSelected(o)) {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = null,
-                                    tint = AccentBlue,
-                                    modifier = Modifier.size(14.dp)
+                            .border(0.8.dp, BorderGray, RoundedCornerShape(12.dp))
+                            .verticalScroll(glassScrollState())
+                            .padding(vertical = 4.dp)
+                    ) {
+                        options.forEachIndexed { i, o ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    //选中后先收面板再回调，避免列表项在动画期间被上层重组掉
+                                    .tap { close { onSelect(o) } }
+                                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    labels[i],
+                                    fontSize = 12.5.sp,
+                                    color = if (isSelected(o)) AccentBlue else TextPrimary,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                if (isSelected(o)) {
+                                    Icon(
+                                        Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = AccentBlue,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
                             }
                         }
                     }

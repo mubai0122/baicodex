@@ -2282,104 +2282,104 @@
     <string name="tx_fd4bef54" formatted="false">Diagnostic</string>
     <string name="tx_fda7a982" formatted="false">Copier une partie du message</string>
     <string name="tx_fed34fcc" formatted="false">Nombre maximal de tokens générés par tour dans le chat ; au-delà de 1024, le CPU pur ralentit nettement, augmentez-le pour les textes longs</string>
-    <string name="tx_3aaccc6e" formatted="false">Modèle d\'appareil détecté : %1$s</string>
-    <string name="tx_5cd47992" formatted="false">%1$s jours</string>
-    <string name="tx_6adeb861" formatted="false">Mémoire à long terme · %1$s entrées</string>
-    <string name="tx_8bdbcde3" formatted="false">%1$s niveaux, détermine la longueur du curseur</string>
-    <string name="tx_8cae3683" formatted="false">Niveau %1$s</string>
-    <string name="tx_935695b1" formatted="false">%1$s fichiers de police détectés</string>
-    <string name="tx_9f8beb63" formatted="false">%1$s appliqués</string>
-    <string name="tx_a6f0b1dc" formatted="false">%1$s s</string>
-    <string name="tx_b4d10c2d" formatted="false">%1$s dp/niveau</string>
+    <string name="tx_3aaccc6e" >Modèle d\'appareil détecté : %1$s</string>
+    <string name="tx_5cd47992" >%1$s jours</string>
+    <string name="tx_6adeb861" >Mémoire à long terme · %1$s entrées</string>
+    <string name="tx_8bdbcde3" >%1$s niveaux, détermine la longueur du curseur</string>
+    <string name="tx_8cae3683" >Niveau %1$s</string>
+    <string name="tx_935695b1" >%1$s fichiers de police détectés</string>
+    <string name="tx_9f8beb63" >%1$s appliqués</string>
+    <string name="tx_a6f0b1dc" >%1$s s</string>
+    <string name="tx_b4d10c2d" >%1$s dp/niveau</string>
     <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
     <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
     <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
-    <string name="tx_0d011d38" formatted="false">Chargé : %1$s ($desc · contexte d\'entraînement $nctx)</string>
-    <string name="tx_12a1e1ea" formatted="false">Conserver la langue d\'origine : %1$s\n</string>
-    <string name="tx_136b30f6" formatted="false">Commande interne code=%1$s :</string>
-    <string name="tx_1488e82c" formatted="false">%1$s appareils détectés</string>
-    <string name="tx_19dd9c89" formatted="false">Écoute sur le port %1$s</string>
+    <string name="tx_0d011d38" >Chargé : %1$s ($desc · contexte d\'entraînement $nctx)</string>
+    <string name="tx_12a1e1ea" >Conserver la langue d\'origine : %1$s\n</string>
+    <string name="tx_136b30f6" >Commande interne code=%1$s :</string>
+    <string name="tx_1488e82c" >%1$s appareils détectés</string>
+    <string name="tx_19dd9c89" >Écoute sur le port %1$s</string>
     <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
-    <string name="tx_1f6f6b55" formatted="false">%1$s modèles migrés de l\'ancien répertoire vers ${ModelHu%2$s</string>
-    <string name="tx_215a9629" formatted="false">Fichiers : %1$s\n</string>
-    <string name="tx_238b0ba6" formatted="false">Longueur de sortie préférée : %1$s caractères</string>
-    <string name="tx_2408091c" formatted="false">Fournisseur actuel pris en charge = %1$s</string>
-    <string name="tx_2a8058ac" formatted="false">Espace disponible : %1$s Mo\n</string>
-    <string name="tx_2b10449e" formatted="false">Espace réservé : %2$s\nRésultat : %1$s\n</string>
+    <string name="tx_1f6f6b55" >%1$s modèles migrés de l\'ancien répertoire vers ${ModelHu%2$s</string>
+    <string name="tx_215a9629" >Fichiers : %1$s\n</string>
+    <string name="tx_238b0ba6" >Longueur de sortie préférée : %1$s caractères</string>
+    <string name="tx_2408091c" >Fournisseur actuel pris en charge = %1$s</string>
+    <string name="tx_2a8058ac" >Espace disponible : %1$s Mo\n</string>
+    <string name="tx_2b10449e" >Espace réservé : %2$s\nRésultat : %1$s\n</string>
     <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
-    <string name="tx_2cf379fe" formatted="false">%1$s conversations supprimées</string>
-    <string name="tx_3108ce07" formatted="false"> · Mémoire %1$s (disponible ${human(mem.ava%2$s</string>
-    <string name="tx_354d5f73" formatted="false">Images conservées : %1$s / validité : ${Cfg.draftDays%2$s</string>
-    <string name="tx_375ef055" formatted="false">Répertoire de l\'application : %1$s\n</string>
-    <string name="tx_3c1c4b90" formatted="false">Couches GPU définies sur %1$s ; effectif après rechargement du modèle</string>
-    <string name="tx_3ee9b024" formatted="false">%1$s nœuds, mesure de vitesse en cours…</string>
+    <string name="tx_2cf379fe" >%1$s conversations supprimées</string>
+    <string name="tx_3108ce07" > · Mémoire %1$s (disponible ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" >Images conservées : %1$s / validité : ${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" >Répertoire de l\'application : %1$s\n</string>
+    <string name="tx_3c1c4b90" >Couches GPU définies sur %1$s ; effectif après rechargement du modèle</string>
+    <string name="tx_3ee9b024" >%1$s nœuds, mesure de vitesse en cours…</string>
     <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
-    <string name="tx_430495aa" formatted="false">Paramètres disponibles : %1$s</string>
-    <string name="tx_45b8d0ba" formatted="false">Lisez d\'abord les instructions (%1$s)</string>
+    <string name="tx_430495aa" >Paramètres disponibles : %1$s</string>
+    <string name="tx_45b8d0ba" >Lisez d\'abord les instructions (%1$s)</string>
     <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
-    <string name="tx_52280f7d" formatted="false">Échec de l\'optimisation : %1$s</string>
+    <string name="tx_52280f7d" >Échec de l\'optimisation : %1$s</string>
     <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
     <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
-    <string name="tx_642e64e8" formatted="false">Supprimé : %1$s</string>
-    <string name="tx_651eb991" formatted="false">Terminé : %2$s token / %1$sms (~$tps tok/s)</string>
-    <string name="tx_66a69bbf" formatted="false">Téléchargement de %1$s :</string>
-    <string name="tx_67957ccd" formatted="false">Supprimer %1$s ? (${hum%2$s</string>
-    <string name="tx_68e55fc5" formatted="false">Peut accepter %1$s</string>
-    <string name="tx_697e775f" formatted="false">Sera enregistré sous : %1$s</string>
-    <string name="tx_69d06c37" formatted="false">Étape %1$s</string>
-    <string name="tx_70bc66d5" formatted="false">%2$s activés · sur %1$s</string>
-    <string name="tx_70e28d57" formatted="false">Système : Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_642e64e8" >Supprimé : %1$s</string>
+    <string name="tx_651eb991">Terminé : %2$d tokens / %1$d ms (~%3$d tok/s)</string>
+    <string name="tx_66a69bbf" >Téléchargement de %1$s :</string>
+    <string name="tx_67957ccd" >Supprimer %1$s ? (${hum%2$s</string>
+    <string name="tx_68e55fc5" >Peut accepter %1$s</string>
+    <string name="tx_697e775f" >Sera enregistré sous : %1$s</string>
+    <string name="tx_69d06c37" >Étape %1$s</string>
+    <string name="tx_70bc66d5" >%2$s activés · sur %1$s</string>
+    <string name="tx_70e28d57" >Système : Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
     <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
-    <string name="tx_7a43344e" formatted="false">%2$s → Indisponible (%1$s)</string>
-    <string name="tx_7a776792" formatted="false">Total %1$s · ${s.procs} %2$s processus ; impossible d\'isoler les éléments de plugin au niveau du processus</string>
+    <string name="tx_7a43344e" >%2$s → Indisponible (%1$s)</string>
+    <string name="tx_7a776792" >Total %1$s · ${s.procs} %2$s processus ; impossible d\'isoler les éléments de plugin au niveau du processus</string>
     <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
-    <string name="tx_803ae150" formatted="false">Interrupteurs actuels : think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
-    <string name="tx_8164359b" formatted="false">Test de connectivité réussi : %1$s a reçu $%2$s caractères ($rc token, ~$tps tok/s)\nExtrait de réponse : ${txt.take%3$s</string>
-    <string name="tx_829cb2a2" formatted="false">%1$s sélectionné(s)</string>
-    <string name="tx_82a30a52" formatted="false">Seuil de réussite : TTFB ≤ %1$s</string>
-    <string name="tx_852246ff" formatted="false">API Key non enregistrée dans le stockage chiffré : %1$s</string>
-    <string name="tx_86c68249" formatted="false">Conversation actuelle %5$s : vide=%1$s texte=${cur.text%2$sr.images.size} pièces jointes=${%3$s%4$s</string>
-    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s considéré comme réussi ; le plus rapide est retenu</string>
-    <string name="tx_89e93f24" formatted="false">Test en parallèle (%1$s/${nodes.si%2$s</string>
-    <string name="tx_8d19f09c" formatted="false">✓ %1$s · le modèle reconnaît le noir pur · ${v%2$s</string>
+    <string name="tx_803ae150" >Interrupteurs actuels : think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" >Test de connectivité réussi : %1$s a reçu $%2$s caractères ($rc token, ~$tps tok/s)\nExtrait de réponse : ${txt.take%3$s</string>
+    <string name="tx_829cb2a2" >%1$s sélectionné(s)</string>
+    <string name="tx_82a30a52" >Seuil de réussite : TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" >API Key non enregistrée dans le stockage chiffré : %1$s</string>
+    <string name="tx_86c68249" >Conversation actuelle %5$s : vide=%1$s texte=${cur.text%2$sr.images.size} pièces jointes=${%3$s%4$s</string>
+    <string name="tx_89bde44d" >TTFB ≤ %1$s considéré comme réussi ; le plus rapide est retenu</string>
+    <string name="tx_89e93f24" >Test en parallèle (%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" >✓ %1$s · le modèle reconnaît le noir pur · ${v%2$s</string>
     <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
     <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
-    <string name="tx_957699dd" formatted="false">, ${(ratio * 100)%2$s de %1$s de mémoire totale sur cet appareil</string>
-    <string name="tx_960ae310" formatted="false">Aucun fichier de modèle. Touchez Importer ci-dessus ou placez les .gguf dans %1$s/ via un gestionnaire de fichiers.</string>
-    <string name="tx_983d58f9" formatted="false">Images perdues %1$s scrolling=${%2$s</string>
-    <string name="tx_9e349f3d" formatted="false">Point de terminaison : %1$s</string>
-    <string name="tx_9fc79d7a" formatted="false">Stockage insuffisant : %1$s disponible, garder au moins 300 Mo</string>
-    <string name="tx_a33a9bb0" formatted="false">Appareil : %1$s</string>
-    <string name="tx_aab79711" formatted="false">Sélectionné par l\'utilisateur = %1$s</string>
-    <string name="tx_ac635e14" formatted="false">Étapes (%1$s étapes max)</string>
-    <string name="tx_b6e53767" formatted="false">Emplacement : %1$s</string>
+    <string name="tx_957699dd" >, ${(ratio * 100)%2$s de %1$s de mémoire totale sur cet appareil</string>
+    <string name="tx_960ae310" >Aucun fichier de modèle. Touchez Importer ci-dessus ou placez les .gguf dans %1$s/ via un gestionnaire de fichiers.</string>
+    <string name="tx_983d58f9" >Images perdues %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" >Point de terminaison : %1$s</string>
+    <string name="tx_9fc79d7a" >Stockage insuffisant : %1$s disponible, garder au moins 300 Mo</string>
+    <string name="tx_a33a9bb0" >Appareil : %1$s</string>
+    <string name="tx_aab79711" >Sélectionné par l\'utilisateur = %1$s</string>
+    <string name="tx_ac635e14" >Étapes (%1$s étapes max)</string>
+    <string name="tx_b6e53767" >Emplacement : %1$s</string>
     <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
-    <string name="tx_b82d7fd4" formatted="false">Fichier : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
-    <string name="tx_b90649bb" formatted="false">Supprimer %1$s éléments ?</string>
+    <string name="tx_b82d7fd4" >Fichier : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" >Supprimer %1$s éléments ?</string>
     <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
     <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
-    <string name="tx_c3af4af2" formatted="false">Modèles réussis %1$s / durée ${cost}m%2$s{body.take%3$s</string>
-    <string name="tx_c6d082e2" formatted="false">Indisponible (%1$s)</string>
-    <string name="tx_c83a29fe" formatted="false">Appareil : %1$s ${android.os.Build.MODEL}\n%2$s</string>
-    <string name="tx_c8ad176b" formatted="false">Répertoire des brouillons : %1$s\n</string>
+    <string name="tx_c3af4af2" >Modèles réussis %1$s / durée ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" >Indisponible (%1$s)</string>
+    <string name="tx_c83a29fe" >Appareil : %1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" >Répertoire des brouillons : %1$s\n</string>
     <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
-    <string name="tx_cb625f26" formatted="false">providerId actuel = %1$s</string>
-    <string name="tx_cbb1ac45" formatted="false">Fournisseur : %1$s / Modèle : $model\n</string>
-    <string name="tx_cbdacbb2" formatted="false">Importé : %1$s (${hum%2$s</string>
-    <string name="tx_cf954d3a" formatted="false">Longueur de direction personnalisée : %1$s caractères\n</string>
+    <string name="tx_cb625f26" >providerId actuel = %1$s</string>
+    <string name="tx_cbb1ac45" >Fournisseur : %1$s / Modèle : $model\n</string>
+    <string name="tx_cbdacbb2" >Importé : %1$s (${hum%2$s</string>
+    <string name="tx_cf954d3a" >Longueur de direction personnalisée : %1$s caractères\n</string>
     <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
-    <string name="tx_d1977545" formatted="false">Paquet : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
-    <string name="tx_d8f20845" formatted="false">Échec : %1$s</string>
-    <string name="tx_d9366fc9" formatted="false">%1$s nœuds de repli intégrés encore disponibles</string>
+    <string name="tx_d1977545" >Paquet : %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" >Échec : %1$s</string>
+    <string name="tx_d9366fc9" >%1$s nœuds de repli intégrés encore disponibles</string>
     <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
-    <string name="tx_e03b4047" formatted="false">Le répertoire default existe = %1$s</string>
+    <string name="tx_e03b4047" >Le répertoire default existe = %1$s</string>
     <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
-    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
-    <string name="tx_f0c678c7" formatted="false">Échec de la suppression : %1$s</string>
-    <string name="tx_f8e3d0b7" formatted="false">Contenu trop long (limite %1$s caractères) ; raccourcissez-le avant d\'optimiser</string>
-    <string name="tx_f934698e" formatted="false">Modèle sélectionné %1$s</string>
-    <string name="tx_fe42d9b6" formatted="false">Couches GPU %1$s ; repli sur CPU si le pilote ne le prend pas en charge</string>
-    <string name="tx_fee8e550" formatted="false">Espace insuffisant : %1$s requis, ${human(fr%2$s disponible</string>
+    <string name="tx_e7f137f0" >✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" >Échec de la suppression : %1$s</string>
+    <string name="tx_f8e3d0b7" >Contenu trop long (limite %1$s caractères) ; raccourcissez-le avant d\'optimiser</string>
+    <string name="tx_f934698e" >Modèle sélectionné %1$s</string>
+    <string name="tx_fe42d9b6" >Couches GPU %1$s ; repli sur CPU si le pilote ne le prend pas en charge</string>
+    <string name="tx_fee8e550" >Espace insuffisant : %1$s requis, ${human(fr%2$s disponible</string>
     <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
     <string name="tx_13853b5a" formatted="false">Espacement des paragraphes</string>
     <string name="tx_279a3789" formatted="false">Taille de police du code</string>
@@ -2440,14 +2440,14 @@
     <string name="se_wreal_t" formatted="false">Découpage plus naturel</string>
     <string name="se_wreal_d" formatted="false">Coupe aussi aux virgules, réduit les bulles à 3/7 de l\'écran et remplace l\'apparition par un fondu qui monte, comme quelqu\'un qui envoie des messages courts</string>
     <string name="se_wtype_t" formatted="false">Vitesse de frappe par fragment</string>
-    <string name="se_wtype_v" formatted="false">%1$d ms/car.</string>
+    <string name="se_wtype_v" >%1$d ms/car.</string>
     <string name="se_wtyping_t" formatted="false">Afficher « en train d\'écrire »</string>
     <string name="se_wtyping_d" formatted="false">Affiche « en train d\'écrire… » entre deux fragments ; durée = nombre de caractères du fragment × vitesse de frappe</string>
-    <string name="se_tools_more" formatted="false">Afficher les %1$d outils</string>
+    <string name="se_tools_more" >Afficher les %1$d outils</string>
     <string name="se_bk_secrets" formatted="false">Exporter les secrets chiffrés</string>
     <string name="se_bk_secrets_d" formatted="false">Regroupe les clés API, mots de passe SSH, jetons GitHub et secrets de compétences pour les restaurer sur un autre appareil. Ils restent chiffrés et seule la même version de Baicodex peut les ouvrir</string>
-    <string name="se_bk_fail_x" formatted="false">Échec de l\'export : %1$s</string>
-    <string name="se_bk_bad_x" formatted="false">Échec de l\'import : %1$s</string>
+    <string name="se_bk_fail_x" >Échec de l\'export : %1$s</string>
+    <string name="se_bk_bad_x" >Échec de l\'import : %1$s</string>
     <string name="se_366" formatted="false">Injection de position précise</string>
     <string name="se_367" formatted="false">Relève une position à chaque fois, plus précise que la dernière connue</string>
     <string name="se_368" formatted="false">Désactivé : utilise seulement la dernière position, sans relève active</string>
@@ -2468,7 +2468,7 @@
     <string name="se_gd_busy" formatted="false">Dérivation des clés et réécriture de tous les chiffrés, ne quittez pas</string>
     <string name="se_gd_cleared_title" formatted="false">Effacé</string>
     <string name="se_gd_cleared_body" formatted="false">Toutes les données sensibles ont été supprimées. Redémarrez l\'application pour revenir à un état propre</string>
-    <string name="se_gd_warn_title" formatted="false">L\'activation initialise un sel et exécute une dérivation multi-clés, ce qui sollicite brièvement le processeur. Sur cet appareil (%1$s), cela prend environ %2$s et l\'interface peut saccader</string>
+    <string name="se_gd_warn_title" >L\'activation initialise un sel et exécute une dérivation multi-clés, ce qui sollicite brièvement le processeur. Sur cet appareil (%1$s), cela prend environ %2$s et l\'interface peut saccader</string>
     <string name="se_gd_w1_t" formatted="false">Impossible à désactiver</string>
     <string name="se_gd_w1_b" formatted="false">Le seul retour possible est un effacement forcé : les clés API, jetons de compte, cookies et jetons GitHub chiffrés sont supprimés sur-le-champ, sans récupération possible</string>
     <string name="se_gd_w2_t" formatted="false">Les données restent sur l\'appareil</string>
@@ -2492,9 +2492,9 @@
     <string name="se_gd_cancel" formatted="false">Annuler</string>
     <string name="se_gd_keep" formatted="false">Conserver</string>
     <string name="se_gd_go" formatted="false">J\'ai compris, activer</string>
-    <string name="se_gd_go_wait" formatted="false">Lire d\'abord (%1$ds)</string>
+    <string name="se_gd_go_wait" >Lire d\'abord (%1$ds)</string>
     <string name="se_gd_wipe" formatted="false">Je confirme l\'effacement</string>
-    <string name="se_gd_wipe_wait" formatted="false">Confirmer l\'effacement (%1$ds)</string>
+    <string name="se_gd_wipe_wait" >Confirmer l\'effacement (%1$ds)</string>
     <string name="se_sec_tab" formatted="false">Confidentialité et sécurité</string>
     <string name="se_sec_sub" formatted="false">Interrupteurs qui protègent les identifiants et les données privées. Lisez l\'avertissement complet avant de modifier quoi que ce soit</string>
     <string name="se_pt_tab" formatted="false">Protection supplémentaire</string>
@@ -2504,7 +2504,7 @@
     <string name="se_pt_mask_off" formatted="false">Désactivé · les réponses s\'affichent telles quelles</string>
     <string name="se_pt_mask_note" formatted="false">Lorsque des champs de type mot de passe ou jeton apparaissent dans une réponse, son raisonnement ou la sortie d\'un outil, les valeurs sont masquées. Les règles viennent du serveur et la correspondance est locale. Au mieux, sans garantie absolue</string>
     <string name="se_pt_mask_stream" formatted="false">Activer ceci coupe aussi le streaming : un texte affiché caractère par caractère ne peut plus être filtré après coup</string>
-    <string name="se_pt_mask_rules" formatted="false">Règles actuelles : %1$d clés, %2$d préfixes</string>
+    <string name="se_pt_mask_rules" >Règles actuelles : %1$d clés, %2$d préfixes</string>
     <string name="se_pt_mask_ok" formatted="false">Règles mises à jour depuis le serveur</string>
     <string name="se_pt_mask_fail" formatted="false">Échec de la mise à jour : retour au jeu local</string>
     <string name="se_pt_shot_t" formatted="false">Bloquer captures et enregistrement</string>
@@ -2521,7 +2521,7 @@
     <string name="se_pt_w3_b" formatted="false">Le streaming se coupe et les réponses arrivent en un bloc ; réactivez-le vous-même pour retrouver l\'affichage caractère par caractère</string>
     <string name="se_pt_warn_back" formatted="false">Encore une fois : ce n\'est pas totalement sûr</string>
     <string name="se_pt_go" formatted="false">J\'ai compris, activer</string>
-    <string name="se_pt_go_wait" formatted="false">Lire d\'abord (%1$ds)</string>
+    <string name="se_pt_go_wait" >Lire d\'abord (%1$ds)</string>
     <string name="se_ns_t" formatted="false">Désactiver le streaming</string>
     <string name="se_ns_on" formatted="false">Désactivé : la réponse s\'affiche une fois terminée, sans rendu caractère par caractère</string>
     <string name="se_ns_off" formatted="false">Streaming actif : le texte apparaît au fil de la génération</string>
@@ -2539,11 +2539,11 @@
     <string name="se_gd_covers" formatted="false">Inclus : clés modèles / voix / recherche / MCP / A2A, jetons de compte et de retour, mots de passe SSH, secrets de compétences, cache de lieux</string>
     <string name="cs_max_on" formatted="false">Max · activé</string>
     <string name="cs_queue_title" formatted="false">File d\'envoi</string>
-    <string name="cs_more_rounds" formatted="false">Afficher %1$d tours plus anciens</string>
+    <string name="cs_more_rounds" >Afficher %1$d tours plus anciens</string>
     <string name="cs_queue_tip" formatted="false">Le texte saisi pendant une réponse attend ici et part dans l\'ordre à la fin du tour</string>
     <string name="ag_queue_next" formatted="false">Placé en tête : envoyé dès la fin de ce tour</string>
     <string name="ag_queue_other" formatted="false">Ce message appartient à une autre conversation ; revenez-y pour l\'envoyer</string>
-    <string name="ag_par_fmt" formatted="false">Exécution de %1$d outils en parallèle</string>
+    <string name="ag_par_fmt" >Exécution de %1$d outils en parallèle</string>
     <string name="se_pg_voice" formatted="false">Voix</string>
     <string name="se_pg_voice_sub" formatted="false">Reconnaissance vocale, synthèse et lecture des réponses</string>
     <string name="se_pg_mem" formatted="false">Mémoire</string>
@@ -2737,4 +2737,10 @@
     <string name="se_pg_dsh_plug">Plugins DeepSeek Harness</string>
     <string name="se_pg_dsh_plug_sub">Plugins réellement chargés sur cet appareil ; activables (effectif après redémarrage du noyau)</string>
     <string name="dh_cap_hint">L\'activation par défaut de cette ligne est décidée par DeepSeek Harness selon la plateforme ; un basculement manuel la remplace.</string>
+    <string name="perm_all_t" formatted="false">Interrupteur global des permissions</string>
+    <string name="perm_all_d" formatted="false">Ce reglage est le controle principal et remplace les permissions par outil.</string>
+    <string name="perm_all_allow" formatted="false">Autoriser</string>
+    <string name="perm_all_ask" formatted="false">Demander</string>
+    <string name="perm_all_deny" formatted="false">Interdire</string>
+    <string name="perm_all_over" >Remplac\'e par l\'interrupteur global : %1$s</string>
 </resources>

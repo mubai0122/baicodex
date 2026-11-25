@@ -617,7 +617,7 @@ fun SettingsScreen(
                         if (hits.isEmpty()) {
                             item {
                                 Text(
-                                    stringResource(R.string.tx_7725233f),
+                                    stringResource(R.string.tx_7725233f, fq.trim()),
                                     fontSize = 12.sp,
                                     color = TextSecondary,
                                     modifier = Modifier.padding(vertical = 10.dp)

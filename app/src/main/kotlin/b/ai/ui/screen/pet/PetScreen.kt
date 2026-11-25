@@ -450,7 +450,7 @@ private fun PetLookTab(onResetPos: () -> Unit, tip: String) {
         }
     }
     Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.pet_bubble_w), null)
+    SectionTitle(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), null)
     CardBox {
         PetSlider(stringResource(R.string.pet_font, Cfg.petFont), 9, 20, Cfg.petFont) { Cfg.petFont = it; live() }
         CapSwitch(stringResource(R.string.pet_font_bold), "", Cfg.petFontBold) { Cfg.petFontBold = it; live() }

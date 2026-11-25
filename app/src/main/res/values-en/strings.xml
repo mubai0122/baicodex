@@ -2213,104 +2213,104 @@
     <string name="tx_fd4bef54" formatted="false">Diagnostics</string>
     <string name="tx_fda7a982" formatted="false">Copy part of the message</string>
     <string name="tx_fed34fcc" formatted="false">Max tokens generated per turn in chat; above 1024 is noticeably slow on pure CPU, raise it for long-form writing</string>
-    <string name="tx_3aaccc6e" formatted="false">Detected device model: %1$s</string>
-    <string name="tx_5cd47992" formatted="false">%1$s days</string>
-    <string name="tx_6adeb861" formatted="false">Long-term memory · %1$s entries</string>
-    <string name="tx_8bdbcde3" formatted="false">%1$s levels, determines slider length</string>
-    <string name="tx_8cae3683" formatted="false">Level %1$s</string>
-    <string name="tx_935695b1" formatted="false">Detected %1$s font files</string>
-    <string name="tx_9f8beb63" formatted="false">Applied %1$s</string>
-    <string name="tx_a6f0b1dc" formatted="false">%1$s s</string>
-    <string name="tx_b4d10c2d" formatted="false">%1$s dp/level</string>
+    <string name="tx_3aaccc6e" >Detected device model: %1$s</string>
+    <string name="tx_5cd47992" >%1$s days</string>
+    <string name="tx_6adeb861" >Long-term memory · %1$s entries</string>
+    <string name="tx_8bdbcde3" >%1$s levels, determines slider length</string>
+    <string name="tx_8cae3683" >Level %1$s</string>
+    <string name="tx_935695b1" >Detected %1$s font files</string>
+    <string name="tx_9f8beb63" >Applied %1$s</string>
+    <string name="tx_a6f0b1dc" >%1$s s</string>
+    <string name="tx_b4d10c2d" >%1$s dp/level</string>
     <string name="tx_be10d0eb" formatted="false">%1$s/${rules.size} 条启用%2$s</string>
     <string name="tx_0117ace0" formatted="false">%2$s 已%1$s</string>
     <string name="tx_08fccf53" formatted="false">节点来源：%1$s</string>
-    <string name="tx_0d011d38" formatted="false">Loaded: %1$s ($desc · training context $nctx)</string>
-    <string name="tx_12a1e1ea" formatted="false">Keep original language: %1$s\n</string>
-    <string name="tx_136b30f6" formatted="false">In-app command code=%1$s:</string>
-    <string name="tx_1488e82c" formatted="false">Found %1$s devices</string>
-    <string name="tx_19dd9c89" formatted="false">Listening on port %1$s</string>
+    <string name="tx_0d011d38" >Loaded: %1$s ($desc · training context $nctx)</string>
+    <string name="tx_12a1e1ea" >Keep original language: %1$s\n</string>
+    <string name="tx_136b30f6" >In-app command code=%1$s:</string>
+    <string name="tx_1488e82c" >Found %1$s devices</string>
+    <string name="tx_19dd9c89" >Listening on port %1$s</string>
     <string name="tx_1d4fae26" formatted="false">择优：%1$s</string>
-    <string name="tx_1f6f6b55" formatted="false">Migrated %1$s models from the old directory to ${ModelHu%2$s</string>
-    <string name="tx_215a9629" formatted="false">Files: %1$s\n</string>
-    <string name="tx_238b0ba6" formatted="false">Preferred output length: %1$s chars</string>
-    <string name="tx_2408091c" formatted="false">Current provider supports = %1$s</string>
-    <string name="tx_2a8058ac" formatted="false">Available space: %1$s MB\n</string>
-    <string name="tx_2b10449e" formatted="false">Placeholder: %2$s\nRendered: %1$s\n</string>
+    <string name="tx_1f6f6b55" >Migrated %1$s models from the old directory to ${ModelHu%2$s</string>
+    <string name="tx_215a9629" >Files: %1$s\n</string>
+    <string name="tx_238b0ba6" >Preferred output length: %1$s chars</string>
+    <string name="tx_2408091c" >Current provider supports = %1$s</string>
+    <string name="tx_2a8058ac" >Available space: %1$s MB\n</string>
+    <string name="tx_2b10449e" >Placeholder: %2$s\nRendered: %1$s\n</string>
     <string name="tx_2c4680a8" formatted="false">命中规则：%1$s</string>
-    <string name="tx_2cf379fe" formatted="false">Deleted %1$s conversations</string>
-    <string name="tx_3108ce07" formatted="false"> · Memory %1$s (available ${human(mem.ava%2$s</string>
-    <string name="tx_354d5f73" formatted="false">Keep images: %1$s / valid for: ${Cfg.draftDays%2$s</string>
-    <string name="tx_375ef055" formatted="false">App directory: %1$s\n</string>
-    <string name="tx_3c1c4b90" formatted="false">GPU layers set to %1$s; takes effect after reloading the model</string>
-    <string name="tx_3ee9b024" formatted="false">%1$s nodes, starting speed test…</string>
+    <string name="tx_2cf379fe" >Deleted %1$s conversations</string>
+    <string name="tx_3108ce07" > · Memory %1$s (available ${human(mem.ava%2$s</string>
+    <string name="tx_354d5f73" >Keep images: %1$s / valid for: ${Cfg.draftDays%2$s</string>
+    <string name="tx_375ef055" >App directory: %1$s\n</string>
+    <string name="tx_3c1c4b90" >GPU layers set to %1$s; takes effect after reloading the model</string>
+    <string name="tx_3ee9b024" >%1$s nodes, starting speed test…</string>
     <string name="tx_415d0129" formatted="false">手动节点：%1$s</string>
-    <string name="tx_430495aa" formatted="false">Available parameters: %1$s</string>
-    <string name="tx_45b8d0ba" formatted="false">Read the instructions first (%1$s)</string>
+    <string name="tx_430495aa" >Available parameters: %1$s</string>
+    <string name="tx_45b8d0ba" >Read the instructions first (%1$s)</string>
     <string name="tx_4850f530" formatted="false">每次确认 %1$s\n禁止 ${deny.%2$s.take(12)%3$s</string>
-    <string name="tx_52280f7d" formatted="false">Optimization failed: %1$s</string>
+    <string name="tx_52280f7d" >Optimization failed: %1$s</string>
     <string name="tx_5319bcb2" formatted="false">配对成功：%1$s</string>
     <string name="tx_5b7aa9d5" formatted="false">拉取失败：%1$s</string>
-    <string name="tx_642e64e8" formatted="false">Deleted: %1$s</string>
-    <string name="tx_651eb991" formatted="false">Done: %2$s token / %1$sms (~$tps tok/s)</string>
-    <string name="tx_66a69bbf" formatted="false">Downloading %1$s:</string>
-    <string name="tx_67957ccd" formatted="false">Delete %1$s? (${hum%2$s</string>
-    <string name="tx_68e55fc5" formatted="false">Can take %1$s</string>
-    <string name="tx_697e775f" formatted="false">Will save as: %1$s</string>
-    <string name="tx_69d06c37" formatted="false">Step %1$s</string>
-    <string name="tx_70bc66d5" formatted="false">Enabled %2$s · of %1$s</string>
-    <string name="tx_70e28d57" formatted="false">System: Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
+    <string name="tx_642e64e8" >Deleted: %1$s</string>
+    <string name="tx_651eb991">Done: %2$d tokens / %1$d ms (~%3$d tok/s)</string>
+    <string name="tx_66a69bbf" >Downloading %1$s:</string>
+    <string name="tx_67957ccd" >Delete %1$s? (${hum%2$s</string>
+    <string name="tx_68e55fc5" >Can take %1$s</string>
+    <string name="tx_697e775f" >Will save as: %1$s</string>
+    <string name="tx_69d06c37" >Step %1$s</string>
+    <string name="tx_70bc66d5" >Enabled %2$s · of %1$s</string>
+    <string name="tx_70e28d57" >System: Android %1$s / SDK ${android.os.Build.VERSION.SDK_%2$s</string>
     <string name="tx_7186f7f8" formatted="false">当前模式不可用 %1$s：${off.t%2$s</string>
-    <string name="tx_7a43344e" formatted="false">%2$s → Unavailable (%1$s)</string>
-    <string name="tx_7a776792" formatted="false">Total %1$s · ${s.procs} %2$s processes; per-process can\'t break down plugin items</string>
+    <string name="tx_7a43344e" >%2$s → Unavailable (%1$s)</string>
+    <string name="tx_7a776792" >Total %1$s · ${s.procs} %2$s processes; per-process can\'t break down plugin items</string>
     <string name="tx_7b15b077" formatted="false">优化用配置：%1$s</string>
-    <string name="tx_803ae150" formatted="false">Current switches: think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
-    <string name="tx_8164359b" formatted="false">Connectivity test passed: %1$s received $%2$s chars ($rc token, ~$tps tok/s)\nReply snippet: ${txt.take%3$s</string>
-    <string name="tx_829cb2a2" formatted="false">%1$s selected</string>
-    <string name="tx_82a30a52" formatted="false">Pass threshold: TTFB ≤ %1$s</string>
-    <string name="tx_852246ff" formatted="false">API Key not saved to the encrypted store: %1$s</string>
-    <string name="tx_86c68249" formatted="false">Current conversation %5$s: empty=%1$s text=${cur.text%2$sr.images.size} attachments=${%3$s%4$s</string>
-    <string name="tx_89bde44d" formatted="false">TTFB ≤ %1$s counts as passing; the fastest passing node wins</string>
-    <string name="tx_89e93f24" formatted="false">Testing in parallel (%1$s/${nodes.si%2$s</string>
-    <string name="tx_8d19f09c" formatted="false">✓ %1$s · model detects pure black · ${v%2$s</string>
+    <string name="tx_803ae150" >Current switches: think=%1$s effort=${Cfg.th%2$sng=${Cfg.modelReasoning}%3$s</string>
+    <string name="tx_8164359b" >Connectivity test passed: %1$s received $%2$s chars ($rc token, ~$tps tok/s)\nReply snippet: ${txt.take%3$s</string>
+    <string name="tx_829cb2a2" >%1$s selected</string>
+    <string name="tx_82a30a52" >Pass threshold: TTFB ≤ %1$s</string>
+    <string name="tx_852246ff" >API Key not saved to the encrypted store: %1$s</string>
+    <string name="tx_86c68249" >Current conversation %5$s: empty=%1$s text=${cur.text%2$sr.images.size} attachments=${%3$s%4$s</string>
+    <string name="tx_89bde44d" >TTFB ≤ %1$s counts as passing; the fastest passing node wins</string>
+    <string name="tx_89e93f24" >Testing in parallel (%1$s/${nodes.si%2$s</string>
+    <string name="tx_8d19f09c" >✓ %1$s · model detects pure black · ${v%2$s</string>
     <string name="tx_8d5d7f2f" formatted="false">当前最优：%1$s</string>
     <string name="tx_92db3dc3" formatted="false">当前目录是否自动目录 = %1$s</string>
-    <string name="tx_957699dd" formatted="false">, ${(ratio * 100)%2$s of %1$s total memory on this device</string>
-    <string name="tx_960ae310" formatted="false">No model files yet. Tap Import above, or put .gguf files in %1$s/ with a file manager.</string>
-    <string name="tx_983d58f9" formatted="false">Dropped frames %1$s scrolling=${%2$s</string>
-    <string name="tx_9e349f3d" formatted="false">Endpoint: %1$s</string>
-    <string name="tx_9fc79d7a" formatted="false">Not enough storage: %1$s available, keep at least 300MB</string>
-    <string name="tx_a33a9bb0" formatted="false">Device: %1$s</string>
-    <string name="tx_aab79711" formatted="false">Currently user-selected = %1$s</string>
-    <string name="tx_ac635e14" formatted="false">Steps (max %1$s steps)</string>
-    <string name="tx_b6e53767" formatted="false">Location: %1$s</string>
+    <string name="tx_957699dd" >, ${(ratio * 100)%2$s of %1$s total memory on this device</string>
+    <string name="tx_960ae310" >No model files yet. Tap Import above, or put .gguf files in %1$s/ with a file manager.</string>
+    <string name="tx_983d58f9" >Dropped frames %1$s scrolling=${%2$s</string>
+    <string name="tx_9e349f3d" >Endpoint: %1$s</string>
+    <string name="tx_9fc79d7a" >Not enough storage: %1$s available, keep at least 300MB</string>
+    <string name="tx_a33a9bb0" >Device: %1$s</string>
+    <string name="tx_aab79711" >Currently user-selected = %1$s</string>
+    <string name="tx_ac635e14" >Steps (max %1$s steps)</string>
+    <string name="tx_b6e53767" >Location: %1$s</string>
     <string name="tx_b7bdcde4" formatted="false">}，共 %1$s 个</string>
-    <string name="tx_b82d7fd4" formatted="false">File: %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
-    <string name="tx_b90649bb" formatted="false">Delete %1$s items?</string>
+    <string name="tx_b82d7fd4" >File: %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_b90649bb" >Delete %1$s items?</string>
     <string name="tx_bf3bd82d" formatted="false">数据根：%1$s</string>
     <string name="tx_c10778e9" formatted="false">共 %1$s 个工具\n放行 ${allow%2$sw.take(12)%3$s</string>
-    <string name="tx_c3af4af2" formatted="false">Models passed %1$s / elapsed ${cost}m%2$s{body.take%3$s</string>
-    <string name="tx_c6d082e2" formatted="false">Unavailable (%1$s)</string>
-    <string name="tx_c83a29fe" formatted="false">Device: %1$s ${android.os.Build.MODEL}\n%2$s</string>
-    <string name="tx_c8ad176b" formatted="false">Draft directory: %1$s\n</string>
+    <string name="tx_c3af4af2" >Models passed %1$s / elapsed ${cost}m%2$s{body.take%3$s</string>
+    <string name="tx_c6d082e2" >Unavailable (%1$s)</string>
+    <string name="tx_c83a29fe" >Device: %1$s ${android.os.Build.MODEL}\n%2$s</string>
+    <string name="tx_c8ad176b" >Draft directory: %1$s\n</string>
     <string name="tx_ca7131a5" formatted="false">%1$s 在线</string>
-    <string name="tx_cb625f26" formatted="false">Current providerId = %1$s</string>
-    <string name="tx_cbb1ac45" formatted="false">Provider: %1$s / Model: $model\n</string>
-    <string name="tx_cbdacbb2" formatted="false">Imported: %1$s (${hum%2$s</string>
-    <string name="tx_cf954d3a" formatted="false">Custom direction length: %1$s chars\n</string>
+    <string name="tx_cb625f26" >Current providerId = %1$s</string>
+    <string name="tx_cbb1ac45" >Provider: %1$s / Model: $model\n</string>
+    <string name="tx_cbdacbb2" >Imported: %1$s (${hum%2$s</string>
+    <string name="tx_cf954d3a" >Custom direction length: %1$s chars\n</string>
     <string name="tx_cfddf3ec" formatted="false"> · 后端 %1$s</string>
-    <string name="tx_d1977545" formatted="false">Package: %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
-    <string name="tx_d8f20845" formatted="false">Failed: %1$s</string>
-    <string name="tx_d9366fc9" formatted="false">%1$s built-in fallback nodes still available</string>
+    <string name="tx_d1977545" >Package: %1$s / ${m.meta.s%2$s6 ${m.meta.sha256.take%3$s</string>
+    <string name="tx_d8f20845" >Failed: %1$s</string>
+    <string name="tx_d9366fc9" >%1$s built-in fallback nodes still available</string>
     <string name="tx_de78e522" formatted="false">档位表：%1$s</string>
-    <string name="tx_e03b4047" formatted="false">default directory exists = %1$s</string>
+    <string name="tx_e03b4047" >default directory exists = %1$s</string>
     <string name="tx_e486eabe" formatted="false">当前会话 path() = %1$s</string>
-    <string name="tx_e7f137f0" formatted="false">✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
-    <string name="tx_f0c678c7" formatted="false">Delete failed: %1$s</string>
-    <string name="tx_f8e3d0b7" formatted="false">Content too long (limit %1$s chars); trim it before optimizing</string>
-    <string name="tx_f934698e" formatted="false">Selected model %1$s</string>
-    <string name="tx_fe42d9b6" formatted="false">GPU layers %1$s; falls back to CPU if the driver doesn\'t support it</string>
-    <string name="tx_fee8e550" formatted="false">Not enough space: need %1$s, available ${human(fr%2$s</string>
+    <string name="tx_e7f137f0" >✓ %1$s · ${t%2$s· ${t.reply}%3$s</string>
+    <string name="tx_f0c678c7" >Delete failed: %1$s</string>
+    <string name="tx_f8e3d0b7" >Content too long (limit %1$s chars); trim it before optimizing</string>
+    <string name="tx_f934698e" >Selected model %1$s</string>
+    <string name="tx_fe42d9b6" >GPU layers %1$s; falls back to CPU if the driver doesn\'t support it</string>
+    <string name="tx_fee8e550" >Not enough space: need %1$s, available ${human(fr%2$s</string>
     <string name="tx_6ef19d72" formatted="false">使用自定义模型目录</string>
     <string name="tx_13853b5a" formatted="false">Paragraph spacing</string>
     <string name="tx_279a3789" formatted="false">Code font size</string>
@@ -2371,14 +2371,14 @@
     <string name="se_wreal_t" formatted="false">More lifelike splitting</string>
     <string name="se_wreal_d" formatted="false">Breaks at commas too, narrows bubbles to 3/7 of the screen, and swaps the pop-in for a soft fade-and-rise, closer to someone firing off short messages</string>
     <string name="se_wtype_t" formatted="false">Typing speed per fragment</string>
-    <string name="se_wtype_v" formatted="false">%1$d ms/char</string>
+    <string name="se_wtype_v" >%1$d ms/char</string>
     <string name="se_wtyping_t" formatted="false">Show a typing indicator</string>
     <string name="se_wtyping_d" formatted="false">Shows “typing…” between fragments; dwell time = characters in that fragment × typing speed</string>
-    <string name="se_tools_more" formatted="false">Show all %1$d tools</string>
+    <string name="se_tools_more" >Show all %1$d tools</string>
     <string name="se_bk_secrets" formatted="false">Export encrypted secrets</string>
     <string name="se_bk_secrets_d" formatted="false">Packs API keys, SSH passwords, GitHub tokens and skill secrets together so another device can restore them. They stay encrypted and only the same Baicodex version can open them</string>
-    <string name="se_bk_fail_x" formatted="false">Export failed: %1$s</string>
-    <string name="se_bk_bad_x" formatted="false">Import failed: %1$s</string>
+    <string name="se_bk_fail_x" >Export failed: %1$s</string>
+    <string name="se_bk_bad_x" >Import failed: %1$s</string>
     <string name="se_366" formatted="false">Precise location injection</string>
     <string name="se_367" formatted="false">Takes a fresh fix every time, more accurate than the last known position</string>
     <string name="se_368" formatted="false">Off: uses the last known position only, never fixes actively</string>
@@ -2399,7 +2399,7 @@
     <string name="se_gd_busy" formatted="false">Deriving keys and rewriting every ciphertext, please don\'t exit</string>
     <string name="se_gd_cleared_title" formatted="false">Wiped</string>
     <string name="se_gd_cleared_body" formatted="false">All credential data has been deleted. Restart the app to return to a clean state</string>
-    <string name="se_gd_warn_title" formatted="false">Enabling initialises a salt and runs multi-key derivation, which briefly uses the CPU. On this device (%1$s) that takes about %2$s and the UI may stutter</string>
+    <string name="se_gd_warn_title" >Enabling initialises a salt and runs multi-key derivation, which briefly uses the CPU. On this device (%1$s) that takes about %2$s and the UI may stutter</string>
     <string name="se_gd_w1_t" formatted="false">Cannot be turned off</string>
     <string name="se_gd_w1_b" formatted="false">The only way back is a forced wipe: encrypted API keys, account tokens, cookies and GitHub tokens are deleted on the spot and cannot be recovered</string>
     <string name="se_gd_w2_t" formatted="false">Data stays with the device</string>
@@ -2423,9 +2423,9 @@
     <string name="se_gd_cancel" formatted="false">Cancel</string>
     <string name="se_gd_keep" formatted="false">Keep</string>
     <string name="se_gd_go" formatted="false">I understand, enable</string>
-    <string name="se_gd_go_wait" formatted="false">Read first (%1$ds)</string>
+    <string name="se_gd_go_wait" >Read first (%1$ds)</string>
     <string name="se_gd_wipe" formatted="false">I confirm the wipe</string>
-    <string name="se_gd_wipe_wait" formatted="false">Confirm wipe (%1$ds)</string>
+    <string name="se_gd_wipe_wait" >Confirm wipe (%1$ds)</string>
     <string name="se_sec_tab" formatted="false">Privacy &amp; security</string>
     <string name="se_sec_sub" formatted="false">Switches that protect credentials and private data. Read the full warning before changing anything</string>
     <string name="se_pt_tab" formatted="false">Extra protection</string>
@@ -2435,7 +2435,7 @@
     <string name="se_pt_mask_off" formatted="false">Off · replies show as written</string>
     <string name="se_pt_mask_note" formatted="false">When password- or token-like fields appear in a reply, its reasoning or tool output, the values are masked. Rules come from the server and matching happens locally. Best effort, not absolute protection</string>
     <string name="se_pt_mask_stream" formatted="false">Turning this on also turns off streaming: text shown character by character can\'t be filtered afterwards</string>
-    <string name="se_pt_mask_rules" formatted="false">Current rules: %1$d keys, %2$d prefixes</string>
+    <string name="se_pt_mask_rules" >Current rules: %1$d keys, %2$d prefixes</string>
     <string name="se_pt_mask_ok" formatted="false">Rules updated from the server</string>
     <string name="se_pt_mask_fail" formatted="false">Rule update failed: falling back to the local set</string>
     <string name="se_pt_shot_t" formatted="false">Block screenshots and recording</string>
@@ -2452,7 +2452,7 @@
     <string name="se_pt_w3_b" formatted="false">Streaming turns off and replies appear in one block; re-enable streaming yourself to get character-by-character output back</string>
     <string name="se_pt_warn_back" formatted="false">Once more: this is not fully safe</string>
     <string name="se_pt_go" formatted="false">I understand, enable</string>
-    <string name="se_pt_go_wait" formatted="false">Read first (%1$ds)</string>
+    <string name="se_pt_go_wait" >Read first (%1$ds)</string>
     <string name="se_ns_t" formatted="false">Turn off streaming</string>
     <string name="se_ns_on" formatted="false">Off: the reply appears once the model finishes, no character-by-character output</string>
     <string name="se_ns_off" formatted="false">Streaming on: text appears as it is generated</string>
@@ -2470,11 +2470,11 @@
     <string name="se_gd_covers" formatted="false">Covered: model / voice / search / MCP / A2A keys, account and feedback tokens, SSH passwords, skill-pack secrets, place-name cache</string>
     <string name="cs_max_on" formatted="false">Max · on</string>
     <string name="cs_queue_title" formatted="false">Queue</string>
-    <string name="cs_more_rounds" formatted="false">Show %1$d earlier rounds</string>
+    <string name="cs_more_rounds" >Show %1$d earlier rounds</string>
     <string name="cs_queue_tip" formatted="false">Text typed while a reply is running waits here and goes out in order when this turn finishes</string>
     <string name="ag_queue_next" formatted="false">Moved to the front: sent as soon as this turn finishes</string>
     <string name="ag_queue_other" formatted="false">This belongs to another session; switch back to send it</string>
-    <string name="ag_par_fmt" formatted="false">Running %1$d tools in parallel</string>
+    <string name="ag_par_fmt" >Running %1$d tools in parallel</string>
     <string name="se_pg_voice" formatted="false">Voice</string>
     <string name="se_pg_voice_sub" formatted="false">Speech recognition, synthesis and read-aloud replies</string>
     <string name="se_pg_mem" formatted="false">Memory</string>
@@ -2668,4 +2668,10 @@
     <string name="se_pg_dsh_plug">DeepSeek Harness plugins</string>
     <string name="se_pg_dsh_plug_sub">Plugins really loaded on this device; toggle them (takes effect after a kernel restart)</string>
     <string name="dh_cap_hint">Whether this row is enabled by default is decided by DeepSeek Harness per platform; a manual toggle overrides it.</string>
+    <string name="perm_all_t" formatted="false">Global permission switch</string>
+    <string name="perm_all_d" formatted="false">This switch is the master control and overrides individual tool permissions.</string>
+    <string name="perm_all_allow" formatted="false">Allow</string>
+    <string name="perm_all_ask" formatted="false">Ask</string>
+    <string name="perm_all_deny" formatted="false">Deny</string>
+    <string name="perm_all_over" >Overridden by the global switch: %1$s</string>
 </resources>

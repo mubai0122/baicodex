@@ -427,15 +427,22 @@ internal fun toolPolicy(): String {
     val allow = ArrayList<String>()
     val ask = ArrayList<String>()
     val deny = ArrayList<String>()
+    //统计口径与执行侧一致：走 policyEff，全局主控为 allow/deny 时全部归到同一类
     all.forEach { n ->
-        when (Cfg.policy(n)) {
+        when (Cfg.policyEff(n)) {
             "allow" -> allow.add(n)
             "deny" -> deny.add(n)
             else -> ask.add(n)
         }
     }
     val off = all.filter { !Tools.allowed(it) }
-    return "共 ${all.size} 个工具\n放行 ${allow.size}：${allow.take(12).joinToString(", ")}\n" +
+    val g = Cfg.policyAll
+    val gText = when (g) {
+        "allow" -> "允许（覆盖单工具）"
+        "deny" -> "禁止（覆盖单工具）"
+        else -> "询问（按单工具设置）"
+    }
+    return "全局主控：$gText\n共 ${all.size} 个工具\n放行 ${allow.size}：${allow.take(12).joinToString(", ")}\n" +
         "每次确认 ${ask.size}\n禁止 ${deny.size}：${deny.take(12).joinToString(", ")}\n" +
         "当前模式不可用 ${off.size}：${off.take(12).joinToString(", ")}"
 } //工具权限
@@ -500,7 +507,7 @@ internal fun testMirror(): String = buildString {
     val probes = LinuxMirror.probeAll(nodes)
     LinuxMirror.order(probes).forEachIndexed { i, p ->
         val head = "%d. %s (%s)".format(i + 1, p.node.name, p.node.id)
-        if (!p.ok) appendLine(b.ai.App.self.getString(R.string.tx_7a43344e, p.err))
+        if (!p.ok) appendLine(b.ai.App.self.getString(R.string.tx_7a43344e, p.err, p.node.name))
         else appendLine("$head → TTFB ${p.ttfbMs}ms / ${p.speedText()}${if (p.fast()) " 达标" else ""}")
     }
     val best = LinuxMirror.pick(probes)
@@ -526,7 +533,7 @@ internal fun testUpdateMirror(): String = buildString {
     val probes = UpdateMirror.probeAll(m.nodes)
     UpdateMirror.order(probes).forEachIndexed { i, p ->
         val head = "%d. %s (%s)".format(i + 1, p.node.name, p.node.id)
-        if (!p.ok) appendLine(b.ai.App.self.getString(R.string.tx_7a43344e, p.err))
+        if (!p.ok) appendLine(b.ai.App.self.getString(R.string.tx_7a43344e, p.err, p.node.name))
         else appendLine("$head → TTFB ${p.ttfbMs}ms / ${p.speedText()}${if (p.fast()) " 达标" else ""}")
     }
     val best = UpdateMirror.pick(probes)

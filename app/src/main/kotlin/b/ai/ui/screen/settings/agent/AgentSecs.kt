@@ -259,6 +259,7 @@ import b.ai.ui.theme.FontStore
 import b.ai.ui.theme.LocalAiFont
 import b.ai.ui.theme.LocalUserFont
 import kotlin.math.roundToInt
+import androidx.compose.ui.graphics.Color
 
 //扩展分类：一张卡一个 item，没滚到的卡不组合（工具权限那张卡最重，几十个下拉）
 internal fun LazyListScope.extAutoSec(
@@ -791,17 +792,74 @@ internal fun LazyListScope.extAgentSec(
     }
     } //技能与角色子页
 
+/**
+ * 全局权限主控卡：允许 / 询问 / 禁止 三档胶囊，一键改了立刻对所有工具生效。
+ * 语义：允许=所有工具永久同意(不再逐条问)；询问=回到按单工具设置走；禁止=所有工具永久拒绝。
+ */
+@Composable
+internal fun PermAllCard() {
+    //读状态走 Cfg.policyAll，写回 Cfg.policyAll：Cfg 用的是 MutableState，改完这里自动重组
+    val cur = Cfg.policyAll
+    Text(
+        stringResource(R.string.perm_all_t),
+        fontSize = 15.sp,
+        fontWeight = FontWeight.Medium,
+        color = TextPrimary
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(stringResource(R.string.perm_all_d), fontSize = 11.5.sp, color = TextSecondary)
+    Spacer(Modifier.height(12.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        listOf(
+            "allow" to R.string.perm_all_allow,
+            "ask" to R.string.perm_all_ask,
+            "deny" to R.string.perm_all_deny
+        ).forEach { (key, res) ->
+            val on = cur == key
+            Box(
+                Modifier
+                    //选中态用主色实底白字，未选中白底细描边，和其余胶囊一致
+                    .background(
+                        if (on) AccentBlue else SurfaceWhite,
+                        RoundedCornerShape(50)
+                    )
+                    .border(1.dp, if (on) AccentBlue else BorderGray, RoundedCornerShape(50))
+                    .tap { Cfg.policyAll = key }
+                    .padding(horizontal = 20.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    stringResource(res),
+                    fontSize = 13.sp,
+                    fontWeight = if (on) FontWeight.Medium else FontWeight.Normal,
+                    color = if (on) Color.White else TextPrimary
+                )
+            }
+        }
+    }
+} //全局权限主控卡
+
 //工具权限子页：每个工具一条允许/询问/拒绝
 internal fun LazyListScope.extToolSec() {
+    //全局主控永远排在最前：一次点击就能定全站，再往下才是逐工具细调
     item {
         SectionTitle(stringResource(R.string.se_050), stringResource(R.string.se_235))
+        CardBox { PermAllCard() }
+    }
+    item {
+        Spacer(Modifier.height(14.dp))
         //MCP 能力不列在这里：它们由 MCP 服务自己拉取，到「扩展 → MCP 服务」里单独管
         val tools = Tools.all.filterNot { it.startsWith(Tools.MCP) }
         //一次只组合前 12 条：几十个下拉挤在同一个 item 里，进页面就要全量测量一遍
         var more by remember { mutableStateOf(false) }
+        val g = Cfg.policyAll
         CardBox {
             (if (more) tools else tools.take(TOOL_PAGE)).forEach { tool ->
-                val pol = Cfg.policy(tool)
+                val own = Cfg.policy(tool)
+                //生效值 = 全局主控覆盖后的结果；全局为 ask 时就是工具自己的设置
+                val pol = Cfg.policyEff(tool)
+                val risk = if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
+                else stringResource(R.string.se2_risk_normal, tool)
                 SelectField(
                     Tools.label(tool),
                     when (pol) {
@@ -810,8 +868,17 @@ internal fun LazyListScope.extToolSec() {
                         else -> stringResource(R.string.se_238)
                     },
                     listOf("ask", "allow", "deny"),
-                    desc = if (Tools.isHighRisk(tool)) stringResource(R.string.se2_risk_high, tool)
-                    else stringResource(R.string.se2_risk_normal, tool),
+                    //全局非 ask 时提示「已被覆盖」，避免用户以为改下拉没生效
+                    desc = if (g != "ask") risk + "\n" + stringResource(
+                        R.string.perm_all_over,
+                        stringResource(
+                            when (pol) {
+                                "allow" -> R.string.perm_all_allow
+                                "deny" -> R.string.perm_all_deny
+                                else -> R.string.perm_all_ask
+                            }
+                        )
+                    ) else risk,
                     optionLabel = {
                         when (it) {
                             "allow" -> stringResource(R.string.se_239)
@@ -819,7 +886,8 @@ internal fun LazyListScope.extToolSec() {
                             else -> stringResource(R.string.se_238)
                         }
                     },
-                    isSelected = { pol == it },
+                    //打勾始终跟着「工具自己的设置」，否则用户改不动被覆盖的那一项
+                    isSelected = { own == it },
                     onSelect = { Cfg.setPolicy(tool, it) }
                 )
             }

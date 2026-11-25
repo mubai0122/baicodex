@@ -686,7 +686,7 @@ internal fun LazyListScope.chatInOutSec() {
                 stringResource(R.string.tx_090286ed),
                 if (Cfg.draftDays <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_5cd47992, Cfg.draftDays),
                 listOf(0, 1, 3, 7, 30),
-                optionLabel = { if (it <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_52273aab) },
+                optionLabel = { if (it <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_52273aab, it) },
                 isSelected = { Cfg.draftDays == it },
                 onSelect = { Cfg.draftDays = it }
             )

@@ -745,7 +745,7 @@ internal fun VoiceInCard() {
                 stringResource(R.string.tx_0c4316d9),
                 stringResource(R.string.tx_a6f0b1dc, Cfg.asrMaxSec),
                 AsrPresets.maxSecs,
-                optionLabel = { stringResource(R.string.tx_b0c9ab6f) },
+                optionLabel = { stringResource(R.string.tx_b0c9ab6f, it) },
                 isSelected = { Cfg.asrMaxSec == it },
                 onSelect = { Cfg.asrMaxSec = it }
             )

@@ -1811,7 +1811,8 @@ object Agent {
 
     /** 子智能体的工具确认：策略跟随主智能体（永久允许/拒绝直接生效），否则走同一个确认弹窗排队问 */
     internal suspend fun confirmFromSub(name: String, args: JSONObject, callId: String): Boolean {
-        val p = Cfg.policy(name)
+        //全局主控优先：policyEff 在全局为 allow/deny 时直接覆盖单工具设置
+        val p = Cfg.policyEff(name)
         if (p == "allow") return true
         if (p == "deny") return false
         return confirmGate.withLock {
@@ -1831,7 +1832,7 @@ object Agent {
     } //子智能体确认
 
     private suspend fun decide(c: ToolCall): Boolean {
-        val p = Cfg.policy(c.name)
+        val p = Cfg.policyEff(c.name)
         if (p == "allow") return true
         if (p == "deny") return false
         val args = runCatching { JSONObject(c.arguments) }.getOrElse { JSONObject() }

@@ -287,7 +287,7 @@ object A2aSrv {
         t.state = ST_WORKING
         t.job = scope.launch {
             val r = runCatching {
-                SubAgents.runOne(SubTask("A2A", text), 6) { name, _, _ -> Cfg.policy(name) == "allow" }
+                SubAgents.runOne(SubTask("A2A", text), 6) { name, _, _ -> Cfg.policyEff(name) == "allow" }
             }.getOrElse { SubOut("A2A", false, "出错：" + (it.message ?: it.javaClass.simpleName), 0) }
             t.out = r.text
             t.err = if (r.ok) "" else r.text

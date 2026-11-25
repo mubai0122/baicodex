@@ -233,7 +233,7 @@ internal fun LocalModelBody() {
             withContext(Dispatchers.Main) {
                 note = if (rc >= 0) {
                     val tps = if (ms > 0) rc * 1000L / ms else 0L
-                    b.ai.App.self.getString(R.string.tx_651eb991, ms)
+                    b.ai.App.self.getString(R.string.tx_651eb991, ms, rc, tps)
                 } else {
                     "生成失败($rc)：" + when (rc) {
                         -2 -> b.ai.App.self.getString(R.string.tx_76d88dfc)

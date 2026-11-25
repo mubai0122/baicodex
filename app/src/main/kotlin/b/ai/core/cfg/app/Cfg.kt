@@ -1485,6 +1485,29 @@ object Cfg {
         put("policy_$tool", policy)
     }
 
+    /**
+     * 全局工具权限主控：allow / deny / ask。
+     * 默认 ask（等价于「按单工具设置走」），只有 allow / deny 才真正覆盖单工具权限；
+     * 用户在设置 → 扩展 → 工具权限 里点「一键永久同意 / 每次确认 / 一键永久拒绝」改的就是它。
+     */
+    var policyAll: String
+        get() = mem("policy_all", "ask").also {
+            if (it.value == "ask") it.value = sp?.getString("policy_all", "ask") ?: "ask"
+        }.value
+        set(v) {
+            mem("policy_all", "ask").value = v
+            put("policy_all", v)
+        } //全局权限主控
+
+    /**
+     * 实际生效的策略：全局主控是 allow/deny 时直接覆盖单工具设置，
+     * 是 ask 时回落到该工具自己的 policy。所有执行侧与 UI 一律读这个，别再直接读 policy()。
+     */
+    fun policyEff(tool: String): String {
+        val g = policyAll
+        return if (g == "allow" || g == "deny") g else policy(tool)
+    } //生效策略
+
     val localReady: Boolean
         get() = llmLocal && llmModel.isNotBlank() && File(llmModel).isFile
 

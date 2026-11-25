@@ -214,7 +214,7 @@ internal fun ChatCfgSheet(onClose: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.ch_think), fontSize = 13.sp, color = TextPrimary)
                 Text(
-                    if (Cfg.think) stringResource(R.string.ch_effort) else stringResource(R.string.ch_think_off),
+                    if (Cfg.think) stringResource(R.string.ch_effort, Cfg.thinkEffort) else stringResource(R.string.ch_think_off),
                     fontSize = 10.sp,
                     color = TextSecondary
                 )
