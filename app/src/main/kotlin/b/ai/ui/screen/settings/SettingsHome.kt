@@ -24,9 +24,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
 import b.ai.ui.glass.GlassPerf
+import b.ai.ui.glass.liquidBg
 import b.ai.ui.theme.AccentBlue
+import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
 import b.ai.ui.widget.CardBox
@@ -87,6 +92,41 @@ fun SeRow(p: SePage, onClick: () -> Unit) {
         Spacer(Modifier.width(2.dp))
     }
 } //子页入口行
+
+/**定位胶囊：从搜索结果跳进子页时钉在页首，说清「你要找的是哪一项」，点一下收起 */
+@Composable
+fun LocatePill(label: String, onClose: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .liquidBg(RoundedCornerShape(50), tint = AccentBlueSoft, gate = 0.dp)
+            .tap { onClose() }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Filled.Search,
+            contentDescription = null,
+            tint = AccentBlue,
+            modifier = Modifier.size(13.dp)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            "定位：" + label,
+            fontSize = 11.sp,
+            color = AccentBlue,
+            maxLines = 1,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.Filled.Close,
+            contentDescription = stringResource(R.string.se_061),
+            tint = AccentBlue,
+            modifier = Modifier.size(13.dp)
+        )
+    }
+} //定位胶囊
 
 /** 二级页顶部的返回行：跟系统手势并存的点击退路 */
 @Composable

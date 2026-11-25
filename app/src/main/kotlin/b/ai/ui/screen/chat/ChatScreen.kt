@@ -41,7 +41,7 @@ import b.ai.ui.widget.IcCode
 import b.ai.ui.widget.IcCopy
 import b.ai.ui.widget.IcCube
 import b.ai.ui.widget.IcExpand
-import b.ai.ui.widget.IcSparklePlus
+import b.ai.ui.widget.IcWand
 import b.ai.ui.widget.IcGrid
 import b.ai.ui.widget.IcLayers
 import b.ai.ui.widget.IcMenu
@@ -53,7 +53,7 @@ import b.ai.ui.widget.IcPlus
 import b.ai.ui.widget.IcSearch
 import b.ai.ui.widget.IcSend
 import b.ai.ui.widget.IcSpark
-import b.ai.ui.widget.IcStarToCheck
+import b.ai.ui.widget.IcWandToCheck
 import b.ai.ui.widget.IcStopSquare
 import b.ai.ui.widget.IcTap
 import b.ai.ui.widget.IcTrain
@@ -92,6 +92,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -542,8 +543,13 @@ fun ChatScreen(
                 //总结卡不占轮次，永远贴在最上面
                 val sums = remember(Agent.messages) { Agent.messages.filter { it.role == "summary" } }
                 val head = (rounds.size - shown).coerceAtLeast(0)
+                //卡片样式：0=分式按条铺，1=整体式按轮铺（一轮一张卡，见 RoundCard）
+                val whole = Cfg.chatCardStyle == 1
                 val flat = remember(rounds, head) {
                     if (head == 0) rounds.flatten() else rounds.drop(head).flatten()
+                }
+                val visRounds = remember(rounds, head) {
+                    if (head == 0) rounds else rounds.drop(head)
                 }
                 //滑到最顶自动再放一批；列表项都有稳定 key，往前面插内容不会把当前可见位置顶跑
                 LaunchedEffect(Agent.sessionId, head) {
@@ -576,6 +582,18 @@ fun ChatScreen(
                             }
                         }
                     }
+                    //整体式：一轮一张卡。key 用轮首条 id，插新内容不会把已有轮重建
+                    if (whole) {
+                        items(visRounds, key = { "r" + it.first().id }) { r ->
+                            RoundCard(
+                                round = r,
+                                onToolDetail = { detail = it },
+                                onLongPress = { menuFor = it },
+                                onSumLong = { sumMenu = it },
+                                onFix = fixTo
+                            )
+                        }
+                    } else {
                     //key 用消息 id：不给 key 时列表一更新就整段重新组合，滚动也跟着抖
                     items(flat, key = { it.id }) { m ->
                         BubbleBounce(m.id, m.role == "user") {
@@ -593,6 +611,7 @@ fun ChatScreen(
                             )
                         }
                         }
+                    }
                     }
                     //工具执行中的转圈卡：模型一返回调用就出现，执行完才换成正常结果行
                     if (Agent.runningHere()) {
@@ -629,6 +648,25 @@ fun ChatScreen(
             }
         }
 
+        //dsh 引擎标记：开着就常驻一条，点一下当场关掉（关掉后下一轮走自家循环）
+        if (Cfg.dshEngine) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.dh_chat_badge),
+                    fontSize = 11.sp,
+                    color = AccentBlue,
+                    modifier = Modifier
+                        .background(AccentBlueSoft, RoundedCornerShape(8.dp))
+                        .tap { Cfg.dshEngine = false }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
         //阶段文案 + 秒表：请求模型时一直有东西在动，不会看起来卡死
         var tick by remember { mutableStateOf(0L) }
         LaunchedEffect(Agent.busy, Agent.busySince) {
@@ -2042,14 +2080,15 @@ private fun InputBar(
                             contentAlignment = Alignment.Center
                         ) {
                             if (optBack != null) {
-                                //已优化：四芒星收拢成对号（自绘、单色、无底），点一下回滚
-                                IcStarToCheck(AccentBlue, side = 21.dp, stroke = 2.6.dp)
+                                //已优化：魔法棒直接形变成对号（自绘、单色、无底），点一下回滚
+                                IcWandToCheck(AccentBlue, side = 21.dp, stroke = 2.6.dp)
                             } else {
                                 Box(Modifier.size(23.dp), contentAlignment = Alignment.Center) {
-                                    //可优化态：四芒星 + 右上角小加号（用户要求），点下去它自己收成对号
-                                    IcSparklePlus(
+                                    //可优化态：魔法棒 + 三颗递进闪星；点下去它自己直接变对号，不经过加号
+                                    IcWand(
                                         if (optBusy) TextSecondary.copy(alpha = 0.45f) else TextSecondary,
-                                        side = 14.dp
+                                        side = 21.dp,
+                                        stroke = 2.0.dp
                                     )
                                 }
                             }
@@ -2429,47 +2468,8 @@ private fun MessageItem(
 ) {
     val ctx = LocalContext.current
     when (m.role) {
-        "user" -> Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.Top
-        ) {
-            Box(
-                Modifier
-                    .weight(1f, fill = false)
-                    .liquidBg(bubbleShape(14.dp), tint = AccentBlueSoft)
-                    //长按即复制：先进剪贴板，再弹操作菜单
-                    .longPress { if (m.content.isNotBlank()) copyText(ctx, m.content); onLongPress(m) }
-                    //左右内边距额外加上「全局缩进」
-                    .padding(
-                        horizontal = bubblePadH(12.dp) + Cfg.globalIndent.dp,
-                        vertical = bubblePadV(12.dp)
-                    )
-                    ) {
-                Column {
-                    if (m.images.isNotEmpty()) {
-                        //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑；长图点开看全图
-                        ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp, onOpen = { ImgView.open(it) })
-                        Spacer(Modifier.height(6.dp))
-                    }
-                    if (m.files.isNotEmpty()) {
-                        //附件文件同样挂在气泡里，看得见自己带了什么
-                        FileChips(files = m.files)
-                        Spacer(Modifier.height(6.dp))
-                    }
-                    Text(
-                        m.content,
-                        fontSize = 13.sp,
-                        color = TextPrimary,
-                        fontFamily = LocalUserFont.current
-                    )
-                }
-            }
-            if (Cfg.avatarOn) {
-                Spacer(Modifier.width(6.dp))
-                AvatarView(Cfg.avatarUser, 28.dp)
-            }
-        }
+        //用户消息：分式与整体式共用同一个 composer，整体式下样式完全不变
+        "user" -> UserMsg(m, onLongPress = onLongPress)
 
         "tool" -> ToolMsg(m, onOpen = { onToolDetail(m) })
         "summary" -> SummaryMsg(m) { onSumLong(m) }
@@ -2540,6 +2540,239 @@ private fun MessageItem(
         }
     }
 } //单条消息渲染
+
+/**
+ * 整体式聊天卡：一轮（你那句 + 该轮所有 AI 回复 / 思考 / 工具 / 附件 / 统计）收进同一张玻璃卡。
+ *
+ * 结构：
+ *  · 头部：头像 + 你那句的摘要 + 「n 条」+ 展开箭头，整条可点；
+ *  · 展开区：你的原话（浅底小块）→ 按到达顺序铺本轮回复与工具 → 尾部附带（统计行、分支切换、错误按钮）；
+ *  · 折叠：高度走 animateContentSize 形变，箭头跟着转 180°，折叠后只剩一行头部。
+ *
+ * 取舍：卡内不再套气泡（不出现「卡里还有气泡」的双层玻璃），内容按段落铺开。
+ */
+@Composable
+private fun RoundCard(
+    round: List<ChatMsg>,
+    onToolDetail: (ChatMsg) -> Unit,
+    onLongPress: (ChatMsg) -> Unit,
+    onSumLong: (ChatMsg) -> Unit,
+    onFix: (String) -> Unit
+) {
+    val user = round.firstOrNull { it.role == "user" }
+    val rest = round.filter { it.role != "user" }
+    //一轮一张卡：卡头不再放摘要标题 / 条数 / 折叠箭头。
+    //之前那行标题是把用户原话又缩了一遍，和卡里的真实气泡重复，所以整行去掉，卡始终展开。
+    Column(
+        Modifier
+            .fillMaxWidth()
+            //整体式必须和卡片同一套材质：gate=0 强制玻璃，否则会被 156dp 门槛降成平涂
+            .liquidBg(bubbleShape(18.dp), gate = 0.dp)
+            .padding(horizontal = bubblePadH(12.dp), vertical = bubblePadV(10.dp))
+    ) {
+        //你的原话：走和分式完全同一个 UserMsg，样式一字不改
+        if (user != null) UserMsg(user, onLongPress = onLongPress, onCard = true)
+        //本轮回复左侧统一挂一张 AI 头像（整轮一张，和 ChatGPT 一致；多条消息各挂一张会刷屏）
+        val body: @Composable () -> Unit = {
+            //本轮所有回复：思考块 / 正文 / 工具入口 / 错误按钮，按到达顺序铺
+            rest.forEach { m ->
+                when (m.role) {
+                    //执行命令在卡内只留一行入口，参数与输出全在弹窗里看
+                    "tool" -> ToolLine(m) { onToolDetail(m) }
+                    "summary" -> SummaryMsg(m) { onSumLong(m) }
+                    else -> RoundAiBody(m, onLongPress = onLongPress, onFix = onFix)
+                }
+                //重发 / 重新生成后出现的 ‹ n/m › 切换条：贴卡片右下角，跟消息尾巴同一侧
+                if (m.bTotal > 1) {
+                    BranchBar(m.bIdx, m.bTotal, true) { d -> Agent.switchBranch(m.id, d) }
+                }
+            }
+            //卡片最下方：整轮用量汇总（token 合计 / 耗时 / 模型，只露出一行）
+            val metas = rest.mapNotNull { it.meta }
+            if (metas.isNotEmpty() && (Cfg.showUsage || Cfg.showMeta)) {
+                Spacer(Modifier.height(8.dp))
+                MetaLine(mergeMeta(metas))
+            }
+        }
+        //关注头像开关：关掉时行为和之前完全一致，一点位移都没有
+        if (Cfg.avatarOn && rest.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.Top) {
+                AvatarView(Avatar.aiPath(), 28.dp)
+                Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f)) { body() }
+            }
+        } else {
+            body()
+        }
+    }
+} //整体式聊天卡
+
+/**
+ * 整体式卡内的一条工具执行：只留一行入口（图标 + 工具名 + 耗时 + 「详情」），
+ * 参数与输出全部收进 ToolDetailDialog，不在卡内展开，也不再带 34dp 头像缩进（之前因此偏右）。
+ */
+@Composable
+private fun ToolLine(m: ChatMsg, onOpen: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .tap { onOpen() }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(18.dp)
+                .liquidBg(RoundedCornerShape(6.dp), tint = if (m.isError) DangerRedSoft else SurfaceMuted),
+            contentAlignment = Alignment.Center
+        ) {
+            ToolIcon(m.toolName, if (m.isError) DangerRed else AccentBlue, side = 11.dp)
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(
+            Tools.label(m.toolName ?: ""),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            color = TextPrimary,
+            maxLines = 1,
+            modifier = Modifier.weight(1f)
+        )
+        if (m.isError) {
+            Text(stringResource(R.string.cs_fail), fontSize = 9.sp, color = DangerRed)
+            Spacer(Modifier.width(6.dp))
+        }
+        if (m.toolMs > 0) {
+            Text(
+                msText(m.toolMs),
+                fontSize = 9.sp,
+                color = TextSecondary,
+                fontFamily = FontFamily.Monospace
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(stringResource(R.string.cs_detail), fontSize = 10.sp, color = AccentBlue)
+    }
+} //卡内工具入口：内容只在弹窗
+
+/** 整轮汇总：把本轮每条回复的统计加起来，token 取和、耗时取和，模型/供应商取最后一条有值的 */
+private fun mergeMeta(list: List<MsgMeta>): MsgMeta {
+    if (list.size == 1) return list.first()
+    return list.reduce { a, b ->
+        a.copy(
+            ms = a.ms + b.ms,
+            firstMs = if (a.firstMs > 0) a.firstMs else b.firstMs,
+            promptTokens = a.promptTokens + b.promptTokens,
+            completionTokens = a.completionTokens + b.completionTokens,
+            cachedTokens = a.cachedTokens + b.cachedTokens,
+            at = if (b.at > 0) b.at else a.at,
+            provider = b.provider.ifBlank { a.provider },
+            model = b.model.ifBlank { a.model }
+        )
+    }
+} //整轮统计汇总
+
+/** 整体式卡内的一条 AI 回复：不带自己的气泡，只有正文、思考、统计与错误按钮 */
+@Composable
+private fun RoundAiBody(m: ChatMsg, onLongPress: (ChatMsg) -> Unit, onFix: (String) -> Unit) {
+    val ctx = LocalContext.current
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .longPress {
+                if (m.content.isNotBlank()) copyText(ctx, m.content)
+                onLongPress(m)
+            }
+    ) {
+        if (m.reasoning.isNotBlank()) ThinkBlock(m)
+        if (m.content.isNotBlank()) {
+            MdText(m.content, color = if (m.isError) DangerRed else TextPrimary)
+        }
+        if (m.isError) {
+            Spacer(Modifier.height(8.dp))
+            ErrActions(m, onFix)
+        }
+        if (m.toolCalls.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                m.toolCalls.forEach { c -> Tag("→ ${Tools.label(c.name)}") }
+            }
+            Spacer(Modifier.height(4.dp))
+            m.toolCalls.forEach { c ->
+                Text(
+                    c.arguments.replace("\n", " ").take(140),
+                    fontSize = 10.sp,
+                    color = TextSecondary,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+    }
+} //卡内 AI 回复
+
+/**
+ * 用户消息气泡：靠右、蓝调玻璃底、可选头像。
+ * 分式（MessageItem）和整体式（RoundCard）都走这里，保证整体式不改变你发出去那条的样子。
+ */
+@Composable
+private fun UserMsg(
+    m: ChatMsg,
+    onLongPress: (ChatMsg) -> Unit,
+    /** true = 铺在整体式卡片内部：气泡叠在卡自身的玻璃上，veil 不够就会被吸到看不见 */
+    onCard: Boolean = false
+) {
+    val ctx = LocalContext.current
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            Modifier
+                .weight(1f, fill = false)
+                //卡内：卡本身就是玻璃，气泡不再叠第二层玻璃。
+                //veil 是「乳白/墨黑遮罩」不是不透明度（深色下是 62% 黑），抬高只会压出一层灰影，
+                //所以卡内直接用不透明的 AccentBlueSoft 实底，颜色和分式一致且不会被背景吸掉。
+                .then(
+                    if (onCard) Modifier.background(AccentBlueSoft, bubbleShape(14.dp))
+                    else Modifier.liquidBg(bubbleShape(14.dp), tint = AccentBlueSoft)
+                )
+                //长按即复制：先进剪贴板，再弹操作菜单
+                .longPress { if (m.content.isNotBlank()) copyText(ctx, m.content); onLongPress(m) }
+                //左右内边距额外加上「全局缩进」
+                .padding(
+                    horizontal = bubblePadH(12.dp) + Cfg.globalIndent.dp,
+                    vertical = bubblePadV(12.dp)
+                )
+        ) {
+            Column {
+                if (m.images.isNotEmpty()) {
+                    //发出去的图按原图尺寸展示（不裁成小方块），多了横向滑；长图点开看全图
+                    ImgFull(images = m.images, maxWidth = 240.dp, maxHeight = 340.dp, onOpen = { ImgView.open(it) })
+                    Spacer(Modifier.height(6.dp))
+                }
+                if (m.files.isNotEmpty()) {
+                    //附件文件同样挂在气泡里，看得见自己带了什么
+                    FileChips(files = m.files)
+                    Spacer(Modifier.height(6.dp))
+                }
+                Text(
+                    m.content,
+                    fontSize = 13.sp,
+                    color = TextPrimary,
+                    fontFamily = LocalUserFont.current
+                )
+            }
+        }
+        if (Cfg.avatarOn) {
+            Spacer(Modifier.width(6.dp))
+            AvatarView(Cfg.avatarUser, 28.dp)
+        }
+    }
+} //用户消息气泡
 
 /**消息气泡圆角：开了「消息强制高圆角」就用 16dp 大圆角，否则用常规圆角 */
 private fun bubbleShape(regular: Dp): RoundedCornerShape =

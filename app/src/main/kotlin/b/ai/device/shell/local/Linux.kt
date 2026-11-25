@@ -15,6 +15,7 @@
 package b.ai.device.shell.local
 import b.ai.core.data.io.Layout
 import b.ai.device.shell.root.Root
+import b.ai.device.shell.root.Shiz
 
 import android.content.Context
 import android.os.Process
@@ -25,10 +26,22 @@ import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 
-/**内置 Linux 环境：proot + Ubuntu 根文件系统，跑在应用私有目录，不依赖 Termux */
+/**
+ * 内置 Linux 环境：proot + Ubuntu 根文件系统，不依赖 Termux。
+ * 两套落点：普通 / Root 模式用应用私有目录；Shizuku 模式用 /data/local/tmp（shell 身份读不进 App 私有目录）。
+ */
 object Linux {
+    /** 公共根目录：Shizuku 的 shell(UID 2000) 只在这里能读写，rootfs 必须跟着它走 */
+    private const val SHARED_BASE = "/data/local/tmp/bai-linux"
+
+    /** 是否把 rootfs / proot 附属文件放公共目录：只有 Shizuku 模式需要 */
+    fun sharedMode(): Boolean = Cfg.workMode == WorkMode.SHIZUKU
+
+    /** 私有落点：App 沙箱内，普通身份可以直接执行 */
+    private fun privBase() = Layout.dir(App.self, Layout.USER + "/linux")
+
     /** proot 与库放这里；rootfs 单独一层目录，方便整体删掉重装 */
-    private fun base() = Layout.dir(App.self, Layout.USER + "/linux")
+    private fun base() = if (sharedMode()) File(SHARED_BASE) else privBase()
     private fun libs() = File(base(), "lib")
     private fun tmp() = File(base(), "tmp").apply { mkdirs() }
 
@@ -41,6 +54,14 @@ object Linux {
         get() = File(nativeDir(), "libproot.so").takeIf { it.isFile } ?: File(base(), "proot")
     val rootfs: File get() = File(base(), "rootfs")
     private fun tarball() = File(base(), "ubuntu.tar.gz")
+
+    /**
+     * 镜像落点。Shizuku 模式下 rootfs 在 /data/local/tmp（shell 的 shell_data_file 域），
+     * App 身份往那里写文件会被 SELinux 直接拒（EACCES），所以镜像改放外部存储：
+     * App 有 MANAGE_EXTERNAL_STORAGE 能写，shell 也能读，解包再由 shell 做。
+     */
+    private fun tarPath(): File =
+        if (sharedMode()) File(EXT_TAR).apply { parentFile?.mkdirs() } else tarball()
 
     /** 外置下载兜底：/sdcard/BaiAgent/linux/ubuntu.tar.gz，或 assets 里自带的镜像 */
     private const val EXT_TAR = "/sdcard/BaiAgent/linux/ubuntu.tar.gz"
@@ -55,6 +76,10 @@ object Linux {
     /** 本次进程是否已补过 SELinux 标签：失败路径上最多补一次，chcon -R 整棵 rootfs 要几秒 */
     @Volatile
     private var relabeled = false
+
+    /** Shizuku 模式下的「就位」缓存：公共目录 App 身份 stat 不到，只能问 shell，每次问都是一个 binder 往返 */
+    @Volatile
+    private var sharedProbe: Boolean? = null
 
     /**
      * 设备能不能跑内置 Linux：proot 二进制与镜像都只编译了 arm64，
@@ -81,13 +106,37 @@ object Linux {
         return cur
     } //解析 rootfs 内路径
 
-    /** rootfs 里某个路径是否存在（软链按 guest 语义解析） */
-    fun existsIn(rel: String): Boolean = runCatching { inside(rel).exists() }.getOrDefault(false)
+    /** rootfs 里某个路径是否存在（软链按 guest 语义解析）；Shizuku 模式下只能问 shell，且不解析 guest 绝对软链 */
+    fun existsIn(rel: String): Boolean {
+        if (!sharedMode()) return runCatching { inside(rel).exists() }.getOrDefault(false)
+        return runCatching {
+            val p = File(rootfs, rel.removePrefix("/")).absolutePath
+            Shiz.run("[ -e '$p' ] && echo Y", null, 20_000L).out.trim().endsWith("Y")
+        }.getOrDefault(false)
+    } //guest 路径存在性
+
+    /** 目录是否存在：Shizuku 模式下公共目录 App 身份 stat 不到，只能问 shell */
+    private fun dirExists(f: File): Boolean {
+        if (!sharedMode()) return f.exists()
+        return runCatching { Shiz.run("[ -d '${f.absolutePath}' ] && echo Y", null, 20_000L) }
+            .getOrNull()?.out?.trim()?.endsWith("Y") == true
+    }
+
+    /** Shizuku 模式：问 shell 要「apt-get 是否可执行」，公共目录 App 身份 stat 不到 */
+    private fun shellInstalled(): Boolean = runCatching {
+        val p = File(rootfs, "usr/bin/apt-get").absolutePath
+        val r = Shiz.run("[ -x '$p' ] && echo Y", null, 20_000L)
+        r.out.trim().endsWith("Y")
+    }.getOrDefault(false)
 
     /** 判环境就位：proot + rootfs 里的 apt-get、os-release 都在；apt-get 是普通 ELF，比 etc/os-release 的软链可靠 */
-    fun installed(): Boolean = abiOk() && proot.isFile &&
-        existsIn("usr/bin/apt-get") &&
-        (existsIn("usr/lib/os-release") || existsIn("etc/os-release"))
+    fun installed(): Boolean {
+        if (!abiOk() || !proot.isFile) return false
+        //Shizuku 模式：公共目录只能靠 shell 判，结果缓存到进程内，install / remove 时失效
+        if (sharedMode()) return sharedProbe ?: shellInstalled().also { sharedProbe = it }
+        return existsIn("usr/bin/apt-get") &&
+            (existsIn("usr/lib/os-release") || existsIn("etc/os-release"))
+    } //环境就位判定
     fun prootReady(): Boolean = abiOk() && proot.isFile
 
     /** 不再挑工作方式：proot 在 native 目录里，普通 / Shizuku / Root 都能起 */
@@ -149,13 +198,24 @@ object Linux {
         //总进度口径：8 个阶段，UI 侧按 cur/total 画总进度条
         val total = 8
         val b = base()
-        b.mkdirs()
-        libs().mkdirs()
-        tmp().mkdirs()
+        onLog(
+            if (sharedMode()) "落点：公共目录 ${b.absolutePath}（Shizuku / shell 身份，App 身份读不到）"
+            else "落点：应用私有目录 ${b.absolutePath}（普通身份直跑）"
+        )
+        if (sharedMode()) {
+            //公共目录必须由 shell 建：App 建的目录属主是 App，shell 随后写不进去
+            val mk = exec("mkdir -p '${b.absolutePath}/lib' '${tmp().absolutePath}' && chmod -R 0777 '${b.absolutePath}'", 60_000L)
+            if (!mk.ok) onLog("建目录失败(${mk.code})：${mk.out.take(200)}")
+        } else {
+            b.mkdirs()
+            libs().mkdirs()
+            tmp().mkdirs()
+        }
 
-        if (force && rootfs.exists()) {
+        if (force) {
             onLog("清除旧 rootfs…")
-            remove()
+            if (sharedMode()) exec("rm -rf '${rootfs.absolutePath}'", 600_000L)
+            else if (rootfs.exists()) remove()
         }
 
         onStep(1, total, "准备 proot")
@@ -177,10 +237,11 @@ object Linux {
 
         onStep(2, total, "准备 Ubuntu 镜像")
         onLog("准备 Ubuntu 镜像…")
-        val tar = tarball()
+        val tar = tarPath()
         if (!tar.isFile) {
             val ext = File(EXT_TAR)
-            if (ext.isFile) {
+            //Shizuku 模式下 tar 本身就是外部存储那一份，不能自己拷给自己
+            if (ext.absolutePath != tar.absolutePath && ext.isFile) {
                 //优先级最高：用户自己放进来的镜像，离线场景靠它
                 onLog("用外置镜像 ${ext.absolutePath}")
                 if (!ext.copyTo(tar, overwrite = true).isFile) {
@@ -223,21 +284,35 @@ object Linux {
         //解包到 rootfs.new：中途被打断也不会把现有 rootfs 弄成半成品
         onLog("镜像 ${tar.length() / 1024 / 1024} MB，开始解包…")
         val stage = File(base(), "rootfs.new")
-        runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
-        stage.deleteRecursively()
-        stage.mkdirs()
+        //统一由 exec 建目录：公共目录下 App 建的目录 shell 随后写不进去
+        runCatching { exec("rm -rf '${stage.absolutePath}' && mkdir -p '${stage.absolutePath}'", 120_000L) }
+        if (!sharedMode()) {
+            stage.deleteRecursively()
+            stage.mkdirs()
+        }
         onStep(3, total, "解包镜像（逐文件回显）")
         onLog("开始解包（1-3 分钟）…")
         relabeled = false
-        //-v 让 tar 把每个解出来的文件名都打出来，逐行喂给 UI，哪怕刷得很快也能看到在动
+        //-v 计数用于进度感知，但不再逐行喂 UI：tar 解开一个 Ubuntu 是几万个文件，
+        //逐行 onLog 会把日志缓冲和重组打满，这就是「点安装环境巨卡」的直接来源
+        var unpacked = 0
         val r = exec("cd '${stage.absolutePath}' && tar -xzvf '${tar.absolutePath}'", 600_000L) { line ->
-            if (line.isNotBlank()) onLog(line)
+            if (line.isNotBlank()) {
+                unpacked++
+                if (unpacked % 200 == 0) onLog("… 已解包 $unpacked 个文件")
+            }
         }
+        onLog("解包结束：共 $unpacked 个条目")
         //tar 的退出码不可靠（perl 之类的硬链接告警也非 0），成败一律看 apt-get 有没有落盘
         if (!r.ok) onLog("tar 返回 ${r.code}（部分告警不影响使用）")
-        if (!File(stage, "usr/bin/apt-get").isFile) {
+        val aptInStage = if (sharedMode()) {
+            runCatching {
+                Shiz.run("[ -x '${stage.absolutePath}/usr/bin/apt-get' ] && echo Y", null, 20_000L).out.trim().endsWith("Y")
+            }.getOrDefault(false)
+        } else File(stage, "usr/bin/apt-get").isFile
+        if (!aptInStage) {
             onLog("解包后没有 apt-get：镜像可能不完整，已保留原 rootfs")
-            runCatching { stage.deleteRecursively() }
+            runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
             return false
         }
         onStep(4, total, "替换 rootfs")
@@ -256,50 +331,58 @@ object Linux {
             onLog("旧 rootfs.old 删不掉，改名让位：${sway.name}")
             runCatching { exec("mv '${old.absolutePath}' '${sway.absolutePath}'", 120_000L) }
         }
-        if (rootfs.exists()) {
+        if (dirExists(rootfs)) {
             val mv1 = exec("mv '${rootfs.absolutePath}' '${old.absolutePath}'", 120_000L)
-            if (!mv1.ok || !old.exists()) {
+            if (!mv1.ok || !dirExists(old)) {
                 onLog("旧 rootfs 改名失败(${mv1.code})：${mv1.out.take(300)}")
                 runCatching { exec("rm -rf '${stage.absolutePath}'", 120_000L) }
                 return false
             }
         }
         val mv2 = exec("mv '${stage.absolutePath}' '${rootfs.absolutePath}'", 120_000L)
-        if (!mv2.ok || !rootfs.exists()) {
+        if (!mv2.ok || !dirExists(rootfs)) {
             onLog("新 rootfs 替换失败(${mv2.code})：${mv2.out.take(300)}，已回退")
             runCatching { exec("mv '${old.absolutePath}' '${rootfs.absolutePath}'", 120_000L) }
             return false
         }
         runCatching { exec("rm -rf '${old.absolutePath}'", 120_000L) }
         onStep(5, total, "修正属主")
-        onLog("解包完成，修正属主…")
-        //root 解开的文件属主是 root，改回应用自己：App 才能写 resolv.conf，删 rootfs 也不用惊动 root
-        val uid = Process.myUid()
-        val own = exec("chown -R $uid:$uid '${rootfs.absolutePath}'", 120_000L)
-        if (!own.ok) onLog("改属主失败(${own.code})：${own.out.take(300)}")
+        if (sharedMode()) {
+            //公共目录模式下文件属主本来就是这个 shell，rootfs 归 shell 所有正合适，不用改
+            onLog("公共目录模式：文件属主为 shell，跳过改属主")
+        } else {
+            onLog("解包完成，修正属主…")
+            //root 解开的文件属主是 root，改回应用自己：App 才能写 resolv.conf，删 rootfs 也不用惊动 root
+            val uid = Process.myUid()
+            val own = exec("chown -R $uid:$uid '${rootfs.absolutePath}'", 120_000L)
+            if (!own.ok) onLog("改属主失败(${own.code})：${own.out.take(300)}")
+        }
         //root 通道解包出来的文件 label 是裸 s0，缺本应用的 MLS 分类，execve 会被 SELinux 拒，这里补回来
         onStep(6, total, "补 SELinux 标签")
-        if (relabel()) {
+        if (sharedMode()) {
+            //公共目录是 shell_data_file，不参与 App 的 MLS 分类，补了反而可能被拒
+            onLog("公共目录模式：不需要补 MLS 标签，跳过")
+        } else if (relabel()) {
             relabeled = true
             onLog("已补文件标签")
         }
 
         onStep(7, total, "写 DNS 与 apt 配置")
-        //DNS 与主机名先写死，apt 能不能用全看这一步
-        runCatching {
-            File(rootfs, "etc/resolv.conf").writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
-            File(rootfs, "etc/hostname").writeText("bai\n")
-            //本机只有 IPv4 出口，而 ports.ubuntu.com 解析出的 AAAA 会让 apt 一条一条等超时（实测卡十几分钟）：
-            //强制 IPv4 + 缩短超时 + 不重试，update 才能稳定在十几秒内跑完
-            File(rootfs, "etc/apt/apt.conf.d/99bai").apply { parentFile?.mkdirs() }.writeText(
-                "Acquire::ForceIPv4 \"true\";\n" +
-                    "Acquire::http::Timeout \"20\";\n" +
-                    "Acquire::https::Timeout \"20\";\n" +
-                    "Acquire::Retries \"1\";\n"
-            )
-        }
+        //DNS 与主机名先写死，apt 能不能用全看这一步；统一走 exec，公共目录下 App 身份写不进去
+        val d = rootfs.absolutePath
+        val w = exec(
+            "{ echo 'nameserver 1.1.1.1'; echo 'nameserver 8.8.8.8'; } > '$d/etc/resolv.conf' && " +
+                "echo 'bai' > '$d/etc/hostname' && " +
+                "mkdir -p '$d/etc/apt/apt.conf.d' && " +
+                "printf '%s\\n' 'Acquire::ForceIPv4 \"true\";' 'Acquire::http::Timeout \"20\";' " +
+                "'Acquire::https::Timeout \"20\";' 'Acquire::Retries \"1\";' > '$d/etc/apt/apt.conf.d/99bai'",
+            120_000L
+        )
+        if (!w.ok) onLog("写 DNS / apt 配置失败(${w.code})：${w.out.take(300)}")
         //先删镜像副本再报成功：以后要重装还能从 assets 或外置路径重新取
         runCatching { tar.delete() }
+        //rootfs 换过了，就位缓存作废，重新问一次 shell
+        if (sharedMode()) sharedProbe = null
         if (!installed()) {
             onLog("解包后校验没过：rootfs 里缺 apt-get 或 os-release，镜像可能不完整（已保留镜像副本可重试）")
             return false
@@ -331,6 +414,14 @@ object Linux {
             append("-b /dev -b /proc -b /sys -b /storage -b /sdcard ")
             append("-w /root ")
             append(inner)
+        }
+        //Shizuku 模式：rootfs 在公共目录，proot 必须以 shell 身份跑，App 身份连目录都进不去
+        if (sharedMode()) {
+            val s = Shiz.run(args, null, timeoutMs)
+            if (s.out.startsWith("[Shizuku]")) {
+                return ShellResult(-1, s.out + "\n[linux] Shizuku 通道不可用：先在设置里授权并启动 Shizuku 服务，或切到 Root 模式")
+            }
+            return s
         }
         val local = exec(args, timeoutMs)
         if (local.code == 0 || !(local.out.contains("proot error") || local.out.contains("CANNOT LINK"))) return local
@@ -423,6 +514,12 @@ object Linux {
     } //一键装依赖
 
     fun remove(): Boolean {
+        sharedProbe = null
+        if (sharedMode()) {
+            //公共目录里全是 shell 属主，Java 删不动，直接走 shell
+            exec("rm -rf '${rootfs.absolutePath}'", 600_000L)
+            return !dirExists(rootfs)
+        }
         runCatching { rootfs.deleteRecursively() }
         //属主还挂在 root（上次解包中途断掉）时 Java 删不动，交给 root 通道收尾一次
         if (rootfs.exists()) runCatching { exec("rm -rf '${rootfs.absolutePath}'", 120_000L) }
@@ -458,6 +555,22 @@ object Linux {
 
     /** libtalloc 必须能以 libtalloc.so.2 的名字被链接器找到；重装 APK 后 native 路径会变，所以每次核对一次，用复制不用软链，路径变了也不怕 */
     private fun ensureTalloc() {
+        //Shizuku 模式：libs() 在 /data/local/tmp（shell_data_file），App 身份写不进去，
+        //所以先由 App 放到外部存储，再让 shell 复制进公共目录
+        if (sharedMode()) {
+            val talloc = File(libs(), "libtalloc.so.2")
+            val native = File(nativeDir(), "libtalloc.so")
+            if (!native.isFile) return
+            val stage = File(EXT_TAR).parentFile?.resolve("libtalloc.so.2") ?: return
+            runCatching { stage.parentFile?.mkdirs(); native.copyTo(stage, overwrite = true) }
+            if (!stage.isFile) return
+            exec(
+                "mkdir -p '${libs().absolutePath}' && cp -f '${stage.absolutePath}' '${talloc.absolutePath}' && " +
+                    "chmod 0644 '${talloc.absolutePath}' && rm -f '${stage.absolutePath}'",
+                60_000L
+            )
+            return
+        }
         libs().mkdirs()
         val talloc = File(libs(), "libtalloc.so.2")
         val native = File(nativeDir(), "libtalloc.so")
@@ -474,6 +587,27 @@ object Linux {
         }
     } //补齐 libtalloc.so.2
 
+    /**
+     * 往 rootfs 里写一个文本文件，不依赖 Root：
+     * 普通模式 App 自己就能写；Shizuku 模式 rootfs 属主是 shell，只能让 shell 写。
+     * @param rel rootfs 内相对路径（不带前导 /）
+     */
+    fun writeGuest(rel: String, body: String): ShellResult {
+        val f = File(rootfs, rel.removePrefix("/"))
+        if (!sharedMode()) {
+            return runCatching {
+                f.parentFile?.mkdirs()
+                f.writeText(body)
+                ShellResult(0, "")
+            }.getOrElse { ShellResult(-1, it.message ?: "写入失败") }
+        }
+        val dir = f.parentFile?.absolutePath ?: rootfs.absolutePath
+        return exec(
+            "mkdir -p '$dir' && cat > '${f.absolutePath}' <<'BXL_GUEST_EOF'\n$body\nBXL_GUEST_EOF",
+            60_000L
+        )
+    } //写 guest 文件
+
     private fun copyAsset(name: String, dst: File): Boolean {
         val ctx: Context = App.self
         return runCatching {
@@ -485,10 +619,25 @@ object Linux {
         }.getOrDefault(false)
     } //assets 拷到私有目录
 
-    /** 先自己跑（不依赖 Root）；本地起不来（比如没有 exec 权限）再退回 Root 通道 */
-    private fun exec(cmd: String, timeoutMs: Long, onLine: ((String) -> Unit)? = null): ShellResult =
-        blocked() ?: localExec(arrayOf("/system/bin/sh", "-c", cmd), timeoutMs, onLine)
-            .takeIf { it.code != NO_LOCAL } ?: Root.run(cmd, timeoutMs)
+    /**
+     * 宿主侧执行（tar / rm / mv / chown 这类）：
+     * Shizuku 模式先用 shell 身份（公共目录只有它能写），失败再自己跑、再退 Root；
+     * 其它模式先自己跑，本地起不来（没有 exec 权限）再退 Root。
+     */
+    private fun exec(cmd: String, timeoutMs: Long, onLine: ((String) -> Unit)? = null): ShellResult {
+        blocked()?.let { return it }
+        if (sharedMode()) {
+            val s = Shiz.run(cmd, null, timeoutMs)
+            //只有真跑通才收：带 [Shizuku] 前缀的都是通道层报错
+            if (!s.out.startsWith("[Shizuku]")) {
+                onLine?.let { cb -> s.out.lineSequence().forEach { if (it.isNotBlank()) cb(it) } }
+                return s
+            }
+        }
+        val local = localExec(arrayOf("/system/bin/sh", "-c", cmd), timeoutMs, onLine)
+        if (local.code != NO_LOCAL) return local
+        return Root.run(cmd, timeoutMs)
+    } //宿主命令
 
     /** 用 ProcessBuilder 直接起进程：toybox tar / proot 都在系统或 native 目录，应用自己就能执行 */
     private fun localExec(argv: Array<String>, timeoutMs: Long, onLine: ((String) -> Unit)? = null): ShellResult {

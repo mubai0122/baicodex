@@ -57,6 +57,7 @@ import b.ai.ui.widget.MdText
 import b.ai.ui.widget.PickItem
 import b.ai.ui.widget.PickSheet
 import b.ai.ui.widget.SectionTitle
+import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.SelectField
 import b.ai.ui.widget.WsPurge
 import b.ai.ui.widget.WsPurgeDialog
@@ -124,6 +125,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
@@ -150,6 +152,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -279,13 +283,14 @@ private val PageHints = mapOf(
     "model_param" to "温度 top_p token 参数 思考强度",
     //思考配置页此前漏了关键词，搜索「思考规则」找不到，补上
     "model_think" to "思考 思考规则 深度思考 reasoning 模型名匹配 下发字段 强度 预算 规则引擎",
+    "model_orch" to "编排 任务分解 规划 拆解 DAG 步骤链 子任务 计划",
     "model_voice" to "TTS 朗读 音色 语速 语音识别 STT 麦克风",
     "model_mem" to "记忆 长期记忆 偏好 自动整理",
     "model_local" to "GGUF 本地模型 离线 量化 推理",
     "chat_ctx" to "上下文 轮数 压缩 摘要 用量",
-    "chat_inject" to "注入 时间 电池 位置 通知 用量 系统提示",
+    //注入已并入「注入输入与输出」页，关键词合到 chat_inout 那条上
     "chat_prompt" to "提示词优化 四芒星 模型 保留原语言 优化方向",
-    "chat_inout" to "输入与输出 回复信息 用量 元信息 waifu 流式 草稿 输出偏好 文风",
+    "chat_inout" to "注入输入与输出 注入 时间 电池 位置 通知 用量 系统提示 回复信息 元信息 waifu 流式 草稿 输出偏好 文风",
     "chat_session" to "会话 历史 导出 收藏夹 工作区",
     "chat_tags" to "提示词 标签 片段 全局启用",
     "chat_perm" to "权限 工作方式 Shizuku Root 无障碍 悬浮窗 实验性",
@@ -302,6 +307,8 @@ private val PageHints = mapOf(
     "ext_tool" to "工具 权限 开关 能力 路由 工具链",
     "ext_ws" to "工作区 目录 根目录 绑定 目录树",
     "ext_linux" to "Linux Ubuntu 沙箱 终端 proot 镜像源 依赖 自检 测速",
+    "ext_dsh" to "DeepSeek Harness 引擎 打开 DeepSeek Harness 界面",
+    "ext_dsh_plug" to "DeepSeek Harness 插件 广场 工具 技能 联网 MCP 开关 装载 cordis",
     "ext_hub" to "生态 专区 插件 广场 市场",
     "ext_mi" to "小米 米家 IoT 智能家居 设备",
     "ext_mi_login" to "小米 登录 账号 授权 扫码",
@@ -338,7 +345,7 @@ private val SettingIndex = pageEntries + listOf(
     SettingEntry(R.string.se_v_out_t, R.string.se_001, R.string.se_v_out_d, pageId = "model_voice"),
     SettingEntry(R.string.se_124, R.string.se_001, R.string.se_125, pageId = "model_voice"),
     SettingEntry(R.string.se_015, R.string.se_002, R.string.se_016, pageId = "chat_ctx"),
-    SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018, pageId = "chat_inject"),
+    SettingEntry(R.string.se_017, R.string.se_002, R.string.se_018, pageId = "chat_inout"),
     SettingEntry(R.string.se_019, R.string.se_002, R.string.se_020, pageId = "chat_inout"),
     SettingEntry(R.string.se_019, R.string.se_002, hintRaw = "草稿 图片 有效期 输入不丢", pageId = "chat_inout"),
     SettingEntry(R.string.se_019, R.string.se_002, hintRaw = "输出偏好 文风 常驻提示", pageId = "chat_inout"),
@@ -391,6 +398,7 @@ fun SettingsScreen(
     onOpenPet: () -> Unit = {},
     onOpenStars: () -> Unit = {},
     onOpenMemory: () -> Unit = {},
+    onOpenDsh: () -> Unit = {},
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -413,6 +421,8 @@ fun SettingsScreen(
     var triggerDraft by remember { mutableStateOf(false) }
     var find by remember { mutableStateOf(false) }
     var fq by remember { mutableStateOf("") }
+    //定位提示：从搜索结果跳进子页时，把「你要找的那一项」钉在页首，滚走了也知道找的是哪个
+    var locate by remember { mutableStateOf("") }
     //下拉选择面板的当前内容：非空时挂到根弹窗层，和其它弹窗互斥
     var pick by remember { mutableStateOf<Pair<String, List<PickItem>>?>(null) }
     //统计页拆成每个块一个 item 后，各块不能再自己 remember，状态统一提到这里
@@ -514,22 +524,31 @@ fun SettingsScreen(
                 }
             }
 
-            if (find) {
+            //搜索：点右上角放大镜后原位形变成一条横跨的长胶囊，自上而下撑开，不覆盖正文
+            val focusSearch = remember { FocusRequester() }
+            AnimatedVisibility(
+                visible = find,
+                enter = expandVertically(tween(180)) + fadeIn(tween(180)),
+                exit = shrinkVertically(tween(150)) + fadeOut(tween(120))
+            ) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .liquidBg(RoundedCornerShape(12.dp), gate = 0.dp)
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                        .height(38.dp)
+                        //长胶囊：全圆角；输入框不做玻璃（veil 在深色下是一层黑遮罩，看着像阴影）
+                        .background(SurfaceMuted, RoundedCornerShape(50))
+                        .border(1.dp, BorderGray, RoundedCornerShape(50))
+                        .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Filled.Search,
                         contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(13.dp)
+                        tint = if (fq.isBlank()) TextSecondary else AccentBlue,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(8.dp))
                     Box(Modifier.weight(1f)) {
                         if (fq.isEmpty()) {
                             Text(stringResource(R.string.se_060), fontSize = 12.sp, color = TextSecondary)
@@ -540,10 +559,25 @@ fun SettingsScreen(
                             textStyle = TextStyle(fontSize = 12.sp, color = TextPrimary),
                             singleLine = true,
                             cursorBrush = SolidColor(AccentBlue),
-                            modifier = Modifier.fillMaxWidth()
+                            //展开即聚焦：不用再点一下输入框，键盘直接起来
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusSearch)
                         )
                     }
+                    //清空：有字才出现，清掉后保持在搜索态继续改词
+                    if (fq.isNotEmpty()) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(Modifier.size(18.dp).tap { fq = "" }, contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.se_061),
+                                tint = TextSecondary,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
                 }
+                //展开动画结束后再抢焦点，太早会落在还没上屏的节点上
+                LaunchedEffect(find) { if (find) runCatching { focusSearch.requestFocus() } }
             }
 
             //内容区：懒加载。原来是 Column + verticalScroll，切一次分类就把整个分类的几十张卡片和上百个文本
@@ -559,6 +593,10 @@ fun SettingsScreen(
                 //就被硬裁断，底栏和内容之间还剩一条空带，看着像底栏自带一块填充
                 contentPadding = PaddingValues(bottom = 86.dp)
             ) {
+                //定位胶囊：从搜索结果跳进来时钉在页首，说清「你要找的是哪一项」，点×收起
+                if (locate.isNotBlank()) {
+                    item("locate") { LocatePill(locate) { locate = "" } }
+                }
                 when {
                     find && fq.isNotBlank() -> {
                         //搜索结果只认索引表：点一条就跳到它所属的 tab
@@ -587,6 +625,8 @@ fun SettingsScreen(
                                             GlassPerf.switched()
                                             find = false
                                             fq = ""
+                                            //记住命中的设置名：进页后页首给一条定位胶囊
+                                            locate = ctx.getString(e.labelRes)
                                             //搜索直接落到具体子页：先按索引表的 pageId 走，没写就退到该分类的默认子页
                                             val pid = e.pageId ?: seDefaultPage(tabIndex(e.tabRes))?.id
                                             val pg = pid?.let { sePage(it) }
@@ -642,11 +682,11 @@ fun SettingsScreen(
                         "model_cfg" -> modelCfgSec(onOpenMemory)
                         "model_param" -> modelParamSec()
                         "model_think" -> modelThinkSec()
+                        "model_orch" -> modelOrchSec()
                         "model_voice" -> modelVoiceSec()
                         "model_mem" -> modelMemSec(onOpenMemory)
                         "model_local" -> modelLocalSec()
                         "chat_ctx" -> chatCtxSec(stats)
-                        "chat_inject" -> chatInjectSec()
                         "chat_prompt" -> chatPromptSec()
                         "chat_inout" -> chatInOutSec()
                         "chat_session" -> chatSessionSec(stats) { dsImportOpen = true }
@@ -675,6 +715,10 @@ fun SettingsScreen(
                         "ext_tool" -> extToolSec()
                         "ext_ws" -> extWsSec()
                         "ext_linux" -> extLinuxSec()
+                        //dsh 引擎：点进去是全屏 dsh 界面（内核由页面自己拉起）
+                        "ext_dsh" -> extDshEngineSec(onOpenDsh)
+                        //dsh 插件广场：本机真实装载行（读 profile 的 bundle patch）
+                        "ext_dsh_plug" -> extDshPlugSec()
                         //生态与专区：返回条已经带标题，这里只列四个专区入口，不重复写标题
                         "ext_hub" -> item {
                             CardBox {
@@ -1531,6 +1575,83 @@ private fun ThinkToggleRow(title: String, sub: String, checked: Boolean, onChang
 } //弹窗开关行
 
 
+/**编排子页：任务分解与规划。只改系统提示里的规划要求，不放宽任何工具权限 */
+private fun LazyListScope.modelOrchSec() {
+    item {
+        Spacer(Modifier.height(14.dp))
+        SectionTitle(stringResource(R.string.se_pg_orch), stringResource(R.string.se_pg_orch_sub))
+        CardBox {
+            CapSwitch(
+                stringResource(R.string.se_orch_plan_t),
+                if (Cfg.planFirst) stringResource(R.string.se_orch_plan_on) else stringResource(R.string.se_orch_plan_off),
+                Cfg.planFirst
+            ) { Cfg.planFirst = it }
+            //拆解形式跟着开关滑出：关着时整段不存在
+            FollowBlock(Cfg.planFirst) {
+                Spacer(Modifier.height(8.dp))
+                SelectField(
+                    stringResource(R.string.se_orch_shape),
+                    if (Cfg.planDag) stringResource(R.string.se_orch_dag) else stringResource(R.string.se_orch_chain),
+                    listOf(false, true),
+                    optionLabel = { if (it) stringResource(R.string.se_orch_dag) else stringResource(R.string.se_orch_chain) },
+                    isSelected = { Cfg.planDag == it },
+                    onSelect = { Cfg.planDag = it }
+                )
+                Text(stringResource(R.string.se_orch_shape_d), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(10.dp))
+                //复杂目标才拆解：默认开，防止一句话需求也被拆成三段
+                CapSwitch(
+                    stringResource(R.string.se_orch_complex_t),
+                    stringResource(R.string.se_orch_complex_d),
+                    Cfg.planComplexOnly
+                ) { Cfg.planComplexOnly = it }
+                Spacer(Modifier.height(8.dp))
+                //计划要不要贴给用户看
+                CapSwitch(
+                    stringResource(R.string.se_orch_show_t),
+                    stringResource(R.string.se_orch_show_d),
+                    Cfg.planShow
+                ) { Cfg.planShow = it }
+                Spacer(Modifier.height(8.dp))
+                //失败时是自动重排还是停下来问
+                CapSwitch(
+                    stringResource(R.string.se_orch_retry_t),
+                    stringResource(R.string.se_orch_retry_d),
+                    Cfg.planRetry
+                ) { Cfg.planRetry = it }
+                Spacer(Modifier.height(10.dp))
+                //子任务上限：0 =不限
+                SelectField(
+                    stringResource(R.string.se_orch_steps),
+                    if (Cfg.planMaxSteps <= 0) stringResource(R.string.se_orch_steps_none)
+                    else stringResource(R.string.se_orch_steps_n, Cfg.planMaxSteps),
+                    listOf(0, 3, 5, 8, 12),
+                    optionLabel = {
+                        if (it <= 0) stringResource(R.string.se_orch_steps_none)
+                        else stringResource(R.string.se_orch_steps_n, it)
+                    },
+                    isSelected = { Cfg.planMaxSteps == it },
+                    onSelect = { Cfg.planMaxSteps = it }
+                )
+                Text(stringResource(R.string.se_orch_steps_d), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(10.dp))
+                //额外要求：手写约束原样拼进编排段末尾
+                Field(
+                    label = stringResource(R.string.se_orch_extra),
+                    value = Cfg.planExtra,
+                    onValueChange = { Cfg.planExtra = it },
+                    placeholder = stringResource(R.string.se_orch_extra_ph),
+                    singleLine = false,
+                    minLines = 3
+                )
+                Text(stringResource(R.string.se_orch_extra_d), fontSize = 10.sp, color = TextSecondary)
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(stringResource(R.string.se_orch_note), fontSize = 10.sp, color = TextSecondary)
+        }
+    }
+} //编排子页
+
 private fun LazyListScope.modelVoiceSec() {
     item {
         Spacer(Modifier.height(14.dp))
@@ -2068,18 +2189,16 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
             Text(stringResource(R.string.se2_ctx_own), fontSize = 11.sp, color = TextSecondary)
         }
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.se2_pct, Cfg.ctxPct), fontSize = 11.sp, color = TextPrimary)
-            Spacer(Modifier.weight(1f))
-            Text(stringResource(R.string.se2_ktok, Cfg.ctxTokenBudget / 1000), fontSize = 11.sp, color = TextSecondary)
-        }
-        //滑杆 10-99：到窗口的这个比例就开始压缩，默认 70%
-        androidx.compose.material3.Slider(
-            value = Cfg.ctxPct.toFloat(),
-            onValueChange = { Cfg.ctxPct = it.toInt() },
-            valueRange = 10f..99f,
-            modifier = Modifier.fillMaxWidth()
-        )
+        //压缩阈值滑杆 10-99：到窗口的这个比例就开始压缩，默认 70%
+        //统一用本页自研的 miuix 风格 GlassSlider（标题 + 右侧当前值 + 26dp 轨道），
+        //之前这里是 material3 Slider，尺寸/配色/触控区都跟其余滑杆不一致，看着像没继承主题
+        GlassSlider(
+            stringResource(R.string.se2_pct, Cfg.ctxPct),
+            stringResource(R.string.se2_ktok, Cfg.ctxTokenBudget / 1000),
+            Cfg.ctxPct.toFloat(),
+            10f..99f,
+            1f
+        ) { Cfg.ctxPct = it.toInt() }
         Text(
             stringResource(R.string.se_097),
             fontSize = 10.sp,
@@ -2171,8 +2290,9 @@ private fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
     }
 } //上下文与压缩子页
 
-private fun LazyListScope.chatInjectSec() {
-    item {
+/**注入块：本机实时信息拼进系统提示。原来是独立子页，现已并入「注入输入与输出」页 */
+@Composable
+private fun InjectBlock() {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.se_017), stringResource(R.string.se_104))
     CardBox {
@@ -2282,10 +2402,7 @@ private fun LazyListScope.chatInjectSec() {
             }
         }
     }
-
-    }
-
-} //注入子页
+} //注入块
 
 private fun LazyListScope.chatSessionSec(
     stats: Pair<Int, Int>,
@@ -2480,7 +2597,9 @@ private fun LazyListScope.chatInOutSec() {
         }
     }
     }
-} //输入与输出子页
+    //注入块接在页尾：同属「给模型喂什么输入」这件事
+    item { InjectBlock() }
+} //注入输入与输出子页
 
 private fun LazyListScope.chatPromptSec() {
     item {
@@ -3259,6 +3378,23 @@ private fun LazyListScope.uiPersonSec(onOpenPet: () -> Unit) {
             CapSwitch(stringResource(R.string.se_173), stringResource(R.string.se_174), Cfg.bubbleCapsule) {
                 Cfg.bubbleCapsule = it
             }
+            Spacer(Modifier.height(10.dp))
+            //聊天卡片样式：分式（默认，每条一个气泡）/ 整体式（一轮一张卡，点头部折叠形变）
+            Text(stringResource(R.string.se_card_style), fontSize = 13.sp, color = TextPrimary)
+            Spacer(Modifier.height(6.dp))
+            ChoiceRow(
+                stringResource(R.string.se_card_style_split),
+                stringResource(R.string.se_card_style_split_d),
+                Cfg.chatCardStyle == 0
+            ) { Cfg.chatCardStyle = 0 }
+            Spacer(Modifier.height(6.dp))
+            ChoiceRow(
+                stringResource(R.string.se_card_style_whole),
+                stringResource(R.string.se_card_style_whole_d),
+                Cfg.chatCardStyle == 1
+            ) { Cfg.chatCardStyle = 1 }
+            Spacer(Modifier.height(6.dp))
+            Text(stringResource(R.string.se_card_style_note), fontSize = 10.sp, color = TextSecondary)
         }
     }
     item {
@@ -4132,6 +4268,52 @@ private fun LazyListScope.extLinuxSec() {
         LinuxTermPage()
     }
 } //Linux 沙箱子页
+
+/** dsh 插件广场单独一页：列出本机真实装载行，可开关（改动后需重启内核生效） */
+private fun LazyListScope.extDshPlugSec() {
+    item {
+        DshPluginsPage()
+    }
+} //dsh 插件广场子页
+
+/**
+ * dsh 引擎入口：这里只给一行「打开」，真正的 dsh 界面是全屏页（MainActivity 的 screen="dsh"）。
+ * 嵌入 LazyColumn 会把 WebView 塞进滚动区，滚动与输入法都会打架。
+ */
+private fun LazyListScope.extDshEngineSec(onOpen: () -> Unit) {
+    item {
+        SectionTitle(stringResource(R.string.dh_engine_title), stringResource(R.string.dh_engine_sub))
+        CardBox {
+            Text(
+                stringResource(R.string.dh_engine_desc),
+                fontSize = 11.sp,
+                color = TextSecondary
+            )
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton(stringResource(R.string.dh_engine_open), modifier = Modifier.fillMaxWidth()) { onOpen() }
+        }
+    }
+    item {
+        Spacer(Modifier.height(10.dp))
+        CardBox {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.dh_engine_toggle), fontSize = 14.sp, color = TextPrimary)
+                    Text(
+                        if (Cfg.dshEngine) stringResource(R.string.dh_engine_on) else stringResource(R.string.dh_engine_off),
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+                Switch(
+                    checked = Cfg.dshEngine,
+                    onCheckedChange = { Cfg.dshEngine = it },
+                    colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
+                )
+            }
+        }
+    }
+} //dsh 引擎子页
 
 //还剩文件沙箱一个专区的计划清单：页面上先讲清会有什么，别点进去一片空白
 /** 文件沙箱专区的计划清单：存资源 id，交给 extPlanSec 在 Composable 里解析 */

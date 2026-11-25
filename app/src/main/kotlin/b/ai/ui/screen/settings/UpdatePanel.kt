@@ -53,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
@@ -328,6 +329,8 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
             Spacer(Modifier.height(8.dp))
         }
         Spacer(Modifier.height(6.dp))
+        //下载/安装期间（stage 1..3）隐藏「下载页」次按钮：此时它点不了，还白占 1/3 宽把主按钮挤扁
+        val running = stage in 1..3
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             when {
                 //直链优先：下完自动拉起安装器，不需要用户再找包
@@ -339,12 +342,17 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                                 R.string.up_downloading,
                                 (dlDone * 100 / dlTotal).toInt().coerceIn(0, 100)
                             ) else ctx.getString(R.string.up_prep)
-                            3 -> msg.ifBlank { ctx.getString(R.string.up_installer) }
+                            //安装阶段只给固定短文案：msg 里是「下载完成，共 16 MB」「已交给系统安装器」这类长句，
+                            //塞进 1/3 宽按钮会换行把三按钮全部挤压，完整说明留在上方那行 msg
+                            3 -> ctx.getString(R.string.up_installer)
                             else -> ctx.getString(R.string.up_dl_install)
                         },
                         fontSize = 12.sp,
                         color = Color.White,
                         textAlign = TextAlign.Center,
+                        maxLines = 1, //单行：宁可省略也不能把按钮撑高
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .weight(1f)
                             .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
@@ -358,6 +366,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
@@ -369,6 +380,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue)
@@ -376,12 +390,16 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                         .padding(vertical = 11.dp)
                 )
             }
-            if (direct.isNotBlank() && jump.isNotBlank()) {
+            //下载/安装中不显示下载页按钮，给主按钮与「稍后再说」留足宽度
+            if (direct.isNotBlank() && jump.isNotBlank() && !running) {
                 Text(
                     ctx.getString(R.string.up_page),
                     fontSize = 12.sp,
                     color = AccentBlue,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .background(AccentBlue.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
@@ -396,6 +414,9 @@ fun UpdateDialog(info: Update.Info, onClose: () -> Unit) {
                     fontSize = 12.sp,
                     color = TextSecondary,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .weight(1f)
                         .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)

@@ -200,4 +200,27 @@ object Images {
     /**按目标显示边长解码：给气泡大图用，比 thumb 大一档 */
     fun big(path: String, side: Int): ImageBitmap? = thumb(path, side)
 
+    /**
+     * 全屏看图用：按「最长边 ≤ maxSide」采样解码，长截图 / 巨图不会一次吃掉几十 MB。
+     * 采样后像素数 ≤ 4M 时用 ARGB_8888（保透明与色彩），超过就降到 RGB_565 再省一半。
+     * 不走 thumb 的 LRU：大图塞进那个 64 项缓存会把小缩略图全挤掉。
+     */
+    fun view(path: String, maxSide: Int = 2560): ImageBitmap? {
+        if (!File(path).isFile) return null
+        val bound = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching { BitmapFactory.decodeFile(path, bound) }
+        val w = bound.outWidth
+        val h = bound.outHeight
+        if (w <= 0 || h <= 0) return null
+        val longest = maxOf(w, h)
+        var sample = 1
+        while (longest / (sample * 2) >= maxSide) sample *= 2
+        val px = (w / sample).toLong() * (h / sample)
+        val o = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = if (px <= 4_000_000L) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565
+        }
+        return runCatching { BitmapFactory.decodeFile(path, o)?.asImageBitmap() }.getOrNull()
+    } //全屏解码
+
 } //图片附件管理

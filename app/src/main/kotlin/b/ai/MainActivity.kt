@@ -65,12 +65,14 @@ import b.ai.core.cfg.app.Cfg
 import b.ai.core.cfg.app.Lang
 import b.ai.core.perm.Perms
 import b.ai.device.sys.alarm.Alarms
-import b.ai.net.api.account.Auth
+import b.ai.net.api.github.GitHubLogin
 import b.ai.net.doc.Consent
 import b.ai.net.doc.Isuse
 import b.ai.net.api.update.Update
-import b.ai.ui.screen.user.AccDialogs
-import b.ai.ui.screen.user.AccUi
+import b.ai.ui.screen.user.GhDialogs
+import b.ai.ui.screen.user.GhUi
+import b.ai.ui.screen.user.GhWeb
+import b.ai.ui.screen.user.GhWebPage
 import b.ai.ui.screen.settings.AnnounceDialog
 import b.ai.ui.screen.settings.SeNav
 import b.ai.ui.dialog.AskSheet
@@ -98,7 +100,8 @@ import b.ai.ui.screen.settings.WorkspaceScreen
 import b.ai.ui.screen.settings.MemorySheet
 import b.ai.ui.screen.misc.MigrateGate
 import b.ai.ui.screen.chat.PlanSheet
-import b.ai.ui.screen.market.PluginMarket
+import b.ai.ui.screen.settings.DshScreen
+import b.ai.ui.screen.plugins.PluginsScreen
 import b.ai.ui.screen.user.StarSheet
 import b.ai.ui.screen.user.Rate
 import b.ai.ui.screen.user.StarDialog
@@ -293,7 +296,7 @@ private fun Root() {
     LaunchedEffect(Cfg.onboarded) {
         if (Cfg.onboarded && !Cfg.a11yDone) A11ySetup.open.value = true
     }
-    val active = halted || joinOpen || Rate.ask || AccUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || (upd != null) || updHis != null || ann != null ||
+    val active = halted || joinOpen || Rate.ask || GhUi.mode.isNotEmpty() || Agent.pending != null || Agent.ask != null || Agent.plan != null || Overlay.active || permNotice || (upd != null) || updHis != null || ann != null ||
         starsOpen || memOpen || A11ySetup.open.value || A11yAuto.open.value
     val dialogOn = active
     //抽屉开合只订阅布尔，不读进度：组合期读 anim.value 会让抽屉每移一帧就重组整个 Root
@@ -340,6 +343,7 @@ private fun Root() {
         }
     }
     //收藏夹面板开着时返回键先关面板，别让它落到抽屉逻辑上
+    BackHandler(enabled = GhWeb.open) { GhWeb.open = false }
     BackHandler(enabled = starsOpen) { starsOpen = false }
     BackHandler(enabled = memOpen) { memOpen = false }
     //设置页有二级栈时返回先退子页，退到分类页才退出设置
@@ -355,15 +359,21 @@ private fun Root() {
             backFx = 0f
         }
     }
-    //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页
-    BackHandler(enabled = !Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace")) {
-        screen = if (screen == "pet") "settings" else "chat"
+    //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页；插件页同理；dsh 引擎页回设置
+    BackHandler(enabled = !Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace" || screen == "plugins" || screen == "dsh")) {
+        screen = when (screen) {
+            "pet", "dsh" -> "settings"
+            else -> "chat"
+        }
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace") && !drawerActive) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace" || screen == "plugins" || screen == "dsh") && !drawerActive) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
-            screen = if (screen == "pet") "settings" else "chat"
+            screen = when (screen) {
+                "pet", "dsh" -> "settings"
+                else -> "chat"
+            }
         } catch (e: CancellationException) {
             throw e
         } finally {
@@ -392,7 +402,7 @@ private fun Root() {
                 },
                 onOpenAccount = {
                     drawerCtl.close()
-                    AccUi.open(if (Auth.logged) "edit" else "login")
+                    GhUi.open(if (GitHubLogin.logged) "edit" else "login")
                 },
                 onClose = { drawerCtl.close() }
             )
@@ -423,6 +433,8 @@ private fun Root() {
                                 onBack = { screen = "chat" },
                                 onOpenFeedback = { screen = "feedback" },
                                 onOpenPet = { screen = "pet" },
+                                //dsh 引擎全屏页（设置 → 扩展 → dsh 引擎）
+                                onOpenDsh = { screen = "dsh" },
                                 //收藏夹与记忆面板都挂在根弹窗层，设置页只负责发信号
                                 onOpenStars = { starsOpen = true },
                                 onOpenMemory = { memOpen = true }
@@ -434,7 +446,9 @@ private fun Root() {
                                 onOpenDetail = { id -> fbId = id; screen = "fb_detail" }
                             )
                             "fb_detail" -> FeedbackDetailScreen(fbId) { screen = "feedback" }
-                            "plugins" -> PluginMarket(onBack = { screen = "chat" })
+                            "plugins" -> PluginsScreen(onBack = { screen = "chat" })
+                            //dsh 引擎：设置 → 扩展 → dsh 引擎 进来的全屏 dsh 界面
+                            "dsh" -> DshScreen(onBack = { screen = "settings" })
                             else -> ChatScreen(
                                 onOpenDrawer = { drawerCtl.open() },
                                 onOpenSettings = { t ->
@@ -459,8 +473,8 @@ private fun Root() {
                         q != null -> AskSheet(q)
                         pl != null -> PlanSheet(pl)
                         p != null -> ToolConfirmDialog(p)
-                        //账号卡：抽屉与插件广场都只改 AccUi.mode，卡片统一挂在这一层
-                        AccUi.mode.isNotEmpty() -> AccDialogs()
+                        //GitHub 账号卡：抽屉只改 GhUi.mode，卡片统一挂在这一层
+                        GhUi.mode.isNotEmpty() -> GhDialogs()
                         petPerm -> PetPermAsk(
                             onClose = { petPerm = false },
                             onGrant = {
@@ -526,6 +540,14 @@ private fun Root() {
                         else -> Overlay.content?.invoke()
                     }
                 }
+            )
+            //GitHub 内置登录页：全屏盖在最上层，登录成功后自动收起
+            if (GhWeb.open) GhWebPage(
+                onDone = {
+                    GhWeb.open = false
+                    GhUi.done()
+                },
+                onClose = { GhWeb.open = false }
             )
         }
     }

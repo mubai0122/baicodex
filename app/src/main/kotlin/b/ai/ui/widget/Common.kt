@@ -61,6 +61,7 @@ import b.ai.ui.theme.AccentBlue
 import b.ai.ui.theme.AccentBlueSoft
 import b.ai.ui.theme.BorderGray
 import b.ai.core.cfg.app.Cfg
+import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -260,7 +261,8 @@ fun Field(
     placeholder: String = "",
     secret: Boolean = false,
     singleLine: Boolean = true,
-    minLines: Int = 1
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE
 ) {
     Column(Modifier.padding(top = 10.dp)) {
         //label 为空时省掉标题行，给「只有一个输入框」的场景用
@@ -274,12 +276,17 @@ fun Field(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), veil = 0.28f, gate = 0.dp)
+                //输入框不做玻璃：liquidBg 的 veil 是「乳白/墨黑遮罩」不是不透明度，
+                //深色下那就是一层黑（用户看到的就是输入框阴影/发灰），浅色下是一层白。
+                //这里直接给不透明的 SurfaceMuted 实底，只保留一条细描边，干净且文字对比稳。
+                .background(SurfaceMuted, RoundedCornerShape(12.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             textStyle = TextStyle(fontSize = 13.sp, color = TextPrimary),
             singleLine = singleLine,
             minLines = minLines,
+            //maxLines 封顶：超出的行在框内滚动，长文本（cookie / token）不会把卡片按钮顶出屏幕
+            maxLines = maxLines,
             cursorBrush = SolidColor(AccentBlue),
             visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
             decorationBox = { inner ->
@@ -333,7 +340,8 @@ fun FieldBox(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
-                .liquidBg(RoundedCornerShape(12.dp))
+                //同上：紧凑输入框也不做玻璃，避免深色下一层黑遮罩
+                .background(SurfaceMuted, RoundedCornerShape(12.dp))
                 .border(1.dp, BorderGray, RoundedCornerShape(12.dp))
                 .padding(start = 12.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically

@@ -47,7 +47,7 @@ object Cfg {
             }
         }
         val legacyUser = LinkedHashMap<String, String>()
-        listOf("acc_token", "fb_token", "ssh_pass").forEach { k ->
+        listOf("fb_token", "ssh_pass").forEach { k ->
             p.getString(k, "")?.takeIf { it.isNotEmpty() }?.let { v -> legacyUser[k] = v }
         }
         if (legacy.isNotEmpty() || legacyUser.isNotEmpty()) {
@@ -71,12 +71,12 @@ object Cfg {
             p.edit().remove("ssh_host").remove("ssh_port").remove("ssh_user").apply()
         }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
-        mem("acc_token", "").value = Vault.get("acc_token", Vault.USER)
-        mem("acc_uid", 0).value = p.getInt("acc_uid", 0)
-        mem("acc_uname", "").value = p.getString("acc_uname", "") ?: ""
-        mem("acc_nick", "").value = p.getString("acc_nick", "") ?: ""
-        mem("acc_avatar", "").value = p.getString("acc_avatar", "") ?: ""
-        mem("acc_onboarded", false).value = p.getBoolean("acc_onboarded", false)
+        //旧自有服务器账号体系已删除：清掉残留的 acc_* 与加密库里的 token
+        runCatching {
+            Vault.put("acc_token", "", Vault.USER)
+            p.edit().remove("acc_token").remove("acc_uid").remove("acc_uname")
+                .remove("acc_nick").remove("acc_avatar").remove("acc_onboarded").apply()
+        }
         mem("a11y_done", false).value = p.getBoolean("a11y_done", false)
         mem("join_dismissed", false).value = p.getBoolean("join_dismissed", false)
         mem("join_seen", 0).value = p.getInt("join_seen", 0)
@@ -165,6 +165,14 @@ object Cfg {
         mem("persona_seed", 0).value = p.getInt("persona_seed", 0)
         mem("dark_theme", 0).value = p.getInt("dark_theme", 0)
         mem("inject_time", true).value = p.getBoolean("inject_time", true)
+        //编排：这几项不回读就会「改完重启回默认」，必须逐个对齐同名 key
+        mem("plan_first", false).value = p.getBoolean("plan_first", false)
+        mem("plan_dag", false).value = p.getBoolean("plan_dag", false)
+        mem("plan_complex_only", true).value = p.getBoolean("plan_complex_only", true)
+        mem("plan_show", true).value = p.getBoolean("plan_show", true)
+        mem("plan_retry", true).value = p.getBoolean("plan_retry", true)
+        mem("plan_max_steps", 0).value = p.getInt("plan_max_steps", 0)
+        mem("plan_extra", "").value = p.getString("plan_extra", "").orEmpty()
         mem("inject_battery", false).value = p.getBoolean("inject_battery", false)
         mem("inject_place", false).value = p.getBoolean("inject_place", false)
         mem("inject_precise", false).value = p.getBoolean("inject_precise", false)
@@ -189,6 +197,7 @@ object Cfg {
         mem("avatar_ai_mode", "persona").value = p.getString("avatar_ai_mode", "persona")!!
         mem("avatar_ai", "").value = p.getString("avatar_ai", "")!!
         mem("bubble_capsule", false).value = p.getBoolean("bubble_capsule", false)
+        mem("chat_card_style", 0).value = p.getInt("chat_card_style", 0)
         mem("glass_card", false).value = p.getBoolean("glass_card", false)
         mem("tactile_btn", false).value = p.getBoolean("tactile_btn", false)
         mem("glass_bar", false).value = p.getBoolean("glass_bar", false)
@@ -448,30 +457,6 @@ object Cfg {
         get() = mem("plg_installed", "").value
         set(v) { mem("plg_installed", "").value = v; put("plg_installed", v) }
 
-    var accToken: String
-        get() = mem("acc_token", "").value
-        set(v) { mem("acc_token", "").value = v; Vault.put("acc_token", v, Vault.USER) }
-
-    var accUid: Int
-        get() = mem("acc_uid", 0).value
-        set(v) { mem("acc_uid", 0).value = v; put("acc_uid", v) }
-
-    var accUname: String
-        get() = mem("acc_uname", "").value
-        set(v) { mem("acc_uname", "").value = v; put("acc_uname", v) }
-
-    var accNick: String
-        get() = mem("acc_nick", "").value
-        set(v) { mem("acc_nick", "").value = v; put("acc_nick", v) }
-
-    var accAvatar: String
-        get() = mem("acc_avatar", "").value
-        set(v) { mem("acc_avatar", "").value = v; put("acc_avatar", v) }
-
-    var accOnboarded: Boolean
-        get() = mem("acc_onboarded", false).value
-        set(v) { mem("acc_onboarded", false).value = v; put("acc_onboarded", v) }
-
     var tosAgreed: Int
         get() = mem("tos_agreed", 0).value
         set(v) { mem("tos_agreed", 0).value = v; put("tos_agreed", v) }
@@ -615,8 +600,11 @@ object Cfg {
 
     val summaryWords: Int
         get() = when (summaryLevel.coerceIn(0, 2)) {
-            0 -> 1000
-            1 -> 2000
+            //简洁：只是应急档，长对话一定会丢细节，默认不选
+            0 -> 1500
+            //详细（默认）：够放下一个中大型任务的全部现场，别为了短而删
+            1 -> 12000
+            //全面：不设字数上限，由提示词里的 50000 token 硬上限兜住
             else -> 0
         }
 
@@ -667,6 +655,41 @@ object Cfg {
             mem("prompt_order", 0).value = n
             put("prompt_order", n)
         }
+
+    /**编排：接到模糊目标先拆子任务再执行，并按执行反馈调整后续计划（设置 →模型 →编排）*/
+    var planFirst: Boolean
+        get() = mem("plan_first", false).value
+        set(v) { mem("plan_first", false).value = v; put("plan_first", v) }
+
+    /**拆解形式：false =步骤链， true = DAG（带依赖边与并行分支）*/
+    var planDag: Boolean
+        get() = mem("plan_dag", false).value
+        set(v) { mem("plan_dag", false).value = v; put("plan_dag", v) }
+
+    /**只在复杂目标时拆解：一句话能做完的直接做，避免为拆解而拆解 */
+    var planComplexOnly: Boolean
+        get() = mem("plan_complex_only", true).value
+        set(v) { mem("plan_complex_only", true).value = v; put("plan_complex_only", v) }
+
+    /**是否把计划展示给用户：关掉时计划只在模型内部用，回复里不贴清单 */
+    var planShow: Boolean
+        get() = mem("plan_show", true).value
+        set(v) { mem("plan_show", true).value = v; put("plan_show", v) }
+
+    /**失败时自动调整后续计划：关掉时要求停下手说明，不自行重排 */
+    var planRetry: Boolean
+        get() = mem("plan_retry", true).value
+        set(v) { mem("plan_retry", true).value = v; put("plan_retry", v) }
+
+    /**子任务上限：0 =不限，其余值要求先在内部合并同类项 */
+    var planMaxSteps: Int
+        get() = mem("plan_max_steps", 0).value
+        set(v) { mem("plan_max_steps", v.coerceIn(0, 50)).value = v.coerceIn(0, 50); put("plan_max_steps", v.coerceIn(0, 50)) }
+
+    /**额外规划要求：原样拼进编排段，留给用户写自己的约束 */
+    var planExtra: String
+        get() = mem("plan_extra", "").value
+        set(v) { mem("plan_extra", "").value = v; put("plan_extra", v) }
 
     var replyStyle: String
         get() = mem("reply_style", "").value
@@ -756,6 +779,14 @@ object Cfg {
     var bubbleCapsule: Boolean
         get() = mem("bubble_capsule", false).value
         set(v) { mem("bubble_capsule", false).value = v; put("bubble_capsule", v) }
+
+    /**
+     * 聊天卡片样式：0 = 分式（每条消息一个气泡，默认，旧行为）；
+     * 1 = 整体式（一轮的用户消息 + 该轮所有回复/工具/附件/统计都收进同一张卡，头部可折叠）。
+     */
+    var chatCardStyle: Int
+        get() = mem("chat_card_style", 0).value
+        set(v) { mem("chat_card_style", 0).value = v; put("chat_card_style", v) }
 
     var avatarAi: String
         get() = mem("avatar_ai", "").value
@@ -1280,6 +1311,11 @@ object Cfg {
     var noStream: Boolean
         get() = mem("no_stream", false).value
         set(v) { mem("no_stream", false).value = v; put("no_stream", v) }
+
+    /** chat 引擎：true = 整轮对话交给 dsh 的 agent 循环（插件工具全部可用），false = 用自家循环 */
+    var dshEngine: Boolean
+        get() = mem("dsh_engine", false).value
+        set(v) { mem("dsh_engine", false).value = v; put("dsh_engine", v) }
 
     var maskOut: Boolean
         get() = mem("mask_out", false).value

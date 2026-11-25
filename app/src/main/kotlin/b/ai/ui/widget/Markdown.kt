@@ -24,6 +24,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,13 +49,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,6 +83,8 @@ private sealed interface MdBlock {
     data class Num(val level: Int, val num: Int, val text: String) : MdBlock
     data class Quote(val text: String) : MdBlock
     data class Para(val text: String) : MdBlock
+    /**表格：head 是表头单元格，rows 是数据行（行内长度不齐时按最长的列数补空） */
+    data class Table(val head: List<String>, val rows: List<List<String>>) : MdBlock
     data object Rule : MdBlock
 } //Markdown块类型
 
@@ -119,6 +127,14 @@ private fun parseMd(src: String): List<MdBlock> {
                 i++
             }
             else -> {
+                //表格：本行有竖线且下一行是 |---|---| 分隔行时整块吃下来，不能落进段落兜底
+                if (t.contains('|') && i + 1 < lines.size && isSepRow(lines[i + 1].trim())) {
+                    flush()
+                    val (block, next) = readTable(lines, i)
+                    out.add(block)
+                    i = next
+                    continue
+                }
                 val h = head.find(t)
                 val b = bul.find(raw)
                 val o = num.find(raw)
@@ -155,6 +171,60 @@ private fun parseMd(src: String): List<MdBlock> {
     flush()
     return out
 } //切块
+
+/**表格分隔行：形如 | --- | :--: | ---: |，只允许 - : | 与空白 */
+private fun isSepRow(t: String): Boolean {
+    if (!t.contains('-')) return false
+    if (!t.contains('|') && !t.contains(':')) return false
+    val cells = splitRow(t)
+    return cells.isNotEmpty() && cells.all { c -> c.isNotEmpty() && c.all { it == '-' || it == ':' } }
+} //表格分隔行
+
+/**按竖线切单元格：首尾的 | 不算空列，\| 是字面竖线不算分隔 */
+private fun splitRow(t: String): List<String> {
+    var s = t.trim()
+    if (s.startsWith("|")) s = s.substring(1)
+    if (s.endsWith("|")) s = s.dropLast(1)
+    val out = ArrayList<String>()
+    val sb = StringBuilder()
+    var i = 0
+    while (i < s.length) {
+        val c = s[i]
+        if (c == '\\' && i + 1 < s.length && s[i + 1] == '|') {
+            sb.append('|')
+            i += 2
+            continue
+        }
+        if (c == '|') {
+            out.add(sb.toString().trim())
+            sb.setLength(0)
+            i++
+            continue
+        }
+        sb.append(c)
+        i++
+    }
+    out.add(sb.toString().trim())
+    return out
+} //切单元格
+
+/**读一张表：返回 (块, 下一行下标)；表头 + 分隔行 + 连续的数据行 */
+private fun readTable(lines: List<String>, start: Int): Pair<MdBlock.Table, Int> {
+    val head = splitRow(lines[start].trim())
+    val rows = ArrayList<List<String>>()
+    var i = start + 2
+    while (i < lines.size) {
+        val r = lines[i].trim()
+        if (r.isEmpty() || !r.contains('|')) break
+        if (isSepRow(r)) {
+            i++
+            continue
+        }
+        rows.add(splitRow(r))
+        i++
+    }
+    return MdBlock.Table(head, rows) to i
+} //读表格块
 
 /**行内样式：`代码`、**粗**、*斜*、[文字](链接)，其余原样 */
 private fun inlineMd(text: String): AnnotatedString = buildAnnotatedString {
@@ -312,11 +382,75 @@ fun MdText(src: String, color: Color = TextPrimary, size: TextUnit? = null) {
                         .background(TextSecondary.copy(alpha = 0.25f), RoundedCornerShape(1.dp))
                         .padding(top = 0.5.dp)
                 )
+                is MdBlock.Table -> TableBlock(b, color, fs, lh, ff)
                 is MdBlock.Para -> RichLine(b.text, size = fs, color = color, lineHeight = lh, ff = ff)
             }
         }
     }
 } //Markdown 正文
+
+/**
+ * 表格块：外层固定占满可用宽度并持有底色，内层横向滚动——
+ * 表比屏宽就左右拖，不再把列硬压成一条条折行「堆在一起」。
+ * 列宽按「该列最宽单元格的单行实测像素」算（中文不再按 0.72 字数宽被低估），单列封顶 240dp、最少 44dp。
+ */
+@Composable
+private fun TableBlock(b: MdBlock.Table, color: Color, fs: TextUnit, lh: TextUnit, ff: FontFamily) {
+    val cols = maxOf(b.head.size, b.rows.maxOfOrNull { it.size } ?: 0).coerceAtLeast(1)
+    val meter = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val cellStyle = TextStyle(fontSize = fs, lineHeight = lh, fontFamily = ff)
+    val minW = 44.dp
+    val maxW = 240.dp
+    val padW = 8.dp   //单元格左右 padding（horizontal = 4.dp × 2）
+    val widths = (0 until cols).map { c ->
+        val cells = listOf(b.head.getOrNull(c).orEmpty()) + b.rows.map { it.getOrNull(c).orEmpty() }
+        //单行实测：量的是「不折行要多少宽」，取该列最大值，长内容列自然撑宽去横向滚
+        val px = cells.maxOfOrNull { t ->
+            meter.measure(text = AnnotatedString(t), style = cellStyle, maxLines = 1).size.width
+        } ?: 0
+        (with(density) { px.toDp() } + padW).coerceIn(minW, maxW)
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .background(CodeBg.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .padding(6.dp)
+    ) {
+        //滚动只包内容层：底色与圆角留在外层，拖动时背景不会跟着跑
+        Row(Modifier.horizontalScroll(rememberScrollState())) {
+            Column {
+                Row(Modifier.background(TextSecondary.copy(alpha = 0.12f), RoundedCornerShape(4.dp))) {
+                    for (c in 0 until cols) TableCell(b.head.getOrNull(c).orEmpty(), widths[c], fs, lh, ff, color, true)
+                }
+                b.rows.forEach { r ->
+                    Row {
+                        for (c in 0 until cols) TableCell(r.getOrNull(c).orEmpty(), widths[c], fs, lh, ff, color, false)
+                    }
+                }
+            }
+        }
+    }
+}//表格块
+
+/**一个单元格：表头加粗，正文走行内样式（表情、代码、链接照常） */
+@Composable
+private fun TableCell(text: String, w: Dp, fs: TextUnit, lh: TextUnit, ff: FontFamily, color: Color, head: Boolean) {
+    Box(Modifier.width(w).padding(horizontal = 4.dp, vertical = 3.dp)) {
+        if (head) {
+            Text(
+                mdInline(text),
+                fontSize = fs,
+                color = color,
+                lineHeight = lh,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = ff
+            )
+        } else {
+            RichLine(text, size = fs, color = color, lineHeight = lh, ff = ff)
+        }
+    }
+} //单元格
 
 /**一行里可能带表情标记：命中就按段排（文字 +表情），没命中走原来的纯文本 */
 @Composable

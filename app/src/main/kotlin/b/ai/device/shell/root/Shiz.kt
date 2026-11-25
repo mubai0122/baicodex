@@ -306,6 +306,14 @@ object Shiz {
         }.onFailure { Log.w(TAG, "openShell failed: " + (it.message ?: it.javaClass.simpleName)) }.getOrNull()
     } //常驻 shell
 
+    /** 给内置 Linux 用：以 shell 身份起一条完整命令行（proot），返回可交互进程；拿不到返回 null */
+    fun openProcess(cmd: String): Process? {
+        val m = newProc ?: return null
+        return runCatching {
+            m.invoke(null, arrayOf("/system/bin/sh", "-c", cmd), null, null) as Process
+        }.onFailure { Log.w(TAG, "openProcess failed: " + (it.message ?: it.javaClass.simpleName)) }.getOrNull()
+    } //常驻命令行
+
     //收 ShizukuRemoteProcess 的输出：它的 exitValue 会抛 IllegalArgumentException，不能用通用的 drainProcess（那套靠 waitFor(超时) 轮询 exitValue）
     private fun drainRemote(p: Process, timeoutMs: Long, input: String?): ShellResult {
         val sb = StringBuilder()

@@ -64,6 +64,8 @@ val SePages = listOf(
     SePage("model_param", R.string.se_pg_model_param, R.string.se_pg_model_param_sub, 1),
     //思考配置：规则引擎，按模型名匹配决定思考字段怎么下发
     SePage("model_think", R.string.se_pg_think, R.string.se_pg_think_sub, 1),
+    //编排：任务分解与规划（提示层开关，按在语音上面因为同属「模型怎么干活」）
+    SePage("model_orch", R.string.se_pg_orch, R.string.se_pg_orch_sub, 1),
     SePage("model_voice", R.string.se_pg_voice, R.string.se_pg_voice_sub, 1),
     SePage("model_mem", R.string.se_pg_mem, R.string.se_pg_mem_sub, 1),
     SePage("model_local", R.string.se_pg_local, R.string.se_pg_local_sub, 1),
@@ -71,9 +73,8 @@ val SePages = listOf(
     SePage("chat_ctx", R.string.se_pg_chat_ctx, R.string.se_pg_chat_ctx_sub, 0),
     //提示词优化：四芒星按钮的连接与写法（只放优化本体）
     SePage("chat_prompt", R.string.se_pg_prompt, R.string.se_pg_prompt_sub, 0),
-    //输入与输出：回复信息展示 / 流式 / 草稿 / 输出偏好，从提示词优化与注入页拆出来单独一页
+    //注入输入与输出：原「注入」页整段并入这一页（本机实时信息 + 回复展示 / 流式 / 草稿 / 输出偏好）
     SePage("chat_inout", R.string.se_pg_inout, R.string.se_pg_inout_sub, 0),
-    SePage("chat_inject", R.string.se_pg_chat_inject, R.string.se_pg_chat_inject_sub, 0),
     SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 0),
     SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 0),
     SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 0),
@@ -94,6 +95,10 @@ val SePages = listOf(
     SePage("ext_tool", R.string.se_050, R.string.se_235, 3),
     SePage("ext_ws", R.string.se_pg_ext_ws, R.string.se_pg_ext_ws_sub, 3),
     SePage("ext_linux", R.string.se_pg_linux, R.string.se_pg_linux_sub, 3),
+    //dsh 引擎：点进去是全屏 dsh 界面（用 dsh 本体）
+    SePage("ext_dsh", R.string.se_pg_dsh_engine, R.string.se_pg_dsh_engine_sub, 3),
+    //dsh 插件：列出本机 dsh profile 里真实装载的插件行，可开关（写 cordis.patch.yml）
+    SePage("ext_dsh_plug", R.string.se_pg_dsh_plug, R.string.se_pg_dsh_plug_sub, 3),
     SePage("ext_hub", R.string.se_hub, R.string.se_hub_sub, 3),
     //生态与专区下的各专区：不列在扩展分类页上，只在 ext_hub 里列
     SePage("ext_mi", R.string.se_hub_mi, R.string.se_pg_mi_sub, 3, parent = "ext_hub"),

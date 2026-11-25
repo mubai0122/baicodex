@@ -66,6 +66,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.R
@@ -171,11 +172,14 @@ internal fun WorkspaceScreen(backProgress: Float = 0f, onBack: () -> Unit) {
                             fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary
                         )
                         Spacer(Modifier.width(8.dp))
+                        //描述自己吃剩余宽度并单行省略：不再用 Spacer(weight) 占位，长文案也压不到右侧返回按钮
                         Text(
                             stringResource(if (picking) R.string.wp_pick_hint else R.string.wp_title_d),
-                            fontSize = 12.sp, color = TextSecondary, maxLines = 1
+                            fontSize = 12.sp, color = TextSecondary, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(Modifier.weight(1f))
+                        Spacer(Modifier.width(8.dp))
                         Row(
                             Modifier
                                 .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft)

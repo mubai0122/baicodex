@@ -88,7 +88,8 @@ fun LinuxTermPage() {
     var stateVer by remember { mutableIntStateOf(0) }
     var running by remember { mutableStateOf(LinuxTerm.running) }
     var ready by remember { mutableStateOf(LinuxTerm.ready) }
-    var envOk by remember { mutableStateOf(Linux.installed()) }
+    //初值不探测：Shizuku 模式下 installed() 是 Binder 调用，放主线程会拖慢整页首次绘制
+    var envOk by remember { mutableStateOf(false) }
     var input by remember { mutableStateOf("") }
     var showMirror by remember { mutableStateOf(false) }
 
@@ -98,8 +99,9 @@ fun LinuxTermPage() {
         LinuxTerm.onState = {
             running = LinuxTerm.running
             ready = LinuxTerm.ready
-            envOk = Linux.installed()
             stateVer = stateVer + 1
+            // installed() 在 Shizuku 模式下是一次 Binder 调用，不能压在主线程
+            scope.launch { envOk = withContext(Dispatchers.IO) { Linux.installed() } }
         }
         onDispose {
             LinuxTerm.onDirty = null
@@ -107,24 +109,47 @@ fun LinuxTermPage() {
         }
     } //订阅回调
 
+    LaunchedEffect(Unit) { envOk = withContext(Dispatchers.IO) { Linux.installed() } }
+
     //进页面就把会话开起来：装好环境的机器直接能敲命令，没装的会在终端里留一句提示
     LaunchedEffect(stateVer) {
         if (!LinuxTerm.ready) withContext(Dispatchers.IO) { LinuxTerm.start() }
     }
 
     val text = remember(ver) { LinuxTerm.lines().takeLast(400).joinToString("\n") }
-    //工具状态每 2 秒重算一次：在终端里手动 bai_apt 装的东西不会触发 onState，
-    //只靠 stateVer 会一直显示「安装」，用户得退出页面再进来才刷新
+
+    //工具状态 / apt 索引 / 发行版名：全部在 IO 线程算，且终端里有命令在跑时直接跳过。
+    //Shizuku 模式下每个 present() 都是一次 Binder 往返，20 多个同步跑在主线程会把整页冻住
+    //（这就是之前点「安装环境」卡死的另一半原因）。
     var probeTick by remember { mutableIntStateOf(0) }
+    var present by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
+    var idxReady by remember { mutableStateOf(false) }
+    var osName by remember { mutableStateOf("Ubuntu (proot)") }
+    LaunchedEffect(stateVer, probeTick) {
+        if (LinuxTerm.running) return@LaunchedEffect
+        val (p, idx, name) = withContext(Dispatchers.IO) {
+            val tools = LinuxTerm.TOOLS.associate { it.id to it.present() }
+            val readyIdx = Linux.existsIn("var/lib/apt/.bai_stamp")
+            val os = runCatching {
+                File(Linux.rootfs, "etc/os-release").takeIf { it.isFile }?.readLines()
+                    ?.firstOrNull { it.startsWith("PRETTY_NAME=") }
+                    ?.substringAfter("=")?.trim('"')
+            }.getOrNull().orEmpty().ifBlank { "Ubuntu (proot)" }
+            Triple(tools, readyIdx, os)
+        }
+        present = p
+        idxReady = idx
+        osName = name
+    }
+    //每 3 秒复核一次环境状态：手动在终端里装/删东西也能自己纠回来
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(2000L)
+            kotlinx.coroutines.delay(3000L)
+            if (LinuxTerm.running) continue
             probeTick++
-            //环境就位与否也顺手复核：装/删环境后不依赖 onState 也能自己纠回来
-            envOk = Linux.installed()
+            envOk = withContext(Dispatchers.IO) { Linux.installed() }
         }
     }
-    val present = remember(stateVer, probeTick) { LinuxTerm.TOOLS.associate { it.id to it.present() } }
 
     /** 把所有重活丢到 IO 线程：开进程、写 stdin 都可能短暂阻塞 */
     fun io(block: () -> Unit) {
@@ -219,15 +244,7 @@ fun LinuxTermPage() {
 
         Spacer(Modifier.height(12.dp))
         //环境信息：一眼看出这个「Ubuntu」是什么版本、apt 索引备没备好、装了几个工具
-        val osName = remember(stateVer) {
-            runCatching {
-                File(Linux.rootfs, "etc/os-release").takeIf { it.isFile }?.readLines()
-                    ?.firstOrNull { it.startsWith("PRETTY_NAME=") }
-                    ?.substringAfter("=")?.trim('"')
-            }.getOrNull().orEmpty().ifBlank { "Ubuntu (proot)" }
-        } //发行版名
         val arch = remember { android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64" }
-        val idxReady = remember(stateVer, probeTick) { Linux.existsIn("var/lib/apt/.bai_stamp") }
         val doneCount = present.count { it.value }
         Text(
             osName + " · " + arch +

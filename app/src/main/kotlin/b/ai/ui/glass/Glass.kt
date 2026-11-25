@@ -89,7 +89,9 @@ fun GlassPanel(
     val dark = DarkColors
     //真玻璃要有采样源：页面没登记背景层就只能平涂
     val bd = LocalCardBackdrop.current ?: CardBackdropHolder.current
-    val gOn = glass && bd != null && GlassPerf.heavy && Cfg.glassBlur > 0
+    //模糊强度只决定「糊不糊」，不决定「是不是玻璃」：
+    //原来这里带着 glassBlur>0，模糊拉到 0 时整块卡片直接退成厚白平涂，液态的薄纱与高光都没了
+    val gOn = glass && bd != null && GlassPerf.heavy
     var touch by remember { mutableStateOf(Offset(-1f, -1f)) }
     var pressed by remember { mutableStateOf(false) }
     Column(

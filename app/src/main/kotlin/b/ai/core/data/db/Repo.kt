@@ -344,13 +344,16 @@ object Repo {
     /**
      * 按关键词搜消息正文（会话内 + 跨会话），返回消息级命中。
      * 没有 FTS：LIKE 全表扫，但本机库就几万条，够用；session_id 非空时只搜那一个会话。
+     * atFrom / atTo 是时间窗（毫秒时间戳，0=不限），用于「上周那个报错」这类限定范围的说法。
      */
     fun searchMessages(
         q: String,
         limit: Int = 20,
         sessionId: String = "",
         role: String = "",
-        includeSummary: Boolean = false
+        includeSummary: Boolean = false,
+        atFrom: Long = 0L,
+        atTo: Long = 0L
     ): List<MsgHit> {
         val key = q.trim()
         if (key.isBlank()) return emptyList()
@@ -373,6 +376,17 @@ object Repo {
             sql.append(" AND m.session_id = ?")
             args.add(sessionId)
         }
+        //时间窗：秒级时间戳自动按毫秒解释（模型容易给 10 位数字）
+        val from = normMs(atFrom)
+        val to = normMs(atTo)
+        if (from > 0L) {
+            sql.append(" AND m.created_at >= ?")
+            args.add(from.toString())
+        }
+        if (to > 0L) {
+            sql.append(" AND m.created_at <= ?")
+            args.add(to.toString())
+        }
         sql.append(" ORDER BY m.created_at DESC LIMIT ?")
         args.add(cap.toString())
         val out = ArrayList<MsgHit>()
@@ -392,6 +406,9 @@ object Repo {
         }
         return out
     } //消息级搜索
+
+    /** 时间戳归一：小于 1e11 当作秒级（模型常给 10 位数字），乘 1000 转毫秒；0 表示不限 */
+    private fun normMs(v: Long): Long = if (v <= 0L) 0L else if (v < 100_000_000_000L) v * 1000 else v
 
     /**
      * 读当前分支：从会话的 head 沿 parent_id 回溯到根，再按 _id 正序返回。

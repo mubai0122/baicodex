@@ -36,9 +36,9 @@ object Sum {
 
     /** 档位的人话说明：字数上限由 Cfg.summaryWords 给，这里只讲取舍 */
     fun levelHint(level: Int): String = when (level.coerceIn(0, 2)) {
-        0 -> "上限 1000 字，可能跟随轮次丢失关键"
-        1 -> "上限 2000 字，推荐"
-        else -> "不限字数，最推荐"
+        0 -> "上限 1500 字，只够应急，长对话会丢细节"
+        1 -> "上限 12000 字，默认档，够放下完整现场"
+        else -> "不限字数（硬上限 5 万 token），最完整"
     } //档位说明
 
     /** 返回 baseUrl / apiKey / providerId / model：由「功能模型」统一决定，没配就跟随当前聊天 */

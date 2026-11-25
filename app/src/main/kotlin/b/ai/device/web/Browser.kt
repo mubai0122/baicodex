@@ -161,6 +161,26 @@ object Browser {
             if (s.isBlank()) return "失败：eval 需要 script"
             return "JS 返回：\n" + js(s).take(6000)
         }
+        if (act == "shot" || act == "screenshot") {
+            //截当前 WebView：离屏 draw 到位图再压 png，路径用 target（留空存 Download）
+            val bmp = onMain(8_000) {
+                val w = view ?: return@onMain null
+                if (w.width <= 0 || w.height <= 0) return@onMain null
+                val b = android.graphics.Bitmap.createBitmap(
+                    w.width, w.height, android.graphics.Bitmap.Config.ARGB_8888
+                )
+                w.draw(android.graphics.Canvas(b))
+                b
+            } ?: return "失败：浏览器没开，先 action=open"
+            val path = target.ifBlank { "/sdcard/Download/web-" + System.currentTimeMillis() + ".png" }
+            val f = java.io.File(path)
+            runCatching { f.parentFile?.mkdirs() }
+            val wrote = runCatching {
+                java.io.FileOutputStream(f).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            }.getOrDefault(false)
+            if (!wrote) return "失败：写不进 $path（检查目录权限）"
+            return head() + "\n\n截图已保存：" + path + "（" + (f.length() / 1024) + " KB）"
+        }
         return when (act) {
             "text" -> {
                 val r = js(SCRIPT_TEXT, 20_000)
