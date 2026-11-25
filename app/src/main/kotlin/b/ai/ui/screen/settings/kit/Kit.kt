@@ -503,27 +503,24 @@ internal fun CapSwitch(title: String, desc: String, checked: Boolean, onChange: 
     }
 } //能力勾选一行：标题 + 说明 + 开关
 
-/**通知注入条数：0 或留空 = 不限；输入框贴右侧并做扁，高度跟滑块一致 */
+/**通知注入条数：0 或留空 = 不限；滑杆走统一 miuix 样式，数字输入框另起一行右对齐 */
 @Composable
 internal fun NotiLimitRow() {
     var text by remember { mutableStateOf(if (Cfg.notiLimit <= 0) "" else Cfg.notiLimit.toString()) }
-    Row(
-        Modifier.fillMaxWidth().padding(top = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.se_324), fontSize = 12.sp, color = TextPrimary)
-        Spacer(Modifier.width(10.dp))
-        androidx.compose.material3.Slider(
-            value = Cfg.notiLimit.coerceIn(0, 100).toFloat(),
-            onValueChange = {
-                val v = ((it / 5).toInt() * 5).coerceIn(0, 100)
-                Cfg.notiLimit = v
-                text = if (v == 0) "" else v.toString()
-            },
-            valueRange = 0f..100f,
-            modifier = Modifier.weight(1f)
-        )
-        Spacer(Modifier.width(10.dp))
+    //滑杆全宽，才能继承主题色 / 轨道浓度（原来是 material3 Slider 挤在横排里，跟其它滑杆不一致）
+    GlassSlider(
+        stringResource(R.string.se_324),
+        if (text.isEmpty()) stringResource(R.string.se_325) else text,
+        Cfg.notiLimit.coerceIn(0, 100).toFloat(),
+        0f..100f,
+        step = 5f
+    ) { v ->
+        val n = ((v / 5).toInt() * 5).coerceIn(0, 100)
+        Cfg.notiLimit = n
+        text = if (n == 0) "" else n.toString()
+    }
+    Row(Modifier.fillMaxWidth()) {
+        Spacer(Modifier.weight(1f))
         Box(
             Modifier
                 .width(52.dp)
@@ -595,13 +592,15 @@ internal fun BgImagePick() {
     }
     if (Cfg.bgImg.isNotBlank()) {
         Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.bg_blur, Cfg.bgBlur), fontSize = 11.sp, color = TextPrimary)
-        androidx.compose.material3.Slider(
-            value = Cfg.bgBlur.toFloat(),
-            onValueChange = { Cfg.bgBlur = it.toInt() },
-            valueRange = 0f..100f,
-            modifier = Modifier.fillMaxWidth()
-        )
+        //走项目统一 miuix 滑杆：能继承主题色 / 轨道浓度，和其余滑杆视觉一致（原 material3 Slider 不走自定义）
+        GlassSlider(
+            stringResource(R.string.bg_blur_t),
+            "${Cfg.bgBlur}%",
+            Cfg.bgBlur.toFloat(),
+            0f..100f,
+            step = 1f
+        ) { Cfg.bgBlur = it.toInt() }
+        Text(stringResource(R.string.bg_blur_d), fontSize = 10.sp, color = TextSecondary)
     }
 } //背景图设置
 
@@ -640,6 +639,8 @@ internal fun PetEntryRow(onOpenPet: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Switch(
             checked = Cfg.petOn,
+            //跟其它开关一致走主题色，默认材质色是紫色，和页面完全不同一套
+            colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue),
             onCheckedChange = { on ->
                 Cfg.petOn = on
                 if (on) {
@@ -693,12 +694,13 @@ internal fun GlassSlider(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     step: Float,
+    compact: Boolean = false,
     onChange: (Float) -> Unit
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontSize = 14.sp, color = TextPrimary)
+        Text(label, fontSize = if (compact) 11.sp else 14.sp, color = TextPrimary)
         Spacer(Modifier.weight(1f))
-        Text(valueText, fontSize = 11.sp, color = TextSecondary)
+        Text(valueText, fontSize = if (compact) 10.sp else 11.sp, color = TextSecondary)
     }
     val span = (range.endInclusive - range.start).takeIf { it > 0f } ?: 1f
     val frac = ((value - range.start) / span).coerceIn(0f, 1f)
@@ -708,9 +710,11 @@ internal fun GlassSlider(
     val edgeColor = if (Cfg.sliderAccent) AccentBlue else BorderGray
     var width by remember { mutableIntStateOf(0) }
     //轨道高度可配：圆点直径 = 轨道 + 6dp，行高跟着撑开，避免圆点被裁
-    val track = Cfg.sliderTrackH.dp
-    val thumb = (Cfg.sliderTrackH + 6).dp
-    val rowH = (Cfg.sliderTrackH + 18).coerceAtLeast(44).dp
+    //compact 给悬浮窗这类窄条容器用：轨道/滑块等比收 30%，行高压到 32dp，配色与绘制逻辑完全同一套
+    val trackH = if (compact) (Cfg.sliderTrackH * 7 / 10).coerceAtLeast(8) else Cfg.sliderTrackH
+    val track = trackH.dp
+    val thumb = (trackH + 6).dp
+    val rowH = if (compact) (trackH + 14).coerceAtLeast(32).dp else (trackH + 18).coerceAtLeast(44).dp
     val thumbPx = with(LocalDensity.current) { thumb.toPx() }
     val half = thumbPx / 2f
     //手指 x → 值：Rust 侧 bx_slider_value 同一套公式（见 core/feature/compute/slider.rs），此处为绘制期直算

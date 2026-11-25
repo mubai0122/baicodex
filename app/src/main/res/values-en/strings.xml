@@ -1130,6 +1130,8 @@
     <string name="bg_img_t">Background image</string>
     <string name="bg_img_d">Pick a photo to fill the page; use the blur slider so text stays readable</string>
     <string name="bg_blur">Blur %1$d</string>
+    <string name="bg_blur_t">Blur strength</string>
+    <string name="bg_blur_d">0 keeps the image crisp; higher values blur the background so text stays readable</string>
     <string name="bg_clear">Clear</string>
     <string name="mig_ms_t">Version change detected</string>
     <string name="mig_ms_d">Migrate the workspace and database to the new version? You can continue only after migrating.</string>

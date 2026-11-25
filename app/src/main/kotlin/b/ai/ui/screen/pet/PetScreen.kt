@@ -21,6 +21,7 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.glass.pageBg
 import b.ai.ui.screen.settings.kit.CapSwitch
+import b.ai.ui.screen.settings.kit.GlassSlider
 import b.ai.ui.screen.settings.kit.PolicyChip
 import b.ai.ui.widget.CardBox
 import b.ai.ui.widget.Field
@@ -58,7 +59,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -414,13 +414,17 @@ fun PetScreen(backProgress: Float = 0f, onBack: () -> Unit) {
 @Composable
 private fun PetSlider(label: String, min: Int, max: Int, value: Int, onChange: (Int) -> Unit) {
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Text(label, fontSize = 12.sp, color = TextSecondary)
-        Slider(
-            value = value.toFloat().coerceIn(min.toFloat(), max.toFloat()),
-            valueRange = min.toFloat()..max.toFloat(),
-            onValueChange = { onChange(it.toInt().coerceIn(min, max)) },
-            onValueChangeFinished = { live() }
-        )
+        //label 里已经拼了当前值，valueText 传空串，避免右侧再重复一遍数字
+        GlassSlider(
+            label,
+            "",
+            value.toFloat().coerceIn(min.toFloat(), max.toFloat()),
+            min.toFloat()..max.toFloat(),
+            step = 1f
+        ) {
+            onChange(it.toInt().coerceIn(min, max))
+            live() //统一在这里下发，调用处不必再各写一遍
+        }
     }
 } //数值滑块
 
@@ -435,8 +439,8 @@ private fun live() {
 private fun PetLookTab(onResetPos: () -> Unit, tip: String) {
     SectionTitle(stringResource(R.string.pet_tab_look), stringResource(R.string.pet_look_sub))
     CardBox {
-        PetSlider(stringResource(R.string.pet_size, Cfg.petSize), 60, 260, Cfg.petSize) { Cfg.petSize = it; live() }
-        PetSlider(stringResource(R.string.pet_alpha, Cfg.petAlpha), 30, 100, Cfg.petAlpha) { Cfg.petAlpha = it; live() }
+        PetSlider(stringResource(R.string.pet_size, Cfg.petSize), 60, 260, Cfg.petSize) { Cfg.petSize = it }
+        PetSlider(stringResource(R.string.pet_alpha, Cfg.petAlpha), 30, 100, Cfg.petAlpha) { Cfg.petAlpha = it }
         CapSwitch(stringResource(R.string.pet_flip), "", Cfg.petFlip) { Cfg.petFlip = it; live() }
         CapSwitch(stringResource(R.string.pet_shadow), "", Cfg.petShadow) { Cfg.petShadow = it; live() }
         CapSwitch(stringResource(R.string.pet_card), "", Cfg.petCard) { Cfg.petCard = it; live() }
@@ -452,10 +456,10 @@ private fun PetLookTab(onResetPos: () -> Unit, tip: String) {
     Spacer(Modifier.height(14.dp))
     SectionTitle(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), null)
     CardBox {
-        PetSlider(stringResource(R.string.pet_font, Cfg.petFont), 9, 20, Cfg.petFont) { Cfg.petFont = it; live() }
+        PetSlider(stringResource(R.string.pet_font, Cfg.petFont), 9, 20, Cfg.petFont) { Cfg.petFont = it }
         CapSwitch(stringResource(R.string.pet_font_bold), "", Cfg.petFontBold) { Cfg.petFontBold = it; live() }
-        PetSlider(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), 100, 320, Cfg.petBubbleW) { Cfg.petBubbleW = it; live() }
-        PetSlider(stringResource(R.string.pet_bubble_r, Cfg.petBubbleR), 0, 28, Cfg.petBubbleR) { Cfg.petBubbleR = it; live() }
+        PetSlider(stringResource(R.string.pet_bubble_w, Cfg.petBubbleW), 100, 320, Cfg.petBubbleW) { Cfg.petBubbleW = it }
+        PetSlider(stringResource(R.string.pet_bubble_r, Cfg.petBubbleR), 0, 28, Cfg.petBubbleR) { Cfg.petBubbleR = it }
         CapSwitch(stringResource(R.string.pet_bubble_dark), "", Cfg.petBubbleDark) { Cfg.petBubbleDark = it; live() }
     }
 } //外观分类
@@ -467,8 +471,8 @@ private fun PetFxTab() {
     SectionTitle(stringResource(R.string.pet_tab_fx), stringResource(R.string.pet_fx_sub))
     CardBox {
         CapSwitch(stringResource(R.string.pet_float), "", Cfg.petFloat) { Cfg.petFloat = it; live() }
-        PetSlider(stringResource(R.string.pet_float_amp, Cfg.petFloatAmp), 0, 24, Cfg.petFloatAmp) { Cfg.petFloatAmp = it; live() }
-        PetSlider(stringResource(R.string.pet_float_ms, Cfg.petFloatMs), 400, 4000, Cfg.petFloatMs) { Cfg.petFloatMs = it; live() }
+        PetSlider(stringResource(R.string.pet_float_amp, Cfg.petFloatAmp), 0, 24, Cfg.petFloatAmp) { Cfg.petFloatAmp = it }
+        PetSlider(stringResource(R.string.pet_float_ms, Cfg.petFloatMs), 400, 4000, Cfg.petFloatMs) { Cfg.petFloatMs = it }
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
@@ -476,13 +480,13 @@ private fun PetFxTab() {
             Cfg.petSwim = it; live()
 
         }
-        PetSlider(stringResource(R.string.pet_swim_speed, Cfg.petSwimSpeed), 10, 200, Cfg.petSwimSpeed) { Cfg.petSwimSpeed = it; live() }
+        PetSlider(stringResource(R.string.pet_swim_speed, Cfg.petSwimSpeed), 10, 200, Cfg.petSwimSpeed) { Cfg.petSwimSpeed = it }
         CapSwitch(stringResource(R.string.pet_swim_bounce), "", Cfg.petSwimBounce) { Cfg.petSwimBounce = it; live() }
     }
     Spacer(Modifier.height(10.dp))
     CardBox {
         CapSwitch(stringResource(R.string.pet_bounce), "", Cfg.petBounce) { Cfg.petBounce = it; live() }
-        PetSlider(stringResource(R.string.pet_bounce_pct, Cfg.petBouncePct), 0, 30, Cfg.petBouncePct) { Cfg.petBouncePct = it; live() }
+        PetSlider(stringResource(R.string.pet_bounce_pct, Cfg.petBouncePct), 0, 30, Cfg.petBouncePct) { Cfg.petBouncePct = it }
         GhostButton(stringResource(R.string.pet_test)) {
             PetSound.boing(ctx, if (Cfg.petSound) Cfg.petSoundVol / 100f else 0f)
             Pet.sayNow(ctx)

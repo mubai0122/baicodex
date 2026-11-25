@@ -1130,6 +1130,8 @@
 <string name="bg_img_t">Image de fond</string>
     <string name="bg_img_d">Choisir une photo pour remplir la page ; régler le flou ci-dessous pour garder le texte lisible</string>
     <string name="bg_blur">Flou %1$d</string>
+    <string name="bg_blur_t">Intensité du flou</string>
+    <string name="bg_blur_d">0 garde l\'image nette ; plus la valeur est élevée, plus le fond est flou et le texte lisible</string>
     <string name="bg_clear">Effacer</string>
     <string name="mig_ms_t">Changement de version detecte</string>
     <string name="mig_ms_d">Migrer espace de travail et base de donnees vers la nouvelle version ? Continuer seulement apres.</string>

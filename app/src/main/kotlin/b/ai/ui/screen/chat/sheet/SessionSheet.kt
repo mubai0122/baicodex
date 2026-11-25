@@ -20,6 +20,7 @@ import b.ai.ui.screen.chat.main.*
 import b.ai.ui.dialog.ScrimCard
 import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
+import b.ai.ui.widget.Field
 import b.ai.ui.widget.GhostButton
 import b.ai.ui.widget.PrimaryButton
 import b.ai.ui.widget.Tag
@@ -40,7 +41,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -150,14 +150,8 @@ fun SessionSheet(onClose: () -> Unit) {
         if (target != null) {
             Text(stringResource(R.string.ss_rename, target.title), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.height(6.dp))
-            OutlinedTextField(
-                value = draft,
-                onValueChange = { draft = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
-                shape = RoundedCornerShape(12.dp)
-            )
+            //走项目统一输入框：material3 OutlinedTextField 的描边 / 底色不走我们主题
+            Field("", draft, { draft = it })
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 GhostButton(stringResource(R.string.ss_cancel)) { editing = null }

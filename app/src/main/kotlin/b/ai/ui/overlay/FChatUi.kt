@@ -16,6 +16,7 @@ package b.ai.ui.overlay
 import androidx.compose.ui.res.stringResource
 import b.ai.R
 import b.ai.ui.glass.liquidBg
+import b.ai.ui.screen.settings.kit.GlassSlider
 import b.ai.ui.widget.IcClose
 import b.ai.ui.widget.IcSend
 import b.ai.ui.widget.IcStop4
@@ -45,7 +46,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -235,14 +235,13 @@ private fun Tune() {
 
 @Composable
 private fun TuneRow(label: String, v: Int, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontSize = 10.sp, color = TextSecondary, modifier = Modifier.width(38.dp))
-        Slider(
-            value = v.toFloat().coerceIn(range),
-            onValueChange = onChange,
-            valueRange = range,
-            modifier = Modifier.weight(1f).height(26.dp)
-        )
-        Text("$v", fontSize = 10.sp, color = TextSecondary, modifier = Modifier.width(34.dp))
-    }
+    //走统一滑杆的紧凑模式：窄条容器里也能继承主题色 / 轨道浓度，不再用 material3 Slider
+    GlassSlider(
+        label,
+        "$v",
+        v.toFloat().coerceIn(range),
+        range,
+        step = 1f,
+        compact = true
+    ) { onChange(it) }
 } //一行滑杆

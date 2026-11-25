@@ -1130,6 +1130,8 @@
 <string name="bg_img_t">背景画像</string>
     <string name="bg_img_d">アルバムから画像を選んで全面に敷き、下のぼかしで文字を読みやすく</string>
     <string name="bg_blur">ぼかし %1$d</string>
+    <string name="bg_blur_t">ぼかしの強さ</string>
+    <string name="bg_blur_d">0 で元画像がくっきり、大きくするほど背景がぼやけて文字が読みやすくなる</string>
     <string name="bg_clear">クリア</string>
     <string name="mig_ms_t">バージョン変更を検出しました</string>
     <string name="mig_ms_d">新バージョンのワークスペースとデータベースを移行しますか？移行後に続行できます。</string>
