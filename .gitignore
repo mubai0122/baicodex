@@ -23,9 +23,7 @@ crashlogs/
 *.log
 
 #本机配置与密钥（模板见 local.properties.todo；种子索引在 gradle/seeds.gradle.kts）
-#通配所有本地配置衍生物：local.properties / .bak / .bak-termux / .old 等，只放行模板
-local.properties*
-!local.properties.todo
+local.properties
 scripts/.up.token
 #产物与备份
 *.apk
@@ -51,8 +49,6 @@ app/src/main/cpp/_third_party/
 app/src/main/rust/target/
 app/src/main/rust/baiguard/target/
 app/src/main/rust/android/app/build/
-# 桌面端 Rust sidecar 的 cargo 产物
-windows/rustcore/target/
 
 # 桌面端：前端依赖与产物、旧 Kotlin 方案的 Gradle 产物
 desktop/web/node_modules/
@@ -62,8 +58,8 @@ desktop/dist/
 desktop/legacy-kotlin/build/
 desktop/legacy-kotlin/.gradle/
 # 桌面端整套先不进库（2026-11 按用户要求临时排除）
-desktop/
-desktop/legacy-kotlin/.kotlin/
+/desktop/
+/desktop/legacy-kotlin/.kotlin/
 
 #签名库不入库
 /baicodex-release.jks
@@ -72,8 +68,25 @@ desktop/legacy-kotlin/.kotlin/
 
 #打许可
 app/src/main/许可.sh
-/app/src/main/cpp/_third_party/DEPS.md
-# 桌面端 windows/ 暂不入库（2026-11 按用户要求临时排除，工程本身留在本地）
-windows/
 
+/app/src/main/cpp/_third_party/DEPS.md
+
+local.properties.bak-termux
+
+installer/build/
+installer/dist/
+installer/server/
+installer/README.md
+
+windows/.cargo/
+windows/.gradle/
+windows/.kotlin/
+windows/build/
+windows/target/
+
+baicodex.rar
+
+# 发布凭据（token）不入库
 .config/
+# 原型目录的 cargo 镜像配置（rsproxy 第三方，按约定不入库）
+windows/_egui-prototype/.cargo/

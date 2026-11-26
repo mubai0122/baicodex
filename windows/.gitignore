@@ -1,0 +1,12 @@
+# 本文件作用：桌面端工程自己的忽略规则（根 .gitignore 之外再收敛一层）
+.gradle/
+build/
+composeApp/build/
+# cargo 产物
+rustcore/target/
+# sidecar 与内置 adb 都是构建期生成/下载的，不入库
+composeApp/src/desktopMain/resources/bin/
+# 本地 IDE
+.idea/
+*.iml
+local.properties
