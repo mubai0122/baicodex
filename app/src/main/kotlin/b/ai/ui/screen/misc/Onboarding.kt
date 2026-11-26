@@ -104,7 +104,8 @@ import kotlinx.coroutines.withContext
 /** 引导流程：语言 → 工作方式 → 权限检查（含零宽弹窗）→ 工作流 → 装环境（可跳过）→ API key（可跳过）→ 用户协议 */
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
-    var step by remember { mutableIntStateOf(0) }
+    // 步骤持久化在 Cfg 里：切语言重建 Activity、退到桌面被系统回收，都不会再被打回语言页
+    var step by remember { mutableIntStateOf(Cfg.onboardStep.coerceIn(0, 7)) }
     var tick by remember { mutableIntStateOf(0) }
     //协议步的勾选：没勾就不给「同意并进入」
     var tosOk by remember { mutableStateOf(false) }
@@ -114,6 +115,11 @@ fun OnboardingScreen(onDone: () -> Unit) {
     var modeOk by remember { mutableStateOf(false) }
     var showZwPrompt by remember { mutableStateOf(false) }
     var shizMsg by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(step) {
+        //每次翻页都落盘：退出App/进程被杀后回来从这一页继续
+        if (Cfg.onboardStep != step) Cfg.onboardStep = step
+    }
 
     LaunchedEffect(tick) {
         zwSupport = withContext(Dispatchers.IO) { Router.probe() }
@@ -298,6 +304,8 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 ) {
                     //同意协议才进应用，并把同意状态上报一次
                     Cfg.tosAgreed = Tos.version()
+                    //先清进度标记再置完成位：下次冷启动才不会又回引导
+                    Cfg.onboardStep = 0
                     Cfg.onboarded = true
                     Consent.reportIfNeeded()
                     onDone()

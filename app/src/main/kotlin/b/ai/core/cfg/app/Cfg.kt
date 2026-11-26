@@ -71,6 +71,8 @@ object Cfg {
             p.edit().remove("ssh_host").remove("ssh_port").remove("ssh_user").apply()
         }
         mem("onboarded", false).value = p.getBoolean("onboarded", false)
+        //引导停在哪一步也要恢复：中途退回桌面/被系统回收后再进来，接着上次的步骤走
+        mem("onboard_step", 0).value = p.getInt("onboard_step", 0)
         //旧自有服务器账号体系已删除：清掉残留的 acc_* 与加密库里的 token
         runCatching {
             Vault.put("acc_token", "", Vault.USER)
@@ -385,6 +387,10 @@ object Cfg {
     var onboarded: Boolean
         get() = mem("onboarded", false).value
         set(v) { mem("onboarded", false).value = v; put("onboarded", v) }
+    /** 引导流程停在哪一步（0..7）：中途退出/进程被杀后回来接着走，不再从语言页重来 */
+    var onboardStep: Int
+        get() = mem("onboard_step", 0).value
+        set(v) { mem("onboard_step", 0).value = v; put("onboard_step", v) }
     var a11yDone: Boolean
         get() = mem("a11y_done", false).value
         set(v) { mem("a11y_done", false).value = v; put("a11y_done", v) }
