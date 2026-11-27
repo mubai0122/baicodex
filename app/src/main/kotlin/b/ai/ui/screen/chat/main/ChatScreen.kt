@@ -445,7 +445,9 @@ fun ChatScreen(
     }
 
     //进会话只跳到底一次，不要动画：以前每次消息数变化都 animate，分页铺开加流式会让动画反复重启，看着就是疯狂滚动
-    LaunchedEffect(Agent.sessionId) {
+    LaunchedEffect(Agent.sessionId, Agent.focusMsg) {
+        //有落点（收藏夹跳过来的那条）时别贴底，交给下面的定位 effect
+        if (Agent.focusMsg != null) return@LaunchedEffect
         //等这一帧把列表铺出来，否则 totalItemsCount 还是 0，跳了个空
         withFrameNanos { }
         val last = Agent.messages.size - 1
@@ -560,6 +562,36 @@ fun ChatScreen(
                 LaunchedEffect(Agent.sessionId, head) {
                     snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
                         .collect { (i, off) -> if (i == 0 && off == 0 && head > 0) shown += ROUND_PAGE }
+                }
+                //收藏夹跳转落点：把目标消息滚到可见位置。落在还没铺开的历史里就先多放一批，effect 会随 head 重跑
+                LaunchedEffect(Agent.sessionId, Agent.focusMsg, head, whole) {
+                    val fid = Agent.focusMsg ?: return@LaunchedEffect
+                    //消息已经不在当前列表（被压缩/删除）：直接丢掉落点，别一直挂着
+                    if (Agent.messages.none { it.id == fid }) {
+                        Agent.clearFocusMsg()
+                        return@LaunchedEffect
+                    }
+                    val reachable = if (whole) visRounds.any { r -> r.any { it.id == fid } }
+                    else flat.any { it.id == fid }
+                    if (!reachable) {
+                        //还有更早的轮次没铺开：再放一批就重进这个 effect
+                        if (head > 0) shown += ROUND_PAGE else Agent.clearFocusMsg()
+                        return@LaunchedEffect
+                    }
+                    //等一帧让 LazyColumn 把这一批真的铺出来，否则 index 是旧布局的
+                    withFrameNanos { }
+                    val idx = if (whole) visRounds.indexOfFirst { r -> r.any { it.id == fid } }
+                    else flat.indexOfFirst { it.id == fid }
+                    if (idx < 0) {
+                        Agent.clearFocusMsg()
+                        return@LaunchedEffect
+                    }
+                    //列表头部的固定项：总结卡 + （还有更早轮次时的胶囊）
+                    val lead = sums.size + if (head > 0) 1 else 0
+                    //落到历史里就不再跟着最新一条跑，否则贴底逻辑会立刻把位置抢回去
+                    follow = false
+                    listState.animateScrollToItem((lead + idx).coerceAtLeast(0))
+                    Agent.clearFocusMsg()
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -1039,4 +1071,3 @@ fun ChatScreen(
     }
     }
 } //聊天界面
-

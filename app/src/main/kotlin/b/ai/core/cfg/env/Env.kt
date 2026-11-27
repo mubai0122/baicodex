@@ -52,6 +52,8 @@ object Env {
         if (Cfg.injectPlace) parts.add(place(c))
         if (Cfg.injectUsage) parts.add(used(c))
         if (Cfg.injectNoti) parts.add(Noti.brief(c, Cfg.notiLimit))
+        //设备信息：机型与系统版本已经在 system 里（受 inject_device 控制），这里补 screen/内存这类会变或太长的
+        if (Cfg.injectDevice) parts.add(device(c))
         //全关或一项都没拼出来：请求里一个字都不多
         if (parts.isEmpty()) return ""
         //模板走种子（正文在 local.properties），{parts} 由上面各项拼好；缺种子时用代码内兜底
@@ -82,6 +84,26 @@ object Env {
         val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY).coerceIn(0, 100)
         return "电量 $pct%" + if (bm.isCharging) "（充电中）" else "（未充电）"
     } //电量与充电状态
+
+    /** 设备与资源信息：屏幕、内存、ABI、CPU 核数；读不到就不写，不编数据 */
+    private fun device(c: Context): String {
+        val sb = StringBuilder("设备 ")
+        runCatching {
+            val dm = c.resources.displayMetrics
+            sb.append("屏幕 ").append(dm.widthPixels).append('x').append(dm.heightPixels)
+            sb.append(" @").append(dm.densityDpi).append("dpi")
+        }
+        val am = c.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        if (am != null) {
+            val mi = android.app.ActivityManager.MemoryInfo()
+            am.getMemoryInfo(mi)
+            sb.append("；内存 可用 ").append(mi.availMem / 1024 / 1024).append("M/")
+                .append(mi.totalMem / 1024 / 1024).append("M")
+        }
+        sb.append("；ABI ").append(android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "未知")
+        sb.append("；CPU ").append(Runtime.getRuntime().availableProcessors()).append(" 核")
+        return sb.toString()
+    } //设备信息
 
     private fun place(c: Context): String = Place.describe(c) //位置
 } //环境注入

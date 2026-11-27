@@ -512,6 +512,25 @@ internal fun LazyListScope.uiLookSec() {
                 stringResource(R.string.se_glass_card_d),
                 Cfg.glassCard
             ) { Cfg.glassCard = it }
+            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
+            //紧跟父开关放在它下面，不要掉到整张卡片末尾
+            FollowBlock(Cfg.glassCard) {
+                Spacer(Modifier.height(10.dp))
+                GlassSlider(stringResource(R.string.tx_713fd45a), "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
+                    Cfg.glassLens = it.toInt()
+                }
+                Text(stringResource(R.string.tx_1b605a1e), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider(stringResource(R.string.tx_d73f1ed6), "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
+                    Cfg.glassHi = it.toInt()
+                }
+                Text(stringResource(R.string.tx_e82c50b0), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider(stringResource(R.string.tx_fd5f796f), "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
+                    Cfg.glassVeil = it.toInt()
+                }
+                Text(stringResource(R.string.tx_ba3f1876), fontSize = 10.sp, color = TextSecondary)
+            } //玻璃卡片子项
             Spacer(Modifier.height(10.dp))
             CapSwitch(
                 stringResource(R.string.se_tactile),
@@ -535,24 +554,6 @@ internal fun LazyListScope.uiLookSec() {
                 step = 1f
             ) { Cfg.glassBlur = it.toInt() }
             Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
-            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
-            FollowBlock(Cfg.glassCard) {
-                Spacer(Modifier.height(10.dp))
-                GlassSlider(stringResource(R.string.tx_713fd45a), "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
-                    Cfg.glassLens = it.toInt()
-                }
-                Text(stringResource(R.string.tx_1b605a1e), fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider(stringResource(R.string.tx_d73f1ed6), "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
-                    Cfg.glassHi = it.toInt()
-                }
-                Text(stringResource(R.string.tx_e82c50b0), fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider(stringResource(R.string.tx_fd5f796f), "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
-                    Cfg.glassVeil = it.toInt()
-                }
-                Text(stringResource(R.string.tx_ba3f1876), fontSize = 10.sp, color = TextSecondary)
-            }
             //卡片不透明度：两种模式都生效——白卡模式直接调白底 alpha，玻璃模式按比例缩乳白遮罩
             Spacer(Modifier.height(10.dp))
             GlassSlider(stringResource(R.string.tx_fa5d97dd), "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
@@ -879,4 +880,3 @@ internal fun LazyListScope.uiNavSec() {
         }
     }
 } //外观分类：悬浮与手势
-

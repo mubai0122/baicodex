@@ -2745,4 +2745,11 @@
     <string name="perm_all_ask" formatted="false">確認</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >全体スイッチにより上書き中：%1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">有効：リクエストに temperature / top_p / top_k を含めます</string>
+    <string name="tx_5c1e0a72" formatted="false">無効：この3つのパラメータは一切送信しません（未対応のプロバイダーは 400 を返します）</string>
+    <string name="tx_5c1e0a73" formatted="false">有効：リクエストに presence / frequency / repeat penalty を含めます</string>
+    <string name="tx_5c1e0a74" formatted="false">無効：これらのペナルティは一切送信しません（未対応のプロバイダーは 400 を返します）</string>
+    <string name="tx_5c1e0a75" formatted="false">この設定では「創造性パラメータ」が無効です：以下の値は保存されますが送信されません</string>
+    <string name="tx_5c1e0a76" formatted="false">この設定では「繰り返し制御」が無効です：以下の値は保存されますが送信されません</string>
 </resources>

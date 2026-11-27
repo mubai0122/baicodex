@@ -129,8 +129,9 @@ internal fun SelectRow(
         Box(Modifier.onSizeChanged { pill = with(den) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
             Row(
                 Modifier
-                    //gate 显式清零：胶囊高 24dp，按最短边判永远过不了 156dp 门槛，会掉回平涂
-                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
+                    //下拉胶囊用纯平涂：这里原来挂 gate=0.dp 的强制玻璃，24dp 高的小胶囊照样跑一遍
+                    //离屏+高光，深色底上透出来就是一层「半透明阴影」，被用户当成下拉框自身的投影
+                    .background(AccentBlueSoft, RoundedCornerShape(9.dp))
                     .padding(start = 9.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

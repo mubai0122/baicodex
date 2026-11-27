@@ -2745,4 +2745,11 @@
     <string name="perm_all_ask" formatted="false">Demander</string>
     <string name="perm_all_deny" formatted="false">Interdire</string>
     <string name="perm_all_over" >Remplac\'e par l\'interrupteur global : %1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">Activé : les requêtes incluent temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">Désactivé : ces trois paramètres ne sont jamais envoyés (les fournisseurs non compatibles renvoient 400)</string>
+    <string name="tx_5c1e0a73" formatted="false">Activé : les requêtes incluent presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">Désactivé : ces pénalités ne sont jamais envoyées (les fournisseurs non compatibles renvoient 400)</string>
+    <string name="tx_5c1e0a75" formatted="false">Paramètres créatifs désactivés pour cette configuration : les valeurs ci-dessous sont enregistrées mais non envoyées</string>
+    <string name="tx_5c1e0a76" formatted="false">Contrôle de répétition désactivé pour cette configuration : les valeurs ci-dessous sont enregistrées mais non envoyées</string>
 </resources>

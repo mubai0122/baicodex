@@ -428,6 +428,23 @@ object Agent {
         }
     }
 
+    /** 打开会话并定位到某条消息（收藏夹 / 搜索结果用）：先挂落点再切会话，时序无关 */
+    fun openSessionAt(id: String, msgId: Long) {
+        focusBySession = id to msgId
+        openSession(id)
+    }
+
+    /** 待定位的消息：带会话 id 存，只有真的切到那个会话才对界面生效，避免在旧消息里找不到而白清 */
+    private var focusBySession by mutableStateOf<Pair<String, Long>?>(null)
+
+    /** 当前会话要滚到的消息 id；null = 没有落点 */
+    val focusMsg: Long? get() = focusBySession?.takeIf { it.first == sessionId }?.second
+
+    /** 聊天页滚完自己清掉落点，避免下次切回来又跳一次 */
+    fun clearFocusMsg() {
+        focusBySession = null
+    }
+
     fun openSession(id: String) {
         scope.launch {
             val list = withContext(Dispatchers.IO) { Repo.messages(id) }
@@ -1903,16 +1920,21 @@ object Agent {
             append(modePrompt()).append("\n\n")
             //编排：任务分解与规划（设置 →模型 →编排），按用户选的拆解形式换文案；关着时一个字都不多
             if (Cfg.planFirst) append(planPrompt()).append("\n\n")
-            //长期记忆整段下发：用户没删就一直带着
-            val memo = Memory.prompt()
-            if (memo.isNotBlank()) append(memo).append("\n")
-            append("设备：").append(dev)
-            append("；当前工作方式：").append(mode)
-            append("；Android/data 与 obb：").append(Router.dataZone(App.self))
-            if (Cfg.workMode == WorkMode.NORMAL) {
-                append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / edit_file / make_dir / delete_file）")
-            }
-            append("。\n")
+            //长期记忆整段下发：受「注入记忆」开关与条数上限控制，用户没删就一直带着
+            if (Cfg.injectMem) {
+                val memo = Memory.prompt(Cfg.injectMemCount)
+                if (memo.isNotBlank()) append(memo).append("\n")
+            } //记忆注入
+            //设备信息：注入开关关掉时连这一句都不写，模型就不知道自己跑在什么机器上
+            if (Cfg.injectDevice) {
+                append("设备：").append(dev)
+                append("；当前工作方式：").append(mode)
+                append("；Android/data 与 obb：").append(Router.dataZone(App.self))
+                if (Cfg.workMode == WorkMode.NORMAL) {
+                    append("（exec_shell 走原路径、不受零宽影响，这类目录一律用 read_file / write_file / edit_file / make_dir / delete_file）")
+                }
+                append("。\n")
+            } //设备段
             //环境段不在这里拼：分钟级时间会让每次请求的 system 前缀都变，服务端 prompt 缓存全部失效。
             //这里只放当天日期（一天一字不变），实时时间 / 电量 / 通知挂到请求体最末（见 buildPayload 的 Env.live）
             append("工具：").append(tools).append("。").append(PromptStore.toolHint)

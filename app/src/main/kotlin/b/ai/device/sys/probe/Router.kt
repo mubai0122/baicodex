@@ -51,6 +51,9 @@ object Router {
     @Volatile private var probed = false
     @Volatile private var probing = false
 
+    /** 探测代次：每次重测 +1，用来丢弃过期的探测结果 */
+    private val gen = java.util.concurrent.atomic.AtomicInteger(0)
+
     /** 原路径能不能真的列出 Android/data：canRead 与 isExternalStorageManager 都会骗人，只信 list() */
     @Volatile private var nativeOk = false
 
@@ -63,40 +66,51 @@ object Router {
     /**零宽命中的那条路径叫什么 */
     fun probeName(c: Context): String = picked?.let { c.getString(it.nameRes) } ?: c.getString(R.string.rz_unavail)
 
-    /** 后台探测一次，避免在主线程做 File.list() 卡 UI */
+    /** 后台探测一次，避免在主线程做 File.list() 卡 UI；新一轮会作废旧一轮的结果 */
     fun probeAsync() {
-        if (probed || probing) return
+        //代次：点一次重测就 +1，旧线程即便卡死也写不回结论，也不会把新结论覆盖掉
+        val my = gen.incrementAndGet()
         probing = true
         Thread {
-            runCatching { probe() }
-            probing = false
+            try {
+                probe(my)
+            } catch (t: Throwable) {
+                //探测本身只为「能不能列出来」，任何异常都按不可用处理，但绝不能把 probing 卡在 true
+                android.util.Log.w("BaiZW", "probe failed: ${t.message}")
+            } finally {
+                if (gen.get() == my) probing = false
+            }
         }.apply { isDaemon = true }.start()
     } //后台探测入口
 
-    /** 阻塞探测：只允许在工作线程调用 */
-    fun probe(): Boolean {
-        probed = true
-        picked = null
-        nativeOk = canList(DATA_ROOT)
+    /** 阻塞探测：只允许在工作线程调用（引导页直接调它等结论） */
+    fun probe(): Boolean = probe(gen.incrementAndGet())
+
+    private fun probe(my: Int): Boolean {
+        val native = canList(DATA_ROOT)
         //原路径能列出来就不用零宽。判据只认 list()：canRead 与 isExternalStorageManager 在 FUSE 上都会骗人
-        if (nativeOk) return false
-        for (v in variants) {
-            if (canList(v.map(DATA_ROOT))) {
-                picked = v
-                return true
-            }
-        }
-        return false
+        val hit = if (native) null else variants.firstOrNull { canList(it.map(DATA_ROOT)) }
+        //被后一轮顶掉的探测直接丢弃结果：界面上看到的必须是最后一次点出来的
+        if (gen.get() != my) return hit != null
+        probed = true
+        nativeOk = native
+        picked = hit
+        return hit != null
     } //逐个候选实测
 
-    /** 真的列一次目录：能拿到列表才算这条路通 */
+    /** 是否正在探测：UI 用它显示「检测中…」，避免点了按钮毫无反馈 */
+    val isProbing: Boolean get() = probing
+
+    /** 真的列一次目录：能拿到非空列表才算这条路通（空数组在无权限时也会出现，不能当可用） */
     private fun canList(p: String): Boolean =
-        runCatching { File(p).list() != null }.getOrDefault(false)
+        runCatching { File(p).list()?.isNotEmpty() == true }.getOrDefault(false)
 
     fun reset() {
         probed = false
         picked = null
         nativeOk = false
+        //顺手把「检测中」清掉：旧线程哪怕卡死也不会再改这个标志，界面不能被它永久锁在检测中
+        probing = false
     }
 
     fun map(path: String): String = picked?.map?.invoke(path) ?: path

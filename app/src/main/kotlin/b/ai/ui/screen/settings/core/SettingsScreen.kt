@@ -301,7 +301,6 @@ internal val PageHints = mapOf(
     "chat_prompt" to "提示词优化 四芒星 模型 保留原语言 优化方向",
     "chat_inout" to "注入输入与输出 注入 时间 电池 位置 通知 用量 系统提示 回复信息 元信息 waifu 流式 草稿 输出偏好 文风",
     "chat_session" to "会话 历史 导出 收藏夹 工作区",
-    "chat_tags" to "提示词 标签 片段 全局启用",
     "chat_perm" to "权限 工作方式 Shizuku Root 无障碍 悬浮窗 实验性",
     //收藏夹页此前漏了关键词
     "chat_star" to "收藏夹 收藏 星标 置顶 重要会话 归档",
@@ -408,6 +407,8 @@ fun SettingsScreen(
     onOpenStars: () -> Unit = {},
     onOpenMemory: () -> Unit = {},
     onOpenDsh: () -> Unit = {},
+    //收藏夹「打开」：切回聊天页并定位到某条消息（sessionId, messageId）
+    onOpenChatMsg: (String, Long) -> Unit = { _, _ -> },
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -509,14 +510,17 @@ fun SettingsScreen(
                 Row(
                     Modifier
                         .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
-                        //逐级返回：栈里还有子页就先回上一层，栈空才退出设置
+                        //逐级返回：栈里还有子页就先回上一层，栈空才退出设置；
+                        //模型配置表单里还有没保存的改动时先弹确认，别让填了一半的内容静悄悄丢掉
                         .tap {
-                            if (SeNav.top != null) {
-                                GlassPerf.switched()
-                                SeNav.pop()
-                            } else {
-                                SeNav.clear()
-                                onBack()
+                            ModelDraft.guard {
+                                if (SeNav.top != null) {
+                                    GlassPerf.switched()
+                                    SeNav.pop()
+                                } else {
+                                    SeNav.clear()
+                                    onBack()
+                                }
                             }
                         }
                         .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -699,8 +703,7 @@ fun SettingsScreen(
                         "chat_prompt" -> chatPromptSec()
                         "chat_inout" -> chatInOutSec()
                         "chat_session" -> chatSessionSec(stats) { dsImportOpen = true }
-                        "chat_star" -> chatStarSec()
-                        "chat_tags" -> promptTagSec()
+                        "chat_star" -> chatStarSec(onOpenChatMsg)
                         "chat_perm" -> chatPermSec()
                         "ui_look" -> uiLookSec()
                         "ui_md" -> mdSec()
@@ -764,7 +767,47 @@ fun SettingsScreen(
     }
     }
     //技能/角色/定时任务弹窗共用一个挂载点，同一时刻只会有一个非空
-    HostInOverlay(active = draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open || ThinkEdit.rule != null || rewardOpen || dsImportOpen || SessionDialogs.open) {
+    HostInOverlay(active = ModelDraft.asking || draft != null || personaDraft != null || mcpDraft != null || taskDraft || flowDraft || a2aDraft || triggerDraft || pick != null || packDraft != null || PermAsk.kind.value != null || WsPurge.open || WorkspacePick.open || ThinkEdit.rule != null || rewardOpen || dsImportOpen || SessionDialogs.open) {
+        //模型配置未保存就要走：先确认一句，选「继续编辑」就留在原地
+        if (ModelDraft.asking) {
+            ScrimCard(onDismiss = { ModelDraft.cancel() }) {
+                Text(
+                    "有未保存的改动",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "模型配置表单里还有没保存的内容，返回会丢掉。要保留就点「继续编辑」，再去点「保存到当前配置」。",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+                Spacer(Modifier.height(14.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Text(
+                        "继续编辑",
+                        fontSize = 13.sp,
+                        color = TextPrimary,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
+                            .tap { ModelDraft.cancel() }
+                            .padding(horizontal = 16.dp, vertical = 9.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "丢弃并返回",
+                        fontSize = 13.sp,
+                        color = SurfaceWhite,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(10.dp), tint = AccentBlue, gate = 0.dp)
+                            .tap { ModelDraft.discard() }
+                            .padding(horizontal = 16.dp, vertical = 9.dp)
+                    )
+                }
+            } //未保存确认
+            return@HostInOverlay
+        }
         //思考规则编辑：新建追加到末尾，编辑替换同 id
         ThinkEdit.rule?.let { r ->
             ThinkRuleDialog(
@@ -854,4 +897,3 @@ fun SettingsScreen(
         if (SessionDialogs.open) SessionDialogsHost()
     }
 } //设置界面
-

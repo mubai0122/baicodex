@@ -85,7 +85,6 @@ val SePages = listOf(
     //注入输入与输出：原「注入」页整段并入这一页（本机实时信息 + 回复展示 / 流式 / 草稿 / 输出偏好）
     SePage("chat_inout", R.string.se_pg_inout, R.string.se_pg_inout_sub, 0),
     SePage("chat_session", R.string.se_pg_chat_session, R.string.se_pg_chat_session_sub, 0),
-    SePage("chat_tags", R.string.se_pg_chat_tags, R.string.se_pg_chat_tags_sub, 0),
     SePage("chat_perm", R.string.se_pg_perm, R.string.se_pg_perm_sub, 0),
     SePage("chat_star", R.string.tx_star_page, R.string.tx_star_page_sub, 0),
     //外观

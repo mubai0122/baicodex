@@ -210,6 +210,7 @@ import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.SkillPack
 import b.ai.core.media.wall.Wallpaper
 import b.ai.core.model.chat.WorkMode
+import b.ai.device.shell.root.Root
 import b.ai.device.shell.root.Shiz
 import b.ai.device.sys.alarm.Alarms
 import b.ai.device.app.FChat
@@ -432,16 +433,58 @@ internal fun WsSection() {
         }
     }
 } //工作区信息
-
 internal fun LazyListScope.permTab() {
     item {
     SectionTitle(stringResource(R.string.se_025), stringResource(R.string.se_146))
     CardBox {
+        val ctx = LocalContext.current
+        val scope = rememberCoroutineScope()
+        //切换前先体检：Shizuku 没起 / 没 su 一律不许切，原因直接写在这行，比 Toast 更不容易看漏
+        var blocked by remember { mutableStateOf<String?>(null) }
+        var checking by remember { mutableStateOf<WorkMode?>(null) }
+        //真正落定模式：换了模式，通道探测结论就过期了，重置后按新权限重探一次
+        fun commit(m: WorkMode) {
+            blocked = null
+            Cfg.workMode = m
+            Router.reset()
+            Router.probeAsync()
+        } //落定工作方式
         WorkMode.entries.forEach { m ->
-            ChoiceRow(stringResource(m.labelRes), stringResource(m.descRes), Cfg.workMode == m) { Cfg.workMode = m }
+            ChoiceRow(stringResource(m.labelRes), stringResource(m.descRes), Cfg.workMode == m) {
+                if (checking != null) return@ChoiceRow//正在体检就别连点
+                when (m) {
+                    WorkMode.NORMAL -> commit(m)
+                    //高权限模式必须先确认通道真的通：探测放 IO 线程，主线程只收结果
+                    else -> {
+                        checking = m
+                        scope.launch {
+                            val err = withContext(Dispatchers.IO) {
+                                when (m) {
+                                    WorkMode.SHIZUKU -> Shiz.probe(ctx).takeIf { !it.ok }?.desc
+                                    WorkMode.ROOT -> Root.probe().takeIf { !it.ok }?.desc
+                                    else -> null
+                                }
+                            }
+                            checking = null
+                            if (err == null) commit(m)
+                            else blocked = "切不到「${ctx.getString(m.labelRes)}」：$err"
+                        }
+                    }
+                }
+            }
+        }
+        //体检中与失败原因都就地显示，避免点了没反应的错觉
+        if (checking != null) {
+            Spacer(Modifier.height(6.dp))
+            Text("正在检查 ${ctx.getString(checking!!.labelRes)} 通道…", fontSize = 11.sp, color = TextSecondary)
+        }
+        if (blocked != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(blocked!!, fontSize = 11.sp, color = DangerRed)
         }
     }
     }
+
 
     item {
     Spacer(Modifier.height(14.dp))
@@ -560,28 +603,48 @@ internal fun LazyListScope.permTab() {
     SectionTitle(stringResource(R.string.se_029))
     CardBox {
         val ctx = LocalContext.current
+        //探测是异步的：这里用轮询把「检测中 / 结论」都推到界面上，否则点了按钮毫无反馈
+        var zone by remember { mutableStateOf(Router.dataZone(ctx)) }
+        var zoneOk by remember { mutableStateOf(Router.zoneOk()) }
+        var probing by remember { mutableStateOf(Router.isProbing) }
+        //点过一次重测就挂个待反馈标记：探测可能在两次轮询之间就跑完了，靠前后态比对会漏
+        var pending by remember { mutableStateOf(false) }
+        var note by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                zone = Router.dataZone(ctx)
+                zoneOk = Router.zoneOk()
+                probing = Router.isProbing
+                if (pending && !probing) {
+                    pending = false
+                    note = if (Router.zoneOk()) "检测完成：${Router.dataZone(ctx)}" else Router.dataZone(ctx)
+                }
+                delay(300)
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.se_157), fontSize = 14.sp, color = TextPrimary)
-                //探测在后台线程跑：每秒把结果刷一次，否则 UI 会一直停在「检测中…」
-                var zone by remember { mutableStateOf(Router.dataZone(ctx)) }
-                var zoneOk by remember { mutableStateOf(Router.zoneOk()) }
-                LaunchedEffect(Unit) {
-                    while (true) {
-                        zone = Router.dataZone(ctx)
-                        zoneOk = Router.zoneOk()
-                        delay(1000)
-                    }
-                }
                 Text(
                     stringResource(R.string.se_zone_cur, zone),
                     fontSize = 11.sp,
                     color = if (zoneOk) OkGreen else TextSecondary
                 )
+                if (probing) {
+                    Text("检测中…", fontSize = 10.sp, color = AccentBlue)
+                }
             }
             Switch(
                 checked = Cfg.zeroWidth,
-                onCheckedChange = { Cfg.zeroWidth = it },
+                onCheckedChange = { on ->
+                    Cfg.zeroWidth = on
+                    //打开零宽就是要用它：结论可能还是启动时那次探测的（当时可能没权限），重探一遍
+                    if (on) {
+                        note = null
+                        pending = true
+                        Router.reprobe()
+                    }
+                },
                 colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
             )
         }
@@ -592,9 +655,20 @@ internal fun LazyListScope.permTab() {
             fontSize = 11.sp,
             color = TextSecondary
         )
+        if (note != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(note!!, fontSize = 11.sp, color = if (zoneOk) OkGreen else DangerRed)
+        }
         Spacer(Modifier.height(8.dp))
-        GhostButton(stringResource(R.string.se_162), modifier = Modifier.height(38.dp)) { Router.reprobe() }
+        //按钮永远可点：防连点靠的是探测代次（旧一轮结论会被丢弃），把按钮锁在「检测中」反而会点不动
+        GhostButton(
+            if (probing) "检测中…" else stringResource(R.string.se_162),
+            modifier = Modifier.height(38.dp)
+        ) {
+            note = null
+            pending = true
+            Router.reprobe()
+        }
     }
     }
 } //权限分类（已并入对话分类，入口不再单独占一个 tab）
-

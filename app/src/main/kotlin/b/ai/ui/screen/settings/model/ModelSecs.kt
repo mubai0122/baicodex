@@ -313,6 +313,22 @@ internal fun LazyListScope.modelCfgSec(onOpenMemory: () -> Unit) {
                     Profiles.capture()
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            //创造性采样参数开关：有的厂商/中转不认 temperature / top_p / top_k，一发就是 HTTP 400
+            CapSwitch(
+                stringResource(R.string.tx_c71ac55d),
+                if (Cfg.modelCreative) stringResource(R.string.tx_5c1e0a71)
+                else stringResource(R.string.tx_5c1e0a72),
+                Cfg.modelCreative
+            ) { Cfg.modelCreative = it; Profiles.capture() }
+            Spacer(Modifier.height(8.dp))
+            //重复控制参数开关：presence / frequency / repeat penalty 同样是「有的认有的不认」
+            CapSwitch(
+                stringResource(R.string.tx_69c6c8f3),
+                if (Cfg.modelRepeat) stringResource(R.string.tx_5c1e0a73)
+                else stringResource(R.string.tx_5c1e0a74),
+                Cfg.modelRepeat
+            ) { Cfg.modelRepeat = it; Profiles.capture() }
             Spacer(Modifier.height(10.dp))
             //思考档位：按参考图改成可展开的档位编辑器（显示名 / 写入路径 / 写入值），
             //不再是一个逗号串输入框——档位数量和每个档位写什么值本来就是两件事
@@ -389,15 +405,18 @@ internal fun LazyListScope.modelParamSec() {
                     colors = SwitchDefaults.colors(checkedTrackColor = AccentBlue)
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            SelectField(
-                stringResource(R.string.se_079),
-                Cfg.thinkEffort,
-                listOf("low", "medium", "high"),
-                optionLabel = { it },
-                isSelected = { Cfg.thinkEffort == it },
-                onSelect = { Cfg.thinkEffort = it }
-            )
+            //思考强度跟随思考开关：思考没开就没有「强度」可谈，免得点了档位却什么都没下发
+            if (Cfg.think) {
+                Spacer(Modifier.height(8.dp))
+                SelectField(
+                    stringResource(R.string.se_079),
+                    Cfg.thinkEffort,
+                    listOf("low", "medium", "high"),
+                    optionLabel = { it },
+                    isSelected = { Cfg.thinkEffort == it },
+                    onSelect = { Cfg.thinkEffort = it }
+                )
+            }
             } //仅支持思考的模型才显示深度思考
             Spacer(Modifier.height(10.dp))
             CapSwitch(
@@ -447,6 +466,15 @@ internal fun LazyListScope.modelParamSec() {
                 }
             }
             Spacer(Modifier.height(8.dp))
+            //能力开关关掉时明确告知：这里的值仍会保存，但请求里不会带出去
+            if (!Cfg.modelCreative) {
+                Text(
+                    stringResource(R.string.tx_5c1e0a75),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             SelectField(
                 stringResource(R.string.se_083),
                 if (Cfg.temperature < 0f) stringResource(R.string.se_084) else Cfg.temperature.toString(),
@@ -493,6 +521,15 @@ internal fun LazyListScope.modelParamSec() {
             //重复控制：治「车轱辘话」「复读同一个词」，跟创造性分开一组更好找
             Text(stringResource(R.string.tx_69c6c8f3), fontSize = 12.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
+            //能力开关关掉时同样提示：值照存，不下发
+            if (!Cfg.modelRepeat) {
+                Text(
+                    stringResource(R.string.tx_5c1e0a76),
+                    fontSize = 10.sp,
+                    color = TextSecondary
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             SelectField(
                 stringResource(R.string.pm_presence),
                 value = if (Cfg.presencePenalty < 0f) stringResource(R.string.tx_18c63459) else String.format("%.1f", Cfg.presencePenalty),
@@ -987,5 +1024,3 @@ internal fun ThinkToggleRow(title: String, sub: String, checked: Boolean, onChan
         )
     }
 } //弹窗开关行
-
-

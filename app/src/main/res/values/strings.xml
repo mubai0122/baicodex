@@ -1791,7 +1791,7 @@
     <string name="se_kernel_fail">自检未通过</string>
     <string name="se_kernel_na">这个 ABI 没带 Rust 内核（只编 arm64-v8a）</string>
     <string name="se_pg_prompt">提示词优化</string>
-    <string name="se_pg_prompt_sub">优化用模型、保留原语言、自定义优化方向</string>
+    <string name="se_pg_prompt_sub">优化用模型、保留语言与语种、永不询问、优化偏好</string>
     <string name="se_pg_inout">注入输入与输出</string>
     <string name="se_pg_inout_sub">本机实时信息注入、回复信息展示、流式输出、草稿保留与输出偏好文案</string>
     <string name="se_pg_orch">编排</string>
@@ -2715,4 +2715,13 @@
     <string name="perm_all_ask" formatted="false">询问</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >已被全局主控覆盖为「%1$s」</string>
+
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">已开启：请求会带 temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">已关闭：这三个参数一律不下发（不认它们的厂商会直接 400）</string>
+    <string name="tx_5c1e0a73" formatted="false">已开启：请求会带 presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">已关闭：这几类惩罚参数一律不下发（不认它们的厂商会直接 400）</string>
+    <!-- 模型参数页：对应能力开关关掉时的提示 -->
+    <string name="tx_5c1e0a75" formatted="false">本条配置已关闭「创造性参数」：下面 temperature / top_p / top_k 的取值只保存，不会下发</string>
+    <string name="tx_5c1e0a76" formatted="false">本条配置已关闭「重复控制参数」：下面这几项只保存，不会下发</string>
 </resources>

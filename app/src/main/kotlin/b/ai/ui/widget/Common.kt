@@ -299,15 +299,23 @@ fun Field(
     }
 } //输入框
 
-/** 单选行：标题 + 说明 + 右侧对勾 */
+/** 单选行：标题 + 说明 + 右侧对勾；未选中也走液态底，只有选中才描边 */
 @Composable
 fun ChoiceRow(title: String, desc: String?, selected: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else SurfaceWhite, gate = 0.dp)
-            .border(1.dp, if (selected) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
+            //未选中给 SurfaceMuted 而不是死白：白底深色主题下会像一块贴上去的纸
+            .liquidBg(
+                RoundedCornerShape(12.dp),
+                tint = if (selected) AccentBlueSoft else SurfaceMuted,
+                gate = 0.dp
+            )
+            .then(
+                //不选中不画框，交给液态底自己分层
+                if (selected) Modifier.border(1.dp, AccentBlue, RoundedCornerShape(12.dp)) else Modifier
+            )
             .tap { onClick() }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,

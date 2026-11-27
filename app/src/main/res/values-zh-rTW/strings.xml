@@ -2746,4 +2746,11 @@
     <string name="perm_all_ask" formatted="false">詢問</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >已被全域主控覆蓋為「%1$s」</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">已開啟：請求會帶 temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">已關閉：這三個參數一律不下發（不認它們的廠商會直接 400）</string>
+    <string name="tx_5c1e0a73" formatted="false">已開啟：請求會帶 presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">已關閉：這幾類懲罰參數一律不下發（不認它們的廠商會直接 400）</string>
+    <string name="tx_5c1e0a75" formatted="false">本條設定已關閉「創造性參數」：下面 temperature / top_p / top_k 的取值只儲存，不會下發</string>
+    <string name="tx_5c1e0a76" formatted="false">本條設定已關閉「重複控制參數」：下面這幾項只儲存，不會下發</string>
 </resources>

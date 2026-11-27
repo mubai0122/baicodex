@@ -2676,4 +2676,11 @@
     <string name="perm_all_ask" formatted="false">Ask</string>
     <string name="perm_all_deny" formatted="false">Deny</string>
     <string name="perm_all_over" >Overridden by the global switch: %1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">Enabled: requests include temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">Disabled: these three are never sent (providers that reject them return 400)</string>
+    <string name="tx_5c1e0a73" formatted="false">Enabled: requests include presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">Disabled: these penalties are never sent (providers that reject them return 400)</string>
+    <string name="tx_5c1e0a75" formatted="false">Creative parameters are off for this configuration: the values below are saved but not sent</string>
+    <string name="tx_5c1e0a76" formatted="false">Repetition control is off for this configuration: the values below are saved but not sent</string>
 </resources>

@@ -75,6 +75,7 @@ import b.ai.ui.screen.user.GhWeb
 import b.ai.ui.screen.user.GhWebPage
 import b.ai.ui.screen.settings.about.AnnounceDialog
 import b.ai.ui.screen.settings.core.SeNav
+import b.ai.ui.screen.settings.model.ModelDraft
 import b.ai.ui.dialog.AskSheet
 import b.ai.ui.screen.settings.perm.A11yAuto
 import b.ai.ui.screen.settings.perm.A11yAutoDialog
@@ -348,8 +349,14 @@ private fun Root() {
     BackHandler(enabled = memOpen) { memOpen = false }
     //设置页有二级栈时返回先退子页，退到分类页才退出设置
     val seDeep = screen == "settings" && SeNav.stack.isNotEmpty()
-    BackHandler(enabled = !Cfg.predictiveBack && seDeep) { SeNav.pop() }
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && seDeep && !drawerActive) { progress ->
+    BackHandler(enabled = !Cfg.predictiveBack && seDeep) { ModelDraft.guard { SeNav.pop() } }
+    //模型配置表单有未保存改动时，预测性手势路线改走普通返回：跟手动画已经开始再拦就晚了
+    BackHandler(enabled = Cfg.predictiveBack && screen == "settings" && ModelDraft.dirty) {
+        ModelDraft.guard {
+            if (seDeep) SeNav.pop() else screen = "chat"
+        }
+    }
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && seDeep && !drawerActive && !ModelDraft.dirty) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
             SeNav.pop()
@@ -361,13 +368,15 @@ private fun Root() {
     }
     //关掉预测性手势时退回普通返回，不做跟手动画；工作区页从对话页进，退也回对话页；插件页同理；dsh 引擎页回设置
     BackHandler(enabled = !Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace" || screen == "plugins" || screen == "dsh")) {
-        screen = when (screen) {
+        val target = when (screen) {
             "pet", "dsh" -> "settings"
             else -> "chat"
         }
+        //从设置页退出前先过一遍未保存守卫（模型配置表单可能有没存的改动）
+        if (screen == "settings") ModelDraft.guard { screen = target } else screen = target
     }
     //手势进行中 progress 0→1 驱动设置页位移与缩小，中途松手回弹，滑过阈值才真的退出
-    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace" || screen == "plugins" || screen == "dsh") && !drawerActive) { progress ->
+    PredictiveBackHandler(enabled = Cfg.predictiveBack && !seDeep && (screen == "settings" || screen == "pet" || screen == "workspace" || screen == "plugins" || screen == "dsh") && !drawerActive && !(screen == "settings" && ModelDraft.dirty)) { progress ->
         try {
             progress.collect { e -> backFx = e.progress }
             screen = when (screen) {
@@ -437,7 +446,13 @@ private fun Root() {
                                 onOpenDsh = { screen = "dsh" },
                                 //收藏夹与记忆面板都挂在根弹窗层，设置页只负责发信号
                                 onOpenStars = { starsOpen = true },
-                                onOpenMemory = { memOpen = true }
+                                onOpenMemory = { memOpen = true },
+                                //设置 → 收藏夹 → 「打开」：切回聊天页并定位到那条消息，设置栈一起拍平
+                                onOpenChatMsg = { sid, mid ->
+                                    SeNav.clear()
+                                    screen = "chat"
+                                    Agent.openSessionAt(sid, mid)
+                                }
                             )
                             "pet" -> PetScreen(backProgress = backFx, onBack = { screen = "settings" })
                             "workspace" -> WorkspaceScreen(backProgress = backFx, onBack = { screen = "chat" })
@@ -518,10 +533,11 @@ private fun Root() {
                         }
                         starsOpen -> StarSheet(
                             onClose = { starsOpen = false },
-                            onOpen = { sid ->
+                            onOpen = { sid, mid ->
                                 starsOpen = false
                                 screen = "chat"
-                                Agent.openSession(sid)
+                                //带上消息 id：聊天页会把那条滚到可见位置，而不是直接落在最新一条
+                                Agent.openSessionAt(sid, mid)
                             }
                         )
                         //评价调研：用满 2 小时才出现，弹过或用户关掉就再也不来

@@ -64,7 +64,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -152,6 +154,12 @@ fun ModelSetupPanel() {
         fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString(), fProto
     ).joinToString("|")
 
+    //脏标记同步给全局守卫：设置页返回时用它拦一下，别让填了一半的内容静悄悄丢掉
+    val dirtyNow by remember { derivedStateOf { snap.isNotEmpty() && finger() != snap } }
+    LaunchedEffect(dirtyNow) { ModelDraft.dirty = dirtyNow }
+    //面板离开组合（切别的子页 / 退出设置）就清标记，否则会误拦下一次返回
+    DisposableEffect(Unit) { onDispose { ModelDraft.dirty = false } }
+
     val isLocal = fProv == Providers.LOCAL //本地模型这条：base_url 与 Key 都不用填
 
     //把一条配置装进表单；没保存的改动直接丢掉
@@ -172,26 +180,6 @@ fun ModelSetupPanel() {
         savedTo = ""
         snap = finger()
     } //载入表单
-
-    //清成一张空白表单：不落库，点保存才真正新增一条配置
-    fun newForm() {
-        fId = ""
-        fName = ""
-        fCustom = false
-        fProv = "custom"
-        fBase = ""
-        fKey = ""
-        fKey0 = ""
-        fModels = emptyList()
-        fModel = ""
-        fTok = 0
-        fCtx = 0
-        //新建时沿用当前这条的协议：同一家服务商多半都要求同一种协议
-        fProto = LlmClient.protocolOf(Cfg.modelProtocol)
-        formErr = null
-        savedTo = ""
-        snap = finger()
-    } //空白表单
 
     //点保存才校验并写回：先落 models.json，再切到这条配置让 Cfg 生效
     fun save() {
@@ -384,26 +372,7 @@ fun ModelSetupPanel() {
     }
 
     Column {
-        //一条配置只管一个供应商；这里只清成空白表单，点保存才真新增
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
-                .tap { newForm(); dialog = "provider" }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.ms_add_provider), fontSize = 13.sp, color = TextPrimary)
-                Text(
-                    stringResource(R.string.ms_add_provider_sub),
-                    fontSize = 10.sp,
-                    color = TextSecondary
-                )
-            }
-            Text("＋", fontSize = 13.sp, color = AccentBlue)
-        }
-        Spacer(Modifier.height(8.dp))
+        //新增配置的入口不放在这里：厂商在下面「厂商」选择行里选，填完 Key 点「保存到当前配置」即自动生成新配置
         //配置名：留空就跟随「厂商 · 模型」，右侧方按钮一键回到自动名
         val autoNow = Profiles.autoLabel(fProv, fModel)
         FieldBox(
@@ -736,7 +705,7 @@ internal fun ProfileRow(p: ModelProfile) {
     Row(
         Modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
             .tap {
                 //切配置就整组换成那条的已保存内容，表单里没保存的改动会丢
                 Profiles.select(p.id)

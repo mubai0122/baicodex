@@ -746,15 +746,17 @@ internal fun MetaLine(m: MsgMeta) {
     val parts = ArrayList<String>(7)
     if (Cfg.showUsage) {
         parts.add(tokText(m.totalTokens) + " tok")
-        if (m.speed > 0) parts.add(String.format(Locale.US, "%.0f tok/s", m.speed))
+        //速度：只有真跑出过速度才有得显，单独一项开关
+        if (m.speed > 0 && Cfg.showSpeed) parts.add(String.format(Locale.US, "%.0f tok/s", m.speed))
     }
+    //元信息总开关关掉时整段细分都不生效，与旧配置（show_meta=false）语义保持一致
     if (Cfg.showMeta) {
-        if (m.ms > 0) parts.add(stringResource(R.string.cs_elapsed) + secText(m.ms) + "s")
-        if (m.firstMs > 0) parts.add(stringResource(R.string.cs_first) + secText(m.firstMs) + "s")
-        if (m.at > 0) parts.add(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(m.at)))
-        if (m.provider.isNotBlank()) parts.add(m.provider)
-        if (m.model.isNotBlank()) parts.add(m.model)
-    }
+        if (m.ms > 0 && Cfg.showLatency) parts.add(stringResource(R.string.cs_elapsed) + secText(m.ms) + "s")
+        if (m.firstMs > 0 && Cfg.showFirst) parts.add(stringResource(R.string.cs_first) + secText(m.firstMs) + "s")
+        if (m.at > 0 && Cfg.showTime) parts.add(SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(m.at)))
+        if (m.provider.isNotBlank() && Cfg.showProvider) parts.add(m.provider)
+        if (m.model.isNotBlank() && Cfg.showModel) parts.add(m.model)
+    } //元信息细分
     if (parts.isEmpty()) return
     Text(
         parts.joinToString(" · "),
@@ -918,4 +920,3 @@ internal fun summaryLine(body: String): String {
     }
     return ""
 } //摘要首行
-
