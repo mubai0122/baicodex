@@ -193,6 +193,8 @@ internal fun devGroups(): List<Pair<String, List<DevItem>>> = listOf(
         DevItem("seedprompt", b.ai.App.self.getString(R.string.tx_9f3c1a7e)) { _ -> b.ai.agent.run.PromptStore.diagnose() },
         //接口协议：当前走 /responses 还是 /chat/completions，并按该协议真发一条（Responses 相关问题的第一手现场）
         DevItem("protocol", b.ai.App.self.getString(R.string.tx_2b7d4e10)) { _ -> withContext(Dispatchers.IO) { protocolDump() } },
+        //工具配对：用几种脏历史跑一遍 ToolPair 修补，确认「缺结果 / 孤儿 / 空 id / 重复 id」都能修成上游能吃的形状
+        DevItem("toolpair", "工具配对自检") { _ -> toolPairDump() },
         //桌宠峰谷：当前算高峰还是错峰、今天什么日子、节假日表有没有拉到（口径：工作日 9–12 / 14–18）
         DevItem("peakhours", "桌宠峰谷时段") { _ -> withContext(Dispatchers.IO) { b.ai.core.pet.peak.PeakHours.describe() } },
         //节假日表：手动联网刷一份当年数据（断网就继续按周一至周五兜底）
@@ -811,3 +813,85 @@ internal fun sttDump(): String {
     sb.append("提醒：Sherpa 需要内置运行时，当前包未包含")
     return sb.toString()
 }
+/**
+ * 工具配对自检：拿几种线上见过的脏历史跑一遍 ToolPair.fixChat，
+ * 逐个确认「修完以后每个 assistant.tool_calls 的 id 都能在紧随的 tool 段里找到」。
+ * 这条检查不联网、不动库，纯算法验证；不需要真的复现 400 就能确认修补逻辑是好的。
+ */
+internal fun toolPairDump(): String = runCatching {
+    val sb = StringBuilder()
+
+    /** 自洽校验：返回仍然缺配对的 tool_call id 列表 */
+    fun badOf(arr: org.json.JSONArray): List<String> {
+        val bad = ArrayList<String>()
+        var k = 0
+        while (k < arr.length()) {
+            val m = arr.optJSONObject(k)
+            val calls = m?.optJSONArray("tool_calls")
+            if (m != null && m.optString("role") == "assistant" && calls != null) {
+                val want = LinkedHashMap<String, Boolean>()
+                for (c in 0 until calls.length()) {
+                    val id = calls.optJSONObject(c)?.optString("id").orEmpty()
+                    want[id] = false
+                } //收集期望
+                var j = k + 1
+                while (j < arr.length()) {
+                    val t = arr.optJSONObject(j) ?: break
+                    if (t.optString("role") != "tool") break
+                    val tid = t.optString("tool_call_id")
+                    if (want.containsKey(tid)) want[tid] = true
+                    j++
+                } //扫 tool 段
+                want.forEach { (id, ok) -> if (!ok) bad.add(id) }
+                k = j
+                continue
+            } //assistant 段
+            k++
+        } //逐条扫
+        return bad
+    } //自洽校验
+
+    fun check(name: String, json: String) {
+        val arr = org.json.JSONArray(json)
+        val before = arr.length()
+        val changed = b.ai.net.api.llm.ToolPair.fixChat(arr)
+        val bad = badOf(arr)
+        sb.append("\u25aa ").append(name).append("：")
+            .append(if (changed) "已修补" else "无需改动")
+            .append("，消息 ").append(before).append(" → ").append(arr.length()).append(" 条，")
+            .append(if (bad.isEmpty()) "配对 OK" else "仍缺 " + bad.joinToString(",")).append('\n')
+        sb.append("    ").append(arr.toString().take(420)).append('\n')
+    } //跑一个用例
+
+    //① 两个调用只回来一个结果（并行工具里有一条没落库）
+    check(
+        "缺一条结果",
+        """[{"role":"user","content":"读两个文件"},
+        {"role":"assistant","content":"","tool_calls":[{"id":"a","type":"function","function":{"name":"read_file","arguments":"{}"}},{"id":"b","type":"function","function":{"name":"list_dir","arguments":"{}"}}]},
+        {"role":"tool","tool_call_id":"a","content":"ok"}]
+        """.trimIndent()
+    )
+    //② 孤儿结果（没有对应调用，历史被切过分支）
+    check(
+        "孤儿结果",
+        """[{"role":"assistant","content":"hi"},{"role":"tool","tool_call_id":"ghost","content":"leak"}]
+        """.trimIndent()
+    )
+    //③ 模型给的 id 是空串（部分中转站会吃掉 id）
+    check(
+        "空 id",
+        """[{"role":"assistant","content":"","tool_calls":[{"id":"","type":"function","function":{"name":"time","arguments":"{}"}}]},
+        {"role":"tool","tool_call_id":"","content":"12:00"}]
+        """.trimIndent()
+    )
+    //④ 正常历史（不该被改动）
+    check(
+        "正常配对",
+        """[{"role":"assistant","content":"","tool_calls":[{"id":"x","type":"function","function":{"name":"time","arguments":"{}"}}]},
+        {"role":"tool","tool_call_id":"x","content":"12:00"}]
+        """.trimIndent()
+    )
+    sb.append("提示：聊天里偶现上游 400（insufficient tool messages）时，请求发出前这里会自动修补，")
+        .append("无需手动处理；本项只用于确认修补逻辑没坏。")
+    sb.toString()
+}.getOrElse { "工具配对自检失败：" + (it.message ?: it.javaClass.simpleName) }

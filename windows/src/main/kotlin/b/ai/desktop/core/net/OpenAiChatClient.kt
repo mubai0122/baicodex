@@ -158,7 +158,9 @@ class OpenAiChatClient(
         effort: String?,
     ): JsonObject = buildJsonObject {
         put("model", profile.model)
-        put("messages", JsonArray(messages))
+        //提交前硬校验工具配对：assistant.tool_calls 与 tool 结果必须一一对应，
+        //缺的补桩、孤儿丢弃（上游对这条规则是硬 400，偶现「insufficient tool messages」）
+        put("messages", JsonArray(ToolPair.fixChat(messages)))
         put("stream", false)
 
         if (profile.temperature >= 0 && "temperature" !in skipped) {

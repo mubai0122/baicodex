@@ -112,7 +112,7 @@ class LlmClient(
             val code = c.responseCode
             val text = (if (code in 200..299) c.inputStream else c.errorStream)
                 ?.bufferedReader()?.use { it.readText() } ?: ""
-            if (code !in 200..299) throw LlmException("HTTP $code: ${text.take(600)}")
+            if (code !in 200..299) throw LlmException(pairHint("HTTP $code: ${text.take(600)}"))
             text
         } catch (e: LlmException) {
             throw e
@@ -122,6 +122,13 @@ class LlmClient(
             c.disconnect()
         }
     }//收发并统一错误文本
+
+    /**
+     * 工具配对类错误的补充提示：请求发出前 ToolPair 已经修过一次配对，
+     * 还报这条说明撞上了新的变体（上游实现差异），点「重发」即可，下次请求会重新清理。
+     */
+    private fun pairHint(msg: String): String = if (!ToolPair.isPairError(msg)) msg else
+        msg + "\n（提示：本轮请求已自动修补工具调用配对，仍被拒多半是上游的新变体；点「重发」即可，不要清空会话。）"
 
     // ───────────────────────── Chat Completions ─────────────────────────
 
@@ -199,6 +206,9 @@ class LlmClient(
                 extra.keys().forEach { k -> body.put(k, extra.get(k)) }
             }
         }
+        //提交前最后一道硬校验（见 ToolPair）：assistant.tool_calls 与 tool 结果必须严格配对，
+        //缺的补桩、孤儿与重复丢弃、空 id 规范化；只改这一次的请求体，库里的历史一个字节都不动
+        runCatching { body.optJSONArray("messages")?.let { ToolPair.fixChat(it) } }
         return body
     }//请求体
 
@@ -371,6 +381,9 @@ class LlmClient(
         stream: Boolean
     ): JSONObject {
         val (input, instructions) = responsesInput(messages)
+        //Responses 的 function_call 与 function_call_output 是平级 item，同样必须一一配对，
+        //缺的这里补齐（上游同样是硬 400，且打断整轮对话）
+        runCatching { ToolPair.fixResponses(input) }
         val body = JSONObject().put("model", model).put("input", input)
         if (instructions.isNotBlank()) body.put("instructions", instructions)
         //工具：Responses 的 schema 是扁平的，必须转换，直接塞 Chat 结构会被判非法
@@ -516,7 +529,7 @@ class LlmClient(
             val code = c.responseCode
             if (code !in 200..299) {
                 val err = c.errorStream?.bufferedReader()?.use { it.readText() } ?: ""
-                throw LlmException("HTTP $code: ${err.take(600)}")
+                throw LlmException(pairHint("HTTP $code: ${err.take(600)}"))
             }
             val ctype = c.contentType ?: ""
             if (!ctype.contains("event-stream", true)) {
