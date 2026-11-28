@@ -90,3 +90,10 @@ baicodex.rar
 .config/
 # 原型目录的 cargo 镜像配置（rsproxy 第三方，按约定不入库）
 windows/_egui-prototype/.cargo/
+
+# installer：只留安装器源码（setup/stub/tools），构建产物与打包脚本、服务端不入库
+installer/build/
+installer/dist/
+installer/server/
+installer/build.sh
+installer/README.md
