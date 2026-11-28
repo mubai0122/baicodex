@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import b.ai.desktop.app.AppState
+import b.ai.desktop.core.auth.VbaiAuth
 import b.ai.desktop.core.config.ConfigStore
 import b.ai.desktop.core.util.openUrl
 import b.ai.desktop.feature.settings.PillButton
@@ -143,15 +144,6 @@ fun AccountSettings(state: AppState) {
         }
     }
 
-    if (tip != null) {
-        Text(
-            tip!!,
-            fontSize = 10.sp,
-            color = if (tipOk) colors.primary else colors.error,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-    }
-
     HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
 
     SectionTitle("Git 环境", "登录只解决凭据；commit / clone 还需要本机装了 git")
@@ -180,6 +172,76 @@ fun AccountSettings(state: AppState) {
                 PillButton("下载 Git…") { openUrl("https://git-scm.com/download/win") }
             }
         }
+    }
+
+    HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+
+    //Vbai 官方中转：设备码授权，全程不需要用户手填任何密钥
+    val vb = VbaiAuth.account
+    SectionTitle("Vbai 官方中转", "设备码授权：浏览器里登录一次即可，Key 自动加密存本机并写入模型配置")
+    if (vb == null) {
+        Text(
+            "① 点「开始登录」领码　② 浏览器里登录 Vbai 并点「确认授权」　③ 回到这里自动完成\n" +
+                "登录码 5 分钟内有效；同一账号的 Key 全平台唯一，换设备登录拿到的是同一个。",
+            fontSize = 10.sp,
+            lineHeight = 17.sp,
+            color = colors.onSurfaceVariant,
+        )
+        Spacer(Modifier.size(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton("开始登录", primary = true, enabled = !VbaiAuth.busy) {
+                scope.launch { VbaiAuth.login() }
+            }
+            if (VbaiAuth.verify.isNotBlank()) {
+                PillButton("再次打开授权页") { openUrl(VbaiAuth.verify) }
+            }
+            if (VbaiAuth.busy) {
+                PillButton("取消") { VbaiAuth.cancel() }
+            }
+        }
+        if (VbaiAuth.msg.isNotBlank()) {
+            Text(
+                VbaiAuth.msg,
+                fontSize = 10.sp,
+                color = if (VbaiAuth.stage == "ok") colors.primary else colors.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    } else {
+        Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(vb.user, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colors.onSurface)
+                Text(
+                    buildString {
+                        append("已授权")
+                        if (vb.plan.isNotBlank()) append(" · ").append(vb.plan).append(" 套餐")
+                        if (vb.balance.isNotBlank()) append(" · 余额 ¥").append(vb.balance)
+                    },
+                    fontSize = 11.sp,
+                    color = colors.onSurfaceVariant,
+                )
+            }
+            PillButton("退出") { VbaiAuth.logout() }
+        }
+        SettingRow("API Key", "已加密保存（${vb.masked.ifBlank { "掩码不可用" }}）") {
+            Text("vbai.json", fontSize = 10.sp, color = colors.onSurfaceVariant)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PillButton("写入模型配置", primary = true) {
+                tipOk = true
+                tip = state.applyVbaiProfile()
+            }
+            PillButton("打开控制台") { openUrl("https://ai.baiccb.cn/") }
+        }
+    }
+
+    if (tip != null) {
+        Text(
+            tip!!,
+            fontSize = 10.sp,
+            color = if (tipOk) colors.primary else colors.error,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 

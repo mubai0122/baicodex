@@ -57,11 +57,14 @@ object Memory {
         rows = emptyList()
     } //全清
 
-    /** 注入系统提示：一条一行；空表就什么都不加 */
-    fun prompt(): String {
+    /** 注入系统提示：一条一行；空表就什么都不加。limit <= 0 = 不限条数，超出时末尾标出还有多少没带 */
+    fun prompt(limit: Int = 0): String {
         if (rows.isEmpty()) return ""
+        val take = if (limit <= 0) rows.size else limit.coerceAtMost(rows.size)
         val sb = StringBuilder("长期记忆（用户没删就一直算数，与本轮对话同等可信）：\n")
-        rows.forEach { sb.append("- ").append(it.text).append('\n') }
+        rows.take(take).forEach { sb.append("- ").append(it.text).append('\n') }
+        //被截断时明确告诉模型还有存量，免得它以为记忆就这么多
+        if (take < rows.size) sb.append("- （另有 ").append(rows.size - take).append(" 条未注入，需要时可用记忆检索工具查）\n")
         return sb.toString()
     } //拼提示
 

@@ -37,6 +37,12 @@ import b.ai.ui.widget.SectionTitle
 import b.ai.ui.widget.SelectField
 import b.ai.ui.widget.SquareIconBox
 import b.ai.ui.widget.tap
+import b.ai.ui.screen.user.VbaiInlineFill
+import b.ai.net.vbai.VbaiAuth
+import b.ai.ui.screen.user.VbaiIntro
+import b.ai.ui.screen.user.VbaiAskCard
+import b.ai.ui.screen.user.VbaiIntroCard
+import b.ai.ui.screen.user.vbaiWriteProfile
 import b.ai.net.api.llm.text
 
 import android.widget.Toast
@@ -64,7 +70,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Text
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -152,6 +160,12 @@ fun ModelSetupPanel() {
         fModels.joinToString(","), fModel, fTok.toString(), fCtx.toString(), fProto
     ).joinToString("|")
 
+    //脏标记同步给全局守卫：设置页返回时用它拦一下，别让填了一半的内容静悄悄丢掉
+    val dirtyNow by remember { derivedStateOf { snap.isNotEmpty() && finger() != snap } }
+    LaunchedEffect(dirtyNow) { ModelDraft.dirty = dirtyNow }
+    //面板离开组合（切别的子页 / 退出设置）就清标记，否则会误拦下一次返回
+    DisposableEffect(Unit) { onDispose { ModelDraft.dirty = false } }
+
     val isLocal = fProv == Providers.LOCAL //本地模型这条：base_url 与 Key 都不用填
 
     //把一条配置装进表单；没保存的改动直接丢掉
@@ -172,26 +186,6 @@ fun ModelSetupPanel() {
         savedTo = ""
         snap = finger()
     } //载入表单
-
-    //清成一张空白表单：不落库，点保存才真正新增一条配置
-    fun newForm() {
-        fId = ""
-        fName = ""
-        fCustom = false
-        fProv = "custom"
-        fBase = ""
-        fKey = ""
-        fKey0 = ""
-        fModels = emptyList()
-        fModel = ""
-        fTok = 0
-        fCtx = 0
-        //新建时沿用当前这条的协议：同一家服务商多半都要求同一种协议
-        fProto = LlmClient.protocolOf(Cfg.modelProtocol)
-        formErr = null
-        savedTo = ""
-        snap = finger()
-    } //空白表单
 
     //点保存才校验并写回：先落 models.json，再切到这条配置让 Cfg 生效
     fun save() {
@@ -305,8 +299,37 @@ fun ModelSetupPanel() {
     }
 
     //弹窗挂在根弹窗层，卡片本身不会被录进模糊背景
+    //列表那边点了「新建」且没有可用配置：把全局位翻译成本页的弹窗状态
+    LaunchedEffect(VbaiIntro.ask) {
+        if (VbaiIntro.ask) {
+            VbaiIntro.ask = false
+            dialog = "vbaiAsk"
+        }
+    }
+
     HostInOverlay(dialog.isNotEmpty()) {
         when (dialog) {
+            //无配置新建的两步：先问要不要用中转站，再进宣传页（打开官网 / 登录账号）
+            "vbaiAsk" -> VbaiAskCard(
+                onYes = { dialog = "vbaiIntro" },
+                onNo = {
+                    Profiles.capture()
+                    Profiles.add()
+                    dialog = ""
+                }
+            )
+            "vbaiIntro" -> VbaiIntroCard(
+                onDone = { _, _ ->
+                    val n = vbaiWriteProfile()
+                    if (n.isNotBlank()) {
+                        //配置已经选中：表单立刻换成新配置，用户接着选模型点保存
+                        loadForm(Profiles.byId(Cfg.profileId))
+                        savedTo = b.ai.App.self.getString(R.string.vb_saved, n)
+                    }
+                    dialog = ""
+                },
+                onClose = { dialog = "" }
+            )
             "provider" -> ProviderDialog(
                 current = fProv,
                 onPick = { p ->
@@ -384,26 +407,7 @@ fun ModelSetupPanel() {
     }
 
     Column {
-        //一条配置只管一个供应商；这里只清成空白表单，点保存才真新增
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
-                .tap { newForm(); dialog = "provider" }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.ms_add_provider), fontSize = 13.sp, color = TextPrimary)
-                Text(
-                    stringResource(R.string.ms_add_provider_sub),
-                    fontSize = 10.sp,
-                    color = TextSecondary
-                )
-            }
-            Text("＋", fontSize = 13.sp, color = AccentBlue)
-        }
-        Spacer(Modifier.height(8.dp))
+        //新增配置的入口不放在这里：厂商在下面「厂商」选择行里选，填完 Key 点「保存到当前配置」即自动生成新配置
         //配置名：留空就跟随「厂商 · 模型」，右侧方按钮一键回到自动名
         val autoNow = Profiles.autoLabel(fProv, fModel)
         FieldBox(
@@ -434,7 +438,7 @@ fun ModelSetupPanel() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted, gate = 0.dp)
                 .tap { dialog = "provider" }
                 .padding(horizontal = 12.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -461,6 +465,16 @@ fun ModelSetupPanel() {
                 modifier = Modifier.padding(top = 10.dp)
             )
         } else {
+            //provider = Vbai 中转站：先给一键登录，登录后把 Key 与 base_url 直接填进表单
+            //间距由 VbaiInlineFill 自带的 12dp 顶距负责，这里不再叠 Spacer
+            if (fProv == "vbai") {
+                VbaiInlineFill { k, b ->
+                    fKey = k
+                    fBase = b
+                    formErr = null
+                    urlTick++ //base_url 变了，模型列表要重拉
+                }
+            }
             Field(
                 "base_url",
                 fBase,
@@ -484,7 +498,7 @@ fun ModelSetupPanel() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted, gate = 0.dp)
                 .tap {
                     if (isLocal) {
                         //本地：先刷新已导入的 GGUF，再让用户在卡片里单选
@@ -679,7 +693,7 @@ fun ProfileList() {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .liquidBg(RoundedCornerShape(10.dp), tint = DangerRedSoft)
+                    .liquidBg(RoundedCornerShape(10.dp), tint = DangerRedSoft, gate = 0.dp)
                     .tap { Perms.openAllFiles(ctx) }
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
@@ -701,9 +715,14 @@ fun ProfileList() {
         Spacer(Modifier.height(2.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton(stringResource(R.string.ms_add)) {
-                //加的是空白供应商配置，填完在下面表单里点保存才生效
-                Profiles.capture()
-                Profiles.add()
+                //一条可用配置都没有时先问一句：要不要用开发者自建的中转站（登录即用）
+                if (!Cfg.ready && !VbaiAuth.logged) {
+                    VbaiIntro.ask = true //本函数拿不到弹窗状态，置全局位交给 ModelSetupPanel
+                } else {
+                    //加的是空白供应商配置，填完在下面表单里点保存才生效
+                    Profiles.capture()
+                    Profiles.add()
+                }
             }
             Spacer(Modifier.width(8.dp))
             Text(
@@ -736,7 +755,7 @@ internal fun ProfileRow(p: ModelProfile) {
     Row(
         Modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
             .tap {
                 //切配置就整组换成那条的已保存内容，表单里没保存的改动会丢
                 Profiles.select(p.id)
@@ -811,7 +830,7 @@ internal fun LocalPickDialog(
                         Modifier
                             .fillMaxWidth()
                             .padding(vertical = 3.dp)
-                            .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted)
+                            .liquidBg(RoundedCornerShape(10.dp), tint = if (sel) AccentBlueSoft else SurfaceMuted, gate = 0.dp)
                             .tap { onPick(n) }
                             .padding(horizontal = 10.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -856,7 +875,8 @@ internal fun ProviderDialog(current: String, onPick: (Provider) -> Unit, onClose
                         .fillMaxWidth()
                         .padding(vertical = 3.dp)
                         .liquidBg(RoundedCornerShape(10.dp)
-                        , tint = if (sel) AccentBlueSoft else SurfaceMuted)
+                        , tint = if (sel) AccentBlueSoft else SurfaceMuted
+                        , gate = 0.dp)
                         .tap { onPick(p) }
                         .padding(horizontal = 10.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -941,7 +961,7 @@ internal fun ModelPickMulti(
         Row(
             Modifier
                 .fillMaxWidth()
-                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -990,7 +1010,7 @@ internal fun ModelPickMulti(
             Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp)
-                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted)
+                .liquidBg(RoundedCornerShape(10.dp), tint = SurfaceMuted, gate = 0.dp)
                 .padding(start = 10.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1050,7 +1070,7 @@ internal fun ModelPickMulti(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .liquidBg(RoundedCornerShape(12.dp), tint = if (on) AccentBlueSoft else Color.Transparent)
+                            .liquidBg(RoundedCornerShape(12.dp), tint = if (on) AccentBlueSoft else Color.Transparent, gate = 0.dp)
                             .tap { onToggle(m) }
                             .padding(horizontal = 12.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1084,7 +1104,7 @@ internal fun ModelPickMulti(
             Box(
                 Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { onClose() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -1094,7 +1114,7 @@ internal fun ModelPickMulti(
             Box(
                 Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(12.dp), tint = if (picked.isEmpty()) SurfaceMuted else AccentBlue)
+                    .liquidBg(RoundedCornerShape(12.dp), tint = if (picked.isEmpty()) SurfaceMuted else AccentBlue, gate = 0.dp)
                     .tap { if (picked.isNotEmpty()) onOk() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -1139,7 +1159,7 @@ internal fun HttpWarnDialog(
             Box(
                 Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(12.dp), tint = SurfaceMuted, gate = 0.dp)
                     .tap { onUseHttps() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -1154,7 +1174,7 @@ internal fun HttpWarnDialog(
             Box(
                 Modifier
                     .weight(1f)
-                    .liquidBg(RoundedCornerShape(12.dp), tint = if (ready) AccentBlue else SurfaceMuted)
+                    .liquidBg(RoundedCornerShape(12.dp), tint = if (ready) AccentBlue else SurfaceMuted, gate = 0.dp)
                     .tap(enabled = ready) { if (ready) onUseHttp() }
                     .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
@@ -1238,7 +1258,7 @@ internal fun SheetRow(title: String, sub: String?, selected: Boolean, onClick: (
     Row(
         Modifier
             .fillMaxWidth()
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else Color.Transparent)
+            .liquidBg(RoundedCornerShape(12.dp), tint = if (selected) AccentBlueSoft else Color.Transparent, gate = 0.dp)
             .tap { onClick() }
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically

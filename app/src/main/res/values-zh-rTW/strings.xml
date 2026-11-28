@@ -2746,4 +2746,94 @@
     <string name="perm_all_ask" formatted="false">詢問</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >已被全域主控覆蓋為「%1$s」</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">已開啟：請求會帶 temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">已關閉：這三個參數一律不下發（不認它們的廠商會直接 400）</string>
+    <string name="tx_5c1e0a73" formatted="false">已開啟：請求會帶 presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">已關閉：這幾類懲罰參數一律不下發（不認它們的廠商會直接 400）</string>
+    <string name="tx_5c1e0a75" formatted="false">本條設定已關閉「創造性參數」：下面 temperature / top_p / top_k 的取值只儲存，不會下發</string>
+    <string name="tx_5c1e0a76" formatted="false">本條設定已關閉「重複控制參數」：下面這幾項只儲存，不會下發</string>
+    <string name="tx_icon_title">應用程式圖示</string>
+    <string name="tx_icon_sub">自訂桌面捷徑圖示</string>
+    <string name="tx_icon_tip">從相簿選一張圖，會在桌面新增一個帶該圖示的捷徑；Android 不允許直接替換應用程式本身的圖示，所以原圖示仍保留。</string>
+    <string name="tx_icon_pick">從相簿選擇</string>
+    <string name="tx_icon_note">選完立即建立，桌面會跳出「新增」確認</string>
+    <string name="tx_icon_decodefail">這張圖讀不出來，換一張試試</string>
+    <string name="tx_icon_unsupported">目前桌面不支援自訂圖示捷徑</string>
+    <string name="tx_pic_view">檢視</string>
+    <string name="tx_pic_locate">路徑</string>
+    <string name="tx_pic_open">開啟</string>
+    <string name="tx_pic_copied">已複製圖片路徑</string>
+    <string name="tx_pic_openfail">沒有能開啟這個檔案的應用程式</string>
+    <string name="tx_walltint_t">桌布取色</string>
+    <string name="tx_walltint_on">已開啟：顏色跟隨背景圖</string>
+    <string name="tx_walltint_off">已關閉：使用預設色系</string>
+    <string name="tx_walltint_tip">已跟隨背景圖取色，手動色系暫不可選；換背景圖會自動重新取色</string>
+    <string name="tx_walltint_fail">這張背景圖取不到主色，已切回預設色系</string>
+    <string name="vb_title">Vbai 帳號</string>
+    <string name="vb_sub">裝置碼授權：全程不需要任何金鑰，身分由你親自於瀏覽器登入證明。Key 只存本機加密庫，介面上只回顯遮罩。</string>
+    <string name="vb_logged">已登入</string>
+    <string name="vb_authorized">已授權</string>
+    <string name="vb_plan">%1$s 方案</string>
+    <string name="vb_balance">餘額 ¥%1$s</string>
+    <string name="vb_key">Key %1$s</string>
+    <string name="vb_fill_model">填入目前模型設定</string>
+    <string name="vb_filled">已填入 base_url 與 API Key（%1$s）</string>
+    <string name="vb_no_key">沒有可用的 Key，請重新登入</string>
+    <string name="vb_relogin">重新登入</string>
+    <string name="vb_logout">登出</string>
+    <string name="vb_logout_done">已登出（平台端 Key 仍保留，換裝置登入會拿到同一個 Key）</string>
+    <string name="vb_code_left">登入碼 %1$ds 後過期</string>
+    <string name="vb_reopen">再次開啟授權頁</string>
+    <string name="vb_copy_code">複製登入碼</string>
+    <string name="vb_cancel">取消</string>
+    <string name="vb_copied">授權連結已複製</string>
+    <string name="vb_step1">① 點擊下方按鈕領取登入碼</string>
+    <string name="vb_step2">② 瀏覽器裡登入 Vbai 並點「確認授權」</string>
+    <string name="vb_step3">③ 回到應用程式自動完成，無需複製貼上</string>
+    <string name="vb_start">開始登入</string>
+    <string name="vb_note">說明：同一帳號的 Key 全平台唯一，本應用程式不保存任何 app_secret；輪詢間隔 2 秒，登入碼 5 分鐘內有效。</string>
+    <string name="vb_inline_on">Vbai 已登入</string>
+    <string name="vb_inline_login">Vbai 一鍵登入</string>
+    <string name="vb_logging">正在登入…</string>
+    <string name="vb_inline_hint">點一下自動開啟瀏覽器授權，Key 只存本機加密庫</string>
+    <string name="vb_fill_key">填入 Key</string>
+    <string name="vb_filled_key">已填入 base_url 與 API Key</string>
+    <string name="vb_cancel_login">取消登入</string>
+    <string name="vb_oneclick">一鍵登入</string>
+    <string name="vb_login_ok">登入成功，點「填入 Key」寫進表單</string>
+    <string name="vb_ask_title">是否使用開發者創立的中轉站？</string>
+    <string name="vb_ask_body">Vbai 中轉站由開發者自建：一個 Key 就能用多家模型，登入即用，不用逐家申請。</string>
+    <string name="vb_ask_no">否，我自己填</string>
+    <string name="vb_ask_yes">是，先看看</string>
+    <string name="vb_name">Vbai 中轉站</string>
+    <string name="vb_intro_1">· 登入即用：裝置碼授權，不用自己找 Key</string>
+    <string name="vb_intro_2">· 統一計費：方案與餘額在「Vbai 帳號」卡里直接看</string>
+    <string name="vb_intro_3">· 相容 OpenAI：base_url 就是 https://ai.baiccb.cn/v1，隨時能切回別家</string>
+    <string name="vb_cur_key">目前 Key</string>
+    <string name="vb_not_login">未登入</string>
+    <string name="vb_go">已登入，繼續</string>
+    <string name="vb_login_btn">登入帳號</string>
+    <string name="vb_open_site">開啟官網</string>
+    <string name="vb_ok">登入成功</string>
+    <string name="vb_no_browser">沒有可用的瀏覽器</string>
+    <string name="vb_saved">已新建設定：%1$s</string>
+    <string name="vb_rec_title">推薦使用 Vbai 中轉站 · 一鍵接入</string>
+    <string name="vb_rec_body">開發者自建中轉，一個 Key 走多家模型；登入即用，也可以隨時換回自己的 Key。</string>
+    <string name="vb_rec_btn">了解並登入</string>
+    <string name="vb_s_starting">正在申請登入碼…</string>
+    <string name="vb_s_nocode">平台沒有回傳登入碼</string>
+    <string name="vb_s_wait">已開啟瀏覽器，請登入並在網頁上點「確認授權」</string>
+    <string name="vb_s_retry">網路不穩，正在重試…（剩餘 %1$ds）</string>
+    <string name="vb_s_ok">登入成功</string>
+    <string name="vb_s_expired">登入碼已過期，請重新發起登入</string>
+    <string name="vb_s_waiting">等待授權…（剩餘 %1$ds）</string>
+    <string name="vb_s_fail">登入失敗</string>
+    <string name="vb_s_cancel">已取消</string>
+    <string name="vb_s_guard">剛申請過，請稍等 %1$d 秒再試</string>
+    <string name="vb_s_429">請求太頻繁，請稍後再試</string>
+    <string name="vb_s_410">登入碼已作廢，請重新發起</string>
+    <string name="vb_s_http">網路異常（HTTP %1$d）</string>
+    <string name="vb_s_failhttp">請求失敗（HTTP %1$d）</string>
+    <string name="vb_s_net">網路異常：%1$s</string>
 </resources>

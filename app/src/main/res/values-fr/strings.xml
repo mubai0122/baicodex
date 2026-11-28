@@ -2745,4 +2745,94 @@
     <string name="perm_all_ask" formatted="false">Demander</string>
     <string name="perm_all_deny" formatted="false">Interdire</string>
     <string name="perm_all_over" >Remplac\'e par l\'interrupteur global : %1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">Activé : les requêtes incluent temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">Désactivé : ces trois paramètres ne sont jamais envoyés (les fournisseurs non compatibles renvoient 400)</string>
+    <string name="tx_5c1e0a73" formatted="false">Activé : les requêtes incluent presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">Désactivé : ces pénalités ne sont jamais envoyées (les fournisseurs non compatibles renvoient 400)</string>
+    <string name="tx_5c1e0a75" formatted="false">Paramètres créatifs désactivés pour cette configuration : les valeurs ci-dessous sont enregistrées mais non envoyées</string>
+    <string name="tx_5c1e0a76" formatted="false">Contrôle de répétition désactivé pour cette configuration : les valeurs ci-dessous sont enregistrées mais non envoyées</string>
+    <string name="tx_icon_title">Icône de l\'app</string>
+    <string name="tx_icon_sub">Icône personnalisée du raccourci d\'accueil</string>
+    <string name="tx_icon_tip">Choisissez une photo : un raccourci d\'écran d\'accueil avec cette icône sera créé. Android ne permet pas de remplacer l\'icône de l\'application elle-même, l\'originale est conservée.</string>
+    <string name="tx_icon_pick">Choisir dans la galerie</string>
+    <string name="tx_icon_note">Créé immédiatement ; le lanceur demandera de l\'ajouter</string>
+    <string name="tx_icon_decodefail">Impossible de lire cette image, essayez-en une autre</string>
+    <string name="tx_icon_unsupported">Ce lanceur ne prend pas en charge les icônes de raccourci personnalisées</string>
+    <string name="tx_pic_view">Voir</string>
+    <string name="tx_pic_locate">Chemin</string>
+    <string name="tx_pic_open">Ouvrir</string>
+    <string name="tx_pic_copied">Chemin de l\'image copié</string>
+    <string name="tx_pic_openfail">Aucune application ne peut ouvrir ce fichier</string>
+    <string name="tx_walltint_t">Couleur du fond d\'écran</string>
+    <string name="tx_walltint_on">Activé : les couleurs suivent le fond</string>
+    <string name="tx_walltint_off">Désactivé : palettes prédéfinies</string>
+    <string name="tx_walltint_tip">Les couleurs suivent votre fond ; les palettes manuelles sont désactivées. Changer le fond relance l\'extraction.</string>
+    <string name="tx_walltint_fail">Impossible d\'extraire une couleur de ce fond ; retour aux palettes prédéfinies</string>
+    <string name="vb_title">Compte Vbai</string>
+    <string name="vb_sub">Connexion par code d’appareil : aucune clé n’est requise — vous prouvez votre identité en vous connectant vous-même dans le navigateur. La clé est stockée uniquement dans le coffre chiffré de l’appareil ; l’interface n’affiche qu’un masque.</string>
+    <string name="vb_logged">Connecté</string>
+    <string name="vb_authorized">Autorisé</string>
+    <string name="vb_plan">Forfait %1$s</string>
+    <string name="vb_balance">Solde ¥%1$s</string>
+    <string name="vb_key">Clé %1$s</string>
+    <string name="vb_fill_model">Remplir la configuration actuelle</string>
+    <string name="vb_filled">base_url et clé API remplies (%1$s)</string>
+    <string name="vb_no_key">Aucune clé disponible. Veuillez vous reconnecter.</string>
+    <string name="vb_relogin">Se reconnecter</string>
+    <string name="vb_logout">Se déconnecter</string>
+    <string name="vb_logout_done">Déconnecté (la clé reste côté plateforme ; une connexion sur un autre appareil renvoie la même clé)</string>
+    <string name="vb_code_left">Le code expire dans %1$ds</string>
+    <string name="vb_reopen">Rouvrir la page d’autorisation</string>
+    <string name="vb_copy_code">Copier le lien de connexion</string>
+    <string name="vb_cancel">Annuler</string>
+    <string name="vb_copied">Lien d’autorisation copié</string>
+    <string name="vb_step1">① Appuyez sur le bouton ci-dessous pour obtenir un code</string>
+    <string name="vb_step2">② Connectez-vous à Vbai dans le navigateur et appuyez sur « Confirmer l’autorisation »</string>
+    <string name="vb_step3">③ Revenez ici : tout se termine automatiquement, sans copier-coller</string>
+    <string name="vb_start">Commencer la connexion</string>
+    <string name="vb_note">Remarque : une seule clé par compte, sur toutes les plateformes ; l’application ne stocke aucun app_secret. Interrogation toutes les 2 s, code valable 5 minutes.</string>
+    <string name="vb_inline_on">Vbai connecté</string>
+    <string name="vb_inline_login">Connexion Vbai en un geste</string>
+    <string name="vb_logging">Connexion en cours…</string>
+    <string name="vb_inline_hint">Un appui ouvre le navigateur pour l’autorisation ; la clé reste dans le coffre de l’appareil</string>
+    <string name="vb_fill_key">Remplir la clé</string>
+    <string name="vb_filled_key">base_url et clé API remplies</string>
+    <string name="vb_cancel_login">Annuler la connexion</string>
+    <string name="vb_oneclick">Connexion en un geste</string>
+    <string name="vb_login_ok">Connecté — appuyez sur « Remplir la clé » pour l’écrire dans le formulaire</string>
+    <string name="vb_ask_title">Utiliser le relais fourni par le développeur ?</string>
+    <string name="vb_ask_body">Le relais Vbai est hébergé par le développeur : une clé pour plusieurs modèles, prêt après connexion, sans inscription chez chaque fournisseur.</string>
+    <string name="vb_ask_no">Non, je remplis moi-même</string>
+    <string name="vb_ask_yes">Oui, montrez-moi</string>
+    <string name="vb_name">Relais Vbai</string>
+    <string name="vb_intro_1">· Prêt après connexion : autorisation par code d’appareil, sans chercher de clé</string>
+    <string name="vb_intro_2">· Facturation unique : forfait et solde visibles dans la carte « Compte Vbai »</string>
+    <string name="vb_intro_3">· Compatible OpenAI : base_url = https://ai.baiccb.cn/v1, retour possible à tout moment</string>
+    <string name="vb_cur_key">Clé actuelle</string>
+    <string name="vb_not_login">Non connecté</string>
+    <string name="vb_go">Connecté — continuer</string>
+    <string name="vb_login_btn">Se connecter</string>
+    <string name="vb_open_site">Ouvrir le site</string>
+    <string name="vb_ok">Connecté</string>
+    <string name="vb_no_browser">Aucun navigateur disponible</string>
+    <string name="vb_saved">Nouvelle configuration créée : %1$s</string>
+    <string name="vb_rec_title">Recommandé : relais Vbai · installation en un geste</string>
+    <string name="vb_rec_body">Relais hébergé par le développeur : une clé pour plusieurs modèles ; prêt après connexion, retour à votre clé possible à tout moment.</string>
+    <string name="vb_rec_btn">Découvrir et se connecter</string>
+    <string name="vb_s_starting">Demande d’un code de connexion…</string>
+    <string name="vb_s_nocode">La plateforme n’a pas renvoyé de code</string>
+    <string name="vb_s_wait">Navigateur ouvert — connectez-vous et appuyez sur « Confirmer l’autorisation »</string>
+    <string name="vb_s_retry">Réseau instable, nouvelle tentative… (%1$ds restantes)</string>
+    <string name="vb_s_ok">Connecté</string>
+    <string name="vb_s_expired">Le code a expiré, veuillez recommencer</string>
+    <string name="vb_s_waiting">En attente d’autorisation… (%1$ds restantes)</string>
+    <string name="vb_s_fail">Échec de la connexion</string>
+    <string name="vb_s_cancel">Annulé</string>
+    <string name="vb_s_guard">Demande récente, patientez %1$d s</string>
+    <string name="vb_s_429">Trop de requêtes, réessayez plus tard</string>
+    <string name="vb_s_410">Le code n’est plus valide, veuillez recommencer</string>
+    <string name="vb_s_http">Erreur réseau (HTTP %1$d)</string>
+    <string name="vb_s_failhttp">Requête échouée (HTTP %1$d)</string>
+    <string name="vb_s_net">Erreur réseau : %1$s</string>
 </resources>

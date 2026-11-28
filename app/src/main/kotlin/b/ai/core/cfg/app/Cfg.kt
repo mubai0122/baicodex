@@ -110,18 +110,23 @@ object Cfg {
         mem("workflow", "general").value = p.getString("workflow", "general")!!
         mem("ctx_auto", true).value = p.getBoolean("ctx_auto", true)
         mem("ctx_budget", 12000).value = p.getInt("ctx_budget", 12000)
-        mem("ctx_keep", 8).value = p.getInt("ctx_keep", 8)
+        mem("ctx_keep", 4).value = p.getInt("ctx_keep", 4)
         mem("ctx_msg_count", 16).value = p.getInt("ctx_msg_count", 16)
         mem("summary_prompt", "").value = p.getString("summary_prompt", "")!!
         if (p.contains("summary_level")) {
-            mem("summary_level", 1).value = p.getInt("summary_level", 1).coerceIn(0, 2)
+            mem("summary_level", 2).value = p.getInt("summary_level", 1).coerceIn(0, 2)
         } else {
-            val old = p.getInt("summary_words", 300)
-            mem("summary_level", 1).value = when {
-                old <= 0 -> 2
-                old <= 150 -> 0
-                old <= 800 -> 1
-                else -> 2
+            //新装用户没有旧的字数配置：直接给「全面」，跟 getter 默认值保持一致
+            if (!p.contains("summary_words")) {
+                mem("summary_level", 2).value = 2
+            } else {
+                val old = p.getInt("summary_words", 300)
+                mem("summary_level", 2).value = when {
+                    old <= 0 -> 2
+                    old <= 150 -> 0
+                    old <= 800 -> 1
+                    else -> 2
+                }
             }
         }
         mem("summary_profile", "").value = p.getString("summary_profile", "")!!
@@ -214,6 +219,8 @@ object Cfg {
         if (bg.isNotBlank() && !bgAlive) put("bg_img", "")
         mem("bg_img", "").value = if (bgAlive) bg else ""
         mem("bg_blur", 0).value = p.getInt("bg_blur", 0)
+        mem("wall_tint", false).value = p.getBoolean("wall_tint", false)
+        mem("wall_tint_seed", 0).value = p.getInt("wall_tint_seed", 0)
         mem("profile_seed", 0).value = p.getInt("profile_seed", 0)
         mem("waifu_mode", false).value = p.getBoolean("waifu_mode", false)
         mem("waifu_bounce", true).value = p.getBoolean("waifu_bounce", true)
@@ -341,6 +348,45 @@ object Cfg {
         mem("md_indent", 12).value = p.getInt("md_indent", 12)
         mem("md_pad", 0).value = p.getInt("md_pad", 0)
         mem("md_code", 12).value = p.getInt("md_code", 12)
+
+        //本轮补齐：这些键以前只写盘、启动时没回读，重启后会退回默认值
+        mem("draft_days", 7).value = p.getInt("draft_days", 7)
+        mem("draft_keep_img", false).value = p.getBoolean("draft_keep_img", false)
+        mem("dsh_engine", false).value = p.getBoolean("dsh_engine", false)
+        mem("frequency_penalty", -9f).value = p.getFloat("frequency_penalty", -9f)
+        mem("inject_device", true).value = p.getBoolean("inject_device", true)
+        mem("inject_mem", true).value = p.getBoolean("inject_mem", true)
+        mem("inject_mem_count", 35).value = p.getInt("inject_mem_count", 35)
+        mem("mem_profile_id", "").value = p.getString("mem_profile_id", "")!!
+        mem("model_native_search", false).value = p.getBoolean("model_native_search", false)
+        //两个采样参数能力开关：老用户没有这两个键时默认 true，行为跟升级前一致
+        mem("model_creative", false).value = p.getBoolean("model_creative", false)
+        mem("model_repeat", false).value = p.getBoolean("model_repeat", false)
+        mem("model_protocol", "chat").value = p.getString("model_protocol", "chat")!!
+        mem("presence_penalty", -9f).value = p.getFloat("presence_penalty", -9f)
+        mem("prompt_opt_extra_on", false).value = p.getBoolean("prompt_opt_extra_on", false)
+        mem("prompt_opt_keep", true).value = p.getBoolean("prompt_opt_keep", true)
+        mem("prompt_opt_lang", "auto").value = p.getString("prompt_opt_lang", "auto")!!
+        mem("prompt_opt_level", "auto").value = p.getString("prompt_opt_level", "auto")!!
+        mem("prompt_opt_noask", true).value = p.getBoolean("prompt_opt_noask", true)
+        mem("prompt_opt_pref_on", false).value = p.getBoolean("prompt_opt_pref_on", false)
+        mem("prompt_opt_profile", "").value = p.getString("prompt_opt_profile", "")!!
+        mem("prompt_opt_style", "").value = p.getString("prompt_opt_style", "")!!
+        mem("prompt_opt_tone", "auto").value = p.getString("prompt_opt_tone", "auto")!!
+        mem("prompt_order", 0).value = p.getInt("prompt_order", 0)
+        mem("repeat_penalty", 0f).value = p.getFloat("repeat_penalty", 0f)
+        mem("reply_style", "").value = p.getString("reply_style", "")!!
+        mem("scroll_btn_style", 0).value = p.getInt("scroll_btn_style", 0)
+        mem("show_first", true).value = p.getBoolean("show_first", true)
+        mem("show_latency", true).value = p.getBoolean("show_latency", true)
+        mem("show_model", true).value = p.getBoolean("show_model", true)
+        mem("show_provider", true).value = p.getBoolean("show_provider", true)
+        mem("show_speed", true).value = p.getBoolean("show_speed", true)
+        mem("show_time", true).value = p.getBoolean("show_time", true)
+        mem("think_level", 0).value = p.getInt("think_level", 0)
+        mem("think_rules", "").value = p.getString("think_rules", "")!!
+        mem("top_k", 0).value = p.getInt("top_k", 0)
+        mem("top_p", -1f).value = p.getFloat("top_p", -1f)
     }
 
     private fun put(k: String, v: Any?) {
@@ -585,8 +631,8 @@ object Cfg {
         set(v) { mem("ctx_budget", 12000).value = v; put("ctx_budget", v) }
 
     var ctxKeep: Int
-        get() = mem("ctx_keep", 8).value
-        set(v) { mem("ctx_keep", 8).value = v; put("ctx_keep", v) }
+        get() = mem("ctx_keep", 4).value
+        set(v) { mem("ctx_keep", 4).value = v; put("ctx_keep", v) }
 
     var ctxMsgCount: Int
         get() = mem("ctx_msg_count", 16).value
@@ -597,10 +643,10 @@ object Cfg {
         set(v) { mem("summary_prompt", "").value = v; put("summary_prompt", v) }
 
     var summaryLevel: Int
-        get() = mem("summary_level", 1).value
+        get() = mem("summary_level", 2).value
         set(v) {
             val n = v.coerceIn(0, 2)
-            mem("summary_level", 1).value = n
+            mem("summary_level", 2).value = n
             put("summary_level", n)
         }
 
@@ -608,9 +654,9 @@ object Cfg {
         get() = when (summaryLevel.coerceIn(0, 2)) {
             //简洁：只是应急档，长对话一定会丢细节，默认不选
             0 -> 1500
-            //详细（默认）：够放下一个中大型任务的全部现场，别为了短而删
+            //详细：够放下一个中大型任务的全部现场，别为了短而删
             1 -> 12000
-            //全面：不设字数上限，由提示词里的 50000 token 硬上限兜住
+            // 全面（默认）：不设字数上限，由提示词里的 50000 token 硬上限兜住
             else -> 0
         }
 
@@ -705,6 +751,36 @@ object Cfg {
         get() = mem("prompt_opt_style", "").value
         set(v) { mem("prompt_opt_style", "").value = v; put("prompt_opt_style", v) }
 
+    /**关掉「保持原语言」后的输出语种：auto = 自动（由模型按原文判断）；其余值 = 强制统一成该语种*/
+    var promptOptLang: String
+        get() = mem("prompt_opt_lang", "auto").value
+        set(v) { mem("prompt_opt_lang", "auto").value = v; put("prompt_opt_lang", v) }
+
+    /**永不询问优化方向：开启后优化器不许反问，信息不足就按最短理解直接改，改不了就原样返回 */
+    var promptOptNoAsk: Boolean
+        get() = mem("prompt_opt_noask", true).value
+        set(v) { mem("prompt_opt_noask", true).value = v; put("prompt_opt_noask", v) }
+
+    /**开启自定义补充优化：关掉时设置页不显示「优化方向自定义」输入框，也不往提示里拼 */
+    var promptOptExtraOn: Boolean
+        get() = mem("prompt_opt_extra_on", false).value
+        set(v) { mem("prompt_opt_extra_on", false).value = v; put("prompt_opt_extra_on", v) }
+
+    /**自定义优化偏好总开关：开关两个下拉（档位 / 风格）才生效 */
+    var promptOptPrefOn: Boolean
+        get() = mem("prompt_opt_pref_on", false).value
+        set(v) { mem("prompt_opt_pref_on", false).value = v; put("prompt_opt_pref_on", v) }
+
+    /**优化偏好档位：auto / brief / full / detail，对应「自动 / 极简 / 全面 / 详细」*/
+    var promptOptLevel: String
+        get() = mem("prompt_opt_level", "auto").value
+        set(v) { mem("prompt_opt_level", "auto").value = v; put("prompt_opt_level", v) }
+
+    /**优化偏好风格：auto / strict / code / draw / science，对应「自动 / 严谨 / 代码 / 绘图 / 科学」*/
+    var promptOptTone: String
+        get() = mem("prompt_opt_tone", "auto").value
+        set(v) { mem("prompt_opt_tone", "auto").value = v; put("prompt_opt_tone", v) }
+
     var topP: Float
         get() = mem("top_p", -1f).value
         set(v) { mem("top_p", -1f).value = v; put("top_p", v) }
@@ -748,6 +824,16 @@ object Cfg {
     var modelNativeSearch: Boolean
         get() = mem("model_native_search", false).value
         set(v) { mem("model_native_search", false).value = v; put("model_native_search", v) }
+
+    /** 是否向服务端下发创造性采样参数（temperature / top_p / top_k）：不认这些字段的厂商会直接 400 */
+    var modelCreative: Boolean
+        get() = mem("model_creative", false).value
+        set(v) { mem("model_creative", false).value = v; put("model_creative", v) }
+
+    /** 是否向服务端下发重复控制参数（presence / frequency / repeat penalty）：同上，按厂商能力开关 */
+    var modelRepeat: Boolean
+        get() = mem("model_repeat", false).value
+        set(v) { mem("model_repeat", false).value = v; put("model_repeat", v) }
 
     /** 接口协议：chat = OpenAI Chat Completions（/chat/completions）；responses = OpenAI Responses API（/responses） */
     var modelProtocol: String
@@ -1044,6 +1130,16 @@ object Cfg {
         get() = mem("bg_blur", 0).value
         set(v) { mem("bg_blur", 0).value = v.coerceIn(0, 100); put("bg_blur", v.coerceIn(0, 100)) }
 
+    /** 壁纸取色：开着时色系由背景图主色决定，上面的色系下拉变灰不可选 */
+    var wallTint: Boolean
+        get() = mem("wall_tint", false).value
+        set(v) { mem("wall_tint", false).value = v; put("wall_tint", v) }
+
+    /** 从壁纸取到的种色（ARGB int，0 表示还没取到）；落盘是为了冷启动直接上色，不用再解一次图 */
+    var wallTintSeed: Int
+        get() = mem("wall_tint_seed", 0).value
+        set(v) { mem("wall_tint_seed", 0).value = v; put("wall_tint_seed", v) }
+
     var hintText: String
         get() = mem("hint_text", "").value
         set(v) { mem("hint_text", "").value = v; put("hint_text", v) }
@@ -1143,6 +1239,21 @@ object Cfg {
     var notiLimit: Int
         get() = mem("noti_limit", 0).value
         set(v) { mem("noti_limit", 0).value = v; put("noti_limit", v) }
+
+    /**注入设备信息：system 里的「设备：厂商 机型 / Android 版本」，实时段再补屏幕、内存、ABI */
+    var injectDevice: Boolean
+        get() = mem("inject_device", true).value
+        set(v) { mem("inject_device", true).value = v; put("inject_device", v) }
+
+    /**注入长期记忆：关掉时一条都不下发，模型这轮看不到记忆表 */
+    var injectMem: Boolean
+        get() = mem("inject_mem", true).value
+        set(v) { mem("inject_mem", true).value = v; put("inject_mem", v) }
+
+    /**记忆注入条数：0 = 不限；默认 35 条，够覆盖常用偏好又不至于把提示词撑爆 */
+    var injectMemCount: Int
+        get() = mem("inject_mem_count", 35).value
+        set(v) { mem("inject_mem_count", v.coerceAtLeast(0)).value = v.coerceAtLeast(0); put("inject_mem_count", v.coerceAtLeast(0)) }
 
     var fcOn: Boolean
         get() = mem("fc_on", false).value
@@ -1313,6 +1424,31 @@ object Cfg {
     var showMeta: Boolean
         get() = mem("show_meta", true).value
         set(v) { mem("show_meta", true).value = v; put("show_meta", v) }
+
+    /**附带请求信息细分：回复底部那行小字里每一项都能单独关，默认全开（show_meta 关掉时整行细分不生效）*/
+    var showSpeed: Boolean
+        get() = mem("show_speed", true).value
+        set(v) { mem("show_speed", true).value = v; put("show_speed", v) }
+
+    var showLatency: Boolean
+        get() = mem("show_latency", true).value
+        set(v) { mem("show_latency", true).value = v; put("show_latency", v) }
+
+    var showFirst: Boolean
+        get() = mem("show_first", true).value
+        set(v) { mem("show_first", true).value = v; put("show_first", v) }
+
+    var showTime: Boolean
+        get() = mem("show_time", true).value
+        set(v) { mem("show_time", true).value = v; put("show_time", v) }
+
+    var showProvider: Boolean
+        get() = mem("show_provider", true).value
+        set(v) { mem("show_provider", true).value = v; put("show_provider", v) }
+
+    var showModel: Boolean
+        get() = mem("show_model", true).value
+        set(v) { mem("show_model", true).value = v; put("show_model", v) }
 
     var noStream: Boolean
         get() = mem("no_stream", false).value

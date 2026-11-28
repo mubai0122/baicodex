@@ -75,6 +75,7 @@ import b.ai.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
@@ -103,13 +104,16 @@ internal fun SelectRow(
     desc: String? = null,
     onClick: () -> Unit,
     open: Boolean = false,
+    enabled: Boolean = true,
     menu: @Composable BoxScope.(DpSize) -> Unit = {}
 ) {
     Row(
         Modifier
             .fillMaxWidth()
+            //禁用态整行压暗：壁纸取色开着时，色系这一行由背景图决定，点了也没意义
+            .alpha(if (enabled) 1f else 0.38f)
             .heightIn(min = 44.dp)
-            .tap { onClick() }
+            .tap(enabled) { onClick() }
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -129,8 +133,9 @@ internal fun SelectRow(
         Box(Modifier.onSizeChanged { pill = with(den) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
             Row(
                 Modifier
-                    //gate 显式清零：胶囊高 24dp，按最短边判永远过不了 156dp 门槛，会掉回平涂
-                    .liquidBg(RoundedCornerShape(9.dp), tint = AccentBlueSoft, gate = 0.dp)
+                    //下拉胶囊用纯平涂：这里原来挂 gate=0.dp 的强制玻璃，24dp 高的小胶囊照样跑一遍
+                    //离屏+高光，深色底上透出来就是一层「半透明阴影」，被用户当成下拉框自身的投影
+                    .background(AccentBlueSoft, RoundedCornerShape(9.dp))
                     .padding(start = 9.dp, end = 5.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -158,6 +163,7 @@ internal fun <T> SelectField(
     desc: String? = null,
     optionLabel: @Composable (T) -> String,
     isSelected: (T) -> Boolean,
+    enabled: Boolean = true,
     onSelect: (T) -> Unit
 ) {
     var open by remember { mutableStateOf(false) }
@@ -183,12 +189,13 @@ internal fun <T> SelectField(
         }
     }
     SelectRow(label, value, desc, onClick = {
+        if (!enabled) return@SelectRow
         if (open) close {}
         else {
             shown = false
             open = true
         }
-    }, open = open) { _ ->
+    }, open = open, enabled = enabled) { _ ->
         if (open) {
             Popup(
                 popupPositionProvider = pos,

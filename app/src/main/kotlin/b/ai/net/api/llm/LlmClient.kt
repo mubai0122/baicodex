@@ -139,35 +139,37 @@ class LlmClient(
             .put("model", model)
             .put("messages", messages)
         //模型不支持工具调用就别发 tools，发了有的中转站直接 400
-        if (b.ai.core.cfg.app.Cfg.modelToolCall) {
+        if (Cfg.modelToolCall) {
             //传了就按传的来（分智能体只下发只读工具），传空数组等于这轮不给工具
             val defs = tools ?: b.ai.agent.tool.Tools.definitions()
             if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
         //原生 search：勾了才声明各家自己的联网工具，服务端检索完把结果注入上下文
-        NativeSearch.inject(body, b.ai.core.cfg.app.Cfg.providerId, b.ai.core.cfg.app.Cfg.baseUrl)
-        temperature?.let { body.put("temperature", it) }
+        NativeSearch.inject(body, Cfg.providerId, Cfg.baseUrl)
+        //创造性参数（temperature / top_p / top_k）按「模型能力」开关整体下发或整体不发：
+        //有厂商不认这几个字段，发了直接 HTTP 400
+        if (Cfg.modelCreative) temperature?.let { body.put("temperature", it) }
         //单轮上限：最大模式显式抬到下限 8192（各家服务端默认值普遍偏小，DeepSeek 是 4096），否则按配置的 max_tokens
-        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
+        val maxTok = if (Cfg.maxMode) maxOf(Cfg.maxTokens, MAX_CAP) else Cfg.maxTokens
         if (maxTok > 0) body.put("max_tokens", maxTok)
         //思考与原生联网搜索互斥：本轮实际带上了服务端联网工具时，思考一律不发（工具与思考同时下发多数厂商会报错）
         val searchOn = NativeSearch.on(
-            b.ai.core.cfg.app.Cfg.providerId,
-            b.ai.core.cfg.app.Cfg.baseUrl
+            Cfg.providerId,
+            Cfg.baseUrl
         )
         //思考强度：只看思考开关，最大模式不再强开思考（最大模式只管 max_tokens）
         //先让规则表说话：命中规则的模型按规则写（各家字段不同，用户可在设置里改）
         val ruleDone = if (!searchOn) {
-            ThinkRules.apply(body, model, think, b.ai.core.cfg.app.Cfg.thinkLevel)
+            ThinkRules.apply(body, model, think, Cfg.thinkLevel)
         } else false
         //思考下发只看设置里的能力开关（模型能力 →「推理 / 思考参数」），不再拿模型名单当门控：
         //中转站/自建模型的名单永远列不全，名单一窄就等于替用户把明确打开的思考悄悄吞掉
-        if (think && b.ai.core.cfg.app.Cfg.modelReasoning && !searchOn && !ruleDone) {
+        if (think && Cfg.modelReasoning && !searchOn && !ruleDone) {
             body.put("reasoning_effort", thinkEffort)
         }
         //DeepSeek 官方格式的思考开关默认是「开」：不发 thinking 就等于思考，必须显式 disabled 才真关
-        val ds = b.ai.core.cfg.app.Cfg.providerId.contains("deepseek", true) ||
-            b.ai.core.cfg.app.Cfg.baseUrl.contains("deepseek", true)
+        val ds = Cfg.providerId.contains("deepseek", true) ||
+            Cfg.baseUrl.contains("deepseek", true)
         //DeepSeek 硬约束（实测 400）：client tools 只能和 deepseek_web_search 一起、且必须在思考模式下使用。
         //所以带了原生联网搜索时不能再显式关思考，否则服务端直接拒绝：
         //  tools: client tools can only be used together with deepseek_web_search in thinking mode
@@ -176,16 +178,20 @@ class LlmClient(
             body.put("thinking", JSONObject().put("type", "disabled"))
         }
         //创造性 / 重复控制参数：负数或 0 表示不下发，交给服务端默认值
-        if (b.ai.core.cfg.app.Cfg.topP >= 0f) body.put("top_p", b.ai.core.cfg.app.Cfg.topP.toDouble())
-        if (b.ai.core.cfg.app.Cfg.topK > 0) body.put("top_k", b.ai.core.cfg.app.Cfg.topK)
-        if (b.ai.core.cfg.app.Cfg.presencePenalty > -9f) {
-            body.put("presence_penalty", b.ai.core.cfg.app.Cfg.presencePenalty.toDouble())
+        if (Cfg.modelCreative) {
+            if (Cfg.topP >= 0f) body.put("top_p", Cfg.topP.toDouble())
+            if (Cfg.topK > 0) body.put("top_k", Cfg.topK)
         }
-        if (b.ai.core.cfg.app.Cfg.frequencyPenalty > -9f) {
-            body.put("frequency_penalty", b.ai.core.cfg.app.Cfg.frequencyPenalty.toDouble())
-        }
-        if (b.ai.core.cfg.app.Cfg.repeatPenalty > 0f) {
-            body.put("repeat_penalty", b.ai.core.cfg.app.Cfg.repeatPenalty.toDouble())
+        if (Cfg.modelRepeat) {
+            if (Cfg.presencePenalty > -9f) {
+                body.put("presence_penalty", Cfg.presencePenalty.toDouble())
+            }
+            if (Cfg.frequencyPenalty > -9f) {
+                body.put("frequency_penalty", Cfg.frequencyPenalty.toDouble())
+            }
+            if (Cfg.repeatPenalty > 0f) {
+                body.put("repeat_penalty", Cfg.repeatPenalty.toDouble())
+            }
         }
         //附加参数浅合并，用来补厂商私有字段（如 thinking / enable_thinking）
         if (!extraParams.isNullOrBlank()) {
@@ -368,18 +374,18 @@ class LlmClient(
         val body = JSONObject().put("model", model).put("input", input)
         if (instructions.isNotBlank()) body.put("instructions", instructions)
         //工具：Responses 的 schema 是扁平的，必须转换，直接塞 Chat 结构会被判非法
-        if (b.ai.core.cfg.app.Cfg.modelToolCall) {
+        if (Cfg.modelToolCall) {
             val defs = flatTools(tools ?: Tools.definitions())
             if (defs.length() > 0) body.put("tools", defs).put("tool_choice", "auto")
         }
-        temperature?.let { body.put("temperature", it) }
-        val maxTok = if (b.ai.core.cfg.app.Cfg.maxMode) maxOf(b.ai.core.cfg.app.Cfg.maxTokens, MAX_CAP) else b.ai.core.cfg.app.Cfg.maxTokens
+        if (Cfg.modelCreative) temperature?.let { body.put("temperature", it) }
+        val maxTok = if (Cfg.maxMode) maxOf(Cfg.maxTokens, MAX_CAP) else Cfg.maxTokens
         if (maxTok > 0) body.put("max_output_tokens", maxTok)
         //思考：Responses 只认 reasoning.effort（low / medium / high）；是否下发同样只认能力开关
-        if (think && b.ai.core.cfg.app.Cfg.modelReasoning) {
+        if (think && Cfg.modelReasoning) {
             body.put("reasoning", JSONObject().put("effort", thinkEffort))
         }
-        if (b.ai.core.cfg.app.Cfg.topP >= 0f) body.put("top_p", b.ai.core.cfg.app.Cfg.topP.toDouble())
+        if (Cfg.modelCreative && Cfg.topP >= 0f) body.put("top_p", Cfg.topP.toDouble())
         //原生 search：Responses 各家中转支持度差异太大（web_search 工具名各不同），这里不注入，
         //避免勾了联网就被 400 挡住；需要联网请走 tavily / 内置搜索工具
         if (stream) body.put("stream", true)

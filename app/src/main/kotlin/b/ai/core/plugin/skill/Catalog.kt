@@ -24,7 +24,8 @@ object Providers {
     const val DEEPSEEK = "deepseek"
 
     val builtin: List<Provider> = listOf(
-        Provider(LOCAL, "本地模型", "", AuthStyle.NONE),
+        //Vbai 中转站放第一位：引导页与「无配置新建」都主推它，厂商弹窗第一眼就能选中
+        Provider("vbai", "Vbai 中转站", "https://ai.baiccb.cn/v1"),
         Provider("openai", "OpenAI", "https://api.openai.com/v1"),
         Provider("deepseek", "DeepSeek", "https://api.deepseek.com/v1"),
         Provider("moonshot", "Kimi / Moonshot", "https://api.moonshot.cn/v1"),
@@ -34,9 +35,12 @@ object Providers {
         Provider("openrouter", "OpenRouter", "https://openrouter.ai/api/v1"),
         Provider("groq", "Groq", "https://api.groq.com/openai/v1"),
         Provider("together", "Together", "https://api.together.xyz/v1"),
-        Provider("mimo", "小米 MiMo", ""),
+        //小米 MiMo 开放平台：按量付费走 OpenAI 兼容的 /v1（Token Plan 是另一套专属域名，不在这里）
+        Provider("mimo", "小米 MiMo", "https://api.xiaomimimo.com/v1"),
+        //本地与自定义收在末尾相邻：本地盖在自定义上面，选完不用来回滚
+        Provider(LOCAL, "本地模型", "", AuthStyle.NONE),
         Provider("custom", "自定义", "", AuthStyle.BEARER, custom = true)
-    )
+    )//内置厂商表（顺序即弹窗里的展示顺序）
 
     //找不到就退「自定义」：退成表里第一项（OpenAI）会让未知厂商的配置显示成 OpenAI，看着像厂商被改了
     fun byId(id: String): Provider = builtin.firstOrNull { it.id == id }

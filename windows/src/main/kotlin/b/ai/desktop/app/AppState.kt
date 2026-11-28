@@ -175,6 +175,9 @@ class AppState {
         // GitHub token 始终加密存；是否绑定机器跟随设置里的开关（读到密文前就得定好）
         b.ai.desktop.core.auth.GitHubAuth.bindDevice = config.vaultBindDevice
         GitHubAuth.load()
+        //Vbai 设备码登录：加密绑定开关跟 GitHub 共用同一个设置
+        b.ai.desktop.core.auth.VbaiAuth.bindDevice = config.vaultBindDevice
+        b.ai.desktop.core.auth.VbaiAuth.load()
         gitAccount = GitHubAuth.account
         // 已经绑过工作区的，把它补进「最近用过」，不然那一栏一开始总是空的
         val current = config.workspace
@@ -722,6 +725,37 @@ class AppState {
             },
             onFailure = { "登录失败：${it.message?.take(120) ?: "未知错误"}" },
         )
+    }
+
+    /**
+     * 把 Vbai 的 Key 写进模型配置：已有同名配置就原地更新，不抢用户当前选中的那一个。
+     * @return 给界面显示的结果文案
+     */
+    fun applyVbaiProfile(): String {
+        val a = b.ai.desktop.core.auth.VbaiAuth.account ?: return "先完成 Vbai 登录"
+        if (a.key.isBlank()) return "Key 为空，请重新登录一次"
+        val name = "Vbai 官方中转"
+        val base = a.baseUrl.ifBlank { b.ai.desktop.core.auth.VbaiAuth.BASE }
+        val hit = config.profiles.firstOrNull { it.name == name }
+        if (hit == null) {
+            val created = ModelProfile(
+                name = name,
+                baseUrl = base,
+                apiKey = a.key,
+                model = "deepseek-flash",
+            )
+            editConfig { it.copy(profiles = it.profiles + created) }
+            return "已新建模型配置「$name」，可在右上角模型菜单里选择"
+        }
+        editConfig { current ->
+            current.copy(
+                profiles = current.profiles.map {
+                    if (it.id != hit.id) it
+                    else it.copy(baseUrl = base, apiKey = a.key, model = it.model.ifBlank { "deepseek-flash" })
+                },
+            )
+        }
+        return "已更新模型配置「$name」"
     }
 
     fun gitSignOut() {

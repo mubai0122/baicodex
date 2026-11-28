@@ -20,6 +20,9 @@ import b.ai.ui.glass.glassScrollState
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.settings.perm.A11yPermCard
 import b.ai.ui.screen.settings.model.ModelSetupPanel
+import b.ai.ui.dialog.HostInOverlay
+import b.ai.ui.screen.user.VbaiIntroCard
+import b.ai.ui.screen.user.vbaiWriteProfile
 import b.ai.ui.screen.settings.model.MirrorPickerDialog
 import b.ai.ui.screen.settings.perm.SpecialPermCard
 import b.ai.ui.widget.CardBox
@@ -114,6 +117,8 @@ fun OnboardingScreen(onDone: () -> Unit) {
     var modeMsg by remember { mutableStateOf<String?>(null) }
     var modeOk by remember { mutableStateOf(false) }
     var showZwPrompt by remember { mutableStateOf(false) }
+    /** Vbai 宣传页：引导页里点「了解并登录」才弹 */
+    var showVbai by remember { mutableStateOf(false) }
     var shizMsg by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(step) {
@@ -170,6 +175,17 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Overlay.content = null
         }
     } //零宽弹窗挂到根弹窗层，卡片背后才能真正模糊
+
+    //宣传页挂在根弹窗层：卡片背后能真正模糊，和设置页里的弹窗观感一致
+    HostInOverlay(showVbai) {
+        VbaiIntroCard(
+            onDone = { _, _ ->
+                vbaiWriteProfile()
+                showVbai = false
+            },
+            onClose = { showVbai = false }
+        )
+    }
 
     Column(
         Modifier
@@ -254,6 +270,27 @@ fun OnboardingScreen(onDone: () -> Unit) {
                     4 -> StepWorkflow()
                     5 -> StepEnv()
                     6 -> Column {
+                        //推荐卡放最上面：引导阶段大多数人没有 Key，先给一条能直接跑通的路
+                        CardBox {
+                            Text(
+                                stringResource(R.string.vb_rec_title),
+                                fontSize = 14.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                stringResource(R.string.vb_rec_body),
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row {
+                                GhostButton(stringResource(R.string.vb_rec_btn), modifier = Modifier.height(36.dp)) {
+                                    showVbai = true
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
                         CardBox { ModelSetupPanel() }
                         Spacer(Modifier.height(12.dp))
                         //藏在最后一步的小开关：不想被评价弹窗打扰就勾这里

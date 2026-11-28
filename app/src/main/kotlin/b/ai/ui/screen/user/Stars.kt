@@ -65,9 +65,9 @@ import java.util.Locale
 private fun starTime(t: Long): String =
     if (t <= 0L) "" else SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(t))
 
-/** 收藏夹：跨会话列出收藏过的消息，点一行跳回原会话，右侧单独取消收藏 */
+/** 收藏夹：跨会话列出收藏过的消息，点一行跳回原会话并定位到那条消息，右侧单独取消收藏 */
 @Composable
-fun StarSheet(onClose: () -> Unit, onOpen: (String) -> Unit) {
+fun StarSheet(onClose: () -> Unit, onOpen: (String, Long) -> Unit) {
     var list by remember { mutableStateOf<List<StarHit>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -116,7 +116,7 @@ fun StarSheet(onClose: () -> Unit, onOpen: (String) -> Unit) {
             list.forEach { hit ->
                 StarRow(
                     hit = hit,
-                    onOpen = { onOpen(hit.sessionId) },
+                    onOpen = { onOpen(hit.sessionId, hit.msg.id) },
                     onUnstar = {
                         scope.launch {
                             withContext(Dispatchers.IO) { Repo.setStarred(hit.msg.id, false) }

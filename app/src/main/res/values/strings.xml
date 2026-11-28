@@ -1791,7 +1791,7 @@
     <string name="se_kernel_fail">自检未通过</string>
     <string name="se_kernel_na">这个 ABI 没带 Rust 内核（只编 arm64-v8a）</string>
     <string name="se_pg_prompt">提示词优化</string>
-    <string name="se_pg_prompt_sub">优化用模型、保留原语言、自定义优化方向</string>
+    <string name="se_pg_prompt_sub">优化用模型、保留语言与语种、永不询问、优化偏好</string>
     <string name="se_pg_inout">注入输入与输出</string>
     <string name="se_pg_inout_sub">本机实时信息注入、回复信息展示、流式输出、草稿保留与输出偏好文案</string>
     <string name="se_pg_orch">编排</string>
@@ -2715,4 +2715,96 @@
     <string name="perm_all_ask" formatted="false">询问</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >已被全局主控覆盖为「%1$s」</string>
+
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">已开启：请求会带 temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">已关闭：这三个参数一律不下发（不认它们的厂商会直接 400）</string>
+    <string name="tx_5c1e0a73" formatted="false">已开启：请求会带 presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">已关闭：这几类惩罚参数一律不下发（不认它们的厂商会直接 400）</string>
+    <!-- 模型参数页：对应能力开关关掉时的提示 -->
+    <string name="tx_5c1e0a75" formatted="false">本条配置已关闭「创造性参数」：下面 temperature / top_p / top_k 的取值只保存，不会下发</string>
+    <string name="tx_5c1e0a76" formatted="false">本条配置已关闭「重复控制参数」：下面这几项只保存，不会下发</string>
+    <string name="tx_icon_title">应用图标</string>
+    <string name="tx_icon_sub">自定义桌面快捷方式图标</string>
+    <string name="tx_icon_tip">从相册选一张图，会在桌面新建一个带该图标的快捷方式；Android 不允许直接替换应用本身的图标，所以原图标仍保留。</string>
+    <string name="tx_icon_pick">从相册选图</string>
+    <string name="tx_icon_note">选完立即创建，桌面会弹「添加」确认</string>
+    <string name="tx_icon_decodefail">这张图读不出来，换一张试试</string>
+    <string name="tx_icon_unsupported">当前桌面不支持自定义图标快捷方式</string>
+    <string name="tx_pic_view">查看</string>
+    <string name="tx_pic_locate">路径</string>
+    <string name="tx_pic_open">打开</string>
+    <string name="tx_pic_copied">已复制图片路径</string>
+    <string name="tx_pic_openfail">没有能打开这个文件的应用</string>
+    <string name="tx_walltint_t">壁纸取色</string>
+    <string name="tx_walltint_on">已开启：颜色跟随背景图</string>
+    <string name="tx_walltint_off">已关闭：使用预设色系</string>
+    <string name="tx_walltint_tip">已跟随背景图取色，手动色系暂不可选；换背景图会自动重新取色</string>
+    <string name="tx_walltint_fail">这张背景图取不到主色，已切换回预设色系</string>
+    <string name="vb_title">Vbai 账号</string>
+    <string name="vb_sub">设备码授权：全程不需要任何密钥，身份由你亲自在浏览器登录证明。Key 只存本机加密库，界面上只回显掩码。</string>
+    <string name="vb_logged">已登录</string>
+    <string name="vb_authorized">已授权</string>
+    <string name="vb_plan">%1$s 套餐</string>
+    <string name="vb_balance">余额 ¥%1$s</string>
+    <string name="vb_key">Key %1$s</string>
+    <string name="vb_fill_model">填入当前模型配置</string>
+    <string name="vb_filled">已填入 base_url 与 API Key（%1$s）</string>
+    <string name="vb_no_key">没有可用的 Key，请重新登录</string>
+    <string name="vb_relogin">重新登录</string>
+    <string name="vb_logout">退出</string>
+    <string name="vb_logout_done">已退出（平台侧 Key 仍保留，换设备登录会拿到同一个 Key）</string>
+    <string name="vb_code_left">登录码 %1$ds 后过期</string>
+    <string name="vb_reopen">再次打开授权页</string>
+    <string name="vb_copy_code">复制登录码</string>
+    <string name="vb_cancel">取消</string>
+    <string name="vb_copied">授权链接已复制</string>
+    <string name="vb_step1">① 点击下方按钮领取登录码</string>
+    <string name="vb_step2">② 浏览器里登录 Vbai 并点「确认授权」</string>
+    <string name="vb_step3">③ 回到应用自动完成，无需复制粘贴</string>
+    <string name="vb_start">开始登录</string>
+    <string name="vb_note">说明：同一账号的 Key 全平台唯一，本应用不保存任何 app_secret；轮询间隔 2 秒，登录码 5 分钟内有效。</string>
+    <string name="vb_inline_on">Vbai 已登录</string>
+    <string name="vb_inline_login">Vbai 一键登录</string>
+    <string name="vb_logging">正在登录…</string>
+    <string name="vb_inline_hint">点一下自动打开浏览器授权，Key 只存本机加密库</string>
+    <string name="vb_fill_key">填入 Key</string>
+    <string name="vb_filled_key">已填入 base_url 与 API Key</string>
+    <string name="vb_cancel_login">取消登录</string>
+    <string name="vb_oneclick">一键登录</string>
+    <string name="vb_login_ok">登录成功，点「填入 Key」写进表单</string>
+    <string name="vb_ask_title">是否使用开发者创立的中转站？</string>
+    <string name="vb_ask_body">Vbai 中转站由开发者自建：一个 Key 就能用多家模型，登录即用，不用逐家申请。</string>
+    <string name="vb_ask_no">否，我自己填</string>
+    <string name="vb_ask_yes">是，先看看</string>
+    <string name="vb_name">Vbai 中转站</string>
+    <string name="vb_intro_1">· 登录即用：设备码授权，不用自己找 Key</string>
+    <string name="vb_intro_2">· 统一计费：套餐与余额在「Vbai 账号」卡里直接看</string>
+    <string name="vb_intro_3">· 兼容 OpenAI：base_url 就是 https://ai.baiccb.cn/v1，随时能切回别家</string>
+    <string name="vb_cur_key">当前 Key</string>
+    <string name="vb_not_login">未登录</string>
+    <string name="vb_go">已登录，继续</string>
+    <string name="vb_login_btn">登录账号</string>
+    <string name="vb_open_site">打开官网</string>
+    <string name="vb_ok">登录成功</string>
+    <string name="vb_no_browser">没有可用的浏览器</string>
+    <string name="vb_saved">已新建配置：%1$s</string>
+    <string name="vb_rec_title">推荐使用 Vbai 中转站 · 一键接入</string>
+    <string name="vb_rec_body">开发者自建中转，一个 Key 走多家模型；登录即用，也可以随时换回自己的 Key。</string>
+    <string name="vb_rec_btn">了解并登录</string>
+    <string name="vb_s_starting">正在申请登录码…</string>
+    <string name="vb_s_nocode">平台没有返回登录码</string>
+    <string name="vb_s_wait">已打开浏览器，请登录并在网页上点「确认授权」</string>
+    <string name="vb_s_retry">网络不稳，正在重试…（剩余 %1$ds）</string>
+    <string name="vb_s_ok">登录成功</string>
+    <string name="vb_s_expired">登录码已过期，请重新发起登录</string>
+    <string name="vb_s_waiting">等待授权…（剩余 %1$ds）</string>
+    <string name="vb_s_fail">登录失败</string>
+    <string name="vb_s_cancel">已取消</string>
+    <string name="vb_s_guard">刚申请过，请稍等 %1$d 秒再试</string>
+    <string name="vb_s_429">请求太频繁，请稍后再试</string>
+    <string name="vb_s_410">登录码已作废，请重新发起</string>
+    <string name="vb_s_http">网络异常（HTTP %1$d）</string>
+    <string name="vb_s_failhttp">请求失败（HTTP %1$d）</string>
+    <string name="vb_s_net">网络异常：%1$s</string>
 </resources>

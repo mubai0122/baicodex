@@ -60,6 +60,9 @@ import b.ai.desktop.feature.settings.SectionTitle
 import b.ai.desktop.feature.settings.StepperSetting
 import b.ai.desktop.feature.settings.TextSetting
 import b.ai.desktop.feature.settings.ToggleSetting
+import b.ai.desktop.core.auth.VbaiAuth
+import b.ai.desktop.core.util.openUrl
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -85,8 +88,14 @@ fun ModelConfigPage(state: AppState) {
     }
     Row(Modifier.padding(top = 6.dp)) {
         PillButton("＋ 新建连接") {
-            state.addProfile()
-            state.flash("已新建连接，填好信息再保存")
+            //一条可用配置都没有时先问：要不要用开发者自建的中转站（登录即用）
+            val blank = active == null || (active.baseUrl.isBlank() && active.apiKey.isBlank() && active.model.isBlank())
+            if (blank && !VbaiAuth.logged) {
+                vbaiNewFlow(state, scope)
+            } else {
+                state.addProfile()
+                state.flash("已新建连接，填好信息再保存")
+            }
         }
     }
 
@@ -639,7 +648,8 @@ object ProviderPresets {
     val options = listOf(
         Preset("自定义", "", emptyList()),
         Preset("DeepSeek 官方", "https://api.deepseek.com/v1", listOf("deepseek-chat", "deepseek-reasoner")),
-        Preset("OpenAI 兼容网关", "https://ai.baiccb.cn/v1", listOf("deepseek-v4.1-flash", "deepseek-v4-pro", "kimi-k3", "glm-5")),
+        //Vbai 中转站对齐手机端厂商表：同一个 base，名字统一，桌面端也能一眼认出
+        Preset("Vbai 中转站", "https://ai.baiccb.cn/v1", listOf("deepseek-v4.1-flash", "deepseek-v4-pro", "kimi-k3", "glm-5")),
         Preset("OpenRouter", "https://openrouter.ai/api/v1", listOf("openai/gpt-5.2", "anthropic/claude-4.5-sonnet", "google/gemini-3-pro", "deepseek/deepseek-chat")),
         Preset("硅基流动", "https://api.siliconflow.cn/v1", listOf("deepseek-ai/DeepSeek-V4", "Qwen/Qwen4-72B-Instruct", "THUDM/GLM-5-9B")),
         Preset("智谱 GLM", "https://open.bigmodel.cn/api/paas/v4", listOf("glm-5", "glm-5-air", "glm-5-flash")),
@@ -651,3 +661,49 @@ object ProviderPresets {
     fun indexOf(baseUrl: String): Int =
         options.indexOfFirst { it.baseUrl.isNotBlank() && it.baseUrl == baseUrl.trim() }.coerceAtLeast(0)
 }
+
+/**
+ * 无可用配置时的新建引导（桌面端）：先问要不要用开发者自建的中转站，
+ * 是 → 弹宣传页（打开官网 / 登录账号），登录成功直接写进模型配置；否 → 走原来的空白配置。
+ * 用 Swing 对话框：桌面端没有统一的 Compose 弹窗体系，这里保持最小依赖。
+ */
+private fun vbaiNewFlow(state: AppState, scope: CoroutineScope) {
+    val ask = javax.swing.JOptionPane.showOptionDialog(
+        null,
+        "是否使用开发者创立的中转站？\n\nVbai 中转站由开发者自建：一个 Key 就能用多家模型，登录即用。",
+        "新建连接",
+        javax.swing.JOptionPane.DEFAULT_OPTION,
+        javax.swing.JOptionPane.QUESTION_MESSAGE,
+        null,
+        arrayOf("否，我自己填", "是，先看看"),
+        "是，先看看"
+    )
+    if (ask != 1) {
+        state.addProfile()
+        state.flash("已新建连接，填好信息再保存")
+        return
+    } //不走中转站：保持原流程
+
+    val pick = javax.swing.JOptionPane.showOptionDialog(
+        null,
+        "Vbai 中转站\n\n" +
+            "· 登录即用：设备码授权，不用自己找 Key\n" +
+            "· 统一计费：套餐与余额在账号页可见\n" +
+            "· 兼容 OpenAI：base_url " + VbaiAuth.BASE + "\n\n" +
+            "当前 Key：" + (VbaiAuth.account?.masked?.ifBlank { "已登录" } ?: "未登录"),
+        "Vbai 中转站",
+        javax.swing.JOptionPane.DEFAULT_OPTION,
+        javax.swing.JOptionPane.INFORMATION_MESSAGE,
+        null,
+        arrayOf("关闭", "打开官网", "登录账号"),
+        "登录账号"
+    )
+    when (pick) {
+        1 -> openUrl(VbaiAuth.SITE)
+        2 -> scope.launch {
+            //登录内部自己开浏览器 + 轮询；成功后直接把 Key 写进模型配置
+            val ok = VbaiAuth.login()
+            state.flash(if (ok) state.applyVbaiProfile() else VbaiAuth.msg)
+        }
+    }
+} //新建时推荐中转站

@@ -111,6 +111,10 @@ fun LazyListScope.sessionListSec() {
         var busy by remember { mutableStateOf("") }
         val rows = Agent.sessions
         val cur = Agent.sessionId
+        //选中态自己记一份：点一行就记住，切换页面 / 重组后依旧高亮，不再靠聊天页的瞬时状态
+        var sel by remember { mutableStateOf(Agent.sessionId) }
+        //外部（聊天页）切了会话就跟着走，避免两边显示不一致
+        androidx.compose.runtime.LaunchedEffect(cur) { sel = cur }
         val sorted = remember(rows, cur) {
             rows.sortedWith(
                 compareByDescending<SessionRow> { it.id == cur }
@@ -157,9 +161,11 @@ fun LazyListScope.sessionListSec() {
                 }
                 SessionLine(
                     s = s,
-                    current = s.id == cur,
+                    //高亮跟列表自己记的选中走，不再现算 Agent.sessionId
+                    current = s.id == sel,
                     busy = busy == s.id,
                     onOpen = {
+                        sel = s.id
                         Agent.openSession(s.id)
                         Agent.refreshSessions()
                         toast("已切到「${s.title.ifBlank { "未命名" }}」")
@@ -347,8 +353,16 @@ internal fun SessionLine(
         Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .liquidBg(RoundedCornerShape(12.dp), tint = if (current) AccentBlueSoft else SurfaceWhite)
-            .border(1.dp, if (current) AccentBlue else BorderGray, RoundedCornerShape(12.dp))
+            //gate = 0：行高只有 60dp 左右，低于默认 156dp 门槛会退化成平涂，看着跟卡片不是一套材质
+            .liquidBg(
+                RoundedCornerShape(12.dp),
+                tint = if (current) AccentBlueSoft else SurfaceWhite,
+                gate = 0.dp
+            )
+            .then(
+                //选中才描边：不选中时不画框，交给液态底自己分层
+                if (current) Modifier.border(1.dp, AccentBlue, RoundedCornerShape(12.dp)) else Modifier
+            )
             .clickable { onOpen() }
             .padding(start = 10.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -359,7 +373,7 @@ internal fun SessionLine(
                     s.title.ifBlank { "未命名" },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    color = if (current) AccentBlue else TextPrimary,
                     maxLines = 1
                 )
                 if (current) {
@@ -371,14 +385,7 @@ internal fun SessionLine(
                     Tag("置顶")
                 }
             }
-            if (s.preview.isNotBlank()) {
-                Text(
-                    s.preview.replace("\n", " ").take(60),
-                    fontSize = 10.sp,
-                    color = TextSecondary,
-                    maxLines = 1
-                )
-            }
+            //正文预览已去掉：一行只留标题、时间与条数，列表更长也扫得快
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(sessTime(s.updatedAt), fontSize = 10.sp, color = TextSecondary)
                 Spacer(Modifier.width(8.dp))

@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import b.ai.core.cfg.app.Cfg
 
 /** 当前是否深色：由 BaiTheme 按「跟随系统 / 浅色 / 深色」写进来，下面所有颜色 getter 跟着变 */
 internal var DarkColors by mutableStateOf(false)
@@ -45,7 +46,50 @@ private val Tints = listOf(
     Tint(0xFF2FA37B, 0xFF7FDDBB)
 )
 
-private val tint: Tint get() = Tints[ThemeTint.coerceIn(0, Tints.lastIndex)]
+/** 由种色推导的一套色系：浅色强调压暗保证白底可读，深色强调提亮保证黑底可读，渐变取色相 ±28° */
+private fun tintOf(seed: Int): Tint {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(seed, hsv)
+    val l = hsv.copyOf().apply {
+        this[1] = maxOf(this[1], 0.55f)
+        this[2] = 0.50f
+    }
+    val d = hsv.copyOf().apply {
+        this[1] = this[1].coerceIn(0.40f, 0.85f)
+        this[2] = 0.68f
+    }
+    val g1 = hsv.copyOf().apply {
+        this[0] = (this[0] + 26f) % 360f
+        this[1] = this[1].coerceAtLeast(0.45f)
+        this[2] = 0.72f
+    }
+    val g2 = hsv.copyOf().apply {
+        this[0] = (this[0] + 334f) % 360f
+        this[1] = this[1].coerceAtLeast(0.40f)
+        this[2] = 0.58f
+    }
+    fun argb(v: FloatArray): Long = android.graphics.Color.HSVToColor(v).toLong() and 0xFFFFFFFFL
+    return Tint(argb(l), argb(d), argb(g1), argb(g2))
+} //种色推导色系
+
+//壁纸色系缓存：种色不变就不重复算，避免每帧重组都跑一遍 HSV 换算
+private var seedCache = 0
+private var seedTint: Tint? = null
+
+/** 当前生效的色系：壁纸取色开着且取到了种色就用壁纸色，否则用预设的 8 套 */
+private val tint: Tint
+    get() {
+        val seed = if (Cfg.wallTint) Cfg.wallTintSeed else 0
+        if (seed != 0) {
+            val c = seedTint
+            if (c != null && seedCache == seed) return c
+            val t = tintOf(seed)
+            seedCache = seed
+            seedTint = t
+            return t
+        }
+        return Tints[ThemeTint.coerceIn(0, Tints.lastIndex)]
+    } //当前色系
 
 /** 当前色系的渐变两端；纯色色系返回 null */
 val TintGradient: List<Color>?

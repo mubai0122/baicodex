@@ -208,6 +208,7 @@ import b.ai.core.plugin.skill.Skills
 import b.ai.core.cfg.secret.Secret
 import b.ai.core.plugin.skill.SkillPacks
 import b.ai.core.plugin.skill.SkillPack
+import b.ai.core.media.wall.TintPick
 import b.ai.core.media.wall.Wallpaper
 import b.ai.core.model.chat.WorkMode
 import b.ai.device.shell.root.Shiz
@@ -332,14 +333,44 @@ internal fun LazyListScope.uiLookSec() {
         Spacer(Modifier.height(14.dp))
         SectionTitle(stringResource(R.string.se_tint_t), stringResource(R.string.se_tint_d))
         CardBox {
+            val ctx = LocalContext.current
+            val scope = rememberCoroutineScope()
+            //壁纸取色：开着时整站颜色由背景图主色决定，下面的预设色系置灰不可选
+            CapSwitch(
+                stringResource(R.string.tx_walltint_t),
+                if (Cfg.wallTint) stringResource(R.string.tx_walltint_on) else stringResource(R.string.tx_walltint_off),
+                Cfg.wallTint
+            ) { on ->
+                Cfg.wallTint = on
+                if (on) {
+                    scope.launch {
+                        val seed = withContext(Dispatchers.IO) { TintPick.refresh(ctx) }
+                        if (seed == 0) {
+                            //取不到主色（纯黑白图 / 拿不到系统壁纸）：回退预设色系并说明原因
+                            Cfg.wallTint = false
+                            Toast.makeText(ctx, R.string.tx_walltint_fail, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            //开着时对背景图变化重新取色：在别处换了背景图，回到这页颜色自动跟上
+            LaunchedEffect(Cfg.wallTint, Cfg.bgImg) {
+                if (Cfg.wallTint) withContext(Dispatchers.IO) { TintPick.refresh(ctx) }
+            }
+            Spacer(Modifier.height(10.dp))
             SelectField(
                 stringResource(R.string.se_tint_t),
                 stringResource(TINT_NAMES[Cfg.themeTint.coerceIn(0, TINT_NAMES.lastIndex)]),
                 TINT_NAMES.indices.toList(),
                 optionLabel = { stringResource(TINT_NAMES[it]) },
                 isSelected = { Cfg.themeTint == it },
+                enabled = !Cfg.wallTint,
                 onSelect = { Cfg.themeTint = it }
             )
+            if (Cfg.wallTint) {
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.tx_walltint_tip), fontSize = 11.sp, color = TextSecondary)
+            }
         }
     }
     item {
@@ -512,6 +543,25 @@ internal fun LazyListScope.uiLookSec() {
                 stringResource(R.string.se_glass_card_d),
                 Cfg.glassCard
             ) { Cfg.glassCard = it }
+            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
+            //紧跟父开关放在它下面，不要掉到整张卡片末尾
+            FollowBlock(Cfg.glassCard) {
+                Spacer(Modifier.height(10.dp))
+                GlassSlider(stringResource(R.string.tx_713fd45a), "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
+                    Cfg.glassLens = it.toInt()
+                }
+                Text(stringResource(R.string.tx_1b605a1e), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider(stringResource(R.string.tx_d73f1ed6), "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
+                    Cfg.glassHi = it.toInt()
+                }
+                Text(stringResource(R.string.tx_e82c50b0), fontSize = 10.sp, color = TextSecondary)
+                Spacer(Modifier.height(8.dp))
+                GlassSlider(stringResource(R.string.tx_fd5f796f), "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
+                    Cfg.glassVeil = it.toInt()
+                }
+                Text(stringResource(R.string.tx_ba3f1876), fontSize = 10.sp, color = TextSecondary)
+            } //玻璃卡片子项
             Spacer(Modifier.height(10.dp))
             CapSwitch(
                 stringResource(R.string.se_tactile),
@@ -535,24 +585,6 @@ internal fun LazyListScope.uiLookSec() {
                 step = 1f
             ) { Cfg.glassBlur = it.toInt() }
             Text(stringResource(R.string.se_glass_blur_d), fontSize = 10.sp, color = TextSecondary)
-            //开了玻璃卡片才展开细调：折射 / 高光 / 乳白，三个直接影响观感的参数
-            FollowBlock(Cfg.glassCard) {
-                Spacer(Modifier.height(10.dp))
-                GlassSlider(stringResource(R.string.tx_713fd45a), "${Cfg.glassLens} dp", Cfg.glassLens.toFloat(), 0f..24f, step = 1f) {
-                    Cfg.glassLens = it.toInt()
-                }
-                Text(stringResource(R.string.tx_1b605a1e), fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider(stringResource(R.string.tx_d73f1ed6), "${Cfg.glassHi}%", Cfg.glassHi.toFloat(), 0f..100f, step = 5f) {
-                    Cfg.glassHi = it.toInt()
-                }
-                Text(stringResource(R.string.tx_e82c50b0), fontSize = 10.sp, color = TextSecondary)
-                Spacer(Modifier.height(8.dp))
-                GlassSlider(stringResource(R.string.tx_fd5f796f), "${Cfg.glassVeil}%", Cfg.glassVeil.toFloat(), 0f..60f, step = 2f) {
-                    Cfg.glassVeil = it.toInt()
-                }
-                Text(stringResource(R.string.tx_ba3f1876), fontSize = 10.sp, color = TextSecondary)
-            }
             //卡片不透明度：两种模式都生效——白卡模式直接调白底 alpha，玻璃模式按比例缩乳白遮罩
             Spacer(Modifier.height(10.dp))
             GlassSlider(stringResource(R.string.tx_fa5d97dd), "${Cfg.cardAlpha}%", Cfg.cardAlpha.toFloat(), 0f..100f, step = 5f) {
@@ -638,6 +670,8 @@ internal fun LazyListScope.uiLookSec() {
             )
         }
     }
+    //应用图标：相册选图 → 钉一个自定义图标的桌面快捷方式
+    appIconSec()
 } //外观总页
 
 //个性化子页：头像、气泡胶囊与桌宠
@@ -879,4 +913,3 @@ internal fun LazyListScope.uiNavSec() {
         }
     }
 } //外观分类：悬浮与手势
-

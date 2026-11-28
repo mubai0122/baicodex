@@ -13,6 +13,8 @@
  */
 
 package b.ai.ui.overlay
+import b.ai.net.vbai.VbaiAuth
+import b.ai.ui.glass.drawPageBg
 import b.ai.ui.glass.liquidBg
 import b.ai.ui.screen.user.GhFace
 import b.ai.ui.widget.IcClose
@@ -61,8 +63,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -104,6 +110,7 @@ fun DrawerPanel(
     onOpenSettings: () -> Unit,
     onOpenPlugins: () -> Unit,
     onOpenAccount: () -> Unit,
+    onOpenVbai: () -> Unit,
     onClose: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -144,17 +151,44 @@ fun DrawerPanel(
     val shown = if (h == null) all else all.filter { h.contains(it.id) }
     android.util.Log.d("BaiDBG", "drawer compose cur=${curId?.take(8)} shown=${shown.map { it.id.take(8) }}")
 
+    //圆角只建一次：背景层 / 玻璃层 / 裁剪都用它
+    val panelShape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
+    //抽屉进度：在 graphicsLayer 的绘制 lambda 里读，只触发重绘不触发重组
+    val drawerP = LocalDrawerProgress.current
     Box(
         Modifier
             //宽度由宿主按屏宽算好经 CompositionLocal 下发，面板自己不猜
             .width(LocalDrawerWidth.current)
             .fillMaxHeight()
-            .liquidBg(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp), tint = BgGray, veil = 0.45f)
+            .clip(panelShape)
             .onGloballyPositioned {
                 boxTop = it.positionInRoot().y.toInt()
                 boxH = it.size.height
             }
     ) {
+        //背景层：自己画一份页面背景（底色 / 色系渐变 / 自定义背景图），并跟着抽屉进度做与正文对称的 3D 倾斜。
+        //以前这里只有一层玻璃：玻璃采的是「还没被倾斜过的页面」，所以自定义背景图在侧栏里永远是一条平的图。
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val p = drawerP()
+                    if (p > 0f) {
+                        //方向与正文相反（正文 rotationY 为正）：两块纸片向里合拢，立体感才对
+                        rotationY = -PUSH_TILT * p
+                        cameraDistance = PUSH_CAMERA * density
+                        //倾斜会让四角漏出底色，等比放大一点盖住；p 越大放得越多
+                        val k = 1f + 0.12f * p
+                        scaleX = k
+                        scaleY = k
+                        //锚点贴在右边缘（屏幕左侧那条边），倾斜时右缘不动，跟正文一样「向外张开」
+                        transformOrigin = TransformOrigin(1f, 0.5f)
+                    }
+                }
+                .drawBehind { drawPageBg() }
+        )
+        //玻璃层：叠在背景之上，只负责统一观感与压住背景免得文字糊（veil 比原来低，背景图才透得出来）
+        Box(Modifier.fillMaxSize().liquidBg(panelShape, tint = BgGray, veil = 0.34f))
         Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 14.dp)) {
             Row(
                 Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
@@ -162,6 +196,20 @@ fun DrawerPanel(
             ) {
                 Text("Baicodex", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
+                //Vbai 入口：已授权显示实心胶囊，未授权只显示描边「Vbai」；卡片同样由根弹窗层渲染
+                Box(
+                    Modifier
+                        .liquidBg(RoundedCornerShape(10.dp), tint = if (VbaiAuth.logged) AccentBlueSoft else SurfaceWhite)
+                        .tap { onOpenVbai() }
+                        .padding(horizontal = 9.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        "Vbai",
+                        fontSize = 11.sp,
+                        color = if (VbaiAuth.logged) AccentBlue else TextSecondary
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
                 //账号入口：已登录显示 GitHub 头像，未登录是「登录」胶囊；卡片由根弹窗层统一渲染
                 if (GitHubLogin.logged) {
                     Box(Modifier.size(30.dp).tap { onOpenAccount() }) {

@@ -2745,4 +2745,94 @@
     <string name="perm_all_ask" formatted="false">確認</string>
     <string name="perm_all_deny" formatted="false">禁止</string>
     <string name="perm_all_over" >全体スイッチにより上書き中：%1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">有効：リクエストに temperature / top_p / top_k を含めます</string>
+    <string name="tx_5c1e0a72" formatted="false">無効：この3つのパラメータは一切送信しません（未対応のプロバイダーは 400 を返します）</string>
+    <string name="tx_5c1e0a73" formatted="false">有効：リクエストに presence / frequency / repeat penalty を含めます</string>
+    <string name="tx_5c1e0a74" formatted="false">無効：これらのペナルティは一切送信しません（未対応のプロバイダーは 400 を返します）</string>
+    <string name="tx_5c1e0a75" formatted="false">この設定では「創造性パラメータ」が無効です：以下の値は保存されますが送信されません</string>
+    <string name="tx_5c1e0a76" formatted="false">この設定では「繰り返し制御」が無効です：以下の値は保存されますが送信されません</string>
+    <string name="tx_icon_title">アプリアイコン</string>
+    <string name="tx_icon_sub">ホーム画面ショートカットのカスタムアイコン</string>
+    <string name="tx_icon_tip">写真を選ぶと、その画像をアイコンにしたホーム画面ショートカットを作成します。Android ではアプリアイコン自体の差し替えはできないため、元のアイコンは残ります。</string>
+    <string name="tx_icon_pick">ギャラリーから選択</string>
+    <string name="tx_icon_note">選択後すぐ作成され、ランチャーが追加確認を出します</string>
+    <string name="tx_icon_decodefail">この画像を読み込めません。別の画像をお試しください</string>
+    <string name="tx_icon_unsupported">このランチャーはカスタムショートカットアイコンに対応していません</string>
+    <string name="tx_pic_view">表示</string>
+    <string name="tx_pic_locate">パス</string>
+    <string name="tx_pic_open">開く</string>
+    <string name="tx_pic_copied">画像パスをコピーしました</string>
+    <string name="tx_pic_openfail">このファイルを開けるアプリがありません</string>
+    <string name="tx_walltint_t">壁紙から色を取得</string>
+    <string name="tx_walltint_on">オン：背景画像の色に合わせます</string>
+    <string name="tx_walltint_off">オフ：プリセット配色を使用</string>
+    <string name="tx_walltint_tip">背景画像の色に合わせています。手動の配色は選べません。背景を変えると再取得します。</string>
+    <string name="tx_walltint_fail">この背景から色を取得できませんでした。プリセットに戻します</string>
+    <string name="vb_title">Vbai アカウント</string>
+    <string name="vb_sub">デバイスコード認証：キーは一切不要で、ブラウザでのご自身のログインが本人確認になります。キーは端末の暗号化ストアにのみ保存し、画面には伏せ字で表示します。</string>
+    <string name="vb_logged">ログイン済み</string>
+    <string name="vb_authorized">認証済み</string>
+    <string name="vb_plan">%1$s プラン</string>
+    <string name="vb_balance">残高 ¥%1$s</string>
+    <string name="vb_key">キー %1$s</string>
+    <string name="vb_fill_model">現在のモデル設定に反映</string>
+    <string name="vb_filled">base_url と API キーを反映しました（%1$s）</string>
+    <string name="vb_no_key">利用できるキーがありません。再ログインしてください</string>
+    <string name="vb_relogin">再ログイン</string>
+    <string name="vb_logout">ログアウト</string>
+    <string name="vb_logout_done">ログアウトしました（キーはプラットフォーム側に残り、別端末でログインしても同じキーになります）</string>
+    <string name="vb_code_left">ログインコードは %1$ds 後に失効</string>
+    <string name="vb_reopen">認証ページを再度開く</string>
+    <string name="vb_copy_code">認証リンクをコピー</string>
+    <string name="vb_cancel">キャンセル</string>
+    <string name="vb_copied">認証リンクをコピーしました</string>
+    <string name="vb_step1">① 下のボタンでログインコードを取得</string>
+    <string name="vb_step2">② ブラウザで Vbai にログインし「認証を確認」を押す</string>
+    <string name="vb_step3">③ アプリに戻れば自動で完了します（コピペ不要）</string>
+    <string name="vb_start">ログイン開始</string>
+    <string name="vb_note">補足：キーは全プラットフォームでアカウントごとに 1 つ、本アプリは app_secret を保存しません。2 秒間隔で確認、コードは 5 分間有効です。</string>
+    <string name="vb_inline_on">Vbai ログイン済み</string>
+    <string name="vb_inline_login">Vbai ワンタップログイン</string>
+    <string name="vb_logging">ログイン中…</string>
+    <string name="vb_inline_hint">タップするとブラウザで認証が開きます。キーは端末の暗号化ストアにのみ保存します</string>
+    <string name="vb_fill_key">キーを反映</string>
+    <string name="vb_filled_key">base_url と API キーを反映しました</string>
+    <string name="vb_cancel_login">ログインを中止</string>
+    <string name="vb_oneclick">ワンタップログイン</string>
+    <string name="vb_login_ok">ログインしました。「キーを反映」でフォームに書き込みます</string>
+    <string name="vb_ask_title">開発者の中継サイトを使いますか？</string>
+    <string name="vb_ask_body">Vbai 中継サイトは開発者が運用しています。1 つのキーで複数モデルが使え、ログインすればすぐ利用できます。</string>
+    <string name="vb_ask_no">いいえ、自分で入力します</string>
+    <string name="vb_ask_yes">はい、見てみる</string>
+    <string name="vb_name">Vbai 中継サイト</string>
+    <string name="vb_intro_1">· ログインするだけ：デバイスコード認証、キーを探す必要なし</string>
+    <string name="vb_intro_2">· 一元課金：プランと残高は「Vbai アカウント」カードで確認</string>
+    <string name="vb_intro_3">· OpenAI 互換：base_url は https://ai.baiccb.cn/v1、いつでも他社に戻せます</string>
+    <string name="vb_cur_key">現在のキー</string>
+    <string name="vb_not_login">未ログイン</string>
+    <string name="vb_go">ログイン済み・続行</string>
+    <string name="vb_login_btn">ログイン</string>
+    <string name="vb_open_site">公式サイトを開く</string>
+    <string name="vb_ok">ログインしました</string>
+    <string name="vb_no_browser">利用できるブラウザがありません</string>
+    <string name="vb_saved">設定を作成しました：%1$s</string>
+    <string name="vb_rec_title">おすすめ：Vbai 中継サイト · ワンタップ導入</string>
+    <string name="vb_rec_body">開発者運用の中継サイト。1 つのキーで複数モデル、ログインすればすぐ使え、いつでもご自身のキーに戻せます。</string>
+    <string name="vb_rec_btn">詳細を見てログイン</string>
+    <string name="vb_s_starting">ログインコードを取得中…</string>
+    <string name="vb_s_nocode">プラットフォームがログインコードを返しませんでした</string>
+    <string name="vb_s_wait">ブラウザを開きました。ログインして「認証を確認」を押してください</string>
+    <string name="vb_s_retry">通信が不安定なため再試行中…（残り %1$ds）</string>
+    <string name="vb_s_ok">ログインしました</string>
+    <string name="vb_s_expired">ログインコードが失効しました。もう一度開始してください</string>
+    <string name="vb_s_waiting">認証待ち…（残り %1$ds）</string>
+    <string name="vb_s_fail">ログイン失敗</string>
+    <string name="vb_s_cancel">キャンセルしました</string>
+    <string name="vb_s_guard">直前に申請済みです。%1$d 秒お待ちください</string>
+    <string name="vb_s_429">リクエストが多すぎます。しばらくしてから再試行してください</string>
+    <string name="vb_s_410">ログインコードは無効です。もう一度開始してください</string>
+    <string name="vb_s_http">通信エラー（HTTP %1$d）</string>
+    <string name="vb_s_failhttp">リクエスト失敗（HTTP %1$d）</string>
+    <string name="vb_s_net">通信エラー：%1$s</string>
 </resources>

@@ -67,6 +67,9 @@ private const val WIDTH_RATIO = 0.8f
 /** 量出来的面板宽度经它下发给 DrawerPanel：宿主按屏宽算，面板自己只管取 */
 val LocalDrawerWidth = compositionLocalOf { 261.dp }
 
+/** 抽屉进度（0 关 / 1 开）：侧栏要拿它让自己的背景层跟着一起倾斜 */
+val LocalDrawerProgress = compositionLocalOf<() -> Float> { { 0f } }
+
 /** 抽屉动效：打开 220ms、关闭 180ms，ease-out-quint 三次贝塞尔——比 Material3 默认的 256ms + 标准曲线更快，收尾不生硬 */
 private const val OPEN_MS = 220
 private const val CLOSE_MS = 180
@@ -79,11 +82,11 @@ private val PushShift = 42.dp
 /** 正文被推开后的圆角，配合倾斜读成一张退到后面的卡片 */
 private val PushCorner = 22.dp
 /** 绕左边缘内倾的角度：正角度把右半边压进屏幕里，左边缘离观者最近 */
-private const val PUSH_TILT = 9f
+internal const val PUSH_TILT = 9f
 /** 正文压暗上限：抽屉在前、正文退后，靠这个明暗差立住层次 */
 private const val PUSH_DIM = 0.14f
 /** 透视强度：数值越大透视越弱，22 相当于手机上一臂远的自然感 */
-private const val PUSH_CAMERA = 22f
+internal const val PUSH_CAMERA = 22f
 /** 面板右缘投射到正文上的阴影宽度与强度 */
 private val EdgeShadow = 14.dp
 private const val EDGE_ALPHA = 0.18f
@@ -227,7 +230,12 @@ fun DrawerHost(
                     .then(
                         if (gestures) Modifier.pointerInput(widthPx) { dragToClose(ctl, widthPx) } else Modifier
                     )
-            ) { CompositionLocalProvider(LocalDrawerWidth provides panelWidth) { panel() } }
+            ) {
+                CompositionLocalProvider(
+                    LocalDrawerWidth provides panelWidth,
+                    LocalDrawerProgress provides { ctl.anim.value }
+                ) { panel() }
+            }
         }
         //关闭态不再单独铺左边缘热区：整页 dragToOpen 的起手区已经是屏宽左 34%，
         //这层 32dp 全高的兄弟节点会压在最上层把顶栏汉堡按钮左半也让给它，点一下只进拖拽手势、不上报点击

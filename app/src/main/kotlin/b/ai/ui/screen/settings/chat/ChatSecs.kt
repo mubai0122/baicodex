@@ -106,8 +106,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -127,7 +125,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -232,7 +229,6 @@ import b.ai.ui.theme.BorderGray
 import b.ai.ui.theme.DangerRed
 import b.ai.ui.theme.DangerRedSoft
 import b.ai.ui.theme.OkGreen
-import b.ai.ui.theme.SurfaceMuted
 import b.ai.ui.theme.SurfaceWhite
 import b.ai.ui.theme.TextPrimary
 import b.ai.ui.theme.TextSecondary
@@ -259,6 +255,16 @@ import b.ai.ui.theme.FontStore
 import b.ai.ui.theme.LocalAiFont
 import b.ai.ui.theme.LocalUserFont
 import kotlin.math.roundToInt
+
+/** 总结补充要求可用的占位变量：取值在 Agent.summarySystem / SessionOps 里替换，这里只负责让用户点得着 */
+/** 总结提示词可用的占位变量：变量名 → 会被替换成什么（点一下追加到补充要求末尾） */
+private val SUM_VARS = listOf(
+    "{level}" to "当前摘要档位名：简明 / 详细 / 全面",
+    "{words}" to "字数上限的数字，0 表示不限",
+    "{limit}" to "整句写法：如「800字以内」，不限时是一句说明",
+    "{keep}" to "保留最近 N 条消息，跟随「保留条数」",
+    "{budget}" to "上下文预算 token 数，跟随「上下文预算」"
+)
 
 internal fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
     item {
@@ -333,12 +339,6 @@ internal fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
             isSelected = { Cfg.summaryLevel == it },
             onSelect = { Cfg.summaryLevel = it }
         )
-        Text(
-            "简洁：上限 1000 字，可能跟随轮次丢失关键；详细：上限 2000 字，推荐；全面：不限字数，最推荐。" +
-                "当前 " + b.ai.core.model.chat.Sum.levelHint(Cfg.summaryLevel),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
         Spacer(Modifier.height(8.dp))
         //总结用模型：留空跟随聊天选中的那条配置，选了就单独走它的 base_url / Key / 模型
         val sumProfiles = Profiles.list
@@ -363,35 +363,61 @@ internal fun LazyListScope.chatCtxSec(stats: Pair<Int, Int>) {
             onSelect = { Cfg.titleProfileId = it }
         )
         Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton(stringResource(R.string.se_101), modifier = Modifier.height(38.dp)) { Agent.compactNow() }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                if (Agent.busy) stringResource(R.string.se_102) else stringResource(R.string.se_103),
-                fontSize = 10.sp,
-                color = TextSecondary
-            )
-        }
-        //总结补充要求：留空不追加，填了拼在内置四段提示词后面（结构永远保留）；自动总结、立即总结与长按重总结都走它
+        //总结补充要求：留空不追加，填了拼在内置提示词后面；自动总结、立即总结与长按重总结都走它
         Field(
             label = stringResource(R.string.se_sum_prompt),
             value = Cfg.summaryPrompt,
             onValueChange = { Cfg.summaryPrompt = it },
-            placeholder = stringResource(R.string.se_sum_prompt_hint),
+            //空输入框里直接给说明：这一栏只做「补充」，内置段落骨架不动
+            placeholder = "补充总结要求，原要求不受影响",
             singleLine = false,
             minLines = 3
         )
-        Text(
-            stringResource(R.string.se_sum_prompt_note),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
+        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(12.dp))
+        //可用变量：一行一个，左边变量名可点插入，右边写清这个变量会被替换成什么
+        Text("可用变量（点一下插入到上面输入框末尾）", fontSize = 11.sp, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        Column(Modifier.fillMaxWidth()) {
+            SUM_VARS.forEach { (v, desc) ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        //整行可点：省得只点得中那个小胶囊
+                        .tap {
+                            //分隔符按需补：空内容直接写，末尾是空白就只追加
+                            val cur = Cfg.summaryPrompt
+                            Cfg.summaryPrompt = when {
+                                cur.isBlank() -> v
+                                cur.last().isWhitespace() -> cur + v
+                                else -> cur + " " + v
+                            }
+                        }
+                        .padding(vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        v,
+                        fontSize = 11.sp,
+                        color = AccentBlue,
+                        modifier = Modifier
+                            .liquidBg(RoundedCornerShape(8.dp), tint = AccentBlueSoft, gate = 0.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(desc, fontSize = 10.sp, color = TextSecondary, modifier = Modifier.weight(1f))
+                }
+            }
+        } //变量逐行列表
     }
 
     }
 } //上下文与压缩子页
 
-/**注入块：本机实时信息拼进系统提示。原来是独立子页，现已并入「注入输入与输出」页 */
+/** 记忆条数滑块的右端：拉到最右端视为不限（存 0），避开了再造一个「不限」开关 */
+private const val MEM_MAX = 100f
+
+/**注入块：本机实时信息拼进系统提示。项与项之间互不影响，开一项发一项，全关就一个字都不多发 */
 @Composable
 internal fun InjectBlock() {
     Spacer(Modifier.height(14.dp))
@@ -406,34 +432,20 @@ internal fun InjectBlock() {
         val finePerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { m ->
             Cfg.injectPrecise = m[Manifest.permission.ACCESS_FINE_LOCATION] == true
         }
-        CapSwitch(
-            stringResource(R.string.se_105),
-            if (Cfg.injectTime) stringResource(R.string.se_106) else stringResource(R.string.se_107),
-            Cfg.injectTime
-        ) { Cfg.injectTime = it }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_108),
-            if (Cfg.injectBattery) stringResource(R.string.se_109) else stringResource(R.string.se_110),
-            Cfg.injectBattery
-        ) { Cfg.injectBattery = it }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_111),
-            when {
-                !Cfg.injectPlace -> stringResource(R.string.se_112)
-                Env.hasPlacePerm(ctx) -> stringResource(R.string.se_113)
-                else -> stringResource(R.string.se_114)
-            },
-            Cfg.injectPlace
-        ) { on ->
+        //注入项：每项一条开关，开一项注入一项；拼接顺序跟这里的顺序一致
+        CapSwitch("时间", "日期进系统提示，时分随每条请求刷新", Cfg.injectTime) { Cfg.injectTime = it }
+        Spacer(Modifier.height(6.dp))
+        CapSwitch("电量", "当前电量百分数与是否在充电", Cfg.injectBattery) { Cfg.injectBattery = it }
+        Spacer(Modifier.height(6.dp))
+        //位置：没授权先要权限，授权回调里再落地开关，避免出现「开关亮了但没权限」
+        CapSwitch("位置", "大致位置，首次开启会申请定位权限", Cfg.injectPlace) { on ->
             if (on && !Env.hasPlacePerm(ctx)) {
                 locPerm.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             } else {
                 Cfg.injectPlace = on
             }
         }
-        //注入位置打开后才滑出扩展项：精确位置注入（现取一次定位）、自动转地名（结果加密后本机缓存）
+        //子项紧跟父开关：展开的内容落在「位置」下面，不掉到整卡最底部
         FollowBlock(Cfg.injectPlace) {
             Spacer(Modifier.height(6.dp))
             CapSwitch(
@@ -462,18 +474,10 @@ internal fun InjectBlock() {
                 if (Cfg.placeGeo) stringResource(R.string.se_370) else stringResource(R.string.se_371),
                 Cfg.placeGeo
             ) { Cfg.placeGeo = it }
-        }
-        Spacer(Modifier.height(8.dp))
-        //通知与使用时长都要系统侧单独授权：开关先落地，缺权限就弹窗把人送去系统页
-        CapSwitch(
-            stringResource(R.string.se_320),
-            when {
-                !Cfg.injectNoti -> stringResource(R.string.se_321)
-                !b.ai.core.task.hook.Noti.allow(ctx) -> stringResource(R.string.se_322)
-                else -> stringResource(R.string.se_323, b.ai.core.task.hook.Noti.count(ctx))
-            },
-            Cfg.injectNoti
-        ) { on ->
+        } //位置子项
+        Spacer(Modifier.height(6.dp))
+        //通知：系统侧要单独授权，缺权限就跳到授权页
+        CapSwitch("通知", "最近几条通知摘要，需要通知使用权", Cfg.injectNoti) { on ->
             if (on && !b.ai.core.task.hook.Noti.allow(ctx)) {
                 Cfg.injectNoti = true
                 PermAsk.kind.value = "noti"
@@ -481,20 +485,14 @@ internal fun InjectBlock() {
                 Cfg.injectNoti = on
             }
         }
+        //子项紧跟父开关：通知条数只在「通知」下面出现
         FollowBlock(Cfg.injectNoti) {
             Spacer(Modifier.height(6.dp))
             NotiLimitRow()
-        }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_328),
-            when {
-                !Cfg.injectUsage -> stringResource(R.string.se_329)
-                !b.ai.core.data.usage.Usage.allow(ctx) -> stringResource(R.string.se_330)
-                else -> stringResource(R.string.se_331, b.ai.core.data.usage.Usage.hm(b.ai.core.data.usage.Usage.today(ctx).first))
-            },
-            Cfg.injectUsage
-        ) { on ->
+        } //通知子项
+        Spacer(Modifier.height(6.dp))
+        //用量：使用情况访问权限同理
+        CapSwitch("用量", "今日各应用使用时长，需要使用情况访问权限", Cfg.injectUsage) { on ->
             if (on && !b.ai.core.data.usage.Usage.allow(ctx)) {
                 Cfg.injectUsage = true
                 PermAsk.kind.value = "usage"
@@ -502,8 +500,49 @@ internal fun InjectBlock() {
                 Cfg.injectUsage = on
             }
         }
+        Spacer(Modifier.height(6.dp))
+        CapSwitch("设备", "屏幕分辨率、内存、ABI 与 CPU 核数", Cfg.injectDevice) { Cfg.injectDevice = it }
+        Spacer(Modifier.height(6.dp))
+        CapSwitch("记忆", "长期记忆条目，条数可在下方调整", Cfg.injectMem) { Cfg.injectMem = it }
+        //子项紧跟父开关：记忆条数滑块贴在「记忆」下面，默认 35，拉到最右端 = 不限
+        FollowBlock(Cfg.injectMem) {
+            Spacer(Modifier.height(8.dp))
+            GlassSlider(
+                "记忆注入条数",
+                if (Cfg.injectMemCount <= 0) "不限" else stringResource(R.string.se2_n_items, Cfg.injectMemCount),
+                if (Cfg.injectMemCount <= 0) MEM_MAX else Cfg.injectMemCount.toFloat().coerceAtMost(MEM_MAX),
+                1f..MEM_MAX,
+                1f
+            ) { v ->
+                val n = v.toInt()
+                //拉到最右端存 0 = 不限，其余按实际条数存
+                Cfg.injectMemCount = if (n >= MEM_MAX.toInt()) 0 else n
+            }
+        } //记忆子项
+        Spacer(Modifier.height(6.dp))
+        //一条状态行：把「哪几项真的生效」说清，避免勾了没反应时找不到原因
+        Text(
+            injectSummary(ctx),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
     }
 } //注入块
+
+/** 注入项状态摘要：只报当前开着的项，全关时给一句提示 */
+private fun injectSummary(ctx: android.content.Context): String {
+    val on = ArrayList<String>(7)
+    if (Cfg.injectTime) on.add("时间")
+    if (Cfg.injectBattery) on.add("电量")
+    if (Cfg.injectPlace) on.add("位置")
+    if (Cfg.injectNoti) on.add("通知")
+    if (Cfg.injectUsage) on.add("用量")
+    if (Cfg.injectDevice) on.add("设备")
+    if (Cfg.injectMem) on.add("记忆")
+    if (on.isEmpty()) return "当前没有注入任何信息"
+    val mem = if (!Cfg.injectMem) "" else if (Cfg.injectMemCount <= 0) "（记忆不限条数）" else "（记忆 " + Cfg.injectMemCount + " 条）"
+    return "已注入：" + on.joinToString("、") + mem
+} //注入摘要
 
 internal fun LazyListScope.chatSessionSec(
     stats: Pair<Int, Int>,
@@ -540,11 +579,11 @@ internal fun LazyListScope.chatSessionSec(
     }
 } //会话与导出子页
 
-/** 收藏夹子页：按会话聚合消息级收藏，点一下直接切到那个会话 */
-internal fun LazyListScope.chatStarSec() {
+/** 收藏夹子页：按会话聚合消息级收藏，点「打开」跳到聊天页并定位到那条消息 */
+internal fun LazyListScope.chatStarSec(onOpenChat: (String, Long) -> Unit) {
     item {
         Spacer(Modifier.height(14.dp))
-        SectionTitle("收藏夹", "按会话归组；点一行切到那个会话")
+        SectionTitle("收藏夹", "按会话归组；点「打开」跳到聊天并定位到那条消息")
         CardBox {
             val hits = remember { Repo.starred() }
             if (hits.isEmpty()) {
@@ -576,7 +615,10 @@ internal fun LazyListScope.chatStarSec() {
                         )
                     }
                     GhostButton("打开", modifier = Modifier.height(34.dp)) {
-                        Agent.openSession(sid)
+                        //原来只 openSession：设置页还留在原地，界面上什么都不动，看着就是「没反应」。
+                        //现在交给外层切页面，并带上该会话里最近那条收藏的消息 id，聊天页会滚过去定位
+                        val mid = list.maxByOrNull { it.at }?.msg?.id ?: 0L
+                        onOpenChat(sid, mid)
                         Agent.refreshSessions()
                     }
                 }
@@ -587,43 +629,49 @@ internal fun LazyListScope.chatStarSec() {
 
 
 /** 输入与输出：回复怎么展示/怎么流式、草稿怎么存、输出偏好常驻文案；与提示词优化分开 */
+/**注入 → 输入 → 输出：按「喂进去什么 / 你自己写什么 / 回来的东西怎么显示」重新排，注入与输入改得最勤所以放前面 */
 internal fun LazyListScope.chatInOutSec() {
+    //第一块：注入（本机实时信息）
+    item { InjectBlock() }
+
+    //第二块：输入（草稿怎么存）
     item {
-        Spacer(Modifier.height(14.dp))
-        SectionTitle(stringResource(R.string.tx_ae27e4da), stringResource(R.string.tx_1e4ab751))
-        CardBox {
-            //输出偏好：常驻拼进系统提示，跟角色人设并行不覆盖
-            Field(
-                label = stringResource(R.string.tx_c083b46f),
-                value = Cfg.replyStyle,
-                onValueChange = { Cfg.replyStyle = it },
-                placeholder = stringResource(R.string.tx_214a7d7d),
-                singleLine = false,
-                minLines = 3
+    Spacer(Modifier.height(14.dp))
+    SectionTitle("输入", stringResource(R.string.tx_b472edb3))
+    CardBox {
+        //图片默认不落盘：草稿里只留文字与文件引用，隐私风险与体积都能控住
+        CapSwitch(
+            stringResource(R.string.tx_4f3d139b),
+            if (Cfg.draftKeepImg) stringResource(R.string.tx_a114c7a8) else stringResource(R.string.tx_79a86fd2),
+            Cfg.draftKeepImg
+        ) { Cfg.draftKeepImg = it }
+        //有效期是跟随项：只有「保留图片」开着（草稿真的落盘）才滑下来，关着时整项不存在
+        FollowBlock(Cfg.draftKeepImg) {
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                stringResource(R.string.tx_090286ed),
+                if (Cfg.draftDays <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_5cd47992, Cfg.draftDays),
+                listOf(0, 1, 3, 7, 30),
+                optionLabel = { if (it <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_52273aab, it) },
+                isSelected = { Cfg.draftDays == it },
+                onSelect = { Cfg.draftDays = it }
             )
             Text(
-                stringResource(R.string.tx_5489c494),
+                stringResource(R.string.tx_0dd7ef22),
                 fontSize = 10.sp,
                 color = TextSecondary
             )
         }
     }
+    }
 
+    //第三块：输出（回复信息 + 输出偏好，同一张卡里上下两段）
     item {
     Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.se_019), stringResource(R.string.se_115))
+    SectionTitle("输出", stringResource(R.string.tx_1e4ab751))
     CardBox {
-        CapSwitch(
-            stringResource(R.string.se_116),
-            if (Cfg.showUsage) stringResource(R.string.se_117) else stringResource(R.string.se_118),
-            Cfg.showUsage
-        ) { Cfg.showUsage = it }
-        Spacer(Modifier.height(8.dp))
-        CapSwitch(
-            stringResource(R.string.se_119),
-            if (Cfg.showMeta) stringResource(R.string.se_120) else stringResource(R.string.se_121),
-            Cfg.showMeta
-        ) { Cfg.showMeta = it }
+        //附带请求信息：默认收起的一行，点开才逐项列开关；每项一条独立开关，全部默认开启
+        MetaFold()
         Spacer(Modifier.height(8.dp))
         //Waifu 模式决定回复怎么切成多条，跟「显示什么」是同一类事，所以归到回复信息里
         CapSwitch(stringResource(R.string.se_175), stringResource(R.string.se_176), Cfg.waifuMode) {
@@ -666,41 +714,105 @@ internal fun LazyListScope.chatInOutSec() {
             if (Cfg.noStream) stringResource(R.string.se_ns_on) else stringResource(R.string.se_ns_off),
             Cfg.noStream
         ) { Cfg.noStream = it }
+        Spacer(Modifier.height(14.dp))
+        //输出偏好：常驻拼进系统提示，跟角色人设并行不覆盖
+        Field(
+            label = stringResource(R.string.tx_c083b46f),
+            value = Cfg.replyStyle,
+            onValueChange = { Cfg.replyStyle = it },
+            placeholder = stringResource(R.string.tx_214a7d7d),
+            singleLine = false,
+            minLines = 3
+        )
+        Text(
+            stringResource(R.string.tx_5489c494),
+            fontSize = 10.sp,
+            color = TextSecondary
+        )
     }
+    }
+} //注入输入与输出子页
 
-    }
-    item {
-    Spacer(Modifier.height(14.dp))
-    SectionTitle(stringResource(R.string.tx_22b4334f), stringResource(R.string.tx_b472edb3))
-    CardBox {
-        //图片默认不落盘：草稿里只留文字与文件引用，隐私风险与体积都能控住
-        CapSwitch(
-            stringResource(R.string.tx_4f3d139b),
-            if (Cfg.draftKeepImg) stringResource(R.string.tx_a114c7a8) else stringResource(R.string.tx_79a86fd2),
-            Cfg.draftKeepImg
-        ) { Cfg.draftKeepImg = it }
-        //有效期是跟随项：只有「保留图片」开着（草稿真的落盘）才滑下来，关着时整项不存在
-        FollowBlock(Cfg.draftKeepImg) {
-            Spacer(Modifier.height(8.dp))
-            SelectField(
-                stringResource(R.string.tx_090286ed),
-                if (Cfg.draftDays <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_5cd47992, Cfg.draftDays),
-                listOf(0, 1, 3, 7, 30),
-                optionLabel = { if (it <= 0) stringResource(R.string.tx_5756d0e9) else stringResource(R.string.tx_52273aab, it) },
-                isSelected = { Cfg.draftDays == it },
-                onSelect = { Cfg.draftDays = it }
-            )
+/**
+ * 附带请求信息：收起时只占一行，显示「已开/总数」，点一下展开成逐项开关。
+ * 每一项都是一条独立开关（不是芯片多选），默认全开；不用的时候整行收起，不占版面。
+ */
+@Composable
+private fun MetaFold() {
+    //展开状态只活在本页生命周期里：离开设置页就回到收起，跟其它折叠块一致
+    var open by remember { mutableStateOf(false) }
+    //顶层三组：用量、速度、请求信息（后者的子项再逐条列在下面）
+    val top = listOf(Cfg.showUsage, Cfg.showSpeed, Cfg.showMeta)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .tap { open = !open }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("附带请求信息", fontSize = 13.5.sp, color = TextPrimary)
             Text(
-                stringResource(R.string.tx_0dd7ef22),
-                fontSize = 10.sp,
+                "回复底部那行小字附带什么，逐项可关，默认全开",
+                fontSize = 10.5.sp,
                 color = TextSecondary
             )
         }
-    }
-    }
-    //注入块接在页尾：同属「给模型喂什么输入」这件事
-    item { InjectBlock() }
-} //注入输入与输出子页
+        Spacer(Modifier.width(10.dp))
+        //收起时给个进度：一眼看出还有几项开着，不用展开
+        Text("${top.count { it }}/${top.size}", fontSize = 12.sp, color = AccentBlue)
+    } //折叠标题行
+    FollowBlock(open) {
+        Spacer(Modifier.height(6.dp))
+        //用量：token 数一定显，速度单独一项
+        CapSwitch("用量", "本轮 token 数", Cfg.showUsage) { Cfg.showUsage = it }
+        Spacer(Modifier.height(6.dp))
+        CapSwitch("生成速度", "tok/s，流式才有", Cfg.showSpeed) { Cfg.showSpeed = it }
+        Spacer(Modifier.height(6.dp))
+        //请求信息总开关：关掉后下面的耗时/首字/时间/厂商/模型全部不显示
+        CapSwitch("请求信息", "耗时、首字、时间、厂商、模型", Cfg.showMeta) { Cfg.showMeta = it }
+        FollowBlock(Cfg.showMeta) {
+            Spacer(Modifier.height(6.dp))
+            CapSwitch("耗时", "整轮生成用了多久", Cfg.showLatency) { Cfg.showLatency = it }
+            Spacer(Modifier.height(6.dp))
+            CapSwitch("首字延迟", "首个字出来的时间", Cfg.showFirst) { Cfg.showFirst = it }
+            Spacer(Modifier.height(6.dp))
+            CapSwitch("时间", "这条回复的时间点", Cfg.showTime) { Cfg.showTime = it }
+            Spacer(Modifier.height(6.dp))
+            CapSwitch("厂商", "走的是哪家服务", Cfg.showProvider) { Cfg.showProvider = it }
+            Spacer(Modifier.height(6.dp))
+            CapSwitch("模型", "具体模型名", Cfg.showModel) { Cfg.showModel = it }
+        } //请求信息细分
+    } //展开的子项
+} //附带请求信息折叠组
+/** 提示词优化：目标语种候选（auto = 自动，由模型按原文判断），关掉「保留原语言」后才出现 */
+private val OPT_LANGS = listOf("auto", "中文", "英文", "日文", "韩文", "法文", "德文", "俄文", "西班牙文", "葡萄牙文")
+
+/** 语种下拉的显示名：auto（以及历史存下的空串）都显示成「自动」 */
+private fun floatLangLabel(v: String): String = if (v.isBlank() || v == "auto") "自动" else v
+
+/** 优化偏好档位：管「写多少」。取值要跟 PromptOptimizer.levelRule 对齐 */
+private val OPT_LEVELS = listOf("auto", "brief", "full", "detail")
+
+/** 优化偏好风格：管「往哪个方向写」。取值要跟 PromptOptimizer.toneRule 对齐 */
+private val OPT_TONES = listOf("auto", "strict", "code", "draw", "science")
+
+/** 档位显示名：认不出的值一律当「自动」 */
+private fun levelLabel(key: String): String = when (key) {
+    "brief" -> "极简"
+    "full" -> "全面"
+    "detail" -> "详细"
+    else -> "自动"
+} //档位名
+
+/** 风格显示名：认不出的值一律当「自动」 */
+private fun toneLabel(key: String): String = when (key) {
+    "strict" -> "严谨"
+    "code" -> "代码"
+    "draw" -> "绘图"
+    "science" -> "科学"
+    else -> "自动"
+} //风格名
 
 internal fun LazyListScope.chatPromptSec() {
     item {
@@ -725,20 +837,77 @@ internal fun LazyListScope.chatPromptSec() {
             if (Cfg.promptOptKeep) stringResource(R.string.tx_d28ecec9) else stringResource(R.string.tx_7ec62ce2),
             Cfg.promptOptKeep
         ) { Cfg.promptOptKeep = it }
+        //关掉「保留原语言」才出现目标语种：空 = 默认语种（不改语言），选了就要求结果统一成该语种
+        FollowBlock(!Cfg.promptOptKeep) {
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                "默认语种",
+                floatLangLabel(Cfg.promptOptLang),
+                OPT_LANGS,
+                optionLabel = { floatLangLabel(it) },
+                isSelected = { it == Cfg.promptOptLang },
+                onSelect = { Cfg.promptOptLang = it }
+            )
+            Spacer(Modifier.height(6.dp))
+            // 语义写清楚：「保留」是原文语种不动，「不保留」才按这里选的语种统一输出
+            Text(
+                "开启保留原语言时：原文写的中文就还是中文，只改表达不翻译；" +
+                    "关闭后按这里的语种统一输出，选「自动」则由模型按原文判断。",
+                fontSize = 10.sp,
+                color = TextSecondary
+            )
+        } //语种下拉
         Spacer(Modifier.height(8.dp))
-        Field(
-            label = stringResource(R.string.tx_84e40c91),
-            value = Cfg.promptOptStyle,
-            onValueChange = { Cfg.promptOptStyle = it },
-            placeholder = stringResource(R.string.tx_65557288),
-            singleLine = false,
-            minLines = 3
-        )
-        Text(
-            stringResource(R.string.tx_70d093e2),
-            fontSize = 10.sp,
-            color = TextSecondary
-        )
+        //永不询问优化方向：默认开。开了以后优化器不许反问，哪怕原话只有一个字也自己补全，补不了就原样返回
+        CapSwitch(
+            "永不询问优化方向",
+            if (Cfg.promptOptNoAsk) "优化时不会反问，信息不够就按最短理解直接改；实在改不了就保留原话" else "信息不够时会输出「请先确认」让你补充",
+            Cfg.promptOptNoAsk
+        ) { Cfg.promptOptNoAsk = it }
+        Spacer(Modifier.height(8.dp))
+        //自定义优化偏好：总开关，开了才展开档位与风格两个下拉（拼进优化提示词的篇幅与取向要求）
+        CapSwitch(
+            "自定义优化偏好",
+            if (Cfg.promptOptPrefOn) "按下面的档位与风格改写" else "关闭时由优化模型自己判断详略与写法",
+            Cfg.promptOptPrefOn
+        ) { Cfg.promptOptPrefOn = it }
+        FollowBlock(Cfg.promptOptPrefOn) {
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                "档位",
+                levelLabel(Cfg.promptOptLevel),
+                OPT_LEVELS,
+                optionLabel = { levelLabel(it) },
+                isSelected = { it == Cfg.promptOptLevel },
+                onSelect = { Cfg.promptOptLevel = it }
+            )
+            Spacer(Modifier.height(8.dp))
+            SelectField(
+                "风格",
+                toneLabel(Cfg.promptOptTone),
+                OPT_TONES,
+                optionLabel = { toneLabel(it) },
+                isSelected = { it == Cfg.promptOptTone },
+                onSelect = { Cfg.promptOptTone = it }
+            )
+        } //偏好下拉
+        Spacer(Modifier.height(8.dp))
+        //开启自定义补充优化：开了才显示下面的输入框，关掉时既不显示也不往提示词里拼
+        CapSwitch(
+            "开启自定义补充优化",
+            if (Cfg.promptOptExtraOn) "下面的「优化方向自定义」会追加到优化提示词末尾" else "关闭时不追加任何自定义写法要求",
+            Cfg.promptOptExtraOn
+        ) { Cfg.promptOptExtraOn = it }
+        FollowBlock(Cfg.promptOptExtraOn) {
+            Field(
+                label = stringResource(R.string.tx_84e40c91),
+                value = Cfg.promptOptStyle,
+                onValueChange = { Cfg.promptOptStyle = it },
+                placeholder = stringResource(R.string.tx_65557288),
+                singleLine = false,
+                minLines = 3
+            )
+        } //自定义方向
     }
     }
 } //提示词优化子页
@@ -747,4 +916,3 @@ internal fun LazyListScope.chatPermSec() {
     item { Spacer(Modifier.height(14.dp)) }
     permTab()
 } //权限子页
-

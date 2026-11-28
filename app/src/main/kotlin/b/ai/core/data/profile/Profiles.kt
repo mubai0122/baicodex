@@ -38,6 +38,10 @@ data class ModelProfile(
     val reasoning: Boolean = true,
     /** 这条模型是否能自己联网检索（原生 search）：勾上才在请求里声明各家搜索工具 / 参数 */
     val nativeSearch: Boolean = false,
+    /** 是否接受创造性采样参数（temperature / top_p / top_k）：个别厂商不认这些字段，一发就 400 */
+    val creative: Boolean = false,
+    /** 是否接受重复控制参数（presence / frequency / repeat penalty）：同上，不认就别发 */
+    val repeatCtl: Boolean = false,
     val maxTokens: Int = 0,
     /** 这条配置自己的上下文窗口（token）；0 表示跟随全局「模型窗口」设置 */
     val ctxTotal: Int = 0,
@@ -183,6 +187,8 @@ object Profiles {
         toolCall = Cfg.modelToolCall,
         reasoning = Cfg.modelReasoning,
         nativeSearch = Cfg.modelNativeSearch,
+        creative = Cfg.modelCreative,
+        repeatCtl = Cfg.modelRepeat,
         maxTokens = Cfg.maxTokens,
         protocol = Cfg.modelProtocol
     )
@@ -214,6 +220,9 @@ object Profiles {
                 reasoning = o.optBoolean("reasoning", true),
                 //老文件没有这个字段：按厂商推断，别把 DeepSeek 这类默认关掉
                 nativeSearch = o.optBoolean("nativeSearch", supportsNativeSearch(prov)),
+                //老配置没有这两个键：默认 true，保持升级前“该发的都发”的行为
+                creative = o.optBoolean("creative", false),
+                repeatCtl = o.optBoolean("repeatCtl", false),
                 maxTokens = o.optInt("maxTokens", o.optInt("max_tokens", 0)),
                 ctxTotal = o.optInt("ctxTotal", 0),
                 //档位以前只在内存里，没落盘，重启就丢（用户反馈「填了没用」）；现在跟配置一起存
@@ -252,6 +261,8 @@ object Profiles {
                     .put("toolCall", p.toolCall)
                     .put("reasoning", p.reasoning)
                     .put("nativeSearch", p.nativeSearch)
+                    .put("creative", p.creative)
+                    .put("repeatCtl", p.repeatCtl)
                     .put("maxTokens", p.maxTokens)
                     .put("ctxTotal", p.ctxTotal)
                     .put("thinkLevels", p.thinkLevels)
@@ -331,6 +342,8 @@ object Profiles {
         Cfg.modelToolCall = p.toolCall
         Cfg.modelReasoning = p.reasoning
         Cfg.modelNativeSearch = p.nativeSearch
+        Cfg.modelCreative = p.creative
+        Cfg.modelRepeat = p.repeatCtl
         Cfg.maxTokens = p.maxTokens
         //窗口不写进全局那份设置：全局是用户手填的默认值，这条配置没填（0）时继续用它
         Cfg.profCtxTotal = p.ctxTotal
@@ -387,6 +400,8 @@ object Profiles {
             toolCall = Cfg.modelToolCall,
             reasoning = Cfg.modelReasoning,
             nativeSearch = Cfg.modelNativeSearch,
+            creative = Cfg.modelCreative,
+            repeatCtl = Cfg.modelRepeat,
             maxTokens = Cfg.maxTokens,
             ctxTotal = Cfg.profCtxTotal,
             thinkLevels = Cfg.profThinkLevels.trim(),
@@ -429,6 +444,8 @@ object Profiles {
             toolCall = cur?.toolCall ?: Cfg.modelToolCall,
             reasoning = cur?.reasoning ?: Cfg.modelReasoning,
             nativeSearch = cur?.nativeSearch ?: Cfg.modelNativeSearch,
+            creative = cur?.creative ?: Cfg.modelCreative,
+            repeatCtl = cur?.repeatCtl ?: Cfg.modelRepeat,
             maxTokens = cur?.maxTokens ?: Cfg.maxTokens,
             ctxTotal = cur?.ctxTotal ?: 0,
             custom = false,
@@ -457,6 +474,8 @@ object Profiles {
                 toolCall = Cfg.modelToolCall,
                 reasoning = Cfg.modelReasoning,
                 nativeSearch = Cfg.modelNativeSearch,
+                creative = Cfg.modelCreative,
+                repeatCtl = Cfg.modelRepeat,
                 maxTokens = 0,
                 ctxTotal = 0,
                 custom = false,

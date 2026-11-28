@@ -181,7 +181,7 @@ internal fun MirrorRow(
         Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .liquidBg(RoundedCornerShape(10.dp), tint = if (selected) AccentBlue.copy(alpha = 0.16f) else SurfaceMuted)
+            .liquidBg(RoundedCornerShape(10.dp), tint = if (selected) AccentBlue.copy(alpha = 0.16f) else SurfaceMuted, gate = 0.dp)
             .tap { onClick() }
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

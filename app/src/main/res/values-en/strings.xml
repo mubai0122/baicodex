@@ -2676,4 +2676,94 @@
     <string name="perm_all_ask" formatted="false">Ask</string>
     <string name="perm_all_deny" formatted="false">Deny</string>
     <string name="perm_all_over" >Overridden by the global switch: %1$s</string>
+    <!-- 模型能力：创造性 / 重复控制参数开关 -->
+    <string name="tx_5c1e0a71" formatted="false">Enabled: requests include temperature / top_p / top_k</string>
+    <string name="tx_5c1e0a72" formatted="false">Disabled: these three are never sent (providers that reject them return 400)</string>
+    <string name="tx_5c1e0a73" formatted="false">Enabled: requests include presence / frequency / repeat penalty</string>
+    <string name="tx_5c1e0a74" formatted="false">Disabled: these penalties are never sent (providers that reject them return 400)</string>
+    <string name="tx_5c1e0a75" formatted="false">Creative parameters are off for this configuration: the values below are saved but not sent</string>
+    <string name="tx_5c1e0a76" formatted="false">Repetition control is off for this configuration: the values below are saved but not sent</string>
+    <string name="tx_icon_title">App icon</string>
+    <string name="tx_icon_sub">Custom home-screen shortcut icon</string>
+    <string name="tx_icon_tip">Pick a photo and a home-screen shortcut with that icon is created. Android doesn\'t allow replacing the app icon itself, so the original stays.</string>
+    <string name="tx_icon_pick">Pick from gallery</string>
+    <string name="tx_icon_note">Created instantly; the launcher will ask to add it</string>
+    <string name="tx_icon_decodefail">Can\'t read this image, try another one</string>
+    <string name="tx_icon_unsupported">This launcher doesn\'t support custom shortcut icons</string>
+    <string name="tx_pic_view">View</string>
+    <string name="tx_pic_locate">Path</string>
+    <string name="tx_pic_open">Open</string>
+    <string name="tx_pic_copied">Image path copied</string>
+    <string name="tx_pic_openfail">No app can open this file</string>
+    <string name="tx_walltint_t">Wallpaper color</string>
+    <string name="tx_walltint_on">On: colors follow your background</string>
+    <string name="tx_walltint_off">Off: using preset palettes</string>
+    <string name="tx_walltint_tip">Colors follow your background; manual palettes are disabled. Changing the background re-picks the color.</string>
+    <string name="tx_walltint_fail">Couldn\'t extract a color from this background; reverted to presets</string>
+    <string name="vb_title">Vbai account</string>
+    <string name="vb_sub">Device-code sign-in: no secret is ever needed — you prove identity by signing in to the browser yourself. The key is stored only in the on-device encrypted vault; the UI shows a masked value.</string>
+    <string name="vb_logged">Signed in</string>
+    <string name="vb_authorized">Authorized</string>
+    <string name="vb_plan">%1$s plan</string>
+    <string name="vb_balance">Balance ¥%1$s</string>
+    <string name="vb_key">Key %1$s</string>
+    <string name="vb_fill_model">Fill into current model config</string>
+    <string name="vb_filled">base_url and API Key filled (%1$s)</string>
+    <string name="vb_no_key">No usable key. Please sign in again.</string>
+    <string name="vb_relogin">Sign in again</string>
+    <string name="vb_logout">Sign out</string>
+    <string name="vb_logout_done">Signed out (the key stays on the platform side; signing in on another device returns the same key)</string>
+    <string name="vb_code_left">Sign-in code expires in %1$ds</string>
+    <string name="vb_reopen">Reopen authorization page</string>
+    <string name="vb_copy_code">Copy sign-in link</string>
+    <string name="vb_cancel">Cancel</string>
+    <string name="vb_copied">Authorization link copied</string>
+    <string name="vb_step1">① Tap the button below to get a sign-in code</string>
+    <string name="vb_step2">② Sign in to Vbai in the browser and tap "Confirm authorization"</string>
+    <string name="vb_step3">③ Come back — it finishes automatically, no copy/paste</string>
+    <string name="vb_start">Start sign-in</string>
+    <string name="vb_note">Note: one key per account across all platforms; this app never stores app_secret. Polling every 2s, code valid for 5 minutes.</string>
+    <string name="vb_inline_on">Vbai signed in</string>
+    <string name="vb_inline_login">Vbai one-tap sign-in</string>
+    <string name="vb_logging">Signing in…</string>
+    <string name="vb_inline_hint">One tap opens the browser for authorization; the key stays in the on-device vault</string>
+    <string name="vb_fill_key">Fill key</string>
+    <string name="vb_filled_key">base_url and API Key filled</string>
+    <string name="vb_cancel_login">Cancel sign-in</string>
+    <string name="vb_oneclick">One-tap sign-in</string>
+    <string name="vb_login_ok">Signed in — tap "Fill key" to write it into the form</string>
+    <string name="vb_ask_title">Use the developer-hosted relay?</string>
+    <string name="vb_ask_body">The Vbai relay is hosted by the developer: one key for many models, ready right after sign-in, no per-vendor signup.</string>
+    <string name="vb_ask_no">No, I will fill it myself</string>
+    <string name="vb_ask_yes">Yes, show me</string>
+    <string name="vb_name">Vbai relay</string>
+    <string name="vb_intro_1">· Ready after sign-in: device-code authorization, no hunting for keys</string>
+    <string name="vb_intro_2">· Single billing: see plan and balance right in the "Vbai account" card</string>
+    <string name="vb_intro_3">· OpenAI compatible: base_url is https://ai.baiccb.cn/v1, switch back anytime</string>
+    <string name="vb_cur_key">Current key</string>
+    <string name="vb_not_login">Not signed in</string>
+    <string name="vb_go">Signed in — continue</string>
+    <string name="vb_login_btn">Sign in</string>
+    <string name="vb_open_site">Open website</string>
+    <string name="vb_ok">Signed in</string>
+    <string name="vb_no_browser">No browser available</string>
+    <string name="vb_saved">New config created: %1$s</string>
+    <string name="vb_rec_title">Recommended: Vbai relay · one-tap setup</string>
+    <string name="vb_rec_body">Developer-hosted relay: one key for many models; ready after sign-in, switch back to your own key anytime.</string>
+    <string name="vb_rec_btn">Learn more and sign in</string>
+    <string name="vb_s_starting">Requesting a sign-in code…</string>
+    <string name="vb_s_nocode">The platform did not return a sign-in code</string>
+    <string name="vb_s_wait">Browser opened — sign in there and tap "Confirm authorization"</string>
+    <string name="vb_s_retry">Network unstable, retrying… (%1$ds left)</string>
+    <string name="vb_s_ok">Signed in</string>
+    <string name="vb_s_expired">The sign-in code expired, please start again</string>
+    <string name="vb_s_waiting">Waiting for authorization… (%1$ds left)</string>
+    <string name="vb_s_fail">Sign-in failed</string>
+    <string name="vb_s_cancel">Cancelled</string>
+    <string name="vb_s_guard">Just requested, please wait %1$d s</string>
+    <string name="vb_s_429">Too many requests, please try later</string>
+    <string name="vb_s_410">The sign-in code is no longer valid, please start again</string>
+    <string name="vb_s_http">Network error (HTTP %1$d)</string>
+    <string name="vb_s_failhttp">Request failed (HTTP %1$d)</string>
+    <string name="vb_s_net">Network error: %1$s</string>
 </resources>

@@ -7,4 +7,14 @@
     <cache-path
         name="cache"
         path="." />
+    <!-- AI 生成的图 / 截图常落在外部存储，要能交给系统应用打开 -->
+    <external-path
+        name="ext"
+        path="." />
+    <external-files-path
+        name="extfiles"
+        path="." />
+    <external-cache-path
+        name="extcache"
+        path="." />
 </paths>
